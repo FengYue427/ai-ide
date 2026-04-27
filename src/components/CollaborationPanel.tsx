@@ -12,7 +12,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const [joined, setJoined] = useState(false)
   const [users, setUsers] = useState<any[]>([])
   const [copied, setCopied] = useState(false)
-  const copiedTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (joined) {

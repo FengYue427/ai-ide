@@ -14,7 +14,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
   const [copied, setCopied] = useState(false)
   const [shares, setShares] = useState(() => Object.values(getAllShares()).sort((a, b) => b.createdAt - a.createdAt))
   const [importText, setImportText] = useState('')
-  const copiedTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 清理 timer
   useEffect(() => {
