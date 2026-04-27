@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { X, Link2, Copy, Check, Download, Upload, Trash2 } from 'lucide-react'
 import { saveShare, generateShareUrl, getAllShares, deleteShare, exportAsJson, importFromJson } from '../services/shareService'
 
@@ -14,6 +14,16 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
   const [copied, setCopied] = useState(false)
   const [shares, setShares] = useState(() => Object.values(getAllShares()).sort((a, b) => b.createdAt - a.createdAt))
   const [importText, setImportText] = useState('')
+  const copiedTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // 清理 timer
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) {
+        clearTimeout(copiedTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleShare = () => {
     const id = saveShare({ files })
@@ -26,7 +36,16 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
     if (!shareUrl) return
     await navigator.clipboard.writeText(shareUrl)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    
+    // 清理之前的 timer
+    if (copiedTimerRef.current) {
+      clearTimeout(copiedTimerRef.current)
+    }
+    
+    copiedTimerRef.current = setTimeout(() => {
+      setCopied(false)
+      copiedTimerRef.current = null
+    }, 2000)
   }
 
   const handleExport = () => {

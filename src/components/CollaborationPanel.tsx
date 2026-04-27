@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { X, Users, Share2, Copy, Check, Radio } from 'lucide-react'
 import { collaborationService } from '../services/collaborationService'
 
@@ -12,6 +12,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const [joined, setJoined] = useState(false)
   const [users, setUsers] = useState<any[]>([])
   const [copied, setCopied] = useState(false)
+  const copiedTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (joined) {
@@ -22,6 +23,15 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
       return () => clearInterval(interval)
     }
   }, [joined])
+
+  // 清理 copied 状态 timer
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) {
+        clearTimeout(copiedTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleJoin = () => {
     if (!roomId.trim()) {
@@ -53,7 +63,16 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     const link = `${window.location.origin}?room=${roomId}`
     await navigator.clipboard.writeText(link)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    
+    // 清理之前的 timer
+    if (copiedTimerRef.current) {
+      clearTimeout(copiedTimerRef.current)
+    }
+    
+    copiedTimerRef.current = setTimeout(() => {
+      setCopied(false)
+      copiedTimerRef.current = null
+    }, 2000)
   }
 
   const generateNewRoom = () => {
