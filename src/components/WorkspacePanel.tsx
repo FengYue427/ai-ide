@@ -9,6 +9,7 @@ import { workspaceContextService, type WorkspaceFile } from '../services/workspa
 interface WorkspacePanelProps {
   onClose: () => void
   onFilesChange?: (files: { name: string; content: string; language: string }[]) => void
+  currentFiles?: { name: string; content: string; language: string }[]  // 当前编辑器中的文件
 }
 
 interface FileTreeNode {
@@ -19,10 +20,11 @@ interface FileTreeNode {
   file?: WorkspaceFile
 }
 
-const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ onClose, onFilesChange }) => {
+const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ onClose, onFilesChange, currentFiles }) => {
   const [files, setFiles] = useState<WorkspaceFile[]>([])
   const [stats, setStats] = useState(workspaceContextService.getStats())
   const [dragActive, setDragActive] = useState(false)
+  const hasSyncedFiles = useRef(false)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
@@ -49,6 +51,19 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ onClose, onFilesChange 
   useEffect(() => {
     refreshFiles()
   }, [refreshFiles])
+
+  // 同步当前编辑器文件到工作区（如果工作区为空）
+  useEffect(() => {
+    if (currentFiles && currentFiles.length > 0 && !hasSyncedFiles.current) {
+      const workspaceFiles = workspaceContextService.getAllFiles()
+      // 如果工作区为空，自动同步当前文件
+      if (workspaceFiles.length === 0) {
+        workspaceContextService.createFromFiles(currentFiles, '当前项目')
+        refreshFiles()
+        hasSyncedFiles.current = true
+      }
+    }
+  }, [currentFiles, refreshFiles])
 
   // 处理文件拖放
   const handleDrag = useCallback((e: React.DragEvent) => {

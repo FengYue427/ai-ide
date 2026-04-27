@@ -796,6 +796,7 @@ function AppContent() {
               setActiveFile(0)
             }
           }}
+          currentFiles={files}
         />
       )}
 
