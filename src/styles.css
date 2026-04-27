@@ -144,10 +144,12 @@ body {
 /* 右侧面板 */
 .right-panel {
   width: 320px;
+  height: 100%;
   background: var(--bg-secondary);
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .panel-header {

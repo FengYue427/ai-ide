@@ -316,11 +316,13 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                         borderRadius: '8px',
                         border: `2px solid ${localLanguage === 'zh' ? 'var(--accent-color)' : 'var(--border-color)'}`,
                         background: 'var(--bg-secondary)',
+                        color: 'var(--text-primary)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '8px'
+                        gap: '8px',
+                        fontSize: '14px'
                       }}
                     >
                       <Globe size={18} />
@@ -334,11 +336,13 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                         borderRadius: '8px',
                         border: `2px solid ${localLanguage === 'en' ? 'var(--accent-color)' : 'var(--border-color)'}`,
                         background: 'var(--bg-secondary)',
+                        color: 'var(--text-primary)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '8px'
+                        gap: '8px',
+                        fontSize: '14px'
                       }}
                     >
                       <Globe size={18} />
