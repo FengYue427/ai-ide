@@ -1,0 +1,38 @@
+{
+  "name": "ai-ide",
+  "version": "1.0.0-rc.1",
+  "description": "开源 AI 原生轻量 IDE",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:prod": "tsc && vite build --mode production",
+    "preview": "vite preview",
+    "deploy:netlify": "npm run build && npx netlify deploy --prod --dir=dist",
+    "deploy:vercel": "npx vercel --prod"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "@octokit/rest": "^22.0.1",
+    "@types/jszip": "^3.4.0",
+    "@webcontainer/api": "^1.6.4",
+    "fuse.js": "^7.3.0",
+    "idb": "^8.0.3",
+    "isomorphic-git": "^1.37.5",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.294.0",
+    "monaco-editor": "^0.45.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "y-webrtc": "^10.3.0",
+    "yjs": "^13.6.30",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  }
+}

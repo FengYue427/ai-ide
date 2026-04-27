@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI IDE - 浏览器内的 AI 原生开发环境</title>
+    <meta name="description" content="开源 AI 原生轻量 IDE，在浏览器中运行完整开发环境。支持 GPT-5.4、Claude Opus、Gemini 3.1 等最新大模型，内置 Monaco 编辑器和 Node.js 运行时。" />
+    <meta name="keywords" content="AI IDE, 在线IDE, AI编程, GPT, Claude, Gemini, Monaco Editor, WebContainer, 浏览器IDE" />
+    <meta property="og:title" content="AI IDE - 浏览器内的 AI 原生开发环境" />
+    <meta property="og:description" content="开源 AI 原生轻量 IDE，支持最新大模型，内置代码编辑器和运行时。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://aide1019.netlify.app" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#1a1a2e" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #e0e0e0; }
+      #loading-screen {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 16px; z-index: 9999;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      }
+      #loading-screen .spinner {
+        width: 40px; height: 40px; border: 3px solid rgba(168,85,247,0.2);
+        border-top-color: #a855f7; border-radius: 50%; animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      #loading-screen p { font-size: 14px; color: rgba(255,255,255,0.6); }
+    </style>
+  </head>
+  <body>
+    <div id="loading-screen">
+      <div class="spinner"></div>
+      <p>正在加载 AI IDE...</p>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
