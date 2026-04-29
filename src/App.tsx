@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Play, Folder, MessageSquare, X, Plus, Download, Trash2, Moon, Sun, LayoutTemplate, Share2, GitBranch, FolderOpen, Bot, Search, Eye, Users, Save, Package, Puzzle, Upload, Shield, Code2, Activity, Command, FileText, Settings as SettingsIcon } from 'lucide-react'
 import Editor from './components/Editor'
 import ChatPanel from './components/ChatPanel'
@@ -27,6 +27,7 @@ import ThemeSelector from './components/ThemeSelector'
 import WelcomeScreen from './components/WelcomeScreen'
 import { useWebContainer } from './hooks/useWebContainer'
 import { useKeyboardShortcuts, getDefaultShortcuts } from './hooks/useKeyboardShortcuts'
+import { useDebounce } from './hooks/useDebounce'
 import { getShare } from './services/shareService'
 import type { AIModel } from './services/aiService'
 import { storageService } from './services/storageService'
@@ -156,11 +157,20 @@ function AppContent() {
     return () => clearTimeout(timer)
   }, [files, autoSaveEnabled])
 
+  // 防抖的文件内容更新（优化大文件编辑性能）
+  const debouncedFileChange = useDebounce((index: number, content: string | undefined) => {
+    if (content === undefined) return
+    setFiles(prevFiles => {
+      const newFiles = [...prevFiles]
+      newFiles[index] = { ...newFiles[index], content }
+      return newFiles
+    })
+  }, 150) // 150ms 延迟，平衡响应性和性能
+
   const handleFileChange = (content: string | undefined) => {
     if (content === undefined) return
-    const newFiles = [...files]
-    newFiles[activeFile].content = content
-    setFiles(newFiles)
+    // 使用防抖更新，减少大文件时的重渲染频率
+    debouncedFileChange(activeFile, content)
   }
 
   const handleSaveAISettings = (config: typeof aiConfig) => {
