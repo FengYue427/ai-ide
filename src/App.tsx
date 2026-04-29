@@ -29,6 +29,7 @@ import { useKeyboardShortcuts, getDefaultShortcuts } from './hooks/useKeyboardSh
 import { getShare } from './services/shareService'
 import type { AIModel } from './services/aiService'
 import { storageService } from './services/storageService'
+import { localStorageService, StorageKeys } from './services/localStorageService'
 import { I18nProvider } from './i18n'
 import { recentFilesService, type RecentProject } from './services/recentFilesService'
 
@@ -62,12 +63,12 @@ function AppContent() {
   const [showNewFileInput, setShowNewFileInput] = useState(false)
   const [newFileName, setNewFileName] = useState('')
   const [aiConfig, setAiConfig] = useState({
-    provider: (localStorage.getItem('ai_provider') || 'openai') as AIModel,
-    apiKey: localStorage.getItem('ai_api_key') || '',
-    model: localStorage.getItem('ai_model') || 'gpt-4o-mini',
-    endpoint: localStorage.getItem('ai_endpoint') || ''
+    provider: localStorageService.get(StorageKeys.AI_CONFIG, { provider: 'openai' as AIModel, apiKey: '', model: 'gpt-4o-mini', endpoint: '' }).provider,
+    apiKey: localStorageService.get(StorageKeys.AI_CONFIG, { provider: 'openai' as AIModel, apiKey: '', model: 'gpt-4o-mini', endpoint: '' }).apiKey,
+    model: localStorageService.get(StorageKeys.AI_CONFIG, { provider: 'openai' as AIModel, apiKey: '', model: 'gpt-4o-mini', endpoint: '' }).model,
+    endpoint: localStorageService.get(StorageKeys.AI_CONFIG, { provider: 'openai' as AIModel, apiKey: '', model: 'gpt-4o-mini', endpoint: '' }).endpoint
   })
-  const [theme, setTheme] = useState<'vs-dark' | 'light'>(localStorage.getItem('editor_theme') as 'vs-dark' | 'light' || 'vs-dark')
+  const [theme, setTheme] = useState<'vs-dark' | 'light'>(localStorageService.get(StorageKeys.THEME, 'vs-dark'))
   const [showTerminal, setShowTerminal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
@@ -77,7 +78,7 @@ function AppContent() {
   const [showSearchPanel, setShowSearchPanel] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showCollaboration, setShowCollaboration] = useState(false)
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => localStorage.getItem('autosave') !== 'false')
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => localStorageService.get(StorageKeys.SETTINGS, { autosave: true }).autosave)
   const [showPluginManager, setShowPluginManager] = useState(false)
   const [showDropZone, setShowDropZone] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
@@ -163,10 +164,7 @@ function AppContent() {
 
   const handleSaveAISettings = (config: typeof aiConfig) => {
     setAiConfig(config)
-    localStorage.setItem('ai_provider', config.provider)
-    localStorage.setItem('ai_api_key', config.apiKey)
-    localStorage.setItem('ai_model', config.model)
-    localStorage.setItem('ai_endpoint', config.endpoint)
+    localStorageService.set(StorageKeys.AI_CONFIG, config)
     setShowAISettings(false)
   }
 
@@ -249,7 +247,7 @@ function AppContent() {
   const toggleTheme = () => {
     const newTheme = theme === 'vs-dark' ? 'light' : 'vs-dark'
     setTheme(newTheme)
-    localStorage.setItem('editor_theme', newTheme)
+    localStorageService.set(StorageKeys.THEME, newTheme)
   }
 
   const handleRunCode = useCallback(async () => {
@@ -749,15 +747,16 @@ function AppContent() {
           language="zh"
           onSaveAIConfig={(config) => {
             setAiConfig(config)
-            localStorage.setItem('ai_provider', config.provider)
-            localStorage.setItem('ai_api_key', config.apiKey)
-            localStorage.setItem('ai_model', config.model)
-            localStorage.setItem('ai_endpoint', config.endpoint)
+            localStorageService.set(StorageKeys.AI_CONFIG, config)
           }}
           onToggleTheme={toggleTheme}
-          onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
+          onToggleAutoSave={() => {
+            const newValue = !autoSaveEnabled
+            setAutoSaveEnabled(newValue)
+            localStorageService.set(StorageKeys.SETTINGS, { autosave: newValue })
+          }}
           onChangeLanguage={(lang) => {
-            localStorage.setItem('language', lang)
+            localStorageService.set(StorageKeys.LANGUAGE, lang)
             window.location.reload()
           }}
           onClose={() => setShowSettingsCenter(false)}
@@ -806,7 +805,7 @@ function AppContent() {
           currentTheme={theme}
           onChangeTheme={(newTheme) => {
             setTheme(newTheme as any)
-            localStorage.setItem('editor_theme', newTheme)
+            localStorageService.set(StorageKeys.THEME, newTheme)
           }}
           onClose={() => setShowThemeSelector(false)}
         />

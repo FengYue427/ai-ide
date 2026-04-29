@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { localStorageService, StorageKeys } from '../services/localStorageService'
 
 // 支持的语言
 export type Language = 'zh-CN' | 'en-US'
@@ -46,13 +47,12 @@ const I18nContext = createContext<I18nContextType | null>(null)
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem('ide-language') as Language
-    return saved || 'zh-CN'
+    return localStorageService.get(StorageKeys.LANGUAGE, 'zh-CN')
   })
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang)
-    localStorage.setItem('ide-language', lang)
+    localStorageService.set(StorageKeys.LANGUAGE, lang)
   }, [])
 
   const t = useCallback((key: TranslationKey): string => {

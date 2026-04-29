@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { X, Users, Share2, Copy, Check, Radio } from 'lucide-react'
 import { collaborationService } from '../services/collaborationService'
+import { localStorageService, StorageKeys } from '../services/localStorageService'
 
 interface CollaborationPanelProps {
   onClose: () => void
@@ -8,7 +9,7 @@ interface CollaborationPanelProps {
 
 const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const [roomId, setRoomId] = useState('')
-  const [userName, setUserName] = useState(() => localStorage.getItem('collab_username') || '用户' + Math.floor(Math.random() * 1000))
+  const [userName, setUserName] = useState(() => localStorageService.get(StorageKeys.COLLAB_USERNAME, '用户' + Math.floor(Math.random() * 1000)))
   const [joined, setJoined] = useState(false)
   const [users, setUsers] = useState<any[]>([])
   const [copied, setCopied] = useState(false)
@@ -40,7 +41,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
       return
     }
 
-    localStorage.setItem('collab_username', userName)
+    localStorageService.set(StorageKeys.COLLAB_USERNAME, userName)
     
     const colors = ['#58a6ff', '#3fb950', '#d29922', '#f778ba', '#a371f7']
     const color = colors[Math.floor(Math.random() * colors.length)]

@@ -1,4 +1,5 @@
 // 代码格式化服务 - 使用 Prettier
+import { localStorageService, StorageKeys } from './localStorageService'
 
 interface FormatOptions {
   parser: 'babel' | 'typescript' | 'css' | 'json' | 'markdown' | 'html'
@@ -133,9 +134,9 @@ export const formatService = {
 
   // 获取格式化配置
   getConfig(): FormatOptions {
-    const saved = localStorage.getItem('format_config')
-    if (saved) {
-      return { ...defaultOptions, ...JSON.parse(saved) }
+    const saved = localStorageService.get<{ formatConfig?: Partial<FormatOptions> }>(StorageKeys.SETTINGS, {})
+    if (saved?.formatConfig) {
+      return { ...defaultOptions, ...saved.formatConfig }
     }
     return defaultOptions
   },
@@ -144,6 +145,7 @@ export const formatService = {
   saveConfig(config: Partial<FormatOptions>): void {
     const current = this.getConfig()
     const newConfig = { ...current, ...config }
-    localStorage.setItem('format_config', JSON.stringify(newConfig))
+    const existing = localStorageService.get<Record<string, any>>(StorageKeys.SETTINGS, {})
+    localStorageService.set(StorageKeys.SETTINGS, { ...existing, formatConfig: newConfig })
   }
 }

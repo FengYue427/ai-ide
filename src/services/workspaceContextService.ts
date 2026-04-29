@@ -3,6 +3,8 @@
  * 这是AI IDE的核心优势：让AI理解整个项目结构，而不仅仅是当前文件
  */
 
+import { localStorageService, StorageKeys } from './localStorageService'
+
 export interface WorkspaceFile {
   name: string
   path: string  // 相对于工作区的路径
@@ -20,7 +22,6 @@ export interface WorkspaceContext {
   description?: string
 }
 
-const STORAGE_KEY = 'ai_ide_workspace_context'
 const MAX_FILE_SIZE = 1024 * 1024 // 1MB 单文件限制
 const MAX_TOTAL_SIZE = 10 * 1024 * 1024 // 10MB 总限制
 const MAX_FILES = 100 // 最大文件数
@@ -34,26 +35,18 @@ class WorkspaceContextService {
 
   // 加载保存的工作区
   private loadFromStorage() {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        this.context = JSON.parse(saved)
-      }
-    } catch (e) {
-      console.error('Failed to load workspace context:', e)
+    const saved = localStorageService.get(StorageKeys.WORKSPACE, null)
+    if (saved) {
+      this.context = saved
     }
   }
 
-  // 保存到本地存储
+  // 保存到 localStorage
   private saveToStorage() {
-    try {
-      if (this.context) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.context))
-      } else {
-        localStorage.removeItem(STORAGE_KEY)
-      }
-    } catch (e) {
-      console.error('Failed to save workspace context:', e)
+    if (this.context) {
+      localStorageService.set(StorageKeys.WORKSPACE, this.context)
+    } else {
+      localStorageService.remove(StorageKeys.WORKSPACE)
     }
   }
 
@@ -77,7 +70,7 @@ class WorkspaceContextService {
   // 清空工作区
   clearContext() {
     this.context = null
-    localStorage.removeItem(STORAGE_KEY)
+    localStorageService.remove(StorageKeys.WORKSPACE)
   }
 
   // 添加文件到工作区

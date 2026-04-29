@@ -1,5 +1,6 @@
 // 终端命令历史管理服务
-const STORAGE_KEY = 'terminal-command-history'
+import { localStorageService, StorageKeys } from './localStorageService'
+
 const MAX_HISTORY = 100
 
 export interface CommandHistoryItem {
@@ -12,15 +13,7 @@ export interface CommandHistoryItem {
 export const terminalHistoryService = {
   // 获取命令历史
   getHistory(): CommandHistoryItem[] {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        return JSON.parse(stored)
-      }
-    } catch (error) {
-      console.error('Failed to load command history:', error)
-    }
-    return []
+    return localStorageService.get(StorageKeys.TERMINAL_HISTORY, [])
   },
 
   // 保存命令到历史
@@ -46,23 +39,19 @@ export const terminalHistoryService = {
       history.length = MAX_HISTORY
     }
 
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(history))
-    } catch (error) {
-      console.error('Failed to save command history:', error)
-    }
+    localStorageService.set(StorageKeys.TERMINAL_HISTORY, history)
   },
 
   // 删除单条历史
   removeCommand(timestamp: number): void {
     const history = this.getHistory()
     const filtered = history.filter(item => item.timestamp !== timestamp)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+    localStorageService.set(StorageKeys.TERMINAL_HISTORY, filtered)
   },
 
   // 清空历史
   clearHistory(): void {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorageService.remove(StorageKeys.TERMINAL_HISTORY)
   },
 
   // 搜索历史
@@ -102,7 +91,7 @@ export const terminalHistoryService = {
     try {
       const history = JSON.parse(json)
       if (Array.isArray(history)) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(history))
+        localStorageService.set(StorageKeys.TERMINAL_HISTORY, history)
         return true
       }
     } catch (error) {
