@@ -20,6 +20,7 @@ import PerformancePanel from './components/PerformancePanel'
 import SettingsCenter from './components/SettingsCenter'
 import CommandPalette from './components/CommandPalette'
 import StatusBar from './components/StatusBar'
+import EmptyState from './components/EmptyState'
 import WorkspaceManager from './components/WorkspaceManager'
 import WorkspacePanel from './components/WorkspacePanel'
 import ThemeSelector from './components/ThemeSelector'
@@ -453,41 +454,49 @@ function AppContent() {
                 </button>
               </div>
             )}
-            {files.map((file, idx) => (
-              <div
-                key={idx}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  background: idx === activeFile ? 'var(--bg-tertiary)' : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-                onClick={() => setActiveFile(idx)}
-              >
-                <span>{file.name}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteFile(idx)
-                  }}
+            {files.length === 0 ? (
+              <EmptyState
+                type="files"
+                onAction={() => setShowNewFileInput(true)}
+                onSecondaryAction={() => setShowDropZone(true)}
+              />
+            ) : (
+              files.map((file, idx) => (
+                <div
+                  key={idx}
                   style={{
-                    background: 'none',
-                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: 4,
                     cursor: 'pointer',
-                    padding: 2,
-                    color: 'var(--text-secondary)',
-                    display: files.length > 1 ? 'flex' : 'none',
-                    alignItems: 'center'
+                    fontSize: 13,
+                    background: idx === activeFile ? 'var(--bg-tertiary)' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
                   }}
+                  onClick={() => setActiveFile(idx)}
                 >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))}
+                  <span>{file.name}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteFile(idx)
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 2,
+                      color: 'var(--text-secondary)',
+                      display: files.length > 1 ? 'flex' : 'none',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
