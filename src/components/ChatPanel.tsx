@@ -43,9 +43,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerate
   }, [])
 
   useEffect(() => {
-    // 监听工作区变化
-    const interval = setInterval(refreshWorkspaceStats, 1000)
-    return () => clearInterval(interval)
+    refreshWorkspaceStats()
+    const unsubscribe = workspaceContextService.onChange(refreshWorkspaceStats)
+    return () => unsubscribe()
   }, [refreshWorkspaceStats])
 
   useEffect(() => {

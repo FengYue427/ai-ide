@@ -5,6 +5,8 @@
 
 import { localStorageService, StorageKeys } from './localStorageService'
 
+ type WorkspaceChangeListener = () => void
+
 export interface WorkspaceFile {
   name: string
   path: string  // 相对于工作区的路径
@@ -28,9 +30,27 @@ const MAX_FILES = 100 // 最大文件数
 
 class WorkspaceContextService {
   private context: WorkspaceContext | null = null
+  private listeners = new Set<WorkspaceChangeListener>()
 
   constructor() {
     this.loadFromStorage()
+  }
+
+  onChange(listener: WorkspaceChangeListener): () => void {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  private emitChange() {
+    this.listeners.forEach(l => {
+      try {
+        l()
+      } catch (e) {
+        console.error('[workspaceContextService] listener error:', e)
+      }
+    })
   }
 
   // 加载保存的工作区
@@ -48,6 +68,7 @@ class WorkspaceContextService {
     } else {
       localStorageService.remove(StorageKeys.WORKSPACE)
     }
+    this.emitChange()
   }
 
   // 获取当前工作区
@@ -71,6 +92,7 @@ class WorkspaceContextService {
   clearContext() {
     this.context = null
     localStorageService.remove(StorageKeys.WORKSPACE)
+    this.emitChange()
   }
 
   // 添加文件到工作区
