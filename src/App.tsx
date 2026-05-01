@@ -314,8 +314,8 @@ function AppContent() {
     }
   }
 
-  const officialSiteUrl = (import.meta as any)?.env?.VITE_OFFICIAL_SITE_URL || 'https://github.com/FengYue427/ai-ide'
-  const officialSiteUrlSource = (import.meta as any)?.env?.VITE_OFFICIAL_SITE_URL ? 'env:VITE_OFFICIAL_SITE_URL' : 'fallback:github'
+  const officialSiteUrl = import.meta.env.VITE_OFFICIAL_SITE_URL || 'https://github.com/FengYue427/ai-ide'
+  const officialSiteUrlSource = import.meta.env.VITE_OFFICIAL_SITE_URL ? 'env:VITE_OFFICIAL_SITE_URL' : 'fallback:github'
 
   return (
     <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
