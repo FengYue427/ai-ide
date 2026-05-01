@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { X, Bot, Palette, Keyboard, Save, Globe, Puzzle, Shield, Code2, Database, Cog } from 'lucide-react'
-import type { AIModel } from '../services/aiService'
+import { modelOptions, type AIModel } from '../services/aiService'
 
 interface SettingsCenterProps {
   aiConfig: {
@@ -160,7 +160,14 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   </label>
                   <select
                     value={localAIConfig.provider}
-                    onChange={(e) => setLocalAIConfig({ ...localAIConfig, provider: e.target.value as AIModel })}
+                    onChange={(e) => {
+                      const newProvider = e.target.value as AIModel
+                      setLocalAIConfig({
+                        ...localAIConfig,
+                        provider: newProvider,
+                        model: modelOptions[newProvider].models[0]
+                      })
+                    }}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -174,6 +181,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     <option value="openai">OpenAI</option>
                     <option value="deepseek">DeepSeek</option>
                     <option value="claude">Claude</option>
+                    <option value="google">Google Gemini</option>
+                    <option value="qwen">阿里通义千问</option>
+                    <option value="zhipu">智谱AI GLM</option>
+                    <option value="minimax">MiniMax</option>
+                    <option value="grok">xAI Grok</option>
                     <option value="ollama">Ollama (本地)</option>
                   </select>
                 </div>
@@ -204,11 +216,9 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>
                     模型
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={localAIConfig.model}
                     onChange={(e) => setLocalAIConfig({ ...localAIConfig, model: e.target.value })}
-                    placeholder="gpt-4o-mini, deepseek-chat, etc."
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -219,7 +229,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                       fontSize: '14px',
                       boxSizing: 'border-box'
                     }}
-                  />
+                  >
+                    {modelOptions[localAIConfig.provider].models.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {localAIConfig.provider === 'ollama' && (

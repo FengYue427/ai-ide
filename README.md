@@ -2,7 +2,7 @@
 
 > 开源 AI 原生轻量 IDE —— 在浏览器里跑完整开发环境
 
-**[🚀 立即体验](https://aide1019.netlify.app)**
+**[🚀 立即体验](https://ai-ide.vercel.app)**
 
 ## ✨ 核心亮点
 
@@ -94,18 +94,21 @@ npm run dev
 
 ## 部署
 
-### Netlify（推荐）
+### Vercel（推荐）
+
+```bash
+npm install -g vercel
+npm run build
+vercel --prod
+```
+
+或在 [vercel.com](https://vercel.com) 一键导入 GitHub 仓库。
+
+### Netlify（备用）
 
 ```bash
 npm install -g netlify-cli
 npm run deploy:netlify
-```
-
-### Vercel
-
-```bash
-npm install -g vercel
-npm run deploy:vercel
 ```
 
 ### 手动部署

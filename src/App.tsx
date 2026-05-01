@@ -29,7 +29,7 @@ import { useWebContainer } from './hooks/useWebContainer'
 import { useKeyboardShortcuts, getDefaultShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDebounce } from './hooks/useDebounce'
 import { getShare } from './services/shareService'
-import type { AIModel } from './services/aiService'
+import { modelOptions, type AIModel } from './services/aiService'
 import { storageService } from './services/storageService'
 import { localStorageService, StorageKeys } from './services/localStorageService'
 import { I18nProvider } from './i18n'
@@ -64,11 +64,23 @@ function AppContent() {
   const [activeFile, setActiveFile] = useState(0)
   const [showNewFileInput, setShowNewFileInput] = useState(false)
   const [newFileName, setNewFileName] = useState('')
-  const [aiConfig, setAiConfig] = useState({
-    provider: localStorageService.get(StorageKeys.AI_CONFIG, { provider: 'openai' as AIModel, apiKey: '', model: 'gpt-4o-mini', endpoint: '' }).provider,
-    apiKey: localStorageService.get(StorageKeys.AI_CONFIG, { provider: 'openai' as AIModel, apiKey: '', model: 'gpt-4o-mini', endpoint: '' }).apiKey,
-    model: localStorageService.get(StorageKeys.AI_CONFIG, { provider: 'openai' as AIModel, apiKey: '', model: 'gpt-4o-mini', endpoint: '' }).model,
-    endpoint: localStorageService.get(StorageKeys.AI_CONFIG, { provider: 'openai' as AIModel, apiKey: '', model: 'gpt-4o-mini', endpoint: '' }).endpoint
+  const [aiConfig, setAiConfig] = useState<{ provider: AIModel; apiKey: string; model: string; endpoint: string }>(() => {
+    const defaultProvider: AIModel = 'openai'
+    const savedConfig = localStorageService.get(StorageKeys.AI_CONFIG, {
+      provider: defaultProvider,
+      apiKey: '',
+      model: modelOptions[defaultProvider].models[0],
+      endpoint: ''
+    })
+    // 确保模型与提供商匹配（防止用户手动改 localStorage 导致的不一致）
+    const validModels = modelOptions[savedConfig.provider].models
+    const model = validModels.includes(savedConfig.model) ? savedConfig.model : validModels[0]
+    return {
+      provider: savedConfig.provider,
+      apiKey: savedConfig.apiKey,
+      model,
+      endpoint: savedConfig.endpoint
+    }
   })
   const [theme, setTheme] = useState<'vs-dark' | 'light'>(localStorageService.get(StorageKeys.THEME, 'vs-dark'))
   const [showTerminal, setShowTerminal] = useState(false)
@@ -173,7 +185,7 @@ function AppContent() {
     debouncedFileChange(activeFile, content)
   }
 
-  const handleSaveAISettings = (config: typeof aiConfig) => {
+  const handleSaveAISettings = (config: { provider: AIModel; apiKey: string; model: string; endpoint: string }) => {
     setAiConfig(config)
     localStorageService.set(StorageKeys.AI_CONFIG, config)
     setShowAISettings(false)
