@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Play, Folder, MessageSquare, X, Plus, Download, Trash2, Moon, Sun, LayoutTemplate, Share2, GitBranch, FolderOpen, Bot, Search, Eye, Users, Save, Package, Puzzle, Upload, Shield, Code2, Activity, Command, FileText, Settings as SettingsIcon } from 'lucide-react'
+import { Play, Folder, MessageSquare, X, Plus, Download, Trash2, Moon, Sun, LayoutTemplate, Share2, GitBranch, FolderOpen, Bot, Search, Eye, Users, Save, Package, Puzzle, Upload, Shield, Code2, Activity, Command, FileText, Settings as SettingsIcon, Home } from 'lucide-react'
 import Editor from './components/Editor'
 import ChatPanel from './components/ChatPanel'
 import Terminal from './components/Terminal'
@@ -302,6 +302,8 @@ function AppContent() {
     }
   }
 
+  const officialSiteUrl = (import.meta as any)?.env?.VITE_OFFICIAL_SITE_URL || 'https://github.com/FengYue427/ai-ide'
+
   return (
     <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
       {/* 顶部工具栏 */}
@@ -363,6 +365,26 @@ function AppContent() {
         </div>
 
         <div style={{ flex: 1 }} />
+
+        <button
+          onClick={() => window.open(officialSiteUrl, '_blank', 'noopener,noreferrer')}
+          title="官网"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            color: 'var(--text-primary)'
+          }}
+        >
+          <Home size={14} />
+          <span>官网</span>
+        </button>
 
         {/* 命令面板按钮 */}
         <button
