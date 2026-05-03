@@ -19,6 +19,7 @@ export const StorageKeys = {
   TERMINAL_HISTORY: 'terminal-history',
   SETTINGS: 'settings',
   RECENT_FILES: 'recent-files',
+  USER: 'user', // 缓存登录用户会话
 } as const
 
 type StorageKey = (typeof StorageKeys)[keyof typeof StorageKeys]

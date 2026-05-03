@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Play, Folder, MessageSquare, X, Plus, Download, Trash2, Moon, Sun, LayoutTemplate, Share2, GitBranch, FolderOpen, Bot, Search, Eye, Users, Save, Package, Puzzle, Upload, Shield, Code2, Activity, Command, FileText, Settings as SettingsIcon, Home } from 'lucide-react'
+import { Play, Folder, MessageSquare, X, Plus, Download, Trash2, Moon, Sun, LayoutTemplate, Share2, GitBranch, FolderOpen, Bot, Search, Eye, Users, Save, Package, Puzzle, Upload, Shield, Code2, Activity, Command, FileText, Settings as SettingsIcon, Home, User } from 'lucide-react'
 import Editor from './components/Editor'
 import ChatPanel from './components/ChatPanel'
 import Terminal from './components/Terminal'
@@ -25,6 +25,8 @@ import WorkspaceManager from './components/WorkspaceManager'
 import WorkspacePanel from './components/WorkspacePanel'
 import ThemeSelector from './components/ThemeSelector'
 import WelcomeScreen from './components/WelcomeScreen'
+import AuthModal from './components/AuthModal'
+import { authService, User as AuthUser } from './services/authService'
 import { useWebContainer } from './hooks/useWebContainer'
 import { useKeyboardShortcuts, getDefaultShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDebounce } from './hooks/useDebounce'
@@ -108,6 +110,11 @@ function AppContent() {
   const [showThemeSelector, setShowThemeSelector] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([])
+  
+  // 用户认证状态
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
 
   const { isReady, output, isRunning, writeFile, runNode, fs } = useWebContainer()
 
@@ -130,9 +137,30 @@ function AppContent() {
     }
   }, [])
 
-  // 加载自动保存的项目
+  // 检查登录状态
   useEffect(() => {
-    storageService.loadAutoSave('default').then((savedFiles: any) => {
+    authService.getSession().then(session => {
+      setCurrentUser(session?.user || null)
+      setAuthChecked(true)
+    })
+  }, [])
+
+  // 加载自动保存的项目（优先云同步，回退本地存储）
+  useEffect(() => {
+    if (!authChecked) return
+    
+    const loadWorkspace = async () => {
+      // 如果已登录，优先尝试云同步加载
+      if (currentUser) {
+        const cloudData = await authService.loadWorkspace('default')
+        if (cloudData && cloudData.files.length > 0) {
+          setFiles(cloudData.files)
+          return
+        }
+      }
+      
+      // 回退到本地存储
+      const savedFiles = await storageService.loadAutoSave('default')
       if (savedFiles && savedFiles.length > 0) {
         setFiles(savedFiles.map((f: any) => ({
           name: f.name,
@@ -143,15 +171,17 @@ function AppContent() {
         // 没有项目时显示欢迎页
         setShowWelcome(true)
       }
-    })
-  }, [])
+    }
+    
+    loadWorkspace()
+  }, [authChecked, currentUser])
 
   // 加载最近项目
   useEffect(() => {
     recentFilesService.getRecentProjects().then(setRecentProjects)
   }, [])
 
-  // 自动保存
+  // 自动保存（登录用户云同步 + 本地备份）
   useEffect(() => {
     if (!autoSaveEnabled) return
     
@@ -163,11 +193,18 @@ function AppContent() {
         language: f.language,
         lastModified: Date.now()
       }))
+      
+      // 始终保存到本地作为备份
       storageService.autoSave(ideFiles, 'default')
+      
+      // 如果已登录，同时云同步
+      if (currentUser) {
+        authService.saveWorkspace(ideFiles, { theme }, 'default')
+      }
     }, 3000) // 3秒后自动保存
 
     return () => clearTimeout(timer)
-  }, [files, autoSaveEnabled])
+  }, [files, autoSaveEnabled, currentUser, theme])
 
   // 防抖的文件内容更新（优化大文件编辑性能）
   const debouncedFileChange = useDebounce((index: number, content: string | undefined) => {
@@ -401,6 +438,53 @@ function AppContent() {
           <Home size={14} />
           <span>官网</span>
         </button>
+
+        {/* 用户登录按钮 */}
+        {currentUser ? (
+          <button
+            onClick={() => {
+              // 显示用户菜单或登出
+              if (confirm(`用户: ${currentUser.email}\n\n点击确定登出`)) {
+                authService.logout().then(() => setCurrentUser(null))
+              }
+            }}
+            title={currentUser.email}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: 'var(--accent-color)',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              color: 'var(--bg-primary)'
+            }}
+          >
+            <User size={14} />
+            <span>{currentUser.name || currentUser.email.split('@')[0]}</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowAuthModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <User size={14} />
+            <span>登录</span>
+          </button>
+        )}
 
         {/* 命令面板按钮 */}
         <button
@@ -690,6 +774,13 @@ function AppContent() {
           config={aiConfig}
           onSave={handleSaveAISettings}
           onClose={() => setShowAISettings(false)}
+        />
+      )}
+
+      {/* 登录弹窗 */}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
         />
       )}
 
