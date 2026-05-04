@@ -4,9 +4,10 @@
   "description": "开源 AI 原生轻量 IDE",
   "type": "module",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "vite",
-    "build": "tsc && vite build",
-    "build:prod": "tsc && vite build --mode production",
+    "build": "prisma generate && tsc && vite build",
+    "build:prod": "prisma generate && tsc && vite build --mode production",
     "preview": "vite preview",
     "deploy:netlify": "npm run build && npx netlify deploy --prod --dir=dist",
     "deploy:vercel": "npx vercel --prod"

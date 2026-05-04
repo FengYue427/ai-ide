@@ -8,16 +8,13 @@ export async function POST(req: Request) {
       })
     }
 
-    // 实际生产环境：
-    // 1. 查找用户
-    // 2. 生成重置令牌
-    // 3. 发送重置邮件
-    // 4. 保存令牌到数据库
-
     console.log("Forgot password for:", email)
 
     // 无论用户是否存在，都返回成功（防止邮箱枚举）
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ 
+      success: true,
+      message: "重置邮件已发送（功能演示）"
+    }), {
       status: 200
     })
   } catch (error) {

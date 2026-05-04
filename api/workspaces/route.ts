@@ -1,21 +1,21 @@
+// 内存存储工作区（演示用，生产需数据库）
+const workspaces: any[] = [
+  { id: 'default', name: 'default', files: '[]', settings: '{}', isDefault: true, updatedAt: new Date().toISOString() }
+]
+
 // 获取所有工作区列表
 export async function GET(req: Request) {
-  try {
-    // 验证用户（通过 JWT Cookie）
-    // 实际生产需要：从请求头获取 session，验证用户身份
-    
-    return new Response(JSON.stringify({ 
-      workspaces: [
-        { id: '1', name: 'default', isDefault: true, updatedAt: new Date().toISOString() }
-      ] 
-    }), {
-      status: 200
-    })
-  } catch (error) {
-    return new Response(JSON.stringify({ error: "获取失败" }), {
-      status: 500
-    })
-  }
+  return new Response(JSON.stringify({ 
+    workspaces: workspaces.map(w => ({
+      id: w.id,
+      name: w.name,
+      isDefault: w.isDefault,
+      updatedAt: w.updatedAt
+    }))
+  }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  })
 }
 
 // 创建新工作区
@@ -29,16 +29,23 @@ export async function POST(req: Request) {
       })
     }
 
-    // 实际生产：保存到数据库，关联到用户
-    console.log("Create workspace:", name, files?.length, settings)
+    const workspace = {
+      id: Date.now().toString(),
+      name,
+      files: files || '[]',
+      settings: settings || '{}',
+      isDefault: false,
+      updatedAt: new Date().toISOString()
+    }
+    workspaces.push(workspace)
 
     return new Response(JSON.stringify({ 
       success: true,
       workspace: {
-        id: Date.now().toString(),
-        name,
-        isDefault: false,
-        updatedAt: new Date().toISOString()
+        id: workspace.id,
+        name: workspace.name,
+        isDefault: workspace.isDefault,
+        updatedAt: workspace.updatedAt
       }
     }), {
       status: 200

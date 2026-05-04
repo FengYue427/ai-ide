@@ -1,4 +1,6 @@
-import bcrypt from "bcryptjs"
+// 注册 API - 简化版，使用内存存储
+// 生产环境需要连接数据库
+const users: any[] = []
 
 export async function POST(req: Request) {
   try {
@@ -16,19 +18,29 @@ export async function POST(req: Request) {
       })
     }
 
-    // 这里需要 Prisma Client
-    // 由于 DATABASE_URL 未配置，暂时返回成功
-    // 实际生产环境应该：
-    // 1. 检查邮箱是否已存在
-    // 2. 密码哈希
-    // 3. 创建用户
-    // 4. 创建默认工作区
+    // 检查邮箱是否已存在
+    const existing = users.find(u => u.email === email)
+    if (existing) {
+      return new Response(JSON.stringify({ error: "邮箱已注册" }), {
+        status: 400
+      })
+    }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    // 内存存储（重启后丢失）
+    users.push({
+      id: Date.now().toString(),
+      email,
+      password, // 生产环境需要哈希
+      name: name || email.split('@')[0],
+      createdAt: new Date().toISOString()
+    })
     
-    console.log("Register:", email, hashedPassword, name)
+    console.log("Registered:", email)
     
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ 
+      success: true,
+      message: "注册成功（内存存储，重启后数据丢失）"
+    }), {
       status: 200
     })
   } catch (error) {
