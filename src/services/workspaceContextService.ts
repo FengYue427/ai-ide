@@ -3,9 +3,11 @@
  * 这是AI IDE的核心优势：让AI理解整个项目结构，而不仅仅是当前文件
  */
 
-import { localStorageService, StorageKeys } from './localStorageService'
+import { unifiedStorage, StorageLayer } from './unifiedStorage'
 
  type WorkspaceChangeListener = () => void
+
+const WORKSPACE_KEY = 'workspace'
 
 export interface WorkspaceFile {
   name: string
@@ -33,7 +35,12 @@ class WorkspaceContextService {
   private listeners = new Set<WorkspaceChangeListener>()
 
   constructor() {
-    this.loadFromStorage()
+    // 异步初始化
+    this.initFromStorage()
+  }
+
+  private async initFromStorage() {
+    await this.loadFromStorage()
   }
 
   onChange(listener: WorkspaceChangeListener): () => void {
@@ -54,19 +61,19 @@ class WorkspaceContextService {
   }
 
   // 加载保存的工作区
-  private loadFromStorage() {
-    const saved = localStorageService.get(StorageKeys.WORKSPACE, null)
+  private async loadFromStorage() {
+    const saved = await unifiedStorage.get<WorkspaceContext | null>(WORKSPACE_KEY, null)
     if (saved) {
       this.context = saved
     }
   }
 
-  // 保存到 localStorage
-  private saveToStorage() {
+  // 保存到 unifiedStorage
+  private async saveToStorage() {
     if (this.context) {
-      localStorageService.set(StorageKeys.WORKSPACE, this.context)
+      await unifiedStorage.set(WORKSPACE_KEY, this.context, { layer: StorageLayer.INDEXED })
     } else {
-      localStorageService.remove(StorageKeys.WORKSPACE)
+      await unifiedStorage.set(WORKSPACE_KEY, null, { layer: StorageLayer.INDEXED })
     }
     this.emitChange()
   }
@@ -77,28 +84,28 @@ class WorkspaceContextService {
   }
 
   // 创建工作区
-  createContext(name: string, description?: string): WorkspaceContext {
+  async createContext(name: string, description?: string): Promise<WorkspaceContext> {
     this.context = {
       name,
       files: [],
       rootPath: '/',
       description
     }
-    this.saveToStorage()
+    await this.saveToStorage()
     return this.context
   }
 
   // 清空工作区
-  clearContext() {
+  async clearContext() {
     this.context = null
-    localStorageService.remove(StorageKeys.WORKSPACE)
+    await unifiedStorage.set(WORKSPACE_KEY, null, { layer: StorageLayer.INDEXED })
     this.emitChange()
   }
 
   // 添加文件到工作区
-  addFile(file: Omit<WorkspaceFile, 'size' | 'lastModified'>): boolean {
+  async addFile(file: Omit<WorkspaceFile, 'size' | 'lastModified'>): Promise<boolean> {
     if (!this.context) {
-      this.createContext('未命名工作区')
+      await this.createContext('未命名工作区')
     }
 
     const content = file.content
@@ -136,36 +143,26 @@ class WorkspaceContextService {
       this.context!.files.push(workspaceFile)
     }
 
-    this.saveToStorage()
+    await this.saveToStorage()
     return true
   }
 
   // 从本地文件读取并添加到工作区
   async addFileFromLocal(file: File, path?: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+    const content = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
-      
-      reader.onload = (e) => {
-        try {
-          const content = e.target?.result as string
-          const filePath = path || file.name
-          
-          this.addFile({
-            name: file.name,
-            path: filePath,
-            content,
-            language: this.detectLanguage(file.name),
-            selected: true
-          })
-          
-          resolve()
-        } catch (error) {
-          reject(error)
-        }
-      }
-      
+      reader.onload = (e) => resolve(e.target?.result as string)
       reader.onerror = () => reject(new Error(`读取文件 ${file.name} 失败`))
       reader.readAsText(file)
+    })
+    
+    const filePath = path || file.name
+    await this.addFile({
+      name: file.name,
+      path: filePath,
+      content,
+      language: this.detectLanguage(file.name),
+      selected: true
     })
   }
 
@@ -237,7 +234,7 @@ class WorkspaceContextService {
   }
 
   // 从现有文件数组创建工作区（用于从App.tsx导入）
-  createFromFiles(files: { name: string; content: string; language: string }[], name: string = '导入的项目') {
+  async createFromFiles(files: { name: string; content: string; language: string }[], name: string = '导入的项目') {
     this.context = {
       name,
       files: files.map(f => ({
@@ -249,22 +246,22 @@ class WorkspaceContextService {
       })),
       rootPath: '/'
     }
-    this.saveToStorage()
+    await this.saveToStorage()
   }
 
   // 删除文件
-  removeFile(path: string) {
+  async removeFile(path: string) {
     if (!this.context) return
     
     const index = this.context.files.findIndex(f => f.path === path)
     if (index >= 0) {
       this.context.files.splice(index, 1)
-      this.saveToStorage()
+      await this.saveToStorage()
     }
   }
 
   // 更新文件内容
-  updateFile(path: string, content: string) {
+  async updateFile(path: string, content: string) {
     if (!this.context) return
     
     const file = this.context.files.find(f => f.path === path)
@@ -272,27 +269,27 @@ class WorkspaceContextService {
       file.content = content
       file.size = new Blob([content]).size
       file.lastModified = Date.now()
-      this.saveToStorage()
+      await this.saveToStorage()
     }
   }
 
   // 切换文件选择状态
-  toggleFileSelection(path: string) {
+  async toggleFileSelection(path: string) {
     if (!this.context) return
     
     const file = this.context.files.find(f => f.path === path)
     if (file) {
       file.selected = !file.selected
-      this.saveToStorage()
+      await this.saveToStorage()
     }
   }
 
   // 选择/取消选择所有文件
-  selectAllFiles(selected: boolean) {
+  async selectAllFiles(selected: boolean) {
     if (!this.context) return
     
     this.context.files.forEach(f => f.selected = selected)
-    this.saveToStorage()
+    await this.saveToStorage()
   }
 
   // 获取选中的文件
@@ -412,12 +409,12 @@ class WorkspaceContextService {
   }
 
   // 导入工作区
-  importContext(json: string): boolean {
+  async importContext(json: string): Promise<boolean> {
     try {
       const context = JSON.parse(json) as WorkspaceContext
       if (context.files && Array.isArray(context.files)) {
         this.context = context
-        this.saveToStorage()
+        await this.saveToStorage()
         return true
       }
       return false

@@ -1,16 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { X, Users, Share2, Copy, Check, Radio } from 'lucide-react'
 import { collaborationService } from '../services/collaborationService'
-import { localStorageService, StorageKeys } from '../services/localStorageService'
+import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
 
 interface CollaborationPanelProps {
   onClose: () => void
 }
 
+const COLLAB_USERNAME_KEY = 'collab-username'
+
 const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const [roomId, setRoomId] = useState('')
-  const [userName, setUserName] = useState(() => localStorageService.get(StorageKeys.COLLAB_USERNAME, '用户' + Math.floor(Math.random() * 1000)))
+  const [userName, setUserName] = useState('用户' + Math.floor(Math.random() * 1000))
   const [joined, setJoined] = useState(false)
+
+  // 初始化时从 unifiedStorage 加载用户名
+  useEffect(() => {
+    unifiedStorage.get<string>(COLLAB_USERNAME_KEY, '').then(saved => {
+      if (saved) setUserName(saved)
+    })
+  }, [])
   const [users, setUsers] = useState<any[]>([])
   const [copied, setCopied] = useState(false)
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -34,14 +43,14 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     }
   }, [])
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (!roomId.trim()) {
       // 生成随机房间 ID
       setRoomId(Math.random().toString(36).substring(2, 8))
       return
     }
 
-    localStorageService.set(StorageKeys.COLLAB_USERNAME, userName)
+    await unifiedStorage.set(COLLAB_USERNAME_KEY, userName, { layer: StorageLayer.LOCAL })
     
     const colors = ['#58a6ff', '#3fb950', '#d29922', '#f778ba', '#a371f7']
     const color = colors[Math.floor(Math.random() * colors.length)]
