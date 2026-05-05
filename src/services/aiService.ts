@@ -108,208 +108,150 @@ export async function sendMessage(
   }
 }
 
-async function sendOpenAICompatible(
-  endpoint: string,
-  apiKey: string,
-  model: string,
-  messages: { role: string; content: string }[],
-  onStream?: (chunk: string) => void
-): Promise<string> {
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.7,
-      stream: !!onStream
-    })
-  })
+// ==================== 防抖与限流 ====================
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`)
+interface PendingRequest {
+  promise: Promise<string>
+  timestamp: number
+  abortController: AbortController
+}
+
+const pendingRequests = new Map<string, PendingRequest>()
+const requestHistory: number[] = [] // 记录请求时间戳用于限流
+
+const DEBOUNCE_MS = 300 // 防抖时间
+const RATE_LIMIT_WINDOW_MS = 60000 // 限流窗口：1分钟
+const RATE_LIMIT_MAX_REQUESTS = 20 // 每分钟最大请求数
+
+/**
+ * 生成请求唯一标识（基于配置和消息内容）
+ */
+function generateRequestKey(config: AIConfig, messages: unknown[]): string {
+  const messageHash = JSON.stringify(messages).slice(0, 200) // 限制长度
+  return `${config.provider}:${config.model}:${messageHash}`
+}
+
+/**
+ * 检查是否触发限流
+ */
+function checkRateLimit(): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now()
+  
+  // 清理过期记录
+  const cutoff = now - RATE_LIMIT_WINDOW_MS
+  while (requestHistory.length > 0 && requestHistory[0] < cutoff) {
+    requestHistory.shift()
   }
+  
+  if (requestHistory.length >= RATE_LIMIT_MAX_REQUESTS) {
+    const retryAfter = Math.ceil((requestHistory[0] + RATE_LIMIT_WINDOW_MS - now) / 1000)
+    return { allowed: false, retryAfter }
+  }
+  
+  return { allowed: true }
+}
 
-  if (onStream && response.body) {
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let fullContent = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value)
-      const lines = chunk.split('\n').filter(line => line.trim())
-
-      for (const line of lines) {
-        if (line === 'data: [DONE]') continue
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6))
-            const content = data.choices?.[0]?.delta?.content || ''
-            fullContent += content
-            onStream(content)
-          } catch {
-            // Ignore parse errors
-          }
+/**
+ * 带防抖和限流的 AI 请求函数
+ */
+export async function sendMessageWithDebounce(
+  config: AIConfig,
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  onStream?: (chunk: string) => void,
+  options?: {
+    debounceMs?: number
+    skipDebounce?: boolean
+  }
+): Promise<string> {
+  const requestKey = generateRequestKey(config, messages)
+  const debounceMs = options?.debounceMs || DEBOUNCE_MS
+  
+  // 检查限流
+  const rateLimit = checkRateLimit()
+  if (!rateLimit.allowed) {
+    throw new Error(`请求过于频繁，请 ${rateLimit.retryAfter} 秒后再试`)
+  }
+  
+  // 取消之前的相同请求（防抖）
+  const existing = pendingRequests.get(requestKey)
+  if (existing && !options?.skipDebounce) {
+    const elapsed = Date.now() - existing.timestamp
+    if (elapsed < debounceMs) {
+      existing.abortController.abort()
+      pendingRequests.delete(requestKey)
+    }
+  }
+  
+  // 创建新的 AbortController
+  const abortController = new AbortController()
+  
+  // 创建新请求
+  const promise = sendMessageInternal(config, messages, onStream, abortController)
+    .finally(() => {
+      // 请求完成后清理
+      setTimeout(() => {
+        if (pendingRequests.get(requestKey)?.promise === promise) {
+          pendingRequests.delete(requestKey)
         }
-      }
-    }
-    return fullContent
-  }
-
-  const data = await response.json()
-  return data.choices[0].message.content
-}
-
-async function sendClaude(
-  endpoint: string,
-  apiKey: string,
-  model: string,
-  messages: { role: string; content: string }[],
-  onStream?: (chunk: string) => void
-): Promise<string> {
-  const system = messages.find(m => m.role === 'system')?.content || ''
-  const conversation = messages.filter(m => m.role !== 'system')
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 4096,
-      system,
-      messages: conversation.map(m => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.content
-      })),
-      stream: !!onStream
+      }, debounceMs)
     })
+  
+  // 记录请求
+  pendingRequests.set(requestKey, {
+    promise,
+    timestamp: Date.now(),
+    abortController
   })
-
-  if (!response.ok) {
-    throw new Error(`Claude API error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return data.content[0].text
+  
+  // 记录到限流历史
+  requestHistory.push(Date.now())
+  
+  return promise
 }
 
-async function sendGoogleGemini(
-  endpoint: string,
-  apiKey: string,
-  model: string,
-  messages: { role: string; content: string }[],
-  onStream?: (chunk: string) => void
+/**
+ * 内部发送函数（支持中断）
+ */
+async function sendMessageInternal(
+  config: AIConfig,
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  onStream?: (chunk: string) => void,
+  abortController?: AbortController
 ): Promise<string> {
-  // 转换OpenAI格式消息为Gemini格式
-  const contents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }))
-
-  // 合并连续的相同角色消息
-  const mergedContents = contents.reduce((acc: any[], curr: any) => {
-    if (acc.length > 0 && acc[acc.length - 1].role === curr.role) {
-      acc[acc.length - 1].parts[0].text += '\n\n' + curr.parts[0].text
-    } else {
-      acc.push(curr)
-    }
-    return acc
-  }, [])
-
-  // 确保第一条消息是用户消息
-  if (mergedContents.length > 0 && mergedContents[0].role === 'model') {
-    mergedContents.unshift({ role: 'user', parts: [{ text: 'Hi' }] })
+  const endpoint = config.endpoint || defaultEndpoints[config.provider]
+  const model = config.model || modelOptions[config.provider].models[0]
+  
+  if (abortController?.signal.aborted) {
+    throw new Error('请求已取消')
   }
-
-  const url = `${endpoint}/${model}:generateContent?key=${apiKey}`
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: mergedContents,
-      generationConfig: {
-        temperature: 0.7,
+  
+  // 包装 onStream 以检查中断信号
+  const wrappedOnStream = onStream
+    ? (chunk: string) => {
+        if (abortController?.signal.aborted) return
+        onStream(chunk)
       }
-    })
-  })
-
-  if (!response.ok) {
-    throw new Error(`Gemini API error: ${response.status}`)
+    : undefined
+  
+  switch (config.provider) {
+    case 'openai':
+    case 'deepseek':
+    case 'qwen':
+    case 'zhipu':
+    case 'minimax':
+    case 'grok':
+      return sendOpenAICompatible(endpoint, config.apiKey, model, messages, wrappedOnStream, abortController?.signal)
+    case 'google':
+      return sendGoogleGemini(endpoint, config.apiKey, model, messages, wrappedOnStream, abortController?.signal)
+    case 'claude':
+      return sendClaude(endpoint, config.apiKey, model, messages, wrappedOnStream, abortController?.signal)
+    case 'ollama':
+      return sendOllama(endpoint, model, messages, wrappedOnStream, abortController?.signal)
+    default:
+      throw new Error(`Unsupported provider: ${config.provider}`)
   }
-
-  const data = await response.json()
-
-  if (data.error) {
-    throw new Error(`Gemini API error: ${data.error.message}`)
-  }
-
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 }
 
-async function sendOllama(
-  endpoint: string,
-  model: string,
-  messages: { role: string; content: string }[],
-  onStream?: (chunk: string) => void
-): Promise<string> {
-  const prompt = messages.map(m => `${m.role}: ${m.content}`).join('\n\n')
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model,
-      prompt,
-      stream: !!onStream
-    })
-  })
-
-  if (!response.ok) {
-    throw new Error('Ollama is not running. Start it with: ollama serve')
-  }
-
-  if (onStream && response.body) {
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let fullContent = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value)
-      const lines = chunk.split('\n').filter(line => line.trim())
-
-      for (const line of lines) {
-        try {
-          const data = JSON.parse(line)
-          const content = data.response || ''
-          fullContent += content
-          onStream(content)
-        } catch {
-          // Ignore parse errors
-        }
-      }
-    }
-    return fullContent
-  }
-
-  const data = await response.json()
-  return data.response
-}
-
-// 解析 AI 响应中的代码块
 export function extractCodeBlocks(text: string): { language: string; code: string }[] {
   const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
   const blocks: { language: string; code: string }[] = []
@@ -337,4 +279,251 @@ export function generateCodePrompt(action: 'explain' | 'refactor' | 'generate' |
   }
 
   return prompts[action]
+}
+
+// ==================== 带中断信号的发送函数 ====================
+
+async function sendOpenAICompatible(
+  endpoint: string,
+  apiKey: string,
+  model: string,
+  messages: { role: string; content: string }[],
+  onStream?: (chunk: string) => void,
+  signal?: AbortSignal
+): Promise<string> {
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.7,
+      stream: !!onStream
+    }),
+    signal
+  })
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`)
+  }
+  
+  if (onStream && response.body) {
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let fullContent = ''
+    
+    try {
+      while (true) {
+        if (signal?.aborted) {
+          reader.cancel()
+          throw new Error('请求已取消')
+        }
+        
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n').filter(line => line.trim())
+        
+        for (const line of lines) {
+          if (line === 'data: [DONE]') continue
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              const content = data.choices?.[0]?.delta?.content || ''
+              fullContent += content
+              onStream(content)
+            } catch {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+    } catch (err) {
+      if (signal?.aborted) {
+        throw new Error('请求已取消')
+      }
+      throw err
+    }
+    return fullContent
+  }
+  
+  const data = await response.json()
+  return data.choices[0].message.content
+}
+
+async function sendClaude(
+  endpoint: string,
+  apiKey: string,
+  model: string,
+  messages: { role: string; content: string }[],
+  onStream?: (chunk: string) => void,
+  signal?: AbortSignal
+): Promise<string> {
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: 4096,
+      stream: !!onStream
+    }),
+    signal
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Claude API error: ${response.status}`)
+  }
+  
+  if (onStream && response.body) {
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let fullContent = ''
+    
+    try {
+      while (true) {
+        if (signal?.aborted) {
+          reader.cancel()
+          throw new Error('请求已取消')
+        }
+        
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n').filter(line => line.trim())
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.type === 'content_block_delta') {
+                const content = data.delta?.text || ''
+                fullContent += content
+                onStream(content)
+              }
+            } catch {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+    } catch (err) {
+      if (signal?.aborted) {
+        throw new Error('请求已取消')
+      }
+      throw err
+    }
+    return fullContent
+  }
+  
+  const data = await response.json()
+  return data.content?.[0]?.text || ''
+}
+
+async function sendGoogleGemini(
+  endpoint: string,
+  apiKey: string,
+  model: string,
+  messages: { role: string; content: string }[],
+  onStream?: (chunk: string) => void,
+  signal?: AbortSignal
+): Promise<string> {
+  const response = await fetch(`${endpoint}/${model}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }))
+    }),
+    signal
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Gemini API error: ${response.status}`)
+  }
+  
+  const data = await response.json()
+  
+  if (data.error) {
+    throw new Error(`Gemini API error: ${data.error.message}`)
+  }
+  
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+}
+
+async function sendOllama(
+  endpoint: string,
+  model: string,
+  messages: { role: string; content: string }[],
+  onStream?: (chunk: string) => void,
+  signal?: AbortSignal
+): Promise<string> {
+  const prompt = messages.map(m => `${m.role}: ${m.content}`).join('\n\n')
+  
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      prompt,
+      stream: !!onStream
+    }),
+    signal
+  })
+  
+  if (!response.ok) {
+    throw new Error('Ollama is not running. Start it with: ollama serve')
+  }
+  
+  if (onStream && response.body) {
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let fullContent = ''
+    
+    try {
+      while (true) {
+        if (signal?.aborted) {
+          reader.cancel()
+          throw new Error('请求已取消')
+        }
+        
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n').filter(line => line.trim())
+        
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line)
+            const content = data.response || ''
+            fullContent += content
+            onStream(content)
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+    } catch (err) {
+      if (signal?.aborted) {
+        throw new Error('请求已取消')
+      }
+      throw err
+    }
+    return fullContent
+  }
+  
+  const data = await response.json()
+  return data.response
 }
