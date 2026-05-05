@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
-import { localStorageService, StorageKeys } from '../services/localStorageService'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
 
 // 支持的语言
 export type Language = 'zh-CN' | 'en-US'
@@ -45,14 +45,19 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | null>(null)
 
+const LANGUAGE_KEY = 'language'
+
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => {
-    return localStorageService.get(StorageKeys.LANGUAGE, 'zh-CN')
-  })
+  const [language, setLanguageState] = useState<Language>('zh-CN')
+
+  // 初始化时从 unifiedStorage 加载
+  useEffect(() => {
+    unifiedStorage.get<Language>(LANGUAGE_KEY, 'zh-CN').then(setLanguageState)
+  }, [])
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang)
-    localStorageService.set(StorageKeys.LANGUAGE, lang)
+    unifiedStorage.set(LANGUAGE_KEY, lang, { layer: StorageLayer.LOCAL })
   }, [])
 
   const t = useCallback((key: TranslationKey): string => {

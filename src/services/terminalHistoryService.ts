@@ -1,7 +1,8 @@
 // 终端命令历史管理服务
-import { localStorageService, StorageKeys } from './localStorageService'
+import { unifiedStorage, StorageLayer } from './unifiedStorage'
 
 const MAX_HISTORY = 100
+const HISTORY_KEY = 'terminal-history'
 
 export interface CommandHistoryItem {
   command: string
@@ -12,13 +13,13 @@ export interface CommandHistoryItem {
 
 export const terminalHistoryService = {
   // 获取命令历史
-  getHistory(): CommandHistoryItem[] {
-    return localStorageService.get(StorageKeys.TERMINAL_HISTORY, [])
+  async getHistory(): Promise<CommandHistoryItem[]> {
+    return await unifiedStorage.get(HISTORY_KEY, [])
   },
 
   // 保存命令到历史
-  saveCommand(command: string, success: boolean = true, output?: string): void {
-    const history = this.getHistory()
+  async saveCommand(command: string, success: boolean = true, output?: string): Promise<void> {
+    const history = await this.getHistory()
     
     // 避免重复保存相同的连续命令
     if (history.length > 0 && history[0].command === command) {
@@ -39,24 +40,24 @@ export const terminalHistoryService = {
       history.length = MAX_HISTORY
     }
 
-    localStorageService.set(StorageKeys.TERMINAL_HISTORY, history)
+    await unifiedStorage.set(HISTORY_KEY, history, { layer: StorageLayer.LOCAL })
   },
 
   // 删除单条历史
-  removeCommand(timestamp: number): void {
-    const history = this.getHistory()
+  async removeCommand(timestamp: number): Promise<void> {
+    const history = await this.getHistory()
     const filtered = history.filter(item => item.timestamp !== timestamp)
-    localStorageService.set(StorageKeys.TERMINAL_HISTORY, filtered)
+    await unifiedStorage.set(HISTORY_KEY, filtered, { layer: StorageLayer.LOCAL })
   },
 
   // 清空历史
-  clearHistory(): void {
-    localStorageService.remove(StorageKeys.TERMINAL_HISTORY)
+  async clearHistory(): Promise<void> {
+    await unifiedStorage.set(HISTORY_KEY, [], { layer: StorageLayer.LOCAL })
   },
 
   // 搜索历史
-  searchHistory(query: string): CommandHistoryItem[] {
-    const history = this.getHistory()
+  async searchHistory(query: string): Promise<CommandHistoryItem[]> {
+    const history = await this.getHistory()
     if (!query.trim()) return history
     
     const lowerQuery = query.toLowerCase()
@@ -66,8 +67,8 @@ export const terminalHistoryService = {
   },
 
   // 获取常用命令
-  getFrequentCommands(limit: number = 10): Array<{ command: string; count: number }> {
-    const history = this.getHistory()
+  async getFrequentCommands(limit: number = 10): Promise<Array<{ command: string; count: number }>> {
+    const history = await this.getHistory()
     const counts = new Map<string, number>()
 
     history.forEach(item => {
@@ -81,17 +82,17 @@ export const terminalHistoryService = {
   },
 
   // 导出历史为 JSON
-  exportHistory(): string {
-    const history = this.getHistory()
+  async exportHistory(): Promise<string> {
+    const history = await this.getHistory()
     return JSON.stringify(history, null, 2)
   },
 
   // 从历史导入
-  importHistory(json: string): boolean {
+  async importHistory(json: string): Promise<boolean> {
     try {
       const history = JSON.parse(json)
       if (Array.isArray(history)) {
-        localStorageService.set(StorageKeys.TERMINAL_HISTORY, history)
+        await unifiedStorage.set(HISTORY_KEY, history, { layer: StorageLayer.LOCAL })
         return true
       }
     } catch (error) {

@@ -1,4 +1,4 @@
-import { localStorageService, StorageKeys } from './localStorageService'
+import { unifiedStorage, StorageLayer } from './unifiedStorage'
 
 export interface User {
   id: string
@@ -12,13 +12,19 @@ export interface Session {
   expires: string
 }
 
+const USER_KEY = 'user'
+
 class AuthService {
   private currentUser: User | null = null
   private listeners: ((user: User | null) => void)[] = []
 
   constructor() {
-    // 初始化时从 localStorage 恢复（缓存）
-    const cached = localStorageService.get<{ user: User; expires: string } | null>(StorageKeys.USER, null)
+    // 初始化时从 unifiedStorage 恢复（缓存）
+    this.initFromCache()
+  }
+
+  private async initFromCache() {
+    const cached = await unifiedStorage.get<{ user: User; expires: string } | null>(USER_KEY, null)
     if (cached && new Date(cached.expires) > new Date()) {
       this.currentUser = cached.user
     }
@@ -32,7 +38,7 @@ class AuthService {
         const session = await res.json()
         if (session?.user) {
           this.currentUser = session.user
-          localStorageService.set(StorageKeys.USER, session)
+          await unifiedStorage.set(USER_KEY, session, { layer: StorageLayer.LOCAL })
           this.notifyListeners()
           return session
         }
@@ -115,7 +121,7 @@ class AuthService {
       await fetch('/api/auth/signout', { method: 'POST' })
     } finally {
       this.currentUser = null
-      localStorageService.remove(StorageKeys.USER)
+      await unifiedStorage.set(USER_KEY, null, { layer: StorageLayer.LOCAL })
       this.notifyListeners()
     }
   }

@@ -1,4 +1,4 @@
-import { storageService } from './storageService'
+import { unifiedStorage, StorageLayer } from './unifiedStorage'
 
 export interface WorkspaceBackup {
   id: string
@@ -20,14 +20,13 @@ export interface WorkspaceBackup {
   updatedAt: number
 }
 
-const WORKSPACE_KEY = 'ide-workspaces'
-const AUTO_BACKUP_KEY = 'ide-auto-backup'
+const WORKSPACE_KEY = 'workspaces'
+const AUTO_BACKUP_KEY = 'auto-backup'
 
 export const cloudSyncService = {
   // 获取所有工作区备份
   async getAllWorkspaces(): Promise<WorkspaceBackup[]> {
-    const workspaces = await storageService.getSetting(WORKSPACE_KEY)
-    return workspaces || []
+    return await unifiedStorage.get(WORKSPACE_KEY, [])
   },
 
   // 保存工作区
@@ -50,7 +49,7 @@ export const cloudSyncService = {
     }
 
     workspaces.push(workspace)
-    await storageService.saveSetting(WORKSPACE_KEY, workspaces)
+    await unifiedStorage.set(WORKSPACE_KEY, workspaces, { layer: StorageLayer.INDEXED })
     
     return workspace
   },
@@ -71,7 +70,7 @@ export const cloudSyncService = {
       updatedAt: Date.now()
     }
 
-    await storageService.saveSetting(WORKSPACE_KEY, workspaces)
+    await unifiedStorage.set(WORKSPACE_KEY, workspaces, { layer: StorageLayer.INDEXED })
     return workspaces[index]
   },
 
@@ -82,7 +81,7 @@ export const cloudSyncService = {
     
     if (filtered.length === workspaces.length) return false
     
-    await storageService.saveSetting(WORKSPACE_KEY, filtered)
+    await unifiedStorage.set(WORKSPACE_KEY, filtered, { layer: StorageLayer.INDEXED })
     return true
   },
 
@@ -117,7 +116,7 @@ export const cloudSyncService = {
 
       const workspaces = await this.getAllWorkspaces()
       workspaces.push(workspace)
-      await storageService.saveSetting(WORKSPACE_KEY, workspaces)
+      await unifiedStorage.set(WORKSPACE_KEY, workspaces, { layer: StorageLayer.INDEXED })
       
       return workspace
     } catch (error) {
@@ -141,12 +140,12 @@ export const cloudSyncService = {
       updatedAt: Date.now()
     }
 
-    await storageService.saveSetting(AUTO_BACKUP_KEY, backup)
+    await unifiedStorage.set(AUTO_BACKUP_KEY, backup, { layer: StorageLayer.INDEXED })
   },
 
   // 获取自动备份
   async getAutoBackup(): Promise<WorkspaceBackup | null> {
-    return await storageService.getSetting(AUTO_BACKUP_KEY)
+    return await unifiedStorage.get(AUTO_BACKUP_KEY, null)
   },
 
   // 恢复自动备份
@@ -156,7 +155,7 @@ export const cloudSyncService = {
 
     // 更新备份时间
     backup.updatedAt = Date.now()
-    await storageService.saveSetting(AUTO_BACKUP_KEY, backup)
+    await unifiedStorage.set(AUTO_BACKUP_KEY, backup, { layer: StorageLayer.INDEXED })
     
     return backup
   },
@@ -182,11 +181,11 @@ export const cloudSyncService = {
       const data = JSON.parse(json)
       
       if (data.workspaces) {
-        await storageService.saveSetting(WORKSPACE_KEY, data.workspaces)
+        await unifiedStorage.set(WORKSPACE_KEY, data.workspaces, { layer: StorageLayer.INDEXED })
       }
       
       if (data.autoBackup) {
-        await storageService.saveSetting(AUTO_BACKUP_KEY, data.autoBackup)
+        await unifiedStorage.set(AUTO_BACKUP_KEY, data.autoBackup, { layer: StorageLayer.INDEXED })
       }
       
       return true

@@ -1,4 +1,4 @@
-import { storageService } from './storageService'
+import { unifiedStorage, StorageLayer } from './unifiedStorage'
 
 export interface CodeSnippet {
   id: string
@@ -11,13 +11,12 @@ export interface CodeSnippet {
   updatedAt: number
 }
 
-const SNIPPET_STORAGE_KEY = 'ide-code-snippets'
+const SNIPPET_STORAGE_KEY = 'code-snippets'
 
 export const snippetService = {
   // 获取所有代码片段
   async getAllSnippets(): Promise<CodeSnippet[]> {
-    const snippets = await storageService.getSetting(SNIPPET_STORAGE_KEY)
-    return snippets || []
+    return await unifiedStorage.get(SNIPPET_STORAGE_KEY, [])
   },
 
   // 保存代码片段
@@ -32,7 +31,7 @@ export const snippetService = {
     }
 
     snippets.push(newSnippet)
-    await storageService.saveSetting(SNIPPET_STORAGE_KEY, snippets)
+    await unifiedStorage.set(SNIPPET_STORAGE_KEY, snippets, { layer: StorageLayer.INDEXED })
     
     return newSnippet
   },
@@ -50,7 +49,7 @@ export const snippetService = {
       updatedAt: Date.now()
     }
 
-    await storageService.saveSetting(SNIPPET_STORAGE_KEY, snippets)
+    await unifiedStorage.set(SNIPPET_STORAGE_KEY, snippets, { layer: StorageLayer.INDEXED })
     return snippets[index]
   },
 
@@ -61,7 +60,7 @@ export const snippetService = {
     
     if (filtered.length === snippets.length) return false
     
-    await storageService.saveSetting(SNIPPET_STORAGE_KEY, filtered)
+    await unifiedStorage.set(SNIPPET_STORAGE_KEY, filtered, { layer: StorageLayer.INDEXED })
     return true
   },
 
@@ -101,7 +100,7 @@ export const snippetService = {
   async importSnippets(snippets: CodeSnippet[]): Promise<void> {
     const existing = await this.getAllSnippets()
     const merged = [...existing, ...snippets]
-    await storageService.saveSetting(SNIPPET_STORAGE_KEY, merged)
+    await unifiedStorage.set(SNIPPET_STORAGE_KEY, merged, { layer: StorageLayer.INDEXED })
   },
 
   // 导出代码片段

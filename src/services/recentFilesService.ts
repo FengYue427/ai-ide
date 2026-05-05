@@ -1,7 +1,7 @@
-import { storageService } from './storageService'
+import { unifiedStorage, StorageLayer } from './unifiedStorage'
 
-const RECENT_FILES_KEY = 'ide-recent-files'
-const RECENT_PROJECTS_KEY = 'ide-recent-projects'
+const RECENT_FILES_KEY = 'recent-files'
+const RECENT_PROJECTS_KEY = 'recent-projects'
 const MAX_RECENT = 10
 
 export interface RecentFile {
@@ -22,8 +22,7 @@ export interface RecentProject {
 export const recentFilesService = {
   // 获取最近文件
   async getRecentFiles(): Promise<RecentFile[]> {
-    const files = await storageService.getSetting(RECENT_FILES_KEY)
-    return files || []
+    return await unifiedStorage.get(RECENT_FILES_KEY, [])
   },
 
   // 添加最近文件
@@ -42,25 +41,24 @@ export const recentFilesService = {
     // 限制数量
     const limited = filtered.slice(0, MAX_RECENT)
     
-    await storageService.saveSetting(RECENT_FILES_KEY, limited)
+    await unifiedStorage.set(RECENT_FILES_KEY, limited, { layer: StorageLayer.LOCAL })
   },
 
   // 移除最近文件
   async removeRecentFile(name: string): Promise<void> {
     const files = await this.getRecentFiles()
     const filtered = files.filter(f => f.name !== name)
-    await storageService.saveSetting(RECENT_FILES_KEY, filtered)
+    await unifiedStorage.set(RECENT_FILES_KEY, filtered, { layer: StorageLayer.LOCAL })
   },
 
   // 清空最近文件
   async clearRecentFiles(): Promise<void> {
-    await storageService.saveSetting(RECENT_FILES_KEY, [])
+    await unifiedStorage.set(RECENT_FILES_KEY, [], { layer: StorageLayer.LOCAL })
   },
 
   // 获取最近项目
   async getRecentProjects(): Promise<RecentProject[]> {
-    const projects = await storageService.getSetting(RECENT_PROJECTS_KEY)
-    return projects || []
+    return await unifiedStorage.get(RECENT_PROJECTS_KEY, [])
   },
 
   // 添加最近项目
@@ -79,18 +77,18 @@ export const recentFilesService = {
     // 限制数量
     const limited = filtered.slice(0, MAX_RECENT)
     
-    await storageService.saveSetting(RECENT_PROJECTS_KEY, limited)
+    await unifiedStorage.set(RECENT_PROJECTS_KEY, limited, { layer: StorageLayer.LOCAL })
   },
 
   // 移除最近项目
   async removeRecentProject(id: string): Promise<void> {
     const projects = await this.getRecentProjects()
     const filtered = projects.filter(p => p.id !== id)
-    await storageService.saveSetting(RECENT_PROJECTS_KEY, filtered)
+    await unifiedStorage.set(RECENT_PROJECTS_KEY, filtered, { layer: StorageLayer.LOCAL })
   },
 
   // 清空最近项目
   async clearRecentProjects(): Promise<void> {
-    await storageService.saveSetting(RECENT_PROJECTS_KEY, [])
+    await unifiedStorage.set(RECENT_PROJECTS_KEY, [], { layer: StorageLayer.LOCAL })
   }
 }

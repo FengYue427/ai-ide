@@ -1,5 +1,5 @@
 // 代码格式化服务 - 使用 Prettier
-import { localStorageService, StorageKeys } from './localStorageService'
+import { unifiedStorage } from './unifiedStorage'
 
 interface FormatOptions {
   parser: 'babel' | 'typescript' | 'css' | 'json' | 'markdown' | 'html'
@@ -133,8 +133,8 @@ export const formatService = {
   },
 
   // 获取格式化配置
-  getConfig(): FormatOptions {
-    const saved = localStorageService.get<{ formatConfig?: Partial<FormatOptions> }>(StorageKeys.SETTINGS, {})
+  async getConfig(): Promise<FormatOptions> {
+    const saved = await unifiedStorage.get<{ formatConfig?: Partial<FormatOptions> }>('settings', {})
     if (saved?.formatConfig) {
       return { ...defaultOptions, ...saved.formatConfig }
     }
@@ -142,10 +142,10 @@ export const formatService = {
   },
 
   // 保存格式化配置
-  saveConfig(config: Partial<FormatOptions>): void {
-    const current = this.getConfig()
+  async saveConfig(config: Partial<FormatOptions>): Promise<void> {
+    const current = await this.getConfig()
     const newConfig = { ...current, ...config }
-    const existing = localStorageService.get<Record<string, any>>(StorageKeys.SETTINGS, {})
-    localStorageService.set(StorageKeys.SETTINGS, { ...existing, formatConfig: newConfig })
+    const existing = await unifiedStorage.get<Record<string, any>>('settings', {})
+    await unifiedStorage.set('settings', { ...existing, formatConfig: newConfig })
   }
 }
