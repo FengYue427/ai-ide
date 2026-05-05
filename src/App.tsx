@@ -32,8 +32,7 @@ import { useKeyboardShortcuts, getDefaultShortcuts } from './hooks/useKeyboardSh
 import { useDebounce } from './hooks/useDebounce'
 import { getShare } from './services/shareService'
 import { modelOptions, type AIModel } from './services/aiService'
-import { storageService } from './services/storageService'
-import { localStorageService, StorageKeys } from './services/localStorageService'
+import { unifiedStorage, StorageLayer } from './services/unifiedStorage'
 import { I18nProvider } from './i18n'
 import { recentFilesService, type RecentProject } from './services/recentFilesService'
 
@@ -66,25 +65,13 @@ function AppContent() {
   const [activeFile, setActiveFile] = useState(0)
   const [showNewFileInput, setShowNewFileInput] = useState(false)
   const [newFileName, setNewFileName] = useState('')
-  const [aiConfig, setAiConfig] = useState<{ provider: AIModel; apiKey: string; model: string; endpoint: string }>(() => {
-    const defaultProvider: AIModel = 'openai'
-    const savedConfig = localStorageService.get(StorageKeys.AI_CONFIG, {
-      provider: defaultProvider,
-      apiKey: '',
-      model: modelOptions[defaultProvider].models[0],
-      endpoint: ''
-    })
-    // 确保模型与提供商匹配（防止用户手动改 localStorage 导致的不一致）
-    const validModels = modelOptions[savedConfig.provider].models
-    const model = validModels.includes(savedConfig.model) ? savedConfig.model : validModels[0]
-    return {
-      provider: savedConfig.provider,
-      apiKey: savedConfig.apiKey,
-      model,
-      endpoint: savedConfig.endpoint
-    }
+  const [aiConfig, setAiConfig] = useState<{ provider: AIModel; apiKey: string; model: string; endpoint: string }>({
+    provider: 'openai',
+    apiKey: '',
+    model: modelOptions.openai.models[0],
+    endpoint: ''
   })
-  const [theme, setTheme] = useState<'vs-dark' | 'light'>(localStorageService.get(StorageKeys.THEME, 'vs-dark'))
+  const [theme, setTheme] = useState<'vs-dark' | 'light'>('vs-dark')
   const [showTerminal, setShowTerminal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
@@ -94,7 +81,7 @@ function AppContent() {
   const [showSearchPanel, setShowSearchPanel] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showCollaboration, setShowCollaboration] = useState(false)
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => localStorageService.get(StorageKeys.SETTINGS, { autosave: true }).autosave)
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
   const [showPluginManager, setShowPluginManager] = useState(false)
   const [showDropZone, setShowDropZone] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
@@ -117,6 +104,29 @@ function AppContent() {
   const [authChecked, setAuthChecked] = useState(false)
 
   const { isReady, output, isRunning, writeFile, runNode, fs } = useWebContainer()
+
+  // 初始化设置
+  useEffect(() => {
+    const loadSettings = async () => {
+      const [savedTheme, savedSettings, savedAIConfig] = await Promise.all([
+        unifiedStorage.get<'vs-dark' | 'light'>('theme', 'vs-dark'),
+        unifiedStorage.get<{ autosave: boolean }>('settings', { autosave: true }),
+        unifiedStorage.get<typeof aiConfig>('ai-config', {
+          provider: 'openai' as AIModel,
+          apiKey: '',
+          model: modelOptions.openai.models[0],
+          endpoint: ''
+        })
+      ])
+      setTheme(savedTheme)
+      setAutoSaveEnabled(savedSettings.autosave)
+      // 确保模型与提供商匹配
+      const validModels = modelOptions[savedAIConfig.provider].models
+      const model = validModels.includes(savedAIConfig.model) ? savedAIConfig.model : validModels[0]
+      setAiConfig({ ...savedAIConfig, model })
+    }
+    loadSettings()
+  }, [])
 
   // 检查 URL 参数中的分享 ID 和协作房间
   useEffect(() => {
@@ -160,9 +170,9 @@ function AppContent() {
       }
       
       // 回退到本地存储
-      const savedFiles = await storageService.loadAutoSave('default')
+      const savedFiles = await unifiedStorage.get<{ name: string; content: string; language: string }[] | null>('autosave-default', null)
       if (savedFiles && savedFiles.length > 0) {
-        setFiles(savedFiles.map((f: any) => ({
+        setFiles(savedFiles.map((f) => ({
           name: f.name,
           content: f.content,
           language: f.language
@@ -185,7 +195,7 @@ function AppContent() {
   useEffect(() => {
     if (!autoSaveEnabled) return
     
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const ideFiles = files.map((f, index) => ({
         id: index.toString(),
         name: f.name,
@@ -195,7 +205,7 @@ function AppContent() {
       }))
       
       // 始终保存到本地作为备份
-      storageService.autoSave(ideFiles, 'default')
+      await unifiedStorage.set('autosave-default', ideFiles, { layer: StorageLayer.INDEXED })
       
       // 如果已登录，同时云同步
       if (currentUser) {
@@ -222,9 +232,9 @@ function AppContent() {
     debouncedFileChange(activeFile, content)
   }
 
-  const handleSaveAISettings = (config: { provider: AIModel; apiKey: string; model: string; endpoint: string }) => {
+  const handleSaveAISettings = async (config: { provider: AIModel; apiKey: string; model: string; endpoint: string }) => {
     setAiConfig(config)
-    localStorageService.set(StorageKeys.AI_CONFIG, config)
+    await unifiedStorage.set('ai-config', config)
     setShowAISettings(false)
   }
 
@@ -304,10 +314,10 @@ function AppContent() {
     URL.revokeObjectURL(url)
   }
 
-  const toggleTheme = () => {
+  const toggleTheme = async () => {
     const newTheme = theme === 'vs-dark' ? 'light' : 'vs-dark'
     setTheme(newTheme)
-    localStorageService.set(StorageKeys.THEME, newTheme)
+    await unifiedStorage.set('theme', newTheme, { layer: StorageLayer.LOCAL })
   }
 
   const handleRunCode = useCallback(async () => {
@@ -340,7 +350,10 @@ function AppContent() {
 
   // 导出项目为 ZIP
   const handleExportZip = async () => {
-    const blob = await storageService.exportToZip('default')
+    // 导出 ZIP 功能需要使用 indexedDB 中的数据
+    const savedFiles = await unifiedStorage.get<{ name: string; content: string; language: string }[]>('autosave-default', [])
+    // 简化为 JSON 导出
+    const blob = new Blob([JSON.stringify(savedFiles, null, 2)], { type: 'application/json' })
     if (blob) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -893,18 +906,18 @@ function AppContent() {
           theme={theme}
           autoSaveEnabled={autoSaveEnabled}
           language="zh"
-          onSaveAIConfig={(config) => {
+          onSaveAIConfig={async (config) => {
             setAiConfig(config)
-            localStorageService.set(StorageKeys.AI_CONFIG, config)
+            await unifiedStorage.set('ai-config', config)
           }}
           onToggleTheme={toggleTheme}
-          onToggleAutoSave={() => {
+          onToggleAutoSave={async () => {
             const newValue = !autoSaveEnabled
             setAutoSaveEnabled(newValue)
-            localStorageService.set(StorageKeys.SETTINGS, { autosave: newValue })
+            await unifiedStorage.set('settings', { autosave: newValue }, { layer: StorageLayer.LOCAL })
           }}
-          onChangeLanguage={(lang) => {
-            localStorageService.set(StorageKeys.LANGUAGE, lang)
+          onChangeLanguage={async (lang) => {
+            await unifiedStorage.set('language', lang, { layer: StorageLayer.LOCAL })
             window.location.reload()
           }}
           onClose={() => setShowSettingsCenter(false)}
@@ -951,9 +964,9 @@ function AppContent() {
       {showThemeSelector && (
         <ThemeSelector
           currentTheme={theme}
-          onChangeTheme={(newTheme) => {
+          onChangeTheme={async (newTheme) => {
             setTheme(newTheme as any)
-            localStorageService.set(StorageKeys.THEME, newTheme)
+            await unifiedStorage.set('theme', newTheme, { layer: StorageLayer.LOCAL })
           }}
           onClose={() => setShowThemeSelector(false)}
         />
@@ -1013,7 +1026,7 @@ function AppContent() {
               language: f.language,
               lastModified: Date.now()
             }))
-            storageService.autoSave(ideFiles, 'default')
+            unifiedStorage.set('autosave-default', ideFiles, { layer: StorageLayer.INDEXED })
           },
           onNewFile: () => setShowNewFileInput(true),
           onOpenFile: () => setShowImportModal(true),
