@@ -72,11 +72,11 @@ export const authConfig: AuthConfig = {
   },
   events: {
     async signIn({ user, isNewUser }) {
-      if (isNewUser) {
+      if (isNewUser && user.id) {
         // 为新用户创建默认工作区
         await prisma.userWorkspace.create({
           data: {
-            userId: user.id,
+            userId: user.id as string,
             name: "default",
             files: JSON.stringify([]),
             isDefault: true
