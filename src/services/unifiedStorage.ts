@@ -167,7 +167,7 @@ export const unifiedStorage = {
             break
         }
         
-        if (data !== null) {
+        if (data !== null && data !== undefined) {
           // 更新内存缓存
           memoryCache.set(key, {
             data,
