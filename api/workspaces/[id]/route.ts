@@ -1,4 +1,13 @@
-// 获取特定工作区数据
+/**
+ * 单个 Workspace API - 演示/占位实现
+ * 
+ * 当前为纯前端模式：
+ * - 返回固定示例数据（非真实存储）
+ * - PUT/DELETE 仅打印日志，不实际保存
+ * - 前端直接使用 IndexedDB，不调用此 API
+ * 
+ * 如需云同步，需接入真实数据库 + 鉴权
+ */
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params

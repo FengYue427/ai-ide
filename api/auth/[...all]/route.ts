@@ -1,7 +1,13 @@
-import { Auth } from "@auth/core"
+/**
+ * Auth API - 占位实现
+ * 
+ * 当前为纯前端模式，所有认证功能已禁用。
+ * 此 API 返回 501 提示前端使用本地存储模式。
+ * 
+ * 如需完整认证，需接入 Auth.js + 数据库 + OAuth 提供商
+ */
 
-// 简化的 auth 处理，避免路径问题
-// 生产环境建议迁移到 Next.js 或使用 Edge Runtime
+import { Auth } from "@auth/core"
 export const GET = (req: Request) => {
   return new Response(JSON.stringify({ 
     providers: ["credentials", "github", "google"],

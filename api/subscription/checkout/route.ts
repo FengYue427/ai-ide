@@ -1,4 +1,12 @@
-// 创建 Stripe Checkout 会话
+/**
+ * 订阅 Checkout API - 演示/占位实现
+ * 
+ * 当前为纯前端模式：
+ * - 不创建真实 Stripe 会话
+ * - 返回占位链接（前端已禁用订阅 UI）
+ * 
+ * 如需完整支付流程，需接入 Stripe + Webhook + 数据库
+ */
 export async function POST(request: Request) {
   try {
     const { planId } = await request.json()

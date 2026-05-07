@@ -1,4 +1,12 @@
-// 内存存储工作区（演示用，生产需数据库）
+/**
+ * Workspaces API - 演示/占位实现
+ * 
+ * 当前为纯前端模式：
+ * - 使用内存存储（重启后数据丢失）
+ * - 前端直接从 IndexedDB 读写，不调用此 API
+ * 
+ * 如需云同步功能，需接入真实数据库 + 用户鉴权
+ */
 const workspaces: any[] = [
   { id: 'default', name: 'default', files: '[]', settings: '{}', isDefault: true, updatedAt: new Date().toISOString() }
 ]

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Play, Folder, MessageSquare, X, Plus, Download, Trash2, Moon, Sun, LayoutTemplate, Share2, GitBranch, FolderOpen, Bot, Search, Eye, Users, Save, Package, Puzzle, Upload, Shield, Code2, Activity, Command, FileText, Settings as SettingsIcon, Home, User, Zap } from 'lucide-react'
+import { Play, Folder, MessageSquare, X, Plus, Download, Trash2, Moon, Sun, LayoutTemplate, Share2, GitBranch, FolderOpen, Bot, Search, Eye, Users, Save, Package, Puzzle, Upload, Shield, Code2, Activity, Command, FileText, Settings as SettingsIcon, User } from 'lucide-react'
 import Editor from './components/Editor'
 import ChatPanel from './components/ChatPanel'
 import Terminal from './components/Terminal'
@@ -25,10 +25,12 @@ import WorkspaceManager from './components/WorkspaceManager'
 import WorkspacePanel from './components/WorkspacePanel'
 import ThemeSelector from './components/ThemeSelector'
 import WelcomeScreen from './components/WelcomeScreen'
-import AuthModal from './components/AuthModal'
-import SubscriptionModal from './components/SubscriptionModal'
-import { authService, User as AuthUser } from './services/authService'
-import { subscriptionService } from './services/subscriptionService'
+// 纯前端模式：禁用认证和订阅弹窗
+// import AuthModal from './components/AuthModal'
+// import SubscriptionModal from './components/SubscriptionModal'
+// 纯前端模式：移除后端依赖
+// import { authService, User as AuthUser } from './services/authService'
+// import { subscriptionService } from './services/subscriptionService'
 import { useWebContainer } from './hooks/useWebContainer'
 import { useKeyboardShortcuts, getDefaultShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDebounce } from './hooks/useDebounce'
@@ -100,14 +102,12 @@ function AppContent() {
   const [showWelcome, setShowWelcome] = useState(false)
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([])
   
-  // 用户认证状态
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [authChecked, setAuthChecked] = useState(false)
-
-  // 订阅状态
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
-  const [currentPlan, setCurrentPlan] = useState('free')
+  // 纯前端模式：认证和订阅功能已禁用
+  // const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
+  // const [showAuthModal, setShowAuthModal] = useState(false)
+  // const [authChecked, setAuthChecked] = useState(false)
+  // const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  // const [currentPlan, setCurrentPlan] = useState('free')
 
   const { isReady, output, isRunning, writeFile, runNode, fs } = useWebContainer()
 
@@ -153,43 +153,19 @@ function AppContent() {
     }
   }, [])
 
-  // 检查登录状态
+  // 纯前端模式：加载本地保存的项目
   useEffect(() => {
-    authService.getSession().then(session => {
-      setCurrentUser(session?.user || null)
-      setAuthChecked(true)
-    })
-
-    // 加载订阅状态
-    subscriptionService.getSubscription().then(sub => {
-      setCurrentPlan(sub.plan)
-    })
-  }, [])
-
-  // 加载自动保存的项目（优先云同步，回退本地存储）
-  useEffect(() => {
-    if (!authChecked) return
-
-    // 检测是否从官网跳转过来（referrer 包含本地或线上官网路径）
-    const referrer = document.referrer
-    const isFromLandingPage = referrer.includes('/website/') ||
-                               referrer.endsWith('index.html') ||
-                               (!referrer.includes('ai-ide') && referrer.length > 0)
-
     const loadWorkspace = async () => {
+      // 检测是否从官网跳转过来
+      const referrer = document.referrer
+      const isFromLandingPage = referrer.includes('/website/') ||
+                                 referrer.endsWith('index.html') ||
+                                 (!referrer.includes('ai-ide') && referrer.length > 0)
+
       // 如果从官网跳转，强制显示欢迎页
       if (isFromLandingPage) {
         setShowWelcome(true)
         return
-      }
-
-      // 如果已登录，优先尝试云同步加载
-      if (currentUser) {
-        const cloudData = await authService.loadWorkspace('default')
-        if (cloudData && cloudData.files.length > 0) {
-          setFiles(cloudData.files)
-          return
-        }
       }
 
       // 回退到本地存储
@@ -207,17 +183,17 @@ function AppContent() {
     }
 
     loadWorkspace()
-  }, [authChecked, currentUser])
+  }, [])
 
   // 加载最近项目
   useEffect(() => {
     recentFilesService.getRecentProjects().then(setRecentProjects)
   }, [])
 
-  // 自动保存（登录用户云同步 + 本地备份）
+  // 自动保存（纯本地模式）
   useEffect(() => {
     if (!autoSaveEnabled) return
-    
+
     const timer = setTimeout(async () => {
       const ideFiles = files.map((f, index) => ({
         id: index.toString(),
@@ -226,18 +202,13 @@ function AppContent() {
         language: f.language,
         lastModified: Date.now()
       }))
-      
-      // 始终保存到本地作为备份
+
+      // 保存到本地 IndexedDB
       await unifiedStorage.set('autosave-default', ideFiles, { layer: StorageLayer.INDEXED })
-      
-      // 如果已登录，同时云同步
-      if (currentUser) {
-        authService.saveWorkspace(ideFiles, { theme }, 'default')
-      }
     }, 3000) // 3秒后自动保存
 
     return () => clearTimeout(timer)
-  }, [files, autoSaveEnabled, currentUser, theme])
+  }, [files, autoSaveEnabled, theme])
 
   // 防抖的文件内容更新（优化大文件编辑性能）
   const debouncedFileChange = useDebounce((index: number, content: string | undefined) => {
@@ -449,75 +420,27 @@ function AppContent() {
 
         <div style={{ flex: 1 }} />
 
-        {/* 用户登录按钮 */}
-        {currentUser ? (
-          <button
-            onClick={() => {
-              // 显示用户菜单或登出
-              if (confirm(`用户: ${currentUser.email}\n\n点击确定登出`)) {
-                authService.logout().then(() => setCurrentUser(null))
-              }
-            }}
-            title={currentUser.email}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: 'var(--accent-color)',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              color: 'var(--bg-primary)'
-            }}
-          >
-            <User size={14} />
-            <span>{currentUser.name || currentUser.email.split('@')[0]}</span>
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowAuthModal(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              color: 'var(--text-primary)'
-            }}
-          >
-            <User size={14} />
-            <span>登录</span>
-          </button>
-        )}
-
-        {/* 升级按钮 - 已登录且非企业版用户显示 */}
-        {currentUser && currentPlan !== 'enterprise' && (
-          <button
-            onClick={() => setShowSubscriptionModal(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              color: 'white',
-              fontWeight: 500
-            }}
-          >
-            <Zap size={14} />
-            <span>{currentPlan === 'free' ? '升级 Pro' : '升级企业版'}</span>
-          </button>
-        )}
+        {/* 账户按钮 - 纯前端模式提示 */}
+        <button
+          onClick={() => alert('账户功能即将上线，当前为纯本地模式，所有数据存储在浏览器中')}
+          title="账户功能即将上线"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '6px',
+            cursor: 'not-allowed',
+            fontSize: '13px',
+            color: 'var(--text-secondary)',
+            opacity: 0.7
+          }}
+        >
+          <User size={14} />
+          <span>账户(即将上线)</span>
+        </button>
 
         {/* 命令面板按钮 */}
         <button
@@ -810,20 +733,7 @@ function AppContent() {
         />
       )}
 
-      {/* 登录弹窗 */}
-      {showAuthModal && (
-        <AuthModal
-          onClose={() => setShowAuthModal(false)}
-        />
-      )}
-
-      {/* 订阅计划弹窗 */}
-      {showSubscriptionModal && (
-        <SubscriptionModal
-          onClose={() => setShowSubscriptionModal(false)}
-          currentPlan={currentPlan}
-        />
-      )}
+      {/* 纯前端模式：登录和订阅功能已禁用 */}
 
       {/* 导入弹窗 */}
       {showImportModal && (
