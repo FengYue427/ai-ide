@@ -387,8 +387,8 @@ function AppContent() {
     }
   }
 
-  const officialSiteUrl = import.meta.env.VITE_OFFICIAL_SITE_URL || 'https://github.com/FengYue427/ai-ide'
-  const officialSiteUrlSource = import.meta.env.VITE_OFFICIAL_SITE_URL ? 'env:VITE_OFFICIAL_SITE_URL' : 'fallback:github'
+  const officialSiteUrl = import.meta.env.VITE_OFFICIAL_SITE_URL || 'https://ai-ide-flame.vercel.app/website/index.html'
+  const officialSiteUrlSource = import.meta.env.VITE_OFFICIAL_SITE_URL ? 'env:VITE_OFFICIAL_SITE_URL' : 'fallback:vercel-website'
 
   return (
     <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
