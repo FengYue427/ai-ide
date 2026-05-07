@@ -7,6 +7,86 @@ export interface AIConfig {
   model?: string     // 具体模型名称
 }
 
+// ==================== 用量限制管理 ====================
+
+const USAGE_KEY = 'ai-usage-today'
+const USAGE_DATE_KEY = 'ai-usage-date'
+
+interface UsageRecord {
+  count: number
+  date: string
+}
+
+function getToday(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+function getStoredUsage(): UsageRecord {
+  const stored = localStorage.getItem(USAGE_KEY)
+  const storedDate = localStorage.getItem(USAGE_DATE_KEY)
+  const today = getToday()
+  
+  if (stored && storedDate === today) {
+    return JSON.parse(stored)
+  }
+  
+  // 重置为新的一天
+  const fresh: UsageRecord = { count: 0, date: today }
+  localStorage.setItem(USAGE_KEY, JSON.stringify(fresh))
+  localStorage.setItem(USAGE_DATE_KEY, today)
+  return fresh
+}
+
+function incrementUsage(): void {
+  const usage = getStoredUsage()
+  usage.count++
+  localStorage.setItem(USAGE_KEY, JSON.stringify(usage))
+}
+
+// 各计划的每日限额
+const planLimits: Record<string, number> = {
+  free: 50,
+  pro: 500,
+  enterprise: -1 // 无限
+}
+
+export interface QuotaCheck {
+  allowed: boolean
+  used: number
+  limit: number
+  remaining: number
+  plan: string
+}
+
+/**
+ * 检查 AI 用量配额
+ */
+export function checkAIQuota(currentPlan: string = 'free'): QuotaCheck {
+  const usage = getStoredUsage()
+  const limit = planLimits[currentPlan] ?? planLimits.free
+  
+  if (limit === -1) {
+    return { allowed: true, used: usage.count, limit, remaining: Infinity, plan: currentPlan }
+  }
+  
+  return {
+    allowed: usage.count < limit,
+    used: usage.count,
+    limit,
+    remaining: Math.max(0, limit - usage.count),
+    plan: currentPlan
+  }
+}
+
+/**
+ * 记录一次 AI 请求用量
+ */
+export function recordAIUsage(): void {
+  incrementUsage()
+}
+
+// ==================== 模型配置 ====================
+
 export const modelOptions: Record<AIModel, { name: string; models: string[]; needsKey: boolean; description?: string }> = {
   openai: {
     name: 'OpenAI',
@@ -205,6 +285,9 @@ export async function sendMessageWithDebounce(
   
   // 记录到限流历史
   requestHistory.push(Date.now())
+  
+  // 记录 AI 用量（用于计费统计）
+  recordAIUsage()
   
   return promise
 }

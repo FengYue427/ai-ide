@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Bot, User, Sparkles, Code2, Wand2, FilePlus, FolderOpen, CheckSquare } from 'lucide-react'
-import { sendMessage, extractCodeBlocks, generateCodePrompt, type AIConfig } from '../services/aiService'
+import { sendMessage, extractCodeBlocks, generateCodePrompt, type AIConfig, checkAIQuota, type QuotaCheck } from '../services/aiService'
 import { workspaceContextService } from '../services/workspaceContextService'
 
 interface Message {
@@ -33,9 +33,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerate
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [quota, setQuota] = useState<QuotaCheck>(checkAIQuota())
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const isConfigured = !!aiConfig.apiKey || aiConfig.provider === 'ollama'
+  
+  // 刷新用量配额
+  const refreshQuota = useCallback(() => {
+    setQuota(checkAIQuota())
+  }, [])
 
   // 刷新工作区统计
   const refreshWorkspaceStats = useCallback(() => {
@@ -72,6 +78,20 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerate
   const handleSend = async (customInput?: string, action?: 'explain' | 'refactor' | 'fix' | 'generate') => {
     const textToSend = customInput || input
     if (!textToSend.trim()) return
+
+    // 检查用量配额
+    const currentQuota = checkAIQuota()
+    if (!currentQuota.allowed) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `⚠️ 今日 AI 请求配额已用完 (${currentQuota.used}/${currentQuota.limit})
+
+免费用户每日限制 ${currentQuota.limit} 次请求。升级 Pro 计划可获得每日 500 次请求，或选择企业版享受无限使用！
+
+点击下方 "升级" 按钮查看计划详情。`
+      }])
+      return
+    }
 
     // 检查 API 配置
     if (!aiConfig.apiKey && aiConfig.provider !== 'ollama') {
@@ -367,6 +387,35 @@ ${currentCode}
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* AI 用量配额显示 */}
+      {quota.limit > 0 && (
+        <div
+          style={{
+            padding: '6px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, transparent 100%)',
+          }}
+        >
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>今日 AI 用量</span>
+          <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+            <div
+              style={{
+                width: `${Math.min((quota.used / quota.limit) * 100, 100)}%`,
+                height: '100%',
+                background: quota.used >= quota.limit ? '#ef4444' : quota.used > quota.limit * 0.8 ? '#f59e0b' : '#22c55e',
+                borderRadius: '2px',
+                transition: 'width 0.3s ease, background 0.3s ease'
+              }}
+            />
+          </div>
+          <span style={{ fontSize: '11px', color: quota.used >= quota.limit ? '#ef4444' : 'var(--text-secondary)' }}>
+            {quota.used}/{quota.limit}
+          </span>
+        </div>
+      )}
 
       <div
         style={{
