@@ -15,6 +15,9 @@
 | `terminalHistoryService.ts` | ✅ 已迁移 | 终端历史 |
 | `authService.ts` | ✅ 已迁移 | 用户会话 |
 | `i18n/index.tsx` | ✅ 已迁移 | 语言设置 |
+| `workspaceContextService.ts` | ✅ 已迁移 | 工作区上下文 |
+| `CollaborationPanel.tsx` | ✅ 已迁移 | 协作面板 |
+| `App.tsx` | ✅ 已迁移 | 主应用组件 |
 
 ## 存储层级说明
 
@@ -66,4 +69,6 @@ await unifiedStorage.importAll(json)
 
 ## 相关提交
 
+- `dc798e3` refactor: migrate App.tsx to unifiedStorage and fix lint errors
+- `c0a0fef` refactor: migrate workspaceContextService and CollaborationPanel to unifiedStorage
 - `21e4866` refactor: migrate all services to unifiedStorage

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Play, Folder, MessageSquare, X, Plus, Download, Trash2, Moon, Sun, LayoutTemplate, Share2, GitBranch, FolderOpen, Bot, Search, Eye, Users, Save, Package, Puzzle, Upload, Shield, Code2, Activity, Command, FileText, Settings as SettingsIcon, Home, User } from 'lucide-react'
+import { Play, Folder, MessageSquare, X, Plus, Download, Trash2, Moon, Sun, LayoutTemplate, Share2, GitBranch, FolderOpen, Bot, Search, Eye, Users, Save, Package, Puzzle, Upload, Shield, Code2, Activity, Command, FileText, Settings as SettingsIcon, Home, User, Zap } from 'lucide-react'
 import Editor from './components/Editor'
 import ChatPanel from './components/ChatPanel'
 import Terminal from './components/Terminal'
@@ -26,7 +26,9 @@ import WorkspacePanel from './components/WorkspacePanel'
 import ThemeSelector from './components/ThemeSelector'
 import WelcomeScreen from './components/WelcomeScreen'
 import AuthModal from './components/AuthModal'
+import SubscriptionModal from './components/SubscriptionModal'
 import { authService, User as AuthUser } from './services/authService'
+import { subscriptionService } from './services/subscriptionService'
 import { useWebContainer } from './hooks/useWebContainer'
 import { useKeyboardShortcuts, getDefaultShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDebounce } from './hooks/useDebounce'
@@ -103,6 +105,10 @@ function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
 
+  // 订阅状态
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [currentPlan, setCurrentPlan] = useState('free')
+
   const { isReady, output, isRunning, writeFile, runNode, fs } = useWebContainer()
 
   // 初始化设置
@@ -152,6 +158,11 @@ function AppContent() {
     authService.getSession().then(session => {
       setCurrentUser(session?.user || null)
       setAuthChecked(true)
+    })
+
+    // 加载订阅状态
+    subscriptionService.getSubscription().then(sub => {
+      setCurrentPlan(sub.plan)
     })
   }, [])
 
@@ -499,6 +510,29 @@ function AppContent() {
           </button>
         )}
 
+        {/* 升级按钮 - 已登录且非企业版用户显示 */}
+        {currentUser && currentPlan !== 'enterprise' && (
+          <button
+            onClick={() => setShowSubscriptionModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              color: 'white',
+              fontWeight: 500
+            }}
+          >
+            <Zap size={14} />
+            <span>{currentPlan === 'free' ? '升级 Pro' : '升级企业版'}</span>
+          </button>
+        )}
+
         {/* 命令面板按钮 */}
         <button
           onClick={() => setShowCommandPalette(true)}
@@ -794,6 +828,14 @@ function AppContent() {
       {showAuthModal && (
         <AuthModal
           onClose={() => setShowAuthModal(false)}
+        />
+      )}
+
+      {/* 订阅计划弹窗 */}
+      {showSubscriptionModal && (
+        <SubscriptionModal
+          onClose={() => setShowSubscriptionModal(false)}
+          currentPlan={currentPlan}
         />
       )}
 

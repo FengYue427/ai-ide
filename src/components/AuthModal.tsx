@@ -1,11 +1,17 @@
-import React, { useState } from 'react'
-import { X, Mail, Lock, Github, Chrome, Eye, EyeOff, Sparkles, ArrowLeft } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { X, Mail, Lock, Github, Chrome, Eye, EyeOff, Sparkles, ArrowLeft, Check, AlertCircle } from 'lucide-react'
 
 interface AuthModalProps {
   onClose: () => void
 }
 
 type AuthTab = 'login' | 'register' | 'forgot'
+
+interface ValidationState {
+  email: { valid: boolean; message: string }
+  password: { valid: boolean; message: string }
+  confirmPassword: { valid: boolean; message: string }
+}
 
 const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<AuthTab>('login')
@@ -16,9 +22,72 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [focusedField, setFocusedField] = useState<string | null>(null)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const confirmPasswordRef = useRef<HTMLInputElement>(null)
+
+  // 实时验证
+  const validateEmail = (value: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(value)
+  }
+  
+  const validatePassword = (value: string): boolean => {
+    return value.length >= 8
+  }
+  
+  const validateConfirmPassword = (value: string): boolean => {
+    return value === password && value.length >= 8
+  }
+  
+  const getValidation = (): ValidationState => ({
+    email: { 
+      valid: validateEmail(email), 
+      message: touched.email && !validateEmail(email) ? '请输入有效的邮箱地址' : '' 
+    },
+    password: { 
+      valid: validatePassword(password), 
+      message: touched.password && !validatePassword(password) ? '密码至少需要 8 位字符' : '' 
+    },
+    confirmPassword: { 
+      valid: validateConfirmPassword(confirmPassword), 
+      message: touched.confirmPassword && !validateConfirmPassword(confirmPassword) ? '两次输入的密码不一致' : '' 
+    }
+  })
+  
+  const validation = getValidation()
+  
+  const isFormValid = () => {
+    if (activeTab === 'login') return validateEmail(email) && password.length > 0
+    if (activeTab === 'register') return validateEmail(email) && validatePassword(password) && validateConfirmPassword(confirmPassword)
+    if (activeTab === 'forgot') return validateEmail(email)
+    return false
+  }
+
+  // 键盘导航
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+      if (e.key === 'Enter' && !loading && isFormValid()) {
+        const form = document.querySelector('.auth-form') as HTMLFormElement
+        form?.requestSubmit()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [loading, email, password, confirmPassword, activeTab])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isFormValid()) {
+      setTouched({ email: true, password: true })
+      return
+    }
     setLoading(true)
     setError('')
     
@@ -44,16 +113,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setTouched({ email: true, password: true, confirmPassword: true })
     
-    if (password !== confirmPassword) {
-      setError('两次输入的密码不一致')
-      return
-    }
-    
-    if (password.length < 8) {
-      setError('密码至少需要 8 位字符')
-      return
-    }
+    if (!isFormValid()) return
     
     setLoading(true)
     
@@ -82,6 +144,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
+    setTouched({ email: true })
+    if (!validateEmail(email)) return
     setLoading(true)
     setError('')
     
@@ -112,6 +176,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     setActiveTab(tab)
     setError('')
     setMessage('')
+    setTouched({})
+    setFocusedField(null)
   }
 
   const getTitle = () => {
@@ -193,17 +259,26 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             <label className="auth-input-label">
               <Mail size={14} />
               邮箱地址
+              {touched.email && validation.email.valid && <Check size={14} className="validation-icon valid" />}
             </label>
-            <div className="auth-input-wrapper">
+            <div className={`auth-input-wrapper ${focusedField === 'email' ? 'focused' : ''} ${validation.email.message ? 'error' : ''}`}>
               <input
+                ref={emailRef}
                 type="email"
                 className="auth-input"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => {
+                  setEmail(e.target.value)
+                  if (!touched.email) setTouched(prev => ({ ...prev, email: true }))
+                }}
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
                 placeholder="name@example.com"
                 required
               />
+              {validation.email.message && <AlertCircle size={16} className="input-error-icon" />}
             </div>
+            {validation.email.message && <span className="field-error">{validation.email.message}</span>}
           </div>
 
           {activeTab !== 'forgot' && (
@@ -211,18 +286,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
               <label className="auth-input-label">
                 <Lock size={14} />
                 密码
+                {touched.password && validation.password.valid && <Check size={14} className="validation-icon valid" />}
                 {activeTab === 'login' && (
                   <span className="auth-forgot-link" onClick={() => switchTab('forgot')}>
                     忘记密码？
                   </span>
                 )}
               </label>
-              <div className="auth-input-wrapper">
+              <div className={`auth-input-wrapper ${focusedField === 'password' ? 'focused' : ''} ${validation.password.message ? 'error' : ''}`}>
                 <input
+                  ref={passwordRef}
                   type={showPassword ? 'text' : 'password'}
                   className="auth-input"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={e => {
+                    setPassword(e.target.value)
+                    if (!touched.password) setTouched(prev => ({ ...prev, password: true }))
+                  }}
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField(null)}
                   placeholder={activeTab === 'register' ? '至少 8 位字符' : '输入密码'}
                   required
                   minLength={8}
@@ -234,7 +316,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
+                {validation.password.message && <AlertCircle size={16} className="input-error-icon" />}
               </div>
+              {validation.password.message && <span className="field-error">{validation.password.message}</span>}
             </div>
           )}
 
@@ -243,17 +327,26 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
               <label className="auth-input-label">
                 <Lock size={14} />
                 确认密码
+                {touched.confirmPassword && validation.confirmPassword.valid && <Check size={14} className="validation-icon valid" />}
               </label>
-              <div className="auth-input-wrapper">
+              <div className={`auth-input-wrapper ${focusedField === 'confirmPassword' ? 'focused' : ''} ${validation.confirmPassword.message ? 'error' : ''}`}>
                 <input
+                  ref={confirmPasswordRef}
                   type={showPassword ? 'text' : 'password'}
                   className="auth-input"
                   value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
+                  onChange={e => {
+                    setConfirmPassword(e.target.value)
+                    if (!touched.confirmPassword) setTouched(prev => ({ ...prev, confirmPassword: true }))
+                  }}
+                  onFocus={() => setFocusedField('confirmPassword')}
+                  onBlur={() => setFocusedField(null)}
                   placeholder="再次输入密码"
                   required
                 />
+                {validation.confirmPassword.message && <AlertCircle size={16} className="input-error-icon" />}
               </div>
+              {validation.confirmPassword.message && <span className="field-error">{validation.confirmPassword.message}</span>}
             </div>
           )}
 
@@ -531,6 +624,55 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
 
         .auth-input-wrapper {
           position: relative;
+          transition: all 0.2s;
+        }
+
+        .auth-input-wrapper.focused {
+          transform: scale(1.01);
+        }
+
+        .auth-input-wrapper.error .auth-input {
+          border-color: #ef4444;
+          box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .validation-icon {
+          margin-left: auto;
+          color: #22c55e;
+          animation: scaleIn 0.2s ease;
+        }
+
+        @keyframes scaleIn {
+          from { transform: scale(0); }
+          to { transform: scale(1); }
+        }
+
+        .input-error-icon {
+          position: absolute;
+          right: 44px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #ef4444;
+          pointer-events: none;
+        }
+
+        .field-error {
+          font-size: 12px;
+          color: #ef4444;
+          margin-top: 4px;
+          display: block;
+          animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+          from { 
+            opacity: 0;
+            transform: translateY(-4px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         .auth-input {
