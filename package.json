@@ -10,8 +10,7 @@
     "preview": "vite preview",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "deploy:netlify": "npm run build && npx netlify deploy --prod --dir=dist",
-    "deploy:vercel": "npx vercel --prod"
+    "deploy": "npx vercel --prod"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",
