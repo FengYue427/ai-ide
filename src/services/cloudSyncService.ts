@@ -36,7 +36,7 @@ export const cloudSyncService = {
     settings: WorkspaceBackup['settings'],
     description?: string
   ): Promise<WorkspaceBackup> {
-    const workspaces = await this.getAllWorkspaces()
+    const workspaces = await cloudSyncService.getAllWorkspaces()
     
     const workspace: WorkspaceBackup = {
       id: Date.now().toString(36) + Math.random().toString(36).substr(2),
@@ -59,7 +59,7 @@ export const cloudSyncService = {
     id: string,
     updates: Partial<Omit<WorkspaceBackup, 'id' | 'createdAt'>>
   ): Promise<WorkspaceBackup | null> {
-    const workspaces = await this.getAllWorkspaces()
+    const workspaces = await cloudSyncService.getAllWorkspaces()
     const index = workspaces.findIndex(w => w.id === id)
     
     if (index === -1) return null
@@ -76,7 +76,7 @@ export const cloudSyncService = {
 
   // 删除工作区
   async deleteWorkspace(id: string): Promise<boolean> {
-    const workspaces = await this.getAllWorkspaces()
+    const workspaces = await cloudSyncService.getAllWorkspaces()
     const filtered = workspaces.filter(w => w.id !== id)
     
     if (filtered.length === workspaces.length) return false
@@ -114,7 +114,7 @@ export const cloudSyncService = {
         updatedAt: Date.now()
       }
 
-      const workspaces = await this.getAllWorkspaces()
+      const workspaces = await cloudSyncService.getAllWorkspaces()
       workspaces.push(workspace)
       await unifiedStorage.set(WORKSPACE_KEY, workspaces, { layer: StorageLayer.INDEXED })
       
@@ -150,7 +150,7 @@ export const cloudSyncService = {
 
   // 恢复自动备份
   async restoreAutoBackup(): Promise<WorkspaceBackup | null> {
-    const backup = await this.getAutoBackup()
+    const backup = await cloudSyncService.getAutoBackup()
     if (!backup) return null
 
     // 更新备份时间
@@ -162,8 +162,8 @@ export const cloudSyncService = {
 
   // 导出所有数据（完整备份）
   async exportAllData(): Promise<string> {
-    const workspaces = await this.getAllWorkspaces()
-    const autoBackup = await this.getAutoBackup()
+    const workspaces = await cloudSyncService.getAllWorkspaces()
+    const autoBackup = await cloudSyncService.getAutoBackup()
     
     const data = {
       version: '1.0',

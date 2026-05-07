@@ -33,10 +33,16 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
   }, [])
 
   const loadWorkspaces = async () => {
-    const list = await cloudSyncService.getAllWorkspaces()
-    setWorkspaces(list)
-    const backup = await cloudSyncService.getAutoBackup()
-    setAutoBackup(backup)
+    try {
+      const list = await cloudSyncService.getAllWorkspaces()
+      setWorkspaces(list || [])
+      const backup = await cloudSyncService.getAutoBackup()
+      setAutoBackup(backup || null)
+    } catch (error) {
+      console.error('Failed to load workspaces:', error)
+      setWorkspaces([])
+      setAutoBackup(null)
+    }
   }
 
   const handleSave = async () => {
@@ -177,7 +183,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
         </div>
 
         {/* Auto Backup Alert */}
-        {autoBackup && (
+        {autoBackup && autoBackup.updatedAt && (
           <div
             style={{
               padding: '12px 20px',
