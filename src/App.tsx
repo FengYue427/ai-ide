@@ -387,9 +387,6 @@ function AppContent() {
     }
   }
 
-  const officialSiteUrl = import.meta.env.VITE_OFFICIAL_SITE_URL || 'https://ai-ide-flame.vercel.app/website/index.html'
-  const officialSiteUrlSource = import.meta.env.VITE_OFFICIAL_SITE_URL ? 'env:VITE_OFFICIAL_SITE_URL' : 'fallback:vercel-website'
-
   return (
     <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
       {/* 顶部工具栏 */}
@@ -451,29 +448,6 @@ function AppContent() {
         </div>
 
         <div style={{ flex: 1 }} />
-
-        <button
-          onClick={() => {
-            console.info('[AIDE][diagnostic] official site url:', officialSiteUrl, 'source:', officialSiteUrlSource)
-            window.open(officialSiteUrl, '_blank', 'noopener,noreferrer')
-          }}
-          title="官网"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '6px 12px',
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            color: 'var(--text-primary)'
-          }}
-        >
-          <Home size={14} />
-          <span>官网</span>
-        </button>
 
         {/* 用户登录按钮 */}
         {currentUser ? (
