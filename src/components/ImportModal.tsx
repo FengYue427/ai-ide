@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { X, Github, Upload, Link2, FolderOpen } from 'lucide-react'
+import { X, Github, Upload, Link2, FolderOpen, FileArchive } from 'lucide-react'
+import JSZip from 'jszip'
 import { parseGitHubUrl, fetchRepoContents, getRepoBranches } from '../services/githubService'
 
 interface ImportModalProps {
@@ -8,7 +9,7 @@ interface ImportModalProps {
 }
 
 const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'github' | 'upload'>('github')
+  const [activeTab, setActiveTab] = useState<'github' | 'upload' | 'zip'>('github')
   const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
   const [loading, setLoading] = useState(false)
@@ -100,6 +101,60 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
     })
   }
 
+  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.zip')) {
+      setError('请选择 ZIP 文件')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const zip = new JSZip()
+      const arrayBuffer = await file.arrayBuffer()
+      const loadedZip = await zip.loadAsync(arrayBuffer)
+
+      const files: { name: string; content: string; language: string }[] = []
+      const langMap: Record<string, string> = {
+        js: 'javascript', ts: 'typescript', jsx: 'javascript',
+        tsx: 'typescript', py: 'python', html: 'html',
+        css: 'css', json: 'json', md: 'markdown'
+      }
+
+      // 遍历 ZIP 中的所有文件
+      const filePromises: Promise<void>[] = []
+      loadedZip.forEach((relativePath, zipEntry) => {
+        if (!zipEntry.dir) {
+          const promise = zipEntry.async('string').then(content => {
+            const ext = zipEntry.name.split('.').pop()?.toLowerCase() || ''
+            files.push({
+              name: zipEntry.name,
+              content,
+              language: langMap[ext] || 'plaintext'
+            })
+          })
+          filePromises.push(promise)
+        }
+      })
+
+      await Promise.all(filePromises)
+
+      if (files.length === 0) {
+        setError('ZIP 中未找到可导入的文件')
+      } else {
+        onImport(files)
+      }
+    } catch (err) {
+      setError('解析 ZIP 文件失败: ' + (err as Error).message)
+    }
+
+    setLoading(false)
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ width: '480px' }} onClick={(e) => e.stopPropagation()}>
@@ -116,7 +171,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
           <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
             {[
               { id: 'github', icon: Github, label: 'GitHub' },
-              { id: 'upload', icon: Upload, label: '上传文件' }
+              { id: 'upload', icon: Upload, label: '上传文件' },
+              { id: 'zip', icon: FileArchive, label: 'ZIP 导入' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -269,6 +325,61 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
                   支持多文件选择
                 </span>
               </label>
+            </div>
+          )}
+
+          {activeTab === 'zip' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', padding: '20px' }}>
+              <input
+                type="file"
+                accept=".zip"
+                onChange={handleZipUpload}
+                id="zip-upload"
+                style={{ display: 'none' }}
+              />
+              <label
+                htmlFor="zip-upload"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '32px 48px',
+                  border: '2px dashed var(--border-color)',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const droppedFiles = e.dataTransfer.files
+                  if (droppedFiles[0]?.name.endsWith('.zip')) {
+                    const fakeEvent = { target: { files: droppedFiles } } as React.ChangeEvent<HTMLInputElement>
+                    handleZipUpload(fakeEvent)
+                  } else {
+                    setError('请拖入 ZIP 文件')
+                  }
+                }}
+              >
+                <FileArchive size={32} style={{ color: 'var(--accent-color)' }} />
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                  点击或拖拽 ZIP 文件到此处
+                </span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  支持从 AI IDE 导出的 ZIP 文件
+                </span>
+              </label>
+              {error && (
+                <div style={{ padding: '8px 12px', background: 'rgba(248, 81, 73, 0.1)', borderRadius: '6px', color: '#f85149', fontSize: '13px' }}>
+                  {error}
+                </div>
+              )}
+              {loading && (
+                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                  正在解析 ZIP...
+                </div>
+              )}
             </div>
           )}
         </div>
