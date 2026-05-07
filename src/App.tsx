@@ -169,8 +169,20 @@ function AppContent() {
   // 加载自动保存的项目（优先云同步，回退本地存储）
   useEffect(() => {
     if (!authChecked) return
-    
+
+    // 检测是否从官网跳转过来（referrer 包含本地或线上官网路径）
+    const referrer = document.referrer
+    const isFromLandingPage = referrer.includes('/website/') ||
+                               referrer.endsWith('index.html') ||
+                               (!referrer.includes('ai-ide') && referrer.length > 0)
+
     const loadWorkspace = async () => {
+      // 如果从官网跳转，强制显示欢迎页
+      if (isFromLandingPage) {
+        setShowWelcome(true)
+        return
+      }
+
       // 如果已登录，优先尝试云同步加载
       if (currentUser) {
         const cloudData = await authService.loadWorkspace('default')
@@ -179,7 +191,7 @@ function AppContent() {
           return
         }
       }
-      
+
       // 回退到本地存储
       const savedFiles = await unifiedStorage.get<{ name: string; content: string; language: string }[] | null>('autosave-default', null)
       if (savedFiles && savedFiles.length > 0) {
@@ -193,7 +205,7 @@ function AppContent() {
         setShowWelcome(true)
       }
     }
-    
+
     loadWorkspace()
   }, [authChecked, currentUser])
 
