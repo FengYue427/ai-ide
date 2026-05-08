@@ -1,28 +1,33 @@
 /**
- * Auth API - 占位实现
+ * Auth API - Providers 和 CSRF 端点
  * 
- * 当前为纯前端模式，所有认证功能已禁用。
- * 此 API 返回 501 提示前端使用本地存储模式。
- * 
- * 如需完整认证，需接入 Auth.js + 数据库 + OAuth 提供商
+ * 支持邮箱+密码登录，可扩展 OAuth
  */
+import { randomBytes } from 'crypto'
 
-import { Auth } from "@auth/core"
+// 生成 CSRF Token
 export const GET = (req: Request) => {
-  return new Response(JSON.stringify({ 
-    providers: ["credentials", "github", "google"],
-    csrfToken: "placeholder"
-  }), { 
-    headers: { "Content-Type": "application/json" }
-  })
-}
+  const url = new URL(req.url)
+  const pathname = url.pathname
 
-export const POST = (req: Request) => {
-  return new Response(JSON.stringify({ 
-    error: "Auth not fully configured in Vite build",
-    hint: "Use localStorage mode for now"
-  }), { 
-    status: 501,
+  // 获取可用登录方式
+  if (pathname.includes('providers')) {
+    return new Response(JSON.stringify({
+      credentials: {
+        id: "credentials",
+        name: "邮箱密码",
+        type: "credentials"
+      }
+      // 未来可扩展: github, google
+    }), {
+      headers: { "Content-Type": "application/json" }
+    })
+  }
+
+  // CSRF Token
+  return new Response(JSON.stringify({
+    csrfToken: randomBytes(32).toString('hex')
+  }), {
     headers: { "Content-Type": "application/json" }
   })
 }
