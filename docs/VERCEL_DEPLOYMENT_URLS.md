@@ -66,7 +66,7 @@ npm run smoke:production -- $env:APP_URL
 1. 打开 `https://ai-ide-flame.vercel.app` → 应看到欢迎页 / IDE，而不是 Vercel 403 页  
 2. 打开 `https://ai-ide-flame.vercel.app/api/health` → 应返回 JSON（`status: ok`，`database: connected`）
 
-若 `/api/health` 返回的是 HTML 欢迎页，说明 API 未部署成功：确认已 push **最新** `main`（含 `api/health` 与 `vercel.json` 不重写 `/api/*`）。
+若 `/api/health` 返回 **404** 或 HTML 欢迎页：确认已 push 含 `api/__dispatch.ts` 与 `vercel.json` 中 `/api/*` → `/api/__dispatch` 重写的最新 `main`（Vite 项目不能用 Next.js 的 `route.ts` 目录路由）。
 
 ## 当前部署可能过旧
 

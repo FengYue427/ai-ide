@@ -23,6 +23,10 @@
       "destination": "/website/$1"
     },
     {
+      "source": "/api/(?!__dispatch(?:/|$))(.*)",
+      "destination": "/api/__dispatch?__p=$1"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
