@@ -1,37 +1,8 @@
 /**
  * Single API router for Vercel Hobby (≤12 Serverless Functions).
- * All /api/* traffic is handled by `api/[...path].ts` → dispatchApiRequest.
+ * Handlers are loaded on demand so heavy deps (alipay-sdk, stripe, etc.) do not
+ * run on every cold start (e.g. GET /api/health).
  */
-import { GET as healthGET } from './handlers/health'
-import { GET as sessionGET } from './handlers/auth/session'
-import { POST as registerPOST } from './handlers/auth/register'
-import { POST as loginPOST } from './handlers/auth/callback/credentials'
-import { POST as signoutPOST, GET as signoutGET } from './handlers/auth/signout'
-import { POST as forgotPasswordPOST } from './handlers/auth/forgot-password'
-import { GET as oauthCatchAllGET, POST as oauthCatchAllPOST } from './handlers/auth/oauth/catchAll'
-import { POST as oauthSyncPOST } from './handlers/auth/oauth/sync'
-import { GET as oauthProvidersGET } from './handlers/auth/oauth/providers'
-import { GET as authCatchAllGET } from './handlers/auth/authCatchAll'
-import { GET as workspacesGET, POST as workspacesPOST } from './handlers/workspaces/index'
-import {
-  GET as workspaceIdGET,
-  PUT as workspaceIdPUT,
-  DELETE as workspaceIdDELETE,
-} from './handlers/workspaces/byId'
-import { GET as subscriptionGET } from './handlers/subscription/index'
-import { GET as subscriptionPlansGET } from './handlers/subscription/plans'
-import { POST as subscriptionCheckoutPOST } from './handlers/subscription/checkout'
-import { POST as subscriptionWebhookPOST } from './handlers/subscription/webhook'
-import { POST as subscriptionCancelPOST } from './handlers/subscription/cancel'
-import { POST as subscriptionPortalPOST } from './handlers/subscription/portal'
-import { POST as subscriptionResumePOST } from './handlers/subscription/resume'
-import { GET as paymentMethodsGET } from './handlers/subscription/payment-methods'
-import { POST as alipayNotifyPOST } from './handlers/payment/alipay/notify'
-import { POST as wechatNotifyPOST } from './handlers/payment/wechat/notify'
-import { GET as paymentOrderGET } from './handlers/payment/orders/byId'
-import { POST as paymentDevSimulatePOST } from './handlers/payment/dev/simulate'
-import { GET as usageAiGET, POST as usageAiPOST } from './handlers/usage/ai'
-import { POST as mcpProxyPOST } from './handlers/mcp/proxy'
 import { jsonResponse } from './http'
 
 export type ApiRouteHandler = (
@@ -39,71 +10,129 @@ export type ApiRouteHandler = (
   ctx?: { params: Record<string, string> },
 ) => Promise<Response> | Response
 
+type HandlerModule = Record<string, ApiRouteHandler | undefined>
+
 type RouteEntry = {
   method: string
   match: (pathname: string) => Record<string, string> | null
-  handler: ApiRouteHandler
+  load: () => Promise<HandlerModule>
+  export: string
 }
 
 const routes: RouteEntry[] = [
-  { method: 'GET', match: (p) => (p === '/api/health' ? {} : null), handler: healthGET },
-  { method: 'GET', match: (p) => (p === '/api/auth/session' ? {} : null), handler: sessionGET },
-  { method: 'POST', match: (p) => (p === '/api/auth/register' ? {} : null), handler: registerPOST },
-  { method: 'POST', match: (p) => (p === '/api/auth/forgot-password' ? {} : null), handler: forgotPasswordPOST },
-  { method: 'POST', match: (p) => (p === '/api/auth/callback/credentials' ? {} : null), handler: loginPOST },
-  { method: 'POST', match: (p) => (p === '/api/auth/signout' ? {} : null), handler: signoutPOST },
-  { method: 'GET', match: (p) => (p === '/api/auth/signout' ? {} : null), handler: signoutGET },
-  { method: 'GET', match: (p) => (p === '/api/auth/oauth/providers' ? {} : null), handler: oauthProvidersGET },
-  { method: 'POST', match: (p) => (p === '/api/auth/oauth/sync' ? {} : null), handler: oauthSyncPOST },
+  { method: 'GET', match: (p) => (p === '/api/health' ? {} : null), load: () => import('./handlers/health'), export: 'GET' },
+  { method: 'GET', match: (p) => (p === '/api/auth/session' ? {} : null), load: () => import('./handlers/auth/session'), export: 'GET' },
+  { method: 'POST', match: (p) => (p === '/api/auth/register' ? {} : null), load: () => import('./handlers/auth/register'), export: 'POST' },
+  { method: 'POST', match: (p) => (p === '/api/auth/forgot-password' ? {} : null), load: () => import('./handlers/auth/forgot-password'), export: 'POST' },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/auth/callback/credentials' ? {} : null),
+    load: () => import('./handlers/auth/callback/credentials'),
+    export: 'POST',
+  },
+  { method: 'POST', match: (p) => (p === '/api/auth/signout' ? {} : null), load: () => import('./handlers/auth/signout'), export: 'POST' },
+  { method: 'GET', match: (p) => (p === '/api/auth/signout' ? {} : null), load: () => import('./handlers/auth/signout'), export: 'GET' },
+  {
+    method: 'GET',
+    match: (p) => (p === '/api/auth/oauth/providers' ? {} : null),
+    load: () => import('./handlers/auth/oauth/providers'),
+    export: 'GET',
+  },
+  { method: 'POST', match: (p) => (p === '/api/auth/oauth/sync' ? {} : null), load: () => import('./handlers/auth/oauth/sync'), export: 'POST' },
   {
     method: 'GET',
     match: (p) =>
       p.startsWith('/api/auth/oauth/') && p !== '/api/auth/oauth/providers' && p !== '/api/auth/oauth/sync'
         ? {}
         : null,
-    handler: oauthCatchAllGET,
+    load: () => import('./handlers/auth/oauth/catchAll'),
+    export: 'GET',
   },
   {
     method: 'POST',
     match: (p) =>
       p.startsWith('/api/auth/oauth/') && p !== '/api/auth/oauth/sync' ? {} : null,
-    handler: oauthCatchAllPOST,
+    load: () => import('./handlers/auth/oauth/catchAll'),
+    export: 'POST',
   },
-  { method: 'GET', match: (p) => (p === '/api/workspaces' ? {} : null), handler: workspacesGET },
-  { method: 'POST', match: (p) => (p === '/api/workspaces' ? {} : null), handler: workspacesPOST },
-  { method: 'GET', match: (p) => (p === '/api/subscription' ? {} : null), handler: subscriptionGET },
-  { method: 'GET', match: (p) => (p === '/api/subscription/plans' ? {} : null), handler: subscriptionPlansGET },
+  { method: 'GET', match: (p) => (p === '/api/workspaces' ? {} : null), load: () => import('./handlers/workspaces/index'), export: 'GET' },
+  { method: 'POST', match: (p) => (p === '/api/workspaces' ? {} : null), load: () => import('./handlers/workspaces/index'), export: 'POST' },
+  { method: 'GET', match: (p) => (p === '/api/subscription' ? {} : null), load: () => import('./handlers/subscription/index'), export: 'GET' },
+  { method: 'GET', match: (p) => (p === '/api/subscription/plans' ? {} : null), load: () => import('./handlers/subscription/plans'), export: 'GET' },
   {
     method: 'GET',
     match: (p) => (p === '/api/subscription/payment-methods' ? {} : null),
-    handler: paymentMethodsGET,
+    load: () => import('./handlers/subscription/payment-methods'),
+    export: 'GET',
   },
-  { method: 'POST', match: (p) => (p === '/api/payment/alipay/notify' ? {} : null), handler: alipayNotifyPOST },
-  { method: 'POST', match: (p) => (p === '/api/payment/wechat/notify' ? {} : null), handler: wechatNotifyPOST },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/payment/alipay/notify' ? {} : null),
+    load: () => import('./handlers/payment/alipay/notify'),
+    export: 'POST',
+  },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/payment/wechat/notify' ? {} : null),
+    load: () => import('./handlers/payment/wechat/notify'),
+    export: 'POST',
+  },
   {
     method: 'GET',
     match: (p) => {
       const m = p.match(/^\/api\/payment\/orders\/([^/]+)$/)
       return m ? { id: decodeURIComponent(m[1]) } : null
     },
-    handler: paymentOrderGET,
+    load: () => import('./handlers/payment/orders/byId'),
+    export: 'GET',
   },
-  { method: 'POST', match: (p) => (p === '/api/payment/dev/simulate' ? {} : null), handler: paymentDevSimulatePOST },
-  { method: 'POST', match: (p) => (p === '/api/subscription/checkout' ? {} : null), handler: subscriptionCheckoutPOST },
-  { method: 'POST', match: (p) => (p === '/api/subscription/webhook' ? {} : null), handler: subscriptionWebhookPOST },
-  { method: 'POST', match: (p) => (p === '/api/subscription/cancel' ? {} : null), handler: subscriptionCancelPOST },
-  { method: 'POST', match: (p) => (p === '/api/subscription/portal' ? {} : null), handler: subscriptionPortalPOST },
-  { method: 'POST', match: (p) => (p === '/api/subscription/resume' ? {} : null), handler: subscriptionResumePOST },
-  { method: 'GET', match: (p) => (p === '/api/usage/ai' ? {} : null), handler: usageAiGET },
-  { method: 'POST', match: (p) => (p === '/api/usage/ai' ? {} : null), handler: usageAiPOST },
-  { method: 'POST', match: (p) => (p === '/api/mcp/proxy' ? {} : null), handler: mcpProxyPOST },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/payment/dev/simulate' ? {} : null),
+    load: () => import('./handlers/payment/dev/simulate'),
+    export: 'POST',
+  },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/subscription/checkout' ? {} : null),
+    load: () => import('./handlers/subscription/checkout'),
+    export: 'POST',
+  },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/subscription/webhook' ? {} : null),
+    load: () => import('./handlers/subscription/webhook'),
+    export: 'POST',
+  },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/subscription/cancel' ? {} : null),
+    load: () => import('./handlers/subscription/cancel'),
+    export: 'POST',
+  },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/subscription/portal' ? {} : null),
+    load: () => import('./handlers/subscription/portal'),
+    export: 'POST',
+  },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/subscription/resume' ? {} : null),
+    load: () => import('./handlers/subscription/resume'),
+    export: 'POST',
+  },
+  { method: 'GET', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'GET' },
+  { method: 'POST', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'POST' },
+  { method: 'POST', match: (p) => (p === '/api/mcp/proxy' ? {} : null), load: () => import('./handlers/mcp/proxy'), export: 'POST' },
   {
     method: 'GET',
     match: (p) => {
       const m = p.match(/^\/api\/workspaces\/([^/]+)$/)
       return m ? { id: decodeURIComponent(m[1]) } : null
     },
-    handler: workspaceIdGET,
+    load: () => import('./handlers/workspaces/byId'),
+    export: 'GET',
   },
   {
     method: 'PUT',
@@ -111,7 +140,8 @@ const routes: RouteEntry[] = [
       const m = p.match(/^\/api\/workspaces\/([^/]+)$/)
       return m ? { id: decodeURIComponent(m[1]) } : null
     },
-    handler: workspaceIdPUT,
+    load: () => import('./handlers/workspaces/byId'),
+    export: 'PUT',
   },
   {
     method: 'DELETE',
@@ -119,7 +149,8 @@ const routes: RouteEntry[] = [
       const m = p.match(/^\/api\/workspaces\/([^/]+)$/)
       return m ? { id: decodeURIComponent(m[1]) } : null
     },
-    handler: workspaceIdDELETE,
+    load: () => import('./handlers/workspaces/byId'),
+    export: 'DELETE',
   },
   {
     method: 'GET',
@@ -137,7 +168,8 @@ const routes: RouteEntry[] = [
       if (handled.includes(p) || p.startsWith('/api/auth/oauth/')) return null
       return {}
     },
-    handler: authCatchAllGET,
+    load: () => import('./handlers/auth/authCatchAll'),
+    export: 'GET',
   },
 ]
 
@@ -151,6 +183,12 @@ export async function dispatchApiRequest(request: Request): Promise<Response> {
     return jsonResponse({ error: 'Not found' }, 404)
   }
 
+  const mod = await route.load()
+  const handler = mod[route.export]
+  if (!handler) {
+    return jsonResponse({ error: 'Handler not found' }, 500)
+  }
+
   const params = route.match(pathname) ?? {}
-  return route.handler(request, { params })
+  return handler(request, { params })
 }
