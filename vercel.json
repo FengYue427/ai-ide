@@ -2,6 +2,11 @@
   "buildCommand": "npm run build:deploy",
   "outputDirectory": "dist",
   "framework": "vite",
+  "functions": {
+    "api/[...path].ts": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -21,10 +26,6 @@
     {
       "source": "/website/(.*)",
       "destination": "/website/$1"
-    },
-    {
-      "source": "/api/(?!__dispatch(?:/|$))(.*)",
-      "destination": "/api/__dispatch?__p=$1"
     },
     {
       "source": "/((?!api/).*)",

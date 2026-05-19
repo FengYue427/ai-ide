@@ -140,7 +140,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
   }
 
   const handleOAuthLogin = (provider: 'github' | 'google') => {
-    window.location.href = `/api/auth/signin/${provider}`
+    window.location.href = `/api/auth/oauth/signin/${provider}`
   }
 
   const switchTab = (tab: AuthTab) => {

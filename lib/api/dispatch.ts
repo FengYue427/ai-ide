@@ -1,6 +1,6 @@
 /**
  * Single API router for Vercel Hobby (≤12 Serverless Functions).
- * All /api/* traffic is handled by `api/__dispatch.ts` (Vercel rewrite) → dispatchApiRequest.
+ * All /api/* traffic is handled by `api/[...path].ts` → dispatchApiRequest.
  */
 import { GET as healthGET } from './handlers/health'
 import { GET as sessionGET } from './handlers/auth/session'
