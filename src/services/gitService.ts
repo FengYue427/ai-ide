@@ -19,9 +19,19 @@ export interface GitCommit {
   }
 }
 
+export interface GitFileSyncUpdate {
+  path: string
+  content: string | null
+}
+
 const DEFAULT_AUTHOR = {
   name: 'AI IDE User',
-  email: 'user@ai-ide.local'
+  email: 'user@ai-ide.local',
+}
+
+function filePathOnFs(dir: string, filepath: string): string {
+  const prefix = dir === '/' ? '' : dir
+  return `${prefix}/${filepath}`.replace(/\/+/g, '/')
 }
 
 export async function initRepo(fs: any, dir: string = '/'): Promise<void> {
@@ -40,11 +50,15 @@ export async function removeFile(fs: any, dir: string, filepath: string): Promis
   }
 }
 
+export async function unstageFile(fs: any, dir: string, filepath: string): Promise<void> {
+  await git.resetIndex({ fs, dir, filepath })
+}
+
 export async function commit(
   fs: any,
   dir: string,
   message: string,
-  author: { name: string; email: string } = DEFAULT_AUTHOR
+  author: { name: string; email: string } = DEFAULT_AUTHOR,
 ): Promise<string> {
   const commitHash = await git.commit({
     fs,
@@ -53,30 +67,31 @@ export async function commit(
     author: {
       ...author,
       timestamp: Math.floor(Date.now() / 1000),
-      timezoneOffset: new Date().getTimezoneOffset()
-    }
+      timezoneOffset: new Date().getTimezoneOffset(),
+    },
   })
   return commitHash
 }
 
 export async function getStatus(fs: any, dir: string): Promise<GitStatus[]> {
   const matrix = await git.statusMatrix({ fs, dir })
-  // matrix: [filepath, HEAD, WORKDIR, STAGE]
-  return matrix.map(([filepath, head, workdir, stage]) => {
-    let status: GitStatus['status']
-    if (head === 0 && workdir === 1 && stage === 1) status = 'added'
-    else if (head === 1 && workdir === 1 && stage === 1) status = 'unmodified'
-    else if (head === 1 && workdir === 2 && stage === 1) status = 'modified'
-    else if (head === 1 && workdir === 0 && stage === 1) status = 'deleted'
-    else if (head === 0 && workdir === 1 && stage === 0) status = 'untracked'
-    else status = 'modified'
+  return matrix
+    .map(([filepath, head, workdir, stage]) => {
+      let status: GitStatus['status']
+      if (head === 0 && workdir === 1 && stage === 1) status = 'added'
+      else if (head === 1 && workdir === 1 && stage === 1) status = 'unmodified'
+      else if (head === 1 && workdir === 2 && stage === 1) status = 'modified'
+      else if (head === 1 && workdir === 0 && stage === 1) status = 'deleted'
+      else if (head === 0 && workdir === 1 && stage === 0) status = 'untracked'
+      else status = 'modified'
 
-    return {
-      filepath: filepath as string,
-      staged: stage !== 0 && stage !== head,
-      status
-    }
-  }).filter(s => s.status !== 'unmodified')
+      return {
+        filepath: filepath as string,
+        staged: stage !== 0 && stage !== head,
+        status,
+      }
+    })
+    .filter((item) => item.status !== 'unmodified')
 }
 
 export async function getLog(fs: any, dir: string): Promise<GitCommit[]> {
@@ -84,16 +99,154 @@ export async function getLog(fs: any, dir: string): Promise<GitCommit[]> {
   return commits as GitCommit[]
 }
 
+export async function getCurrentBranch(fs: any, dir: string = '/'): Promise<string | null> {
+  try {
+    const branch = await git.currentBranch({ fs, dir })
+    return branch ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function listBranches(fs: any, dir: string = '/'): Promise<string[]> {
+  try {
+    const branches = await git.listBranches({ fs, dir })
+    return branches.length > 0 ? branches : ['main']
+  } catch {
+    return ['main']
+  }
+}
+
+export async function checkoutBranch(fs: any, dir: string, branch: string): Promise<void> {
+  await git.checkout({ fs, dir, ref: branch })
+}
+
+/** Read current worktree contents for editor/workspace sync after checkout or reset. */
+export async function readWorktreeContents(
+  fs: any,
+  dir: string,
+  filepaths: string[],
+): Promise<GitFileSyncUpdate[]> {
+  const seen = new Set<string>()
+  const updates: GitFileSyncUpdate[] = []
+
+  for (const filepath of filepaths) {
+    const normalized = filepath.replace(/^\.\//, '').trim()
+    if (!normalized || seen.has(normalized)) continue
+    seen.add(normalized)
+
+    try {
+      const content = await readWorkdirFile(fs, dir, normalized)
+      updates.push({ path: normalized, content })
+    } catch {
+      updates.push({ path: normalized, content: null })
+    }
+  }
+
+  return updates
+}
+
+async function readWorkdirFile(fs: any, dir: string, filepath: string): Promise<string> {
+  const path = filePathOnFs(dir, filepath)
+  const raw = await fs.readFile(path, 'utf-8')
+  return typeof raw === 'string' ? raw : new TextDecoder().decode(raw)
+}
+
+async function removeWorkdirFile(fs: any, dir: string, filepath: string): Promise<void> {
+  const path = filePathOnFs(dir, filepath)
+  if (typeof fs.rm === 'function') {
+    await fs.rm(path, { force: true })
+    return
+  }
+  if (typeof fs.unlink === 'function') {
+    await fs.unlink(path)
+  }
+}
+
+/** Discard worktree changes for one file; returns editor content or null if removed. */
+export async function discardFileChanges(
+  fs: any,
+  dir: string,
+  filepath: string,
+  fileStatus: GitStatus['status'],
+): Promise<string | null> {
+  if (fileStatus === 'untracked') {
+    await removeWorkdirFile(fs, dir, filepath)
+    return null
+  }
+
+  if (fileStatus === 'added') {
+    await git.resetIndex({ fs, dir, filepath })
+    await removeWorkdirFile(fs, dir, filepath)
+    return null
+  }
+
+  await git.checkout({
+    fs,
+    dir,
+    ref: 'HEAD',
+    filepaths: [filepath],
+    force: true,
+  })
+
+  if (fileStatus === 'deleted') {
+    return await readWorkdirFile(fs, dir, filepath)
+  }
+
+  try {
+    return await readWorkdirFile(fs, dir, filepath)
+  } catch {
+    return ''
+  }
+}
+
+export async function discardAllUnstaged(
+  fs: any,
+  dir: string,
+  items: GitStatus[],
+): Promise<GitFileSyncUpdate[]> {
+  const updates: GitFileSyncUpdate[] = []
+  for (const item of items.filter((entry) => !entry.staged)) {
+    const content = await discardFileChanges(fs, dir, item.filepath, item.status)
+    updates.push({ path: item.filepath, content })
+  }
+  return updates
+}
+
+export async function getFileDiff(
+  fs: any,
+  dir: string,
+  filepath: string,
+): Promise<{ oldContent: string; newContent: string }> {
+  const decoder = new TextDecoder()
+  let oldContent = ''
+  let newContent = ''
+
+  try {
+    const headBlob = await git.readBlob({ fs, dir, oid: 'HEAD', filepath })
+    oldContent = decoder.decode(headBlob.blob)
+  } catch {
+    oldContent = ''
+  }
+
+  try {
+    newContent = await readWorkdirFile(fs, dir, filepath)
+  } catch {
+    newContent = ''
+  }
+
+  return { oldContent, newContent }
+}
+
 export async function pushToGitHub(
   fs: any,
   dir: string,
   remoteUrl: string,
   token: string,
-  ref: string = 'main'
+  ref: string = 'main',
 ): Promise<void> {
-  // Remove https:// or git@ and reconstruct with token
   const url = remoteUrl.replace('https://', `https://oauth2:${token}@`)
-  
+
   await git.push({
     fs,
     http,
@@ -101,24 +254,19 @@ export async function pushToGitHub(
     url,
     remote: 'origin',
     remoteRef: ref,
-    onAuth: () => ({ username: 'oauth2', password: token })
+    onAuth: () => ({ username: 'oauth2', password: token }),
   })
 }
 
-export async function cloneRepo(
-  fs: any,
-  dir: string,
-  url: string,
-  token?: string
-): Promise<void> {
+export async function cloneRepo(fs: any, dir: string, url: string, token?: string): Promise<void> {
   const authUrl = token ? url.replace('https://', `https://oauth2:${token}@`) : url
-  
+
   await git.clone({
     fs,
     http,
     dir,
     url: authUrl,
     singleBranch: true,
-    depth: 1
+    depth: 1,
   })
 }

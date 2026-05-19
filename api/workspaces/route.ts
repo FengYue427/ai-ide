@@ -1,66 +1,79 @@
 /**
- * Workspaces API - 演示/占位实现
- * 
- * 当前为纯前端模式：
- * - 使用内存存储（重启后数据丢失）
- * - 前端直接从 IndexedDB 读写，不调用此 API
- * 
- * 如需云同步功能，需接入真实数据库 + 用户鉴权
+ * Workspaces API — Prisma + JWT auth
  */
-const workspaces: any[] = [
-  { id: 'default', name: 'default', files: '[]', settings: '{}', isDefault: true, updatedAt: new Date().toISOString() }
-]
+import { errorResponse, jsonResponse } from '../../lib/api/http'
+import { requireAuth } from '../../lib/api/requireAuth'
+import {
+  countUserWorkspaces,
+  getWorkspaceByName,
+  listUserWorkspaces,
+  upsertWorkspace,
+} from '../../lib/api/workspacesService'
+import { getWorkspaceLimit } from '../../lib/billing/plans'
+import { resolveUserPlanName } from '../../lib/billing/usageDb'
 
-// 获取所有工作区列表
 export async function GET(req: Request) {
-  return new Response(JSON.stringify({ 
-    workspaces: workspaces.map(w => ({
-      id: w.id,
-      name: w.name,
-      isDefault: w.isDefault,
-      updatedAt: w.updatedAt
-    }))
-  }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" }
-  })
+  const auth = await requireAuth(req)
+  if (!auth.ok) return auth.response
+
+  try {
+    const workspaces = await listUserWorkspaces(auth.user.id)
+    return jsonResponse({ workspaces })
+  } catch (error) {
+    console.error('[Workspaces] List error:', error)
+    return errorResponse('获取工作区列表失败', 500)
+  }
 }
 
-// 创建新工作区
 export async function POST(req: Request) {
+  const auth = await requireAuth(req)
+  if (!auth.ok) return auth.response
+
   try {
     const { name, files, settings } = await req.json()
-    
-    if (!name) {
-      return new Response(JSON.stringify({ error: "工作区名称必填" }), {
-        status: 400
-      })
+
+    if (!name || typeof name !== 'string') {
+      return errorResponse('工作区名称必填', 400)
     }
 
-    const workspace = {
-      id: Date.now().toString(),
-      name,
-      files: files || '[]',
-      settings: settings || '{}',
-      isDefault: false,
-      updatedAt: new Date().toISOString()
+    const workspaceName = name.trim()
+    if (!workspaceName) {
+      return errorResponse('工作区名称无效', 400)
     }
-    workspaces.push(workspace)
 
-    return new Response(JSON.stringify({ 
+    const existing = await getWorkspaceByName(auth.user.id, workspaceName)
+    if (!existing) {
+      const planName = await resolveUserPlanName(auth.user.id)
+      const workspaceLimit = getWorkspaceLimit(planName)
+      if (workspaceLimit !== -1) {
+        const used = await countUserWorkspaces(auth.user.id)
+        if (used >= workspaceLimit) {
+          return errorResponse(
+            `当前计划最多 ${workspaceLimit} 个云工作区，请升级专业版或团队版`,
+            429,
+          )
+        }
+      }
+    }
+
+    const workspace = await upsertWorkspace(
+      auth.user.id,
+      workspaceName,
+      typeof files === 'string' ? files : JSON.stringify(files ?? []),
+      typeof settings === 'string' ? settings : JSON.stringify(settings ?? {}),
+    )
+
+    return jsonResponse({
       success: true,
       workspace: {
-        id: workspace.id,
+        id: workspace.name,
         name: workspace.name,
         isDefault: workspace.isDefault,
-        updatedAt: workspace.updatedAt
-      }
-    }), {
-      status: 200
+        updatedAt: workspace.updatedAt.toISOString(),
+      },
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: "创建失败" }), {
-      status: 500
-    })
+    console.error('[Workspaces] Create error:', error)
+    return errorResponse('创建工作区失败', 500)
   }
 }

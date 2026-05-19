@@ -1,7 +1,30 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Bot, User, Sparkles, Code2, Wand2, FilePlus, FolderOpen, CheckSquare } from 'lucide-react'
-import { sendMessage, extractCodeBlocks, generateCodePrompt, type AIConfig, checkAIQuota, type QuotaCheck } from '../services/aiService'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Bot, CheckSquare, Code2, FilePlus, FolderOpen, Send, Sparkles, User, Wand2, Zap } from 'lucide-react'
+import { aiAgentService } from '../services/aiAgentService'
+import {
+  appendMcpToolsToPrompt,
+  buildMcpToolsPromptSection,
+  processAgentMcpTurn,
+} from '../services/mcpAgentBridge'
+import { loadMcpSettings } from '../services/mcpConfigService'
+import { parseAgentFileChanges, type AgentFileChange } from '../services/agentApplyService'
+import { getOldContentForPath } from '../services/fileApplyService'
+import { extractCodeBlocks, generateCodePrompt, sendMessage, type AIConfig, type QuotaCheck } from '../services/aiService'
+import { fetchAIQuota } from '../services/usageService'
 import { workspaceContextService } from '../services/workspaceContextService'
+import { formatQuotaLabel, quotaBarColor, quotaBarPercent } from '../lib/quotaDisplay'
+import { getActiveMentionQuery, insertMention } from '../lib/mentionQuery'
+import {
+  appendProjectRules,
+  collectRulesSources,
+  extractProjectRules,
+} from '../services/projectRulesService'
+import { projectIndexManager } from '../services/projectIndexManager'
+import type { IndexSearchHit } from '../services/projectIndexService'
+import { canUseEmbeddings } from '../services/embeddingService'
+import { buildSemanticContextSection } from '../services/semanticSearchService'
+import { collectSearchableFiles } from '../services/searchService'
+import { useIDEStore } from '../store/ideStore'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -14,36 +37,108 @@ interface ChatPanelProps {
   onGenerateFiles?: (files: { name: string; content: string; language: string }[]) => void
 }
 
+const createWelcomeMessage = (aiConfig: AIConfig) =>
+  `你好，我是你的 AI 编程助手。当前正在使用 ${aiConfig.provider}${aiConfig.model ? ` (${aiConfig.model})` : ''}。
+
+我可以帮你：
+- 解释当前代码
+- 重构和优化实现
+- 生成新功能骨架
+- 帮你定位和修复问题
+
+直接输入你的需求，或者先点下面的快捷动作开始。`
+
+const quickActionLabels = {
+  explain: '解释',
+  refactor: '重构',
+  fix: '优化',
+  generate: '生成',
+} as const
+
 const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerateFiles }) => {
+  const currentPlan = useIDEStore((s) => s.currentPlan)
+  const currentUser = useIDEStore((s) => s.currentUser)
+  const editorFiles = useIDEStore((s) => s.files)
+  const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)
+  const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
   const [mounted, setMounted] = useState(false)
   const [useWorkspaceContext, setUseWorkspaceContext] = useState(false)
+  const [agentMode, setAgentMode] = useState(false)
   const [workspaceStats, setWorkspaceStats] = useState(workspaceContextService.getStats())
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: `你好！我是你的 AI 编程助手。当前使用: ${aiConfig.provider}${aiConfig.model ? ` (${aiConfig.model})` : ''}
-
-我可以帮你:
-• 解释代码
-• 重构优化
-• 生成新功能
-• 修复 Bug
-
-直接输入问题，或使用快捷操作。
-
-💡 点击上方的"工作区"按钮上传整个项目，让AI理解完整上下文！` }
-  ])
+  const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: createWelcomeMessage(aiConfig) }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [quota, setQuota] = useState<QuotaCheck>(checkAIQuota())
+  const [pendingAgentChanges, setPendingAgentChanges] = useState<AgentFileChange[] | null>(null)
+  const [mentionHits, setMentionHits] = useState<IndexSearchHit[]>([])
+  const [mentionIndex, setMentionIndex] = useState(0)
+  const [indexVersion, setIndexVersion] = useState(() => projectIndexManager.getVersion())
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [quota, setQuota] = useState<QuotaCheck>({
+    allowed: true,
+    used: 0,
+    limit: 50,
+    remaining: 50,
+    plan: currentPlan,
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const isConfigured = !!aiConfig.apiKey || aiConfig.provider === 'ollama'
-  
-  // 刷新用量配额
-  const refreshQuota = useCallback(() => {
-    setQuota(checkAIQuota())
-  }, [])
 
-  // 刷新工作区统计
+  const projectRules = useMemo(() => {
+    const sources = collectRulesSources(
+      editorFiles,
+      workspaceContextService.getAllFiles().map((file) => ({
+        path: file.path,
+        content: file.content,
+      })),
+    )
+    return extractProjectRules(sources)
+  }, [editorFiles, workspaceStats.selectedFiles])
+
+  useEffect(() => projectIndexManager.subscribe(() => setIndexVersion(projectIndexManager.getVersion())), [])
+
+  const refreshMentionHits = useCallback((text: string, cursor: number) => {
+    const query = getActiveMentionQuery(text, cursor)
+    if (query === null) {
+      setMentionHits([])
+      return
+    }
+    setMentionHits(projectIndexManager.search(query, 8))
+    setMentionIndex(0)
+  }, [indexVersion])
+
+  const applyProjectRules = useCallback(
+    (prompt: string) => appendProjectRules(prompt, projectRules),
+    [projectRules],
+  )
+
+  const augmentWithSemanticContext = useCallback(
+    async (basePrompt: string, query: string) => {
+      if (!useWorkspaceContext || !canUseEmbeddings(aiConfig)) return basePrompt
+
+      const workspaceFiles = workspaceContextService.getAllFiles().map((file) => ({
+        path: file.path,
+        content: file.content,
+      }))
+      const searchable = collectSearchableFiles(
+        editorFiles.map((file) => ({ name: file.name, content: file.content })),
+        workspaceFiles,
+      ).map((file) => ({ path: file.name, content: file.content }))
+
+      const section = await buildSemanticContextSection(query, searchable, aiConfig)
+      return section ? `${basePrompt}${section}` : basePrompt
+    },
+    [aiConfig, editorFiles, useWorkspaceContext],
+  )
+
+  const refreshQuota = useCallback(() => {
+    void fetchAIQuota(currentPlan, !!currentUser).then(setQuota)
+  }, [currentPlan, currentUser])
+
+  useEffect(() => {
+    refreshQuota()
+  }, [currentPlan, currentUser, refreshQuota])
+
   const refreshWorkspaceStats = useCallback(() => {
     setWorkspaceStats(workspaceContextService.getStats())
   }, [])
@@ -59,179 +154,291 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerate
   }, [])
 
   useEffect(() => {
-    if (!aiConfig.apiKey && aiConfig.provider !== 'ollama') {
-      setMessages([{
-        role: 'assistant',
-        content: '⚠️ 请先配置 AI API Key\n\n点击顶部工具栏的 "AI" 按钮进行配置。'
-      }])
-    }
-  }, [aiConfig])
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  const handleSend = async (customInput?: string, action?: 'explain' | 'refactor' | 'fix' | 'generate') => {
-    const textToSend = customInput || input
-    if (!textToSend.trim()) return
-
-    // 检查用量配额
-    const currentQuota = checkAIQuota()
-    if (!currentQuota.allowed) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `⚠️ 今日 AI 请求配额已用完 (${currentQuota.used}/${currentQuota.limit})
-
-免费用户每日限制 ${currentQuota.limit} 次请求。升级 Pro 计划可获得每日 500 次请求，或选择企业版享受无限使用！
-
-点击下方 "升级" 按钮查看计划详情。`
-      }])
+    if (!isConfigured) {
+      setMessages([
+        {
+          role: 'assistant',
+          content: '请先配置 AI API Key，或者切换到本地 Ollama，再开始对话。',
+        },
+      ])
       return
     }
 
-    // 检查 API 配置
-    if (!aiConfig.apiKey && aiConfig.provider !== 'ollama') {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '请先配置 API Key。点击顶部 "AI" 按钮进行设置。'
-      }])
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].role === 'assistant') {
+        return [{ role: 'assistant', content: createWelcomeMessage(aiConfig) }]
+      }
+      return prev
+    })
+  }, [aiConfig, isConfigured])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
+
+  const appendError = (content: string) => {
+    setMessages((prev) => [...prev, { role: 'assistant', content }])
+  }
+
+  const generateFilesFromResponse = useCallback(
+    (assistantContent: string) => {
+      if (!onGenerateFiles) return
+
+      const codeBlocks = extractCodeBlocks(assistantContent)
+      const files: { name: string; content: string; language: string }[] = []
+
+      codeBlocks.forEach((block, index) => {
+        if (!block.language || block.language === 'text') return
+
+        const blockStart = assistantContent.indexOf(`\`\`\`${block.language}`)
+        const contextBefore = assistantContent.slice(0, blockStart).split('\n').slice(-5)
+        let filename: string | null = null
+
+        const patterns = [
+          /###\s+([\w\-./]+\.[\w]+)/,
+          /`([\w\-./]+\.[\w]+)`/,
+          /文件名[:\s]+([\w\-./]+\.[\w]+)/i,
+          /文件[:\s]+([\w\-./]+\.[\w]+)/i,
+          /([\w\-./]+\.(?:js|ts|jsx|tsx|py|html|css|scss|json|md|vue|java|go|rs|php|rb|swift|kt|sql))/i,
+        ]
+
+        for (const line of [...contextBefore].reverse()) {
+          for (const pattern of patterns) {
+            const match = line.match(pattern)
+            if (match) {
+              filename = match[1]
+              break
+            }
+          }
+          if (filename) break
+        }
+
+        if (!filename) {
+          filename = `generated-${index + 1}.${block.language === 'typescript' ? 'ts' : block.language === 'javascript' ? 'js' : block.language}`
+        }
+
+        files.push({
+          name: filename,
+          content: block.code,
+          language: block.language,
+        })
+      })
+
+      if (files.length > 0) onGenerateFiles(files)
+    },
+    [onGenerateFiles],
+  )
+
+  const handleSend = async (customInput?: string, action?: keyof typeof quickActionLabels) => {
+    const textToSend = customInput || input
+    if (!textToSend.trim()) return
+
+    const currentQuota = await fetchAIQuota(currentPlan, !!currentUser)
+    setQuota(currentQuota)
+
+    if (!currentQuota.allowed) {
+      appendError(`今天的 AI 请求额度已用完（${currentQuota.used}/${currentQuota.limit}）。
+
+免费用户按天限额使用。稍后再试，或者升级套餐以获得更高额度。`)
+      return
+    }
+
+    if (!isConfigured) {
+      appendError('请先完成 AI 配置，再开始发消息。')
       return
     }
 
     const userMessage: Message = { role: 'user', content: textToSend }
-    setMessages(prev => [...prev, userMessage])
+    setMessages((prev) => [...prev, userMessage])
     if (!customInput) setInput('')
     setLoading(true)
 
     try {
-      // 根据是否使用工作区上下文生成不同的系统提示
-      let systemPrompt: string
-      
-      if (useWorkspaceContext && workspaceStats.selectedFiles > 0) {
-        // 使用工作区上下文 - AI理解整个项目
-        const additionalContext = action 
-          ? `用户请求: ${action === 'explain' ? '解释代码' : action === 'refactor' ? '重构代码' : action === 'fix' ? '修复Bug' : '生成新功能'}`
-          : ''
-        systemPrompt = workspaceContextService.generateSystemPrompt(additionalContext)
+      const history = messages
+        .slice(1)
+        .map((message) => ({ role: message.role as 'user' | 'assistant', content: message.content }))
+
+      let aiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[]
+
+      if (agentMode) {
+        const workspaceSummary =
+          useWorkspaceContext && workspaceStats.selectedFiles > 0
+            ? workspaceContextService.generateSystemPrompt(
+                action ? `用户请求：${quickActionLabels[action]}` : '',
+              )
+            : `当前编辑器文件:\n\`\`\`\n${currentCode}\n\`\`\``
+
+        const mcpSection = await buildMcpToolsPromptSection()
+        const agentSystemPrompt = await augmentWithSemanticContext(
+          applyProjectRules(workspaceSummary),
+          textToSend,
+        )
+        aiMessages = aiAgentService.buildMessages(
+          textToSend,
+          appendMcpToolsToPrompt(agentSystemPrompt, mcpSection),
+          history,
+        )
       } else {
-        // 只使用当前文件
-        systemPrompt = action 
-          ? generateCodePrompt(action, currentCode)
-          : `你是一个专业的编程助手。当前用户正在编辑的代码是：
+        let systemPrompt: string
+
+        if (useWorkspaceContext && workspaceStats.selectedFiles > 0) {
+          const additionalContext = action ? `用户请求：${quickActionLabels[action]}` : ''
+          systemPrompt = workspaceContextService.generateSystemPrompt(additionalContext)
+        } else {
+          systemPrompt = action
+            ? generateCodePrompt(action, currentCode)
+            : `你是一名专业的编程助手。当前代码如下：
 
 \`\`\`
 ${currentCode}
 \`\`\`
 
-请根据用户的提问提供帮助。如果需要修改代码，请用 \`\`\`filename.ext 的格式标注文件名，输出完整的代码块。`
-      }
+请根据用户的问题给出清晰可执行的帮助。如果需要返回代码，请尽量标注文件名，并输出完整代码块。`
+        }
 
-      const aiMessages = [
-        { role: 'system' as const, content: systemPrompt },
-        ...messages.slice(1).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        { role: 'user' as const, content: textToSend }
-      ]
+        systemPrompt = await augmentWithSemanticContext(applyProjectRules(systemPrompt), textToSend)
+
+        aiMessages = [
+          { role: 'system' as const, content: systemPrompt },
+          ...history,
+          { role: 'user' as const, content: textToSend },
+        ]
+      }
 
       let assistantContent = ''
-      
-      await sendMessage(
-        aiConfig,
-        aiMessages,
-        (chunk) => {
-          assistantContent += chunk
-          setMessages(prev => {
-            const newMessages = [...prev]
-            const lastMsg = newMessages[newMessages.length - 1]
-            if (lastMsg.role === 'assistant') {
-              lastMsg.content = assistantContent
-            } else {
-              newMessages.push({ role: 'assistant', content: assistantContent })
-            }
-            return newMessages
-          })
-        }
-      )
 
-      // 检查是否有代码块可以生成文件
-      if (onGenerateFiles) {
-        const codeBlocks = extractCodeBlocks(assistantContent)
-        
-        // 改进的文件名识别：尝试从代码块前的文本中提取文件名
-        const files: { name: string; content: string; language: string }[] = []
-        
-        codeBlocks.forEach((block, idx) => {
-          if (!block.language || block.language === 'text') return
-          
-          // 尝试从assistantContent中找到这个代码块前面的文件名
-          // 查找模式: ### filename.ext 或 `filename.ext` 或 文件名: xxx.ext
-          const blockStart = assistantContent.indexOf('```' + block.language)
-          const contentBefore = assistantContent.substring(0, blockStart)
-          const linesBefore = contentBefore.split('\n').slice(-5) // 获取代码块前5行
-          
-          let filename: string | null = null
-          
-          // 尝试匹配各种文件名模式
-          const patterns = [
-            /###\s+([\w\-./]+\.[\w]+)/,  // ### filename.ext
-            /`([\w\-./]+\.[\w]+)`/,       // `filename.ext`
-            /文件名[:\s]+([\w\-./]+\.[\w]+)/i,  // 文件名: xxx.ext
-            /文件[:\s]+([\w\-./]+\.[\w]+)/i,    // 文件: xxx.ext
-            /([\w\-./]+\.(?:js|ts|jsx|tsx|py|html|css|scss|json|md|vue|java|go|rs|php|rb|swift|kt|sql))/i
-          ]
-          
-          for (const line of linesBefore.reverse()) { // 从近到远搜索
-            for (const pattern of patterns) {
-              const match = line.match(pattern)
-              if (match) {
-                filename = match[1]
-                break
-              }
-            }
-            if (filename) break
+      await sendMessage(aiConfig, aiMessages, (chunk) => {
+        assistantContent += chunk
+        setMessages((prev) => {
+          const next = [...prev]
+          const lastMessage = next[next.length - 1]
+          if (lastMessage?.role === 'assistant') {
+            lastMessage.content = assistantContent
+          } else {
+            next.push({ role: 'assistant', content: assistantContent })
           }
-          
-          // 如果没找到文件名，使用默认命名
-          if (!filename) {
-            filename = `generated-${idx + 1}.${block.language === 'typescript' ? 'ts' : block.language === 'javascript' ? 'js' : block.language}`
-          }
-          
-          files.push({
-            name: filename,
-            content: block.code,
-            language: block.language
-          })
+          return next
         })
-        
-        if (files.length > 0) {
-          onGenerateFiles(files)
+      })
+
+      if (agentMode) {
+        const mcpSettings = await loadMcpSettings()
+        const mcpTurn = await processAgentMcpTurn({
+          content: assistantContent,
+          autoFollowUp: mcpSettings.autoFollowUp,
+          maxFollowUpRounds: mcpSettings.maxFollowUpRounds,
+          sendFollowUp: async ({ assistantSoFar, toolLog }) => {
+            let followUpContent = ''
+            const followUpMessages = [
+              ...aiMessages,
+              { role: 'assistant' as const, content: assistantSoFar },
+              {
+                role: 'user' as const,
+                content: `MCP 工具已执行，结果如下。请继续完成任务；若还需调用工具，可再输出 <<<mcp-tool>>> 块。\n\n${toolLog.join('\n')}`,
+              },
+            ]
+            await sendMessage(aiConfig, followUpMessages, (chunk) => {
+              followUpContent += chunk
+              setMessages((prev) => {
+                const next = [...prev]
+                const last = next[next.length - 1]
+                if (last?.role === 'assistant') {
+                  last.content = `${assistantSoFar}\n\n${followUpContent}`
+                }
+                return next
+              })
+            })
+            return followUpContent
+          },
+        })
+        assistantContent = mcpTurn.content
+        if (mcpTurn.toolLog.length > 0) {
+          assistantContent = `${assistantContent}\n\n**MCP 工具结果**\n${mcpTurn.toolLog.join('\n')}`
         }
+        setMessages((prev) => {
+          const next = [...prev]
+          const last = next[next.length - 1]
+          if (last?.role === 'assistant') last.content = assistantContent
+          return next
+        })
       }
+
+      const agentChanges = parseAgentFileChanges(assistantContent)
+      if (agentChanges.length > 0) {
+        setPendingAgentChanges(agentChanges)
+      } else {
+        setPendingAgentChanges(null)
+        generateFilesFromResponse(assistantContent)
+      }
+      refreshQuota()
     } catch (error: any) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `❌ 请求失败: ${error.message || '未知错误'}\n\n请检查:\n• API Key 是否正确\n• 网络连接是否正常\n• 对于 Ollama，请确保本地服务已启动 (ollama serve)`
-      }])
+      appendError(`请求失败：${error.message || '未知错误'}
+
+你可以检查：
+- API Key 是否正确
+- 网络是否正常
+- 如果使用 Ollama，本地服务是否已启动`)
     } finally {
       setLoading(false)
     }
   }
 
-  const quickActions = [
-    { icon: Code2, label: '解释', action: () => handleSend('请解释这段代码', 'explain') },
-    { icon: Wand2, label: '重构', action: () => handleSend('请重构这段代码', 'refactor') },
-    { icon: Sparkles, label: '优化', action: () => handleSend('请优化这段代码的性能', 'fix') },
-    { icon: FilePlus, label: '生成', action: () => handleSend('基于当前代码，生成一个相关的新功能', 'generate') }
-  ]
+  const quickActions = useMemo(
+    () => [
+      { icon: Code2, label: '解释', action: () => handleSend('请解释这段代码。', 'explain') },
+      { icon: Wand2, label: '重构', action: () => handleSend('请重构这段代码。', 'refactor') },
+      { icon: Sparkles, label: '优化', action: () => handleSend('请优化这段代码的实现和性能。', 'fix') },
+      { icon: FilePlus, label: '生成', action: () => handleSend('基于当前代码，生成一个相关的新功能。', 'generate') },
+    ],
+    [currentCode, messages, useWorkspaceContext, workspaceStats.selectedFiles],
+  )
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault()
+  const pickMention = (hit: IndexSearchHit) => {
+    const label = hit.type === 'symbol' ? `${hit.name}` : hit.path
+    const cursor = inputRef.current?.selectionStart ?? input.length
+    const next = insertMention(input, cursor, label)
+    setInput(next.text)
+    setMentionHits([])
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(next.cursor, next.cursor)
+    })
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionHits.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setMentionIndex((prev) => Math.min(prev + 1, mentionHits.length - 1))
+        return
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setMentionIndex((prev) => Math.max(prev - 1, 0))
+        return
+      }
+      if (event.key === 'Tab' || (event.key === 'Enter' && mentionHits[mentionIndex])) {
+        event.preventDefault()
+        pickMention(mentionHits[mentionIndex])
+        return
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setMentionHits([])
+        return
+      }
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault()
       handleSend()
     }
+  }
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const next = event.target.value
+    setInput(next)
+    refreshMentionHits(next, event.target.selectionStart ?? next.length)
   }
 
   return (
@@ -241,82 +448,182 @@ ${currentCode}
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: `
-          radial-gradient(ellipse at 20% 20%, rgba(102, 126, 234, 0.14) 0%, transparent 55%),
-          radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.12) 0%, transparent 55%),
-          linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 40%),
-          var(--bg-secondary)
-        `,
-        borderLeft: '1px solid var(--border-color)',
+        background:
+          'radial-gradient(circle at top left, rgba(124,156,255,0.12), transparent 26%), linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 96%, transparent), color-mix(in srgb, var(--bg-primary) 94%, transparent))',
         opacity: mounted ? 1 : 0,
         transform: mounted ? 'translateX(0)' : 'translateX(10px)',
         transition: 'all 0.35s ease-out',
       }}
     >
       <div
+        style={{
+          padding: '14px',
+          borderBottom: '1px solid var(--border-color)',
+          display: 'grid',
+          gap: '10px',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.03), transparent)',
+        }}
+      >
+        <div
+          style={{
+            padding: '14px',
+            borderRadius: '16px',
+            border: '1px solid var(--border-color)',
+            background: 'color-mix(in srgb, var(--bg-secondary) 88%, transparent)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Bot size={16} color="var(--accent-color)" />
+            <strong style={{ fontSize: '13px' }}>当前 AI 会话</strong>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ padding: '5px 8px', borderRadius: '999px', background: 'var(--bg-tertiary)', fontSize: '11px', color: 'var(--text-secondary)' }}>
+              {aiConfig.provider}
+            </span>
+            <span style={{ padding: '5px 8px', borderRadius: '999px', background: 'var(--bg-tertiary)', fontSize: '11px', color: 'var(--text-secondary)' }}>
+              {aiConfig.model || '未指定模型'}
+            </span>
+            <span
+              style={{
+                padding: '5px 8px',
+                borderRadius: '999px',
+                background: isConfigured ? 'color-mix(in srgb, var(--success-color) 16%, transparent)' : 'color-mix(in srgb, var(--warning-color) 16%, transparent)',
+                fontSize: '11px',
+                color: isConfigured ? 'var(--success-color)' : 'var(--warning-color)',
+              }}
+            >
+              {isConfigured ? '已配置' : '待配置'}
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '10px' }}>
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: '14px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-primary)',
+            }}
+          >
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>今日用量</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ flex: 1, height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${quotaBarPercent(quota.used, quota.limit)}%`,
+                    height: '100%',
+                    borderRadius: '999px',
+                    background: quotaBarColor(quota.used, quota.limit),
+                  }}
+                />
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                {formatQuotaLabel(quota.used, quota.limit)}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setAgentMode((value) => !value)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '0 14px',
+              borderRadius: '14px',
+              border: `1px solid ${agentMode ? 'color-mix(in srgb, var(--accent-color) 34%, var(--border-color))' : 'var(--border-color)'}`,
+              background: agentMode ? 'color-mix(in srgb, var(--accent-color) 12%, transparent)' : 'var(--bg-primary)',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+            }}
+            title="Agent 模式：自动解析多文件改动并写入编辑器"
+          >
+            <Zap size={14} color={agentMode ? 'var(--accent-color)' : 'var(--text-secondary)'} />
+            <span style={{ fontSize: '12px', fontWeight: 700 }}>Agent{agentMode ? ' 开' : ''}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setUseWorkspaceContext((value) => !value)}
+            disabled={workspaceStats.selectedFiles === 0}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '0 14px',
+              borderRadius: '14px',
+              border: `1px solid ${useWorkspaceContext ? 'color-mix(in srgb, var(--accent-color) 34%, var(--border-color))' : 'var(--border-color)'}`,
+              background: useWorkspaceContext ? 'color-mix(in srgb, var(--accent-color) 12%, transparent)' : 'var(--bg-primary)',
+              color: workspaceStats.selectedFiles === 0 ? 'var(--text-secondary)' : 'var(--text-primary)',
+              cursor: workspaceStats.selectedFiles === 0 ? 'not-allowed' : 'pointer',
+              opacity: workspaceStats.selectedFiles === 0 ? 0.65 : 1,
+            }}
+            title={workspaceStats.selectedFiles === 0 ? '先在工作区中导入文件，才能启用完整上下文。' : `已选择 ${workspaceStats.selectedFiles} 个工作区文件`}
+          >
+            <FolderOpen size={14} />
+            <CheckSquare size={14} color={useWorkspaceContext ? 'var(--accent-color)' : 'var(--text-secondary)'} />
+            <span style={{ fontSize: '12px', fontWeight: 700 }}>工作区上下文{workspaceStats.selectedFiles > 0 ? ` (${workspaceStats.selectedFiles})` : ''}</span>
+          </button>
+        </div>
+      </div>
+
+      <div
         className="chat-messages"
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '14px 14px 10px',
+          padding: '14px',
           display: 'flex',
           flexDirection: 'column',
           gap: '10px',
         }}
       >
-        {messages.map((msg, idx) => {
-          const isAssistant = msg.role === 'assistant'
-          const bubbleBg = isAssistant
-            ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.14) 0%, rgba(59, 130, 246, 0.08) 100%)'
-            : 'linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(16, 185, 129, 0.08) 100%)'
-          const bubbleBorder = isAssistant ? 'rgba(168, 85, 247, 0.28)' : 'rgba(16, 185, 129, 0.28)'
-
+        {messages.map((message, index) => {
+          const isAssistant = message.role === 'assistant'
           return (
             <div
-              key={idx}
-              className="chat-message"
+              key={index}
               style={{
                 display: 'flex',
+                justifyContent: isAssistant ? 'flex-start' : 'flex-end',
                 gap: '10px',
                 alignItems: 'flex-start',
-                justifyContent: isAssistant ? 'flex-start' : 'flex-end',
               }}
             >
               {isAssistant && (
                 <div
-                  className={`chat-avatar ${msg.role}`}
                   style={{
-                    width: '28px',
-                    height: '28px',
+                    width: '30px',
+                    height: '30px',
                     borderRadius: '10px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.22) 0%, rgba(59, 130, 246, 0.16) 100%)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
-                    flex: '0 0 auto',
+                    background: 'linear-gradient(135deg, rgba(124,156,255,0.22), rgba(168,85,247,0.18))',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    flexShrink: 0,
                   }}
                 >
-                  <Bot size={14} style={{ color: '#c4b5fd' }} />
+                  <Bot size={14} color="#c4b5fd" />
                 </div>
               )}
 
               <div
-                className="chat-content"
                 style={{
                   maxWidth: '92%',
                   padding: '10px 12px',
-                  borderRadius: isAssistant ? '14px 14px 14px 8px' : '14px 14px 8px 14px',
-                  background: bubbleBg,
-                  border: `1px solid ${bubbleBorder}`,
+                  borderRadius: isAssistant ? '16px 16px 16px 8px' : '16px 16px 8px 16px',
+                  background: isAssistant
+                    ? 'linear-gradient(135deg, rgba(124,156,255,0.14), rgba(168,85,247,0.08))'
+                    : 'linear-gradient(135deg, rgba(51,197,142,0.18), rgba(51,197,142,0.08))',
+                  border: `1px solid ${isAssistant ? 'rgba(124,156,255,0.20)' : 'rgba(51,197,142,0.22)'}`,
                   boxShadow: '0 10px 24px rgba(0,0,0,0.14)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
                 }}
               >
-                {msg.content.split('\n').map((line, i) => (
-                  <div key={i} style={{ lineHeight: 1.45, fontSize: '13px', color: 'var(--text-primary)' }}>
+                {message.content.split('\n').map((line, lineIndex) => (
+                  <div key={lineIndex} style={{ lineHeight: 1.55, fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
                     {line || ' '}
                   </div>
                 ))}
@@ -324,21 +631,19 @@ ${currentCode}
 
               {!isAssistant && (
                 <div
-                  className={`chat-avatar ${msg.role}`}
                   style={{
-                    width: '28px',
-                    height: '28px',
+                    width: '30px',
+                    height: '30px',
                     borderRadius: '10px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.20) 0%, rgba(16, 185, 129, 0.10) 100%)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
-                    flex: '0 0 auto',
+                    background: 'linear-gradient(135deg, rgba(51,197,142,0.22), rgba(51,197,142,0.12))',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    flexShrink: 0,
                   }}
                 >
-                  <User size={14} style={{ color: '#34d399' }} />
+                  <User size={14} color="#5ee9b5" />
                 </div>
               )}
             </div>
@@ -346,30 +651,27 @@ ${currentCode}
         })}
 
         {loading && (
-          <div className="chat-message" style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
             <div
-              className="chat-avatar assistant"
               style={{
-                width: '28px',
-                height: '28px',
+                width: '30px',
+                height: '30px',
                 borderRadius: '10px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.22) 0%, rgba(59, 130, 246, 0.16) 100%)',
-                border: '1px solid rgba(255,255,255,0.10)',
-                boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
+                background: 'linear-gradient(135deg, rgba(124,156,255,0.22), rgba(168,85,247,0.18))',
+                border: '1px solid rgba(255,255,255,0.08)',
               }}
             >
-              <Bot size={14} style={{ color: '#c4b5fd' }} />
+              <Bot size={14} color="#c4b5fd" />
             </div>
             <div
-              className="chat-content"
               style={{
                 padding: '10px 12px',
-                borderRadius: '14px 14px 14px 8px',
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(59, 130, 246, 0.06) 100%)',
-                border: '1px solid rgba(168, 85, 247, 0.25)',
+                borderRadius: '16px 16px 16px 8px',
+                background: 'linear-gradient(135deg, rgba(124,156,255,0.14), rgba(168,85,247,0.08))',
+                border: '1px solid rgba(124,156,255,0.20)',
                 boxShadow: '0 10px 24px rgba(0,0,0,0.14)',
               }}
             >
@@ -388,34 +690,94 @@ ${currentCode}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* AI 用量配额显示 */}
-      {quota.limit > 0 && (
+      {pendingAgentChanges && pendingAgentChanges.length > 0 && onGenerateFiles ? (
         <div
           style={{
-            padding: '6px 12px',
+            margin: '0 12px 8px',
+            padding: '10px 12px',
+            borderRadius: '12px',
+            border: '1px solid color-mix(in srgb, var(--accent-color) 35%, var(--border-color))',
+            background: 'color-mix(in srgb, var(--accent-color) 10%, transparent)',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, transparent 100%)',
+            justifyContent: 'space-between',
+            gap: '10px',
+            flexWrap: 'wrap',
           }}
         >
-          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>今日 AI 用量</span>
-          <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
-            <div
-              style={{
-                width: `${Math.min((quota.used / quota.limit) * 100, 100)}%`,
-                height: '100%',
-                background: quota.used >= quota.limit ? '#ef4444' : quota.used > quota.limit * 0.8 ? '#f59e0b' : '#22c55e',
-                borderRadius: '2px',
-                transition: 'width 0.3s ease, background 0.3s ease'
-              }}
-            />
-          </div>
-          <span style={{ fontSize: '11px', color: quota.used >= quota.limit ? '#ef4444' : 'var(--text-secondary)' }}>
-            {quota.used}/{quota.limit}
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+            Agent 建议修改 {pendingAgentChanges.length} 个文件：
+            {pendingAgentChanges.map((c) => c.path).join('、')}
           </span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setPendingAgentChanges(null)}
+              style={{
+                padding: '6px 10px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-primary)',
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              忽略
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAgentApplyQueue(
+                  pendingAgentChanges.map((change) => ({
+                    path: change.path,
+                    oldContent: getOldContentForPath(editorFiles, change.path),
+                    newContent: change.content,
+                    language: change.language,
+                  })),
+                )
+                setShowAgentApplyModal(true)
+                setPendingAgentChanges(null)
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-primary)',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              预览变更
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onGenerateFiles(
+                  pendingAgentChanges.map((change) => ({
+                    name: change.path,
+                    content: change.content,
+                    language: change.language,
+                  })),
+                )
+                setPendingAgentChanges(null)
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'var(--accent-color)',
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              直接应用
+            </button>
+          </div>
         </div>
-      )}
+      ) : null}
 
       <div
         style={{
@@ -424,76 +786,33 @@ ${currentCode}
           display: 'flex',
           gap: '8px',
           flexWrap: 'wrap',
-          background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.08) 100%)',
+          background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.08))',
         }}
       >
-        {quickActions.map((action, idx) => (
+        {quickActions.map((action) => (
           <button
-            key={idx}
+            key={action.label}
             onClick={action.action}
             disabled={loading || !isConfigured}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '7px 10px',
-              fontSize: '12px',
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
-              border: '1px solid rgba(255,255,255,0.10)',
+              padding: '8px 10px',
               borderRadius: '10px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-primary)',
               color: 'var(--text-secondary)',
               cursor: loading || !isConfigured ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 6px 16px rgba(0,0,0,0.14)',
               opacity: loading || !isConfigured ? 0.6 : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (loading || !isConfigured) return
-              e.currentTarget.style.transform = 'translateY(-1px)'
-              e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.35)'
-              e.currentTarget.style.color = 'var(--text-primary)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'
-              e.currentTarget.style.color = 'var(--text-secondary)'
+              fontSize: '12px',
+              fontWeight: 700,
             }}
           >
             <action.icon size={14} />
             {action.label}
           </button>
         ))}
-        
-        {/* 工作区上下文切换 */}
-        <button
-          onClick={() => setUseWorkspaceContext(!useWorkspaceContext)}
-          disabled={workspaceStats.selectedFiles === 0}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '7px 10px',
-            fontSize: '12px',
-            background: useWorkspaceContext 
-              ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(59, 130, 246, 0.2) 100%)'
-              : 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
-            border: `1px solid ${useWorkspaceContext ? 'rgba(168, 85, 247, 0.5)' : 'rgba(255,255,255,0.10)'}`,
-            borderRadius: '10px',
-            color: useWorkspaceContext ? 'var(--text-primary)' : 'var(--text-secondary)',
-            cursor: workspaceStats.selectedFiles === 0 ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s ease',
-            boxShadow: '0 6px 16px rgba(0,0,0,0.14)',
-            opacity: workspaceStats.selectedFiles === 0 ? 0.5 : 1,
-          }}
-          title={workspaceStats.selectedFiles === 0 ? '请先在工作区中上传文件' : `使用工作区上下文 (${workspaceStats.selectedFiles} 个文件)`}
-        >
-          <FolderOpen size={14} />
-          <CheckSquare size={14} style={{ opacity: useWorkspaceContext ? 1 : 0.3 }} />
-          工作区
-          {workspaceStats.selectedFiles > 0 && (
-            <span style={{ fontSize: '10px', opacity: 0.8 }}>({workspaceStats.selectedFiles})</span>
-          )}
-        </button>
       </div>
 
       <div
@@ -501,74 +820,109 @@ ${currentCode}
         style={{
           padding: '12px',
           display: 'flex',
-          gap: '10px',
-          alignItems: 'flex-end',
+          flexDirection: 'column',
+          gap: '8px',
           borderTop: '1px solid var(--border-color)',
-          background: 'linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.18) 100%)',
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.12))',
         }}
       >
-        <textarea
-          className="chat-input"
-          placeholder={isConfigured ? '输入消息...（Enter 发送，Shift+Enter 换行）' : '请先配置 API Key'}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={!isConfigured || loading}
-          rows={1}
-          style={{
-            flex: 1,
-            resize: 'none',
-            padding: '10px 12px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            color: 'var(--text-primary)',
-            fontSize: '13px',
-            lineHeight: 1.45,
-            minHeight: '40px',
-            maxHeight: '120px',
-            outline: 'none',
-            boxShadow: '0 10px 24px rgba(0,0,0,0.16)',
-            opacity: !isConfigured || loading ? 0.7 : 1,
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.45)'
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'
-          }}
-        />
-        <button
-          className="chat-send"
-          onClick={() => handleSend()}
-          disabled={!isConfigured || loading || !input.trim()}
-          style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: !isConfigured || loading || !input.trim()
-              ? 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)'
-              : 'linear-gradient(135deg, rgba(168, 85, 247, 0.55) 0%, rgba(59, 130, 246, 0.55) 100%)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            color: 'var(--text-primary)',
-            cursor: !isConfigured || loading || !input.trim() ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s ease',
-            boxShadow: '0 10px 24px rgba(0,0,0,0.16)',
-            opacity: !isConfigured || loading || !input.trim() ? 0.6 : 1,
-          }}
-          onMouseEnter={(e) => {
-            if (!isConfigured || loading || !input.trim()) return
-            e.currentTarget.style.transform = 'translateY(-1px)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)'
-          }}
-        >
-          <Send size={16} />
-        </button>
+        {mentionHits.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              padding: '6px',
+              borderRadius: '10px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-primary)',
+              maxHeight: '160px',
+              overflow: 'auto',
+            }}
+          >
+            {mentionHits.map((hit, index) => (
+              <button
+                key={`${hit.type}-${hit.path}-${hit.name}-${hit.line ?? 0}`}
+                type="button"
+                onClick={() => pickMention(hit)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 8px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background:
+                    index === mentionIndex
+                      ? 'color-mix(in srgb, var(--accent-color) 16%, transparent)'
+                      : 'transparent',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ opacity: 0.7 }}>{hit.type === 'symbol' ? '◎' : '📄'}</span>
+                <span>{hit.type === 'symbol' ? hit.name : hit.path}</span>
+                {hit.line ? (
+                  <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontSize: '11px' }}>
+                    {hit.path}:{hit.line}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+          <textarea
+            ref={inputRef}
+            className="chat-input"
+            placeholder={
+              isConfigured ? '输入消息；@ 提及符号/文件；Enter 发送' : '请先配置 API Key 或本地 Ollama'
+            }
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            disabled={!isConfigured || loading}
+            rows={1}
+            style={{
+              flex: 1,
+              resize: 'none',
+              padding: '12px 14px',
+              borderRadius: '14px',
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-primary)',
+              fontSize: '13px',
+              lineHeight: 1.5,
+              minHeight: '44px',
+              maxHeight: '120px',
+              outline: 'none',
+              opacity: !isConfigured || loading ? 0.7 : 1,
+            }}
+          />
+          <button
+            className="chat-send"
+            onClick={() => handleSend()}
+            disabled={!isConfigured || loading || !input.trim()}
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: !isConfigured || loading || !input.trim() ? 'var(--bg-tertiary)' : 'var(--accent-color)',
+              border: '1px solid transparent',
+              color: !isConfigured || loading || !input.trim() ? 'var(--text-secondary)' : '#fff',
+              cursor: !isConfigured || loading || !input.trim() ? 'not-allowed' : 'pointer',
+              opacity: !isConfigured || loading || !input.trim() ? 0.6 : 1,
+            }}
+          >
+            <Send size={16} />
+          </button>
+        </div>
       </div>
 
       <style>{`
@@ -580,6 +934,7 @@ ${currentCode}
           display: inline-block;
           animation: typingDot 1.1s infinite ease-in-out;
         }
+
         .typing-dots .dot:nth-child(2) { animation-delay: 0.15s; }
         .typing-dots .dot:nth-child(3) { animation-delay: 0.3s; }
 

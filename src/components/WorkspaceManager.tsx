@@ -1,6 +1,16 @@
-import React, { useState, useEffect } from 'react'
-import { X, Plus, Download, Upload, Trash2, Clock, Save, Folder, Search, RotateCcw, Check } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Check, Clock, Cloud, Download, Folder, HardDrive, RotateCcw, Save, Search, Trash2, Upload, X } from 'lucide-react'
 import { cloudSyncService, type WorkspaceBackup } from '../services/cloudSyncService'
+import {
+  deleteWorkspaceEntry,
+  listWorkspaceEntries,
+  loadWorkspaceEntry,
+  saveWorkspaceEntry,
+  type WorkspaceEntry,
+} from '../services/workspaceCatalogService'
+import { recentFilesService } from '../services/recentFilesService'
+import { useIDEStore } from '../store/ideStore'
+import type { ConfirmRequest, ToastKind } from './FeedbackCenter'
 
 interface WorkspaceManagerProps {
   currentFiles: { name: string; content: string; language: string }[]
@@ -11,355 +21,411 @@ interface WorkspaceManagerProps {
     aiProvider?: string
     aiModel?: string
   }
+  notify: (kind: ToastKind, title: string, detail?: string) => void
+  requestConfirm: (request: ConfirmRequest) => Promise<boolean>
   onLoadWorkspace: (files: WorkspaceBackup['files'], settings: WorkspaceBackup['settings']) => void
   onClose: () => void
+}
+
+const panelStyle: React.CSSProperties = {
+  padding: '16px',
+  borderRadius: '16px',
+  border: '1px solid var(--border-color)',
+  background: 'var(--bg-primary)',
+}
+
+const inputStyle: React.CSSProperties = {
+  padding: '12px 14px',
+  borderRadius: '12px',
+  border: '1px solid var(--border-color)',
+  background: 'var(--bg-secondary)',
+  color: 'var(--text-primary)',
+  fontSize: '14px',
 }
 
 const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
   currentFiles,
   currentSettings,
+  notify,
+  requestConfirm,
   onLoadWorkspace,
-  onClose
+  onClose,
 }) => {
-  const [workspaces, setWorkspaces] = useState<WorkspaceBackup[]>([])
+  const currentUser = useIDEStore((s) => s.currentUser)
+  const isLoggedIn = !!currentUser
+
+  const [workspaces, setWorkspaces] = useState<WorkspaceEntry[]>([])
   const [autoBackup, setAutoBackup] = useState<WorkspaceBackup | null>(null)
   const [showSaveForm, setShowSaveForm] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [saveDescription, setSaveDescription] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-
-  useEffect(() => {
-    loadWorkspaces()
-  }, [])
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const loadWorkspaces = async () => {
+    setLoading(true)
     try {
-      const list = await cloudSyncService.getAllWorkspaces()
-      setWorkspaces(list || [])
+      const list = await listWorkspaceEntries(isLoggedIn)
       const backup = await cloudSyncService.getAutoBackup()
+      setWorkspaces(list)
       setAutoBackup(backup || null)
-    } catch (error) {
-      console.error('Failed to load workspaces:', error)
+    } catch {
       setWorkspaces([])
       setAutoBackup(null)
+      setMessage({ type: 'error', text: '读取工作区列表失败。' })
+    } finally {
+      setLoading(false)
     }
   }
+
+  useEffect(() => {
+    void loadWorkspaces()
+  }, [isLoggedIn])
+
+  const filteredWorkspaces = useMemo(
+    () =>
+      workspaces.filter(
+        (workspace) =>
+          workspace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          workspace.description?.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [searchQuery, workspaces],
+  )
 
   const handleSave = async () => {
     if (!saveName.trim()) return
-    
-    await cloudSyncService.saveWorkspace(
+
+    const result = await saveWorkspaceEntry(
       saveName,
       currentFiles,
       currentSettings,
-      saveDescription
+      saveDescription,
+      isLoggedIn,
     )
-    
+    if (!result.ok) {
+      setMessage({ type: 'error', text: result.error || '保存失败' })
+      notify('error', '保存失败', result.error)
+      return
+    }
+
     setSaveName('')
     setSaveDescription('')
     setShowSaveForm(false)
-    loadWorkspaces()
-  }
-
-  const handleLoad = (workspace: WorkspaceBackup) => {
-    if (confirm(`确定要加载工作区 "${workspace.name}" 吗？当前未保存的更改将丢失。`)) {
-      onLoadWorkspace(workspace.files, workspace.settings)
-      onClose()
+    const detail = isLoggedIn
+      ? `${currentFiles.length} 个文件已同步到云端。`
+      : `${currentFiles.length} 个文件已写入本地备份。`
+    setMessage({ type: 'success', text: '工作区已保存。' })
+    notify('success', '工作区已保存', detail)
+    const list = await listWorkspaceEntries(isLoggedIn)
+    const saved = list.find((workspace) => workspace.name === saveName.trim())
+    if (saved) {
+      await recentFilesService.addRecentProject({
+        id: saved.id,
+        name: saved.name,
+        fileCount: currentFiles.length,
+        workspaceId: saved.id,
+      })
+      useIDEStore.getState().setRecentProjects(await recentFilesService.getRecentProjects())
     }
+    void loadWorkspaces()
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('确定要删除这个工作区吗？')) {
-      await cloudSyncService.deleteWorkspace(id)
-      loadWorkspaces()
+  const handleLoad = async (workspace: WorkspaceEntry) => {
+    const confirmed = await requestConfirm({
+      title: '加载工作区',
+      message: `要加载“${workspace.name}”吗？当前未保存的改动可能会丢失。`,
+      confirmText: '加载',
+    })
+    if (!confirmed) return
+
+    const payload = await loadWorkspaceEntry(workspace, isLoggedIn)
+    if (!payload) {
+      notify('error', '加载失败', '无法读取工作区内容')
+      return
     }
+
+    onLoadWorkspace(payload.files, payload.settings)
+    onClose()
   }
 
-  const handleExport = (workspace: WorkspaceBackup) => {
-    const json = cloudSyncService.exportWorkspace(workspace)
+  const handleDelete = async (workspace: WorkspaceEntry) => {
+    const confirmed = await requestConfirm({
+      title: '删除工作区',
+      message: `确定删除“${workspace.name}”吗？这个备份删除后无法从列表恢复。`,
+      confirmText: '删除',
+      tone: 'danger',
+    })
+    if (!confirmed) return
+
+    const result = await deleteWorkspaceEntry(workspace, isLoggedIn)
+    if (!result.ok) {
+      setMessage({ type: 'error', text: result.error || '删除失败' })
+      notify('error', '删除失败', result.error)
+      return
+    }
+
+    setMessage({ type: 'success', text: '工作区已删除。' })
+    notify('success', '工作区已删除', workspace.name)
+    void loadWorkspaces()
+  }
+
+  const handleExport = async (workspace: WorkspaceEntry) => {
+    let exportable = workspace
+    if (workspace.source === 'cloud' && workspace.files.length === 0) {
+      const full = await loadWorkspaceEntry(workspace, isLoggedIn)
+      if (!full) {
+        notify('error', '导出失败', '无法读取云端工作区')
+        return
+      }
+      exportable = { ...workspace, files: full.files, settings: full.settings }
+    }
+
+    const json = cloudSyncService.exportWorkspace(exportable)
     const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${workspace.name.replace(/\s+/g, '_')}.json`
-    a.click()
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `${workspace.name.replace(/\s+/g, '_')}.json`
+    anchor.click()
     URL.revokeObjectURL(url)
+    notify('success', '工作区已导出', workspace.name)
   }
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = async (event) => {
-      const json = event.target?.result as string
+    reader.onload = async (loadEvent) => {
+      const json = (loadEvent.target?.result as string) || ''
       const workspace = await cloudSyncService.importWorkspace(json)
-      if (workspace) {
-        loadWorkspaces()
-        alert('工作区导入成功！')
-      } else {
-        alert('导入失败，请检查文件格式')
-      }
+      const nextMessage = workspace
+        ? { type: 'success' as const, text: '工作区导入成功。' }
+        : { type: 'error' as const, text: '导入失败，请检查文件格式。' }
+      setMessage(nextMessage)
+      notify(nextMessage.type, nextMessage.text, workspace?.name)
+      loadWorkspaces()
     }
     reader.readAsText(file)
-    e.target.value = ''
+    event.target.value = ''
   }
 
   const handleExportAll = async () => {
     const json = await cloudSyncService.exportAllData()
     const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `ide_backup_${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `ide-backup-${new Date().toISOString().slice(0, 10)}.json`
+    anchor.click()
     URL.revokeObjectURL(url)
+    notify('success', '全部数据已导出')
   }
 
   const handleRestoreAutoBackup = async () => {
     const backup = await cloudSyncService.restoreAutoBackup()
-    if (backup) {
-      if (confirm('找到自动备份，确定要恢复吗？')) {
-        onLoadWorkspace(backup.files, backup.settings)
-        onClose()
-      }
-    } else {
-      alert('没有找到自动备份')
+    if (!backup) {
+      notify('error', '没有找到自动备份')
+      return
     }
+
+    const confirmed = await requestConfirm({
+      title: '恢复自动备份',
+      message: '找到一份自动备份。恢复后会替换当前编辑器中的文件和部分设置。',
+      confirmText: '恢复',
+    })
+    if (!confirmed) return
+
+    onLoadWorkspace(backup.files, backup.settings)
+    onClose()
   }
 
-  const filteredWorkspaces = workspaces.filter(w =>
-    w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    w.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.8)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: 'var(--bg-primary)',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '700px',
-          maxHeight: '85vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div
-          style={{
-            padding: '20px',
-            borderBottom: '1px solid var(--border-color)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Folder size={24} style={{ color: 'var(--accent-color)' }} />
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>工作区管理</h3>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ width: '920px', maxWidth: '96vw', maxHeight: '88vh' }} onClick={(event) => event.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Folder size={18} />
+            工作区管理
+          </span>
+          <div className="modal-close" onClick={onClose}>
+            <X size={18} />
           </div>
-          <button onClick={onClose} style={{ padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-            <X size={20} />
-          </button>
         </div>
 
-        {/* Auto Backup Alert */}
-        {autoBackup && autoBackup.updatedAt && (
-          <div
-            style={{
-              padding: '12px 20px',
-              background: '#3b82f610',
-              borderBottom: '1px solid var(--border-color)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <RotateCcw size={16} style={{ color: '#3b82f6' }} />
-              <span style={{ fontSize: '14px' }}>
-                发现自动备份（{new Date(autoBackup.updatedAt).toLocaleString()}）
-              </span>
+        <div className="modal-body" style={{ display: 'grid', gap: '16px', overflowY: 'auto' }}>
+          <div style={{ ...panelStyle, background: 'linear-gradient(135deg, rgba(59,130,246,0.10), transparent 72%)' }}>
+            <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '6px' }}>保存阶段成果，也给恢复留后路</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+              {isLoggedIn
+                ? '已登录：保存会同步到云端（并保留本地副本）。列表中带「云端」标记的条目来自服务器。'
+                : '这里可以保存当前工作区、导入旧备份、导出全部数据，或从自动备份恢复到之前的状态。'}
             </div>
-            <button
-              onClick={handleRestoreAutoBackup}
-              className="btn btn-primary"
-              style={{ padding: '6px 12px', fontSize: '13px' }}
+          </div>
+
+          {message && (
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: '12px',
+                background: message.type === 'success' ? 'rgba(51,197,142,0.10)' : 'rgba(248,81,73,0.10)',
+                color: message.type === 'success' ? '#33c58e' : '#ff7b72',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
             >
-              恢复
+              <Check size={16} />
+              {message.text}
+            </div>
+          )}
+
+          {autoBackup?.updatedAt && (
+            <div style={{ ...panelStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <RotateCcw size={16} color="#3b82f6" />
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700 }}>检测到自动备份</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    {new Date(autoBackup.updatedAt).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <button className="btn btn-primary" onClick={handleRestoreAutoBackup}>
+                恢复备份
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={() => setShowSaveForm((value) => !value)}>
+              <Save size={16} style={{ marginRight: '6px' }} />
+              保存当前工作区
+            </button>
+            <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+              <Upload size={16} style={{ marginRight: '6px' }} />
+              导入备份
+              <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
+            </label>
+            <button className="btn btn-secondary" onClick={handleExportAll}>
+              <Download size={16} style={{ marginRight: '6px' }} />
+              导出全部数据
             </button>
           </div>
-        )}
 
-        {/* Actions */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '10px' }}>
-          <button
-            onClick={() => setShowSaveForm(true)}
-            className="btn btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <Save size={16} />
-            保存当前工作区
-          </button>
-          <label className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-            <Upload size={16} />
-            导入
-            <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
-          </label>
-          <button
-            onClick={handleExportAll}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <Download size={16} />
-            导出全部
-          </button>
-        </div>
+          {showSaveForm && (
+            <div style={panelStyle}>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                <input
+                  type="text"
+                  value={saveName}
+                  onChange={(event) => setSaveName(event.target.value)}
+                  placeholder="工作区名称"
+                  autoFocus
+                  style={inputStyle}
+                />
+                <input
+                  type="text"
+                  value={saveDescription}
+                  onChange={(event) => setSaveDescription(event.target.value)}
+                  placeholder="描述（可选）"
+                  style={inputStyle}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn btn-primary" onClick={handleSave} disabled={!saveName.trim()}>
+                    保存
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setShowSaveForm(false)}>
+                    取消
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
-        {/* Search */}
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-color)' }}>
           <div style={{ position: 'relative' }}>
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索工作区..."
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="搜索工作区"
               style={{
+                ...inputStyle,
                 width: '100%',
-                padding: '10px 12px 10px 36px',
-                borderRadius: '6px',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-                fontSize: '14px',
-                boxSizing: 'border-box'
+                paddingLeft: '38px',
+                boxSizing: 'border-box',
               }}
             />
           </div>
-        </div>
 
-        {/* Save Form */}
-        {showSaveForm && (
-          <div style={{ padding: '16px 20px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input
-                type="text"
-                value={saveName}
-                onChange={(e) => setSaveName(e.target.value)}
-                placeholder="工作区名称"
-                autoFocus
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  fontSize: '14px'
-                }}
-              />
-              <input
-                type="text"
-                value={saveDescription}
-                onChange={(e) => setSaveDescription(e.target.value)}
-                placeholder="描述（可选）"
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  fontSize: '14px'
-                }}
-              />
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={handleSave} className="btn btn-primary" disabled={!saveName.trim()}>
-                  保存
-                </button>
-                <button onClick={() => setShowSaveForm(false)} className="btn btn-secondary">
-                  取消
-                </button>
-              </div>
+          {loading ? (
+            <div style={{ ...panelStyle, textAlign: 'center', color: 'var(--text-secondary)', padding: '24px' }}>
+              正在加载工作区列表…
             </div>
-          </div>
-        )}
-
-        {/* Workspace List */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
-          {filteredWorkspaces.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-              <Folder size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
-              <p>暂无保存的工作区</p>
-              <p style={{ fontSize: '13px' }}>点击上方按钮保存当前工作区</p>
+          ) : filteredWorkspaces.length === 0 ? (
+            <div style={{ ...panelStyle, textAlign: 'center', color: 'var(--text-secondary)', padding: '48px 24px' }}>
+              <Folder size={40} style={{ marginBottom: '12px', opacity: 0.5 }} />
+              <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '6px' }}>还没有保存过工作区</div>
+              <div style={{ fontSize: '13px' }}>先把当前进度存下来，之后就能随时回到这里。</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'grid', gap: '12px' }}>
               {filteredWorkspaces.map((workspace) => (
-                <div
-                  key={workspace.id}
-                  style={{
-                    padding: '16px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-color)'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div key={workspace.id} style={panelStyle}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'start' }}>
                     <div>
-                      <h4 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 600 }}>{workspace.name}</h4>
+                      <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>{workspace.name}
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            marginLeft: '8px',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            verticalAlign: 'middle',
+                            background:
+                              workspace.source === 'cloud'
+                                ? 'color-mix(in srgb, #3b82f6 18%, transparent)'
+                                : 'var(--bg-tertiary)',
+                            color: workspace.source === 'cloud' ? '#60a5fa' : 'var(--text-secondary)',
+                          }}
+                        >
+                          {workspace.source === 'cloud' ? <Cloud size={12} /> : <HardDrive size={12} />}
+                          {workspace.source === 'cloud' ? '云端' : '本地'}
+                        </span>
+                      </div>
                       {workspace.description && (
-                        <p style={{ margin: '0 0 8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '8px' }}>
                           {workspace.description}
-                        </p>
+                        </div>
                       )}
-                      <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           <Clock size={12} />
                           {new Date(workspace.updatedAt).toLocaleDateString()}
                         </span>
-                        <span>{workspace.files.length} 个文件</span>
+                        <span>
+                          {workspace.source === 'cloud' && workspace.files.length === 0
+                            ? '云端（加载时拉取）'
+                            : `${workspace.files.length} 个文件`}
+                        </span>
                         <span style={{ textTransform: 'uppercase' }}>{workspace.settings.theme}</span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button
-                        onClick={() => handleLoad(workspace)}
-                        className="btn btn-primary"
-                        style={{ padding: '6px 12px', fontSize: '13px' }}
-                      >
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button className="btn btn-primary" onClick={() => handleLoad(workspace)}>
                         加载
                       </button>
-                      <button
-                        onClick={() => handleExport(workspace)}
-                        style={{ padding: '6px', background: 'var(--bg-tertiary)', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                        title="导出"
-                      >
+                      <button className="btn btn-secondary" onClick={() => handleExport(workspace)} title="导出工作区">
                         <Download size={14} />
                       </button>
-                      <button
-                        onClick={() => handleDelete(workspace.id)}
-                        style={{ padding: '6px', background: 'var(--bg-tertiary)', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#ef4444' }}
-                        title="删除"
-                      >
+                      <button className="btn btn-secondary" onClick={() => handleDelete(workspace)} title="删除工作区">
                         <Trash2 size={14} />
                       </button>
                     </div>

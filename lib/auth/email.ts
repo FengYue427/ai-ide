@@ -10,7 +10,7 @@ interface SendVerificationRequestParams {
 export async function sendVerificationRequest({
   identifier: email,
   url,
-  provider: { server, from }
+  provider: { server: _server, from }
 }: SendVerificationRequestParams) {
   // 使用 Resend API 发送邮件
   const resendApiKey = process.env.RESEND_API_KEY

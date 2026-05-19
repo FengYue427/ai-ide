@@ -91,13 +91,14 @@ export async function getRepoBranches(
 }
 
 export function parseGitHubUrl(url: string): GitHubRepo | null {
+  const cleanUrl = url.trim().replace(/[?#].*$/, '').replace(/\/$/, '')
   const patterns = [
-    /github\.com\/([^\/]+)\/([^\/]+)/,
-    /github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)/
+    /github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)/,
+    /github\.com\/([^\/]+)\/([^\/]+)/
   ]
 
   for (const pattern of patterns) {
-    const match = url.match(pattern)
+    const match = cleanUrl.match(pattern)
     if (match) {
       return {
         owner: match[1],

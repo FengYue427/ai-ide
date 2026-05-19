@@ -1,46 +1,46 @@
 import * as Y from 'yjs'
 import { WebrtcProvider } from 'y-webrtc'
 
+const FILES_MAP_KEY = 'workspace-files'
+
 export interface CollaborationRoom {
   roomId: string
   provider: WebrtcProvider
   doc: Y.Doc
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   awareness: any
 }
 
 export class CollaborationService {
   private currentRoom: CollaborationRoom | null = null
-  private callbacks: Map<string, ((data: any) => void)[]> = new Map()
+  private callbacks: Map<string, ((data: unknown) => void)[]> = new Map()
 
   joinRoom(roomId: string, userName: string, userColor: string): CollaborationRoom {
     if (this.currentRoom?.roomId === roomId) {
       return this.currentRoom
     }
 
-    // 离开当前房间
     this.leaveRoom()
 
     const doc = new Y.Doc()
     const provider = new WebrtcProvider(`ai-ide-${roomId}`, doc, {
-      signaling: ['wss://signaling.yjs.dev']
+      signaling: ['wss://signaling.yjs.dev'],
     })
 
-    // 设置用户意识状态
     provider.awareness.setLocalStateField('user', {
       name: userName,
       color: userColor,
       cursor: null,
-      selection: null
+      selection: null,
     })
 
     this.currentRoom = {
       roomId,
       provider,
       doc,
-      awareness: provider.awareness
+      awareness: provider.awareness,
     }
 
-    // 监听其他用户变化
     provider.awareness.on('change', () => {
       this.emit('users', Array.from(provider.awareness.getStates().values()))
     })
@@ -59,63 +59,96 @@ export class CollaborationService {
     return this.currentRoom
   }
 
-  // 共享文件内容
+  private getFilesMap(): Y.Map<string> {
+    if (!this.currentRoom) {
+      throw new Error('Not in a collaboration room')
+    }
+    return this.currentRoom.doc.getMap(FILES_MAP_KEY)
+  }
+
+  /** Seed local workspace into the shared Yjs map (on join). */
+  pushWorkspaceFiles(files: { name: string; content: string }[]): void {
+    if (!this.currentRoom || files.length === 0) return
+
+    const map = this.getFilesMap()
+    this.currentRoom.doc.transact(() => {
+      for (const file of files) {
+        map.set(file.name, file.content)
+      }
+    })
+  }
+
   syncFile(filePath: string, content: string): void {
     if (!this.currentRoom) return
-    
-    const yText = this.currentRoom.doc.getText(filePath)
-    
-    // 仅在内容不同时更新
-    if (yText.toString() !== content) {
-      yText.delete(0, yText.length)
-      yText.insert(0, content)
+
+    const map = this.getFilesMap()
+    if (map.get(filePath) !== content) {
+      map.set(filePath, content)
     }
   }
 
-  // 监听文件变化
+  /** Subscribe to all file paths/content in the room. */
+  onWorkspaceFilesChange(callback: (snapshot: Record<string, string>) => void): () => void {
+    if (!this.currentRoom) return () => {}
+
+    const map = this.getFilesMap()
+
+    const emitSnapshot = () => {
+      const snapshot: Record<string, string> = {}
+      map.forEach((content, path) => {
+        snapshot[path] = content
+      })
+      callback(snapshot)
+    }
+
+    map.observe(emitSnapshot)
+    emitSnapshot()
+
+    return () => map.unobserve(emitSnapshot)
+  }
+
+  /** @deprecated Use onWorkspaceFilesChange */
   onFileChange(filePath: string, callback: (content: string) => void): () => void {
     if (!this.currentRoom) return () => {}
 
-    const yText = this.currentRoom.doc.getText(filePath)
-    
+    const map = this.getFilesMap()
+
     const handler = () => {
-      callback(yText.toString())
+      const content = map.get(filePath)
+      if (content !== undefined) callback(content)
     }
 
-    yText.observe(handler)
-    
-    // 返回取消订阅函数
-    return () => yText.unobserve(handler)
+    map.observe(handler)
+    handler()
+
+    return () => map.unobserve(handler)
   }
 
-  // 更新光标位置
   updateCursor(filePath: string, line: number, column: number): void {
     if (!this.currentRoom) return
 
-    const user = this.currentRoom.awareness.getLocalState()?.user
+    const user = this.currentRoom.awareness.getLocalState()?.user as Record<string, unknown> | undefined
     if (user) {
       this.currentRoom.awareness.setLocalStateField('user', {
         ...user,
-        cursor: { filePath, line, column }
+        cursor: { filePath, line, column },
       })
     }
   }
 
-  // 获取在线用户
-  getOnlineUsers(): any[] {
+  getOnlineUsers(): unknown[] {
     if (!this.currentRoom) return []
     return Array.from(this.currentRoom.awareness.getStates().values())
   }
 
-  // 事件订阅
-  on(event: string, callback: (data: any) => void): void {
+  on(event: string, callback: (data: unknown) => void): void {
     if (!this.callbacks.has(event)) {
       this.callbacks.set(event, [])
     }
     this.callbacks.get(event)!.push(callback)
   }
 
-  off(event: string, callback: (data: any) => void): void {
+  off(event: string, callback: (data: unknown) => void): void {
     const callbacks = this.callbacks.get(event)
     if (callbacks) {
       const index = callbacks.indexOf(callback)
@@ -123,8 +156,8 @@ export class CollaborationService {
     }
   }
 
-  private emit(event: string, data: any): void {
-    this.callbacks.get(event)?.forEach(cb => cb(data))
+  private emit(event: string, data: unknown): void {
+    this.callbacks.get(event)?.forEach((cb) => cb(data))
   }
 }
 

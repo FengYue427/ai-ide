@@ -1,15 +1,32 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { 
-  FolderOpen, X, Upload, FileText, Trash2, Check, CheckSquare, Square, 
-  Folder, ChevronRight, ChevronDown, RefreshCw, HardDrive, AlertCircle,
-  FileCode, FileJson, FileType, File as FileIcon
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  AlertCircle,
+  CheckSquare,
+  ChevronDown,
+  ChevronRight,
+  File as FileIcon,
+  FileCode,
+  FileJson,
+  FileText,
+  FileType,
+  Folder,
+  FolderOpen,
+  HardDrive,
+  RefreshCw,
+  Square,
+  Trash2,
+  Upload,
+  X,
 } from 'lucide-react'
 import { workspaceContextService, type WorkspaceFile } from '../services/workspaceContextService'
+import type { ConfirmRequest, ToastKind } from './FeedbackCenter'
 
 interface WorkspacePanelProps {
   onClose: () => void
   onFilesChange?: (files: { name: string; content: string; language: string }[]) => void
-  currentFiles?: { name: string; content: string; language: string }[]  // 当前编辑器中的文件
+  currentFiles?: { name: string; content: string; language: string }[]
+  notify: (kind: ToastKind, title: string, detail?: string) => void
+  requestConfirm: (request: ConfirmRequest) => Promise<boolean>
 }
 
 interface FileTreeNode {
@@ -20,31 +37,34 @@ interface FileTreeNode {
   file?: WorkspaceFile
 }
 
-const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ onClose, onFilesChange, currentFiles }) => {
+const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
+  onClose,
+  onFilesChange,
+  currentFiles,
+  notify,
+  requestConfirm,
+}) => {
   const [files, setFiles] = useState<WorkspaceFile[]>([])
   const [stats, setStats] = useState(workspaceContextService.getStats())
   const [dragActive, setDragActive] = useState(false)
-  const hasSyncedFiles = useRef(false)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [error, setError] = useState<string | null>(null)
+  const hasSyncedFiles = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // 刷新文件列表
   const refreshFiles = useCallback(() => {
     const allFiles = workspaceContextService.getAllFiles()
     setFiles(allFiles)
     setStats(workspaceContextService.getStats())
-    
-    // 通知父组件文件变化
+
     if (onFilesChange) {
-      const fileData = allFiles.map(f => ({
-        name: f.name,
-        content: f.content,
-        language: f.language
-      }))
-      onFilesChange(fileData)
+      onFilesChange(allFiles.map((file) => ({
+        name: file.name,
+        content: file.content,
+        language: file.language,
+      })))
     }
   }, [onFilesChange])
 
@@ -52,37 +72,30 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ onClose, onFilesChange,
     refreshFiles()
   }, [refreshFiles])
 
-  // 同步当前编辑器文件到工作区（如果工作区为空）
   useEffect(() => {
-    if (currentFiles && currentFiles.length > 0 && !hasSyncedFiles.current) {
-      const workspaceFiles = workspaceContextService.getAllFiles()
-      // 如果工作区为空，自动同步当前文件
-      if (workspaceFiles.length === 0) {
-        workspaceContextService.createFromFiles(currentFiles, '当前项目')
-        refreshFiles()
-        hasSyncedFiles.current = true
-      }
+    if (!currentFiles?.length || hasSyncedFiles.current) return
+
+    const workspaceFiles = workspaceContextService.getAllFiles()
+    if (workspaceFiles.length === 0) {
+      workspaceContextService.createFromFiles(currentFiles, '当前项目')
+      hasSyncedFiles.current = true
+      refreshFiles()
     }
   }, [currentFiles, refreshFiles])
 
-  // 处理文件拖放
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true)
-    } else if (e.type === 'dragleave') {
-      setDragActive(false)
-    }
+  const handleDrag = useCallback((event: React.DragEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setDragActive(event.type === 'dragenter' || event.type === 'dragover')
   }, [])
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleDrop = useCallback(async (event: React.DragEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
     setDragActive(false)
     setError(null)
 
-    const items = e.dataTransfer.items
+    const items = event.dataTransfer.items
     if (!items) return
 
     setIsImporting(true)
@@ -90,233 +103,184 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ onClose, onFilesChange,
     let processedFiles = 0
 
     try {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i]
-        const entry = item.webkitGetAsEntry()
-        
-        if (entry) {
-          if (entry.isFile) {
-            totalFiles++
-          } else if (entry.isDirectory) {
-            // 粗略估计文件夹中的文件数
-            totalFiles += 10
-          }
-        }
+      for (let index = 0; index < items.length; index++) {
+        const entry = items[index].webkitGetAsEntry()
+        if (entry?.isFile) totalFiles++
+        if (entry?.isDirectory) totalFiles += 10
       }
 
       setImportProgress({ current: 0, total: totalFiles })
 
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i]
-        const entry = item.webkitGetAsEntry()
-        
-        if (entry) {
-          if (entry.isFile) {
-            const fileEntry = entry as FileSystemFileEntry
-            await new Promise<void>((resolve, reject) => {
-              fileEntry.file(async (file) => {
-                try {
-                  await workspaceContextService.addFileFromLocal(file)
-                  processedFiles++
-                  setImportProgress({ current: processedFiles, total: totalFiles })
-                  resolve()
-                } catch (e) {
-                  reject(e)
-                }
-              }, reject)
-            })
-          } else if (entry.isDirectory) {
-            const dirEntry = entry as FileSystemDirectoryEntry
-            const result = await workspaceContextService.addFilesFromDirectory(dirEntry)
-            processedFiles += result.success
-            setImportProgress({ current: processedFiles, total: totalFiles })
-            
-            if (result.errors.length > 0) {
-              console.warn('Some files failed to import:', result.errors)
-            }
+      for (let index = 0; index < items.length; index++) {
+        const entry = items[index].webkitGetAsEntry()
+        if (!entry) continue
+
+        if (entry.isFile) {
+          await new Promise<void>((resolve, reject) => {
+            ;(entry as FileSystemFileEntry).file(async (file) => {
+              try {
+                await workspaceContextService.addFileFromLocal(file)
+                processedFiles++
+                setImportProgress({ current: processedFiles, total: totalFiles })
+                resolve()
+              } catch (error) {
+                reject(error)
+              }
+            }, reject)
+          })
+        } else if (entry.isDirectory) {
+          const result = await workspaceContextService.addFilesFromDirectory(entry as FileSystemDirectoryEntry)
+          processedFiles += result.success
+          setImportProgress({ current: processedFiles, total: totalFiles })
+          if (result.errors.length > 0) {
+            console.warn('部分文件导入失败:', result.errors)
           }
         }
       }
 
       refreshFiles()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '导入失败')
+      notify('success', '工作区文件已导入', `${processedFiles} 个文件已加入上下文。`)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '导入失败')
     } finally {
       setIsImporting(false)
       setImportProgress({ current: 0, total: 0 })
     }
-  }, [refreshFiles])
+  }, [notify, refreshFiles])
 
-  // 处理文件选择
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files
+    if (!selectedFiles) return
 
     setIsImporting(true)
     setError(null)
-    
+
     try {
-      const fileArray = Array.from(files)
-      const result = await workspaceContextService.addFilesFromLocal(fileArray)
-      
+      const result = await workspaceContextService.addFilesFromLocal(Array.from(selectedFiles))
       if (result.failed > 0) {
-        console.warn('Some files failed to import:', result.errors)
+        console.warn('部分文件导入失败:', result.errors)
       }
-      
       refreshFiles()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '导入失败')
+      notify(result.failed > 0 ? 'info' : 'success', '文件导入完成', `成功 ${result.success} 个，失败 ${result.failed} 个。`)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '导入失败')
     } finally {
       setIsImporting(false)
-      e.target.value = '' // 重置input
+      event.target.value = ''
     }
-  }, [refreshFiles])
+  }, [notify, refreshFiles])
 
-  // 删除文件
   const handleRemoveFile = useCallback((path: string) => {
     workspaceContextService.removeFile(path)
     refreshFiles()
-  }, [refreshFiles])
+    notify('success', '已移出上下文', path)
+  }, [notify, refreshFiles])
 
-  // 切换文件选择
   const handleToggleSelect = useCallback((path: string) => {
     workspaceContextService.toggleFileSelection(path)
     refreshFiles()
   }, [refreshFiles])
 
-  // 全选/取消全选
   const handleSelectAll = useCallback((selected: boolean) => {
     workspaceContextService.selectAllFiles(selected)
     refreshFiles()
-  }, [refreshFiles])
+    notify('success', selected ? '已全选工作区文件' : '已取消全部选择')
+  }, [notify, refreshFiles])
 
-  // 清空工作区
-  const handleClear = useCallback(() => {
-    if (confirm('确定要清空工作区吗？所有文件将被删除。')) {
-      workspaceContextService.clearContext()
-      refreshFiles()
-    }
-  }, [refreshFiles])
+  const handleClear = useCallback(async () => {
+    const confirmed = await requestConfirm({
+      title: '清空工作区上下文',
+      message: '确定要清空工作区吗？所有导入的上下文文件都会被移除。',
+      confirmText: '清空',
+      tone: 'danger',
+    })
+    if (!confirmed) return
 
-  // 切换文件夹展开状态
+    workspaceContextService.clearContext()
+    refreshFiles()
+    notify('success', '工作区已清空')
+  }, [notify, refreshFiles, requestConfirm])
+
   const toggleFolder = useCallback((path: string) => {
-    setExpandedFolders(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(path)) {
-        newSet.delete(path)
-      } else {
-        newSet.add(path)
-      }
-      return newSet
+    setExpandedFolders((current) => {
+      const next = new Set(current)
+      if (next.has(path)) next.delete(path)
+      else next.add(path)
+      return next
     })
   }, [])
 
-  // 构建文件树
-  const buildFileTree = useCallback((): FileTreeNode[] => {
+  const fileTree = useMemo(() => {
     const root: FileTreeNode[] = []
-    
-    files.forEach(file => {
+
+    files.forEach((file) => {
       const parts = file.path.split('/').filter(Boolean)
       let currentLevel = root
       let currentPath = ''
-      
+
       parts.forEach((part, index) => {
         currentPath = currentPath ? `${currentPath}/${part}` : part
         const isLast = index === parts.length - 1
-        
-        const existingNode = currentLevel.find(node => node.name === part)
-        
+        const existingNode = currentLevel.find((node) => node.name === part)
+
         if (existingNode) {
-          if (!isLast) {
-            currentLevel = existingNode.children!
-          }
-        } else {
-          if (isLast) {
-            const newNode: FileTreeNode = {
-              name: part,
-              path: currentPath,
-              type: 'file',
-              file
-            }
-            currentLevel.push(newNode)
-          } else {
-            const newNode: FileTreeNode = {
-              name: part,
-              path: currentPath,
-              type: 'folder',
-              children: []
-            }
-            currentLevel.push(newNode)
-            currentLevel = newNode.children!
-          }
+          if (!isLast) currentLevel = existingNode.children!
+          return
         }
+
+        const newNode: FileTreeNode = isLast
+          ? { name: part, path: currentPath, type: 'file', file }
+          : { name: part, path: currentPath, type: 'folder', children: [] }
+        currentLevel.push(newNode)
+        if (!isLast) currentLevel = newNode.children!
       })
     })
-    
+
     return root
   }, [files])
 
-  // 获取文件图标
   const getFileIcon = (language: string) => {
     switch (language) {
       case 'javascript':
       case 'typescript':
-        return <FileCode size={16} style={{ color: '#f7df1e' }} />
+        return <FileCode size={16} style={{ color: '#facc15' }} />
       case 'json':
-        return <FileJson size={16} style={{ color: '#fff' }} />
+        return <FileJson size={16} style={{ color: '#9ca3af' }} />
       case 'html':
-        return <FileType size={16} style={{ color: '#e34c26' }} />
+        return <FileType size={16} style={{ color: '#f97316' }} />
       case 'css':
       case 'scss':
       case 'sass':
-        return <FileType size={16} style={{ color: '#264de4' }} />
-      case 'python':
-        return <FileCode size={16} style={{ color: '#3776ab' }} />
+        return <FileType size={16} style={{ color: '#38bdf8' }} />
       case 'markdown':
-        return <FileText size={16} style={{ color: '#fff' }} />
+        return <FileText size={16} style={{ color: '#9ca3af' }} />
       default:
         return <FileIcon size={16} style={{ color: 'var(--text-secondary)' }} />
     }
   }
 
-  // 格式化文件大小
   const formatSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
-  // 渲染文件树节点
-  const renderTreeNode = (node: FileTreeNode, depth: number = 0) => {
-    const isExpanded = expandedFolders.has(node.path)
+  const renderTreeNode = (node: FileTreeNode, depth = 0): React.ReactNode => {
     const paddingLeft = 12 + depth * 16
 
     if (node.type === 'folder') {
+      const isExpanded = expandedFolders.has(node.path)
       return (
         <div key={node.path}>
           <div
             onClick={() => toggleFolder(node.path)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              paddingLeft: `${paddingLeft}px`,
-              cursor: 'pointer',
-              fontSize: '13px',
-              color: 'var(--text-primary)',
-              borderBottom: '1px solid var(--border-color)'
-            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', paddingLeft, cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-color)' }}
           >
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            <Folder size={16} style={{ color: '#ffd700' }} />
+            <Folder size={16} style={{ color: '#fbbf24' }} />
             <span style={{ flex: 1 }}>{node.name}</span>
           </div>
-          {isExpanded && node.children && (
-            <div>
-              {node.children.map(child => renderTreeNode(child, depth + 1))}
-            </div>
-          )}
+          {isExpanded && node.children?.map((child) => renderTreeNode(child, depth + 1))}
         </div>
       )
     }
@@ -329,224 +293,127 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ onClose, onFilesChange,
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          padding: '6px 12px',
-          paddingLeft: `${paddingLeft}px`,
+          padding: '8px 12px',
+          paddingLeft,
           borderBottom: '1px solid var(--border-color)',
-          background: file.selected !== false ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+          background: file.selected !== false ? 'rgba(124, 156, 255, 0.10)' : 'transparent',
         }}
       >
-        <div
-          onClick={() => handleToggleSelect(file.path)}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-        >
-          {file.selected !== false ? (
-            <CheckSquare size={16} style={{ color: 'var(--accent-color)' }} />
-          ) : (
-            <Square size={16} style={{ color: 'var(--text-secondary)' }} />
-          )}
-        </div>
+        <button onClick={() => handleToggleSelect(file.path)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }} title="切换选择">
+          {file.selected !== false ? <CheckSquare size={16} style={{ color: 'var(--accent-color)' }} /> : <Square size={16} />}
+        </button>
         {getFileIcon(file.language)}
-        <span style={{ flex: 1, fontSize: '13px', color: 'var(--text-primary)' }}>
-          {node.name}
-        </span>
-        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-          {formatSize(file.size)}
-        </span>
-        <div
-          onClick={() => handleRemoveFile(file.path)}
-          style={{ cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
-          className="hover-danger"
-        >
-          <Trash2 size={14} style={{ color: 'var(--text-secondary)' }} />
-        </div>
+        <span style={{ flex: 1, minWidth: 0, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{formatSize(file.size)}</span>
+        <button onClick={() => handleRemoveFile(file.path)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }} title="移出上下文">
+          <Trash2 size={14} />
+        </button>
       </div>
     )
   }
 
-  const fileTree = buildFileTree()
-
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div 
-        className="modal" 
-        style={{ width: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
+      <div className="modal" style={{ width: '680px', maxWidth: '94vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column' }} onClick={(event) => event.stopPropagation()}>
         <div className="modal-header" style={{ flexShrink: 0 }}>
           <span className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FolderOpen size={18} />
-            工作区管理
+            工作区上下文
           </span>
           <div className="modal-close" onClick={onClose}>
             <X size={18} />
           </div>
         </div>
 
-        {/* Body */}
         <div className="modal-body" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
-          {/* 统计信息 */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '16px', 
-            padding: '12px',
-            background: 'var(--bg-secondary)',
-            borderRadius: '8px',
-            marginBottom: '16px',
-            fontSize: '12px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <HardDrive size={14} style={{ color: 'var(--accent-color)' }} />
-              <span>{stats.totalFiles} 文件</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <CheckSquare size={14} style={{ color: 'var(--accent-color)' }} />
-              <span>{stats.selectedFiles} 选中</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <FileText size={14} style={{ color: 'var(--accent-color)' }} />
-              <span>{formatSize(stats.totalSize)}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <RefreshCw size={14} style={{ color: 'var(--accent-color)' }} />
-              <span>~{stats.estimatedTokens.toLocaleString()} tokens</span>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px', marginBottom: '14px' }}>
+            {[
+              { icon: <HardDrive size={14} />, label: '文件', value: stats.totalFiles },
+              { icon: <CheckSquare size={14} />, label: '选中', value: stats.selectedFiles },
+              { icon: <FileText size={14} />, label: '体积', value: formatSize(stats.totalSize) },
+              { icon: <RefreshCw size={14} />, label: 'Tokens', value: `~${stats.estimatedTokens.toLocaleString()}` },
+            ].map((item) => (
+              <div key={item.label} className="status-pill" style={{ justifyContent: 'center', borderRadius: '12px' }}>
+                {item.icon}
+                <span>{item.label}</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{item.value}</strong>
+              </div>
+            ))}
           </div>
 
-          {/* 错误提示 */}
           {error && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 12px',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: '6px',
-              marginBottom: '12px',
-              fontSize: '13px',
-              color: '#ef4444'
-            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px', marginBottom: '12px', fontSize: '13px', color: 'var(--danger-color)' }}>
               <AlertCircle size={16} />
               {error}
             </div>
           )}
 
-          {/* 拖放区域 */}
           <div
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
             style={{
               border: `2px dashed ${dragActive ? 'var(--accent-color)' : 'var(--border-color)'}`,
-              borderRadius: '8px',
+              borderRadius: '14px',
               padding: '20px',
               textAlign: 'center',
-              marginBottom: '16px',
-              background: dragActive ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-secondary)',
-              transition: 'all 0.2s',
-              cursor: 'pointer'
+              marginBottom: '14px',
+              background: dragActive ? 'rgba(124, 156, 255, 0.12)' : 'var(--bg-secondary)',
+              cursor: 'pointer',
             }}
-            onClick={() => fileInputRef.current?.click()}
           >
             {isImporting ? (
               <div>
-                <RefreshCw size={32} style={{ color: 'var(--accent-color)', animation: 'spin 1s linear infinite' }} />
-                <p style={{ marginTop: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  正在导入... {importProgress.current} / {importProgress.total}
-                </p>
+                <RefreshCw size={32} style={{ color: 'var(--accent-color)' }} />
+                <p style={{ marginTop: '10px', fontSize: '14px', color: 'var(--text-secondary)' }}>正在导入 {importProgress.current} / {importProgress.total}</p>
               </div>
             ) : (
               <div>
                 <Upload size={32} style={{ color: dragActive ? 'var(--accent-color)' : 'var(--text-secondary)' }} />
-                <p style={{ marginTop: '12px', fontSize: '14px', color: 'var(--text-primary)' }}>
-                  拖放文件或文件夹到这里
-                </p>
-                <p style={{ marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  或点击选择文件，支持多文件和整个文件夹
-                </p>
+                <p style={{ marginTop: '10px', fontSize: '14px', color: 'var(--text-primary)' }}>拖放文件或文件夹到这里</p>
+                <p style={{ marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>也可以点击选择多个文件，用于给 AI 提供完整项目上下文。</p>
               </div>
             )}
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            {...{ webkitdirectory: '', directory: '' }}
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
-          />
+          <input ref={fileInputRef} type="file" multiple {...{ webkitdirectory: '', directory: '' }} style={{ display: 'none' }} onChange={handleFileSelect} />
 
-          {/* 文件列表操作 */}
           {files.length > 0 && (
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              marginBottom: '8px'
-            }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => handleSelectAll(true)}
-                  style={{ padding: '4px 8px', fontSize: '12px' }}
-                >
+                <button className="btn btn-secondary" onClick={() => handleSelectAll(true)}>
                   <CheckSquare size={14} style={{ marginRight: '4px' }} />
                   全选
                 </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => handleSelectAll(false)}
-                  style={{ padding: '4px 8px', fontSize: '12px' }}
-                >
+                <button className="btn btn-secondary" onClick={() => handleSelectAll(false)}>
                   <Square size={14} style={{ marginRight: '4px' }} />
                   取消全选
                 </button>
               </div>
-              <button
-                className="btn btn-danger"
-                onClick={handleClear}
-                style={{ padding: '4px 8px', fontSize: '12px' }}
-              >
+              <button className="btn btn-danger" onClick={handleClear}>
                 <Trash2 size={14} style={{ marginRight: '4px' }} />
                 清空
               </button>
             </div>
           )}
 
-          {/* 文件列表 */}
-          <div style={{ 
-            flex: 1, 
-            overflow: 'auto', 
-            border: '1px solid var(--border-color)',
-            borderRadius: '8px',
-            background: 'var(--bg-primary)'
-          }}>
+          <div style={{ flex: 1, overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'var(--bg-primary)' }}>
             {files.length === 0 ? (
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '40px',
-                color: 'var(--text-secondary)'
-              }}>
-                <FolderOpen size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
-                <p>工作区为空</p>
-                <p style={{ fontSize: '12px', marginTop: '4px' }}>
-                  拖放文件或文件夹开始构建项目上下文
-                </p>
+              <div style={{ textAlign: 'center', padding: '42px 20px', color: 'var(--text-secondary)' }}>
+                <FolderOpen size={46} style={{ opacity: 0.35, marginBottom: '12px' }} />
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>工作区上下文为空</div>
+                <div style={{ fontSize: '12px' }}>导入文件后，AI 助手可以基于这些内容理解项目。</div>
               </div>
             ) : (
-              fileTree.map(node => renderTreeNode(node))
+              fileTree.map((node) => renderTreeNode(node))
             )}
           </div>
         </div>
 
-        {/* Footer */}
         <div className="modal-footer" style={{ flexShrink: 0 }}>
-          <button className="btn btn-secondary" onClick={onClose}>
-            关闭
-          </button>
+          <button className="btn btn-secondary" onClick={onClose}>关闭</button>
         </div>
       </div>
     </div>

@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { X, Check, Zap, Crown, Building2, Loader2 } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Building2, Check, Crown, Loader2, Zap } from 'lucide-react'
+import { readJsonResponse } from '../services/apiUtils'
+import { authService } from '../services/authService'
+import { subscriptionService } from '../services/subscriptionService'
+import { useIDEStore } from '../store/ideStore'
+import CnPayModal from './CnPayModal'
+import { AlertBanner } from './ui/AlertBanner'
+import { ModalShell } from './ui/ModalShell'
 
 interface Plan {
   id: string
@@ -16,479 +23,502 @@ interface Plan {
   }
 }
 
+interface SubscriptionStatus {
+  plan: string
+  status: string
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd: boolean
+}
+
 interface SubscriptionModalProps {
   onClose: () => void
   currentPlan?: string
 }
 
-const planIcons: Record<string, React.ReactNode> = {
-  free: <Zap size={24} />,
-  pro: <Crown size={24} />,
-  enterprise: <Building2 size={24} />
-}
+const fallbackPlans: Plan[] = [
+  {
+    id: 'free',
+    name: 'free',
+    displayName: '免费版',
+    description: '个人学习与日常小项目，配额已放宽。',
+    price: 0,
+    currency: 'CNY',
+    features: ['基础 AI 对话', '10 个云工作区', '每日 200 次配额'],
+    limits: { aiRequestsPerDay: 200, workspaces: 10, storageGB: 3 },
+  },
+  {
+    id: 'pro',
+    name: 'pro',
+    displayName: '专业版',
+    description: '高频个人开发者，¥19/月。',
+    price: 19,
+    currency: 'CNY',
+    features: ['每日 5000 次配额', '无限工作区', '支付宝 / 微信付款'],
+    limits: { aiRequestsPerDay: 5000, workspaces: -1, storageGB: 30 },
+  },
+  {
+    id: 'enterprise',
+    name: 'enterprise',
+    displayName: '团队版',
+    description: '小团队与重度用户，¥49/月。',
+    price: 49,
+    currency: 'CNY',
+    features: ['配额不限', '无限工作区', '团队能力（规划）'],
+    limits: { aiRequestsPerDay: -1, workspaces: -1, storageGB: 100 },
+  },
+]
 
-const planColors: Record<string, { gradient: string; border: string }> = {
+const planVisuals: Record<string, { gradient: string; border: string; icon: React.ReactNode }> = {
   free: {
     gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
-    border: '#64748b'
+    border: '#64748b',
+    icon: <Zap size={22} />,
   },
   pro: {
     gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-    border: '#6366f1'
+    border: '#6366f1',
+    icon: <Crown size={22} />,
   },
   enterprise: {
     gradient: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-    border: '#f59e0b'
-  }
+    border: '#f59e0b',
+    icon: <Building2 size={22} />,
+  },
 }
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentPlan = 'free' }) => {
+  const setCurrentPlan = useIDEStore((s) => s.setCurrentPlan)
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
-  const [processing, setProcessing] = useState(false)
+  const [processingPlanId, setProcessingPlanId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [resuming, setResuming] = useState(false)
+  const [cnPayPlan, setCnPayPlan] = useState<Plan | null>(null)
+  const [paymentMethods, setPaymentMethods] = useState({
+    alipay: false,
+    wechat: false,
+    stripe: false,
+    devMock: false,
+  })
+  const [pricingNote, setPricingNote] = useState('')
+
+  const loadSubscription = () => {
+    return fetch('/api/subscription', { credentials: 'include' })
+      .then((response) => readJsonResponse<{ subscription?: SubscriptionStatus }>(response))
+      .then((data) => {
+        if (data?.subscription) {
+          setSubscription(data.subscription)
+          setCurrentPlan(data.subscription.plan)
+          subscriptionService.subscribeToPlan(data.subscription.plan)
+        }
+      })
+      .catch(() => {})
+  }
 
   useEffect(() => {
-    fetch('/api/subscription/plans')
-      .then(res => res.json())
-      .then(data => {
-        if (data.plans) setPlans(data.plans)
+    let cancelled = false
+
+    void loadSubscription()
+
+    fetch('/api/subscription/payment-methods', { credentials: 'include' })
+      .then((r) =>
+        readJsonResponse<{
+          alipay?: boolean
+          wechat?: boolean
+          stripe?: boolean
+          devMock?: boolean
+          pricingNote?: string
+        }>(r),
+      )
+      .then((data) => {
+        if (data) {
+          setPaymentMethods({
+            alipay: Boolean(data.alipay),
+            wechat: Boolean(data.wechat),
+            stripe: Boolean(data.stripe),
+            devMock: Boolean(data.devMock),
+          })
+          if (data.pricingNote) setPricingNote(data.pricingNote)
+        }
       })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      .catch(() => {})
+
+    fetch('/api/subscription/plans', { credentials: 'include' })
+      .then((response) => readJsonResponse<{ plans?: Plan[] }>(response))
+      .then((data) => {
+        if (cancelled) return
+        if (Array.isArray(data?.plans) && data.plans.length > 0) {
+          setPlans(data.plans)
+        } else {
+          setPlans(fallbackPlans)
+          setError('暂时无法读取在线套餐信息，先为你展示默认方案。')
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPlans(fallbackPlans)
+          setError('暂时无法读取在线套餐信息，先为你展示默认方案。')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const handleSubscribe = async (planId: string) => {
-    if (planId === 'free') {
+  const currentPlanInfo = useMemo(() => plans.find((plan) => plan.name === currentPlan), [plans, currentPlan])
+
+  const handleSubscribe = async (planId: string, planName: string) => {
+    if (planName === 'free') {
       onClose()
       return
     }
-    
-    setProcessing(true)
-    setSelectedPlan(planId)
-    
+
+    const session = await authService.getSession()
+    if (!session?.user) {
+      setError('请先登录后再升级订阅')
+      return
+    }
+
+    const plan = plans.find((p) => p.name === planName)
+    if (!plan) return
+
+    setError('')
+    setSuccess('')
+
+    if (paymentMethods.alipay || paymentMethods.wechat) {
+      setCnPayPlan(plan)
+      return
+    }
+
+    if (paymentMethods.devMock) {
+      setProcessingPlanId(planId)
+      try {
+        const response = await fetch('/api/subscription/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ planId: planName }),
+        })
+        const data = await readJsonResponse<{ mode?: string; plan?: string; message?: string; error?: string }>(
+          response,
+        )
+        if (response.ok && data?.mode === 'dev_mock' && data.plan) {
+          subscriptionService.subscribeToPlan(data.plan)
+          setCurrentPlan(data.plan)
+          setSuccess(data.message || `已升级为 ${data.plan}`)
+          window.setTimeout(() => onClose(), 1200)
+        } else {
+          setError(data?.error || '开发模式升级失败')
+        }
+      } catch {
+        setError('支付请求失败，请检查网络或稍后重试。')
+      } finally {
+        setProcessingPlanId(null)
+      }
+      return
+    }
+
+    setError('支付尚未配置，请在服务端设置支付宝或微信商户参数。')
+  }
+
+  const formatLimit = (value: number, unit: string) => (value === -1 ? '无限制' : `${value}${unit}`)
+
+  const handleCancel = async (immediate: boolean) => {
+    setCancelling(true)
+    setError('')
+    setSuccess('')
     try {
-      // 调用 Stripe checkout API
-      const res = await fetch('/api/subscription/checkout', {
+      const response = await fetch('/api/subscription/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId })
+        credentials: 'include',
+        body: JSON.stringify({ immediate }),
       })
-      
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert('创建支付会话失败')
+      const data = await readJsonResponse<{
+        subscription?: SubscriptionStatus
+        message?: string
+        error?: string
+      }>(response)
+      if (!response.ok) {
+        setError(data?.error || '取消订阅失败')
+        return
       }
-    } catch (error) {
-      console.error('Subscribe error:', error)
-      alert('支付请求失败')
+      if (data?.subscription) {
+        setSubscription(data.subscription)
+        setCurrentPlan(data.subscription.plan)
+        subscriptionService.subscribeToPlan(data.subscription.plan)
+      }
+      setSuccess(data?.message || '订阅状态已更新')
+    } catch {
+      setError('取消订阅失败，请稍后重试')
     } finally {
-      setProcessing(false)
+      setCancelling(false)
     }
   }
 
-  const formatLimit = (value: number, unit: string) => {
-    if (value === -1) return '无限'
-    return `${value}${unit}`
+  const handleResume = async () => {
+    setResuming(true)
+    setError('')
+    setSuccess('')
+    try {
+      const response = await fetch('/api/subscription/resume', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await readJsonResponse<{
+        subscription?: SubscriptionStatus
+        message?: string
+        error?: string
+      }>(response)
+      if (!response.ok) {
+        setError(data?.error || '恢复订阅失败')
+        return
+      }
+      if (data?.subscription) {
+        setSubscription(data.subscription)
+        setCurrentPlan(data.subscription.plan)
+        subscriptionService.subscribeToPlan(data.subscription.plan)
+      }
+      setSuccess(data?.message || '订阅已恢复')
+    } catch {
+      setError('恢复订阅失败，请稍后重试')
+    } finally {
+      setResuming(false)
+    }
   }
 
-  if (loading) {
-    return (
-      <div className="sub-modal-overlay" onClick={onClose}>
-        <div className="sub-modal" onClick={e => e.stopPropagation()}>
-          <div className="sub-loading">
-            <Loader2 size={32} className="spin" />
-            <p>加载中...</p>
-          </div>
-        </div>
-        <style>{`
-          .sub-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-          }
-          .sub-modal {
-            background: var(--bg-primary, #1e1e1e);
-            border: 1px solid var(--border-color, #3c3c3c);
-            border-radius: 20px;
-            width: 900px;
-            max-width: 95vw;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 40px;
-          }
-          .sub-loading {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-            padding: 60px;
-            color: var(--text-secondary, #858585);
-          }
-          .spin { animation: spin 1s linear infinite; }
-          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        `}</style>
-      </div>
-    )
+  const handleBillingPortal = async () => {
+    setProcessingPlanId('portal')
+    setError('')
+    try {
+      const response = await fetch('/api/subscription/portal', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await readJsonResponse<{ url?: string; error?: string }>(response)
+      if (data?.url && /^https?:\/\//i.test(data.url)) {
+        window.location.href = data.url
+        return
+      }
+      setError(data?.error || '无法打开 Stripe 客户门户')
+    } catch {
+      setError('无法打开账单管理页面')
+    } finally {
+      setProcessingPlanId(null)
+    }
   }
+
+  const isPaidPlan = currentPlan !== 'free'
+  const periodEndLabel =
+    subscription?.currentPeriodEnd &&
+    new Date(subscription.currentPeriodEnd).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
 
   return (
-    <div className="sub-modal-overlay" onClick={onClose}>
-      <div className="sub-modal" onClick={e => e.stopPropagation()}>
-        {/* 头部 */}
-        <div className="sub-header">
-          <div>
-            <h2 className="sub-title">选择您的计划</h2>
-            <p className="sub-subtitle">升级以解锁更多高级功能</p>
+    <>
+      {cnPayPlan && (
+        <CnPayModal
+          plan={cnPayPlan}
+          onClose={() => setCnPayPlan(null)}
+          onSuccess={() => {
+            void loadSubscription()
+            setSuccess('支付成功，订阅已更新')
+          }}
+        />
+      )}
+    <ModalShell
+      title="订阅计划"
+      onClose={onClose}
+      className="modal--wide"
+      bodyClassName="modal-body--grid"
+      ariaLabel="订阅计划"
+    >
+          <div className="subscription-hero">
+            <div className="subscription-hero-title">选择更适合你的工作节奏</div>
+            <p className="subscription-hero-desc">
+              当前计划{currentPlanInfo ? `是 ${currentPlanInfo.displayName}` : '已启用'}。升级后可以获得更高的 AI 配额、更大的工作区容量，以及更完整的协作与管理能力。
+            </p>
           </div>
-          <button className="sub-close-btn" onClick={onClose}>
-            <X size={20} />
-          </button>
-        </div>
 
-        {/* 计划卡片 */}
-        <div className="sub-plans-grid">
-          {plans.map(plan => {
-            const isCurrent = plan.name === currentPlan
-            const isSelected = plan.id === selectedPlan
-            const colors = planColors[plan.name] || planColors.free
+          {pricingNote && (
+            <AlertBanner variant="info">{pricingNote}</AlertBanner>
+          )}
 
-            return (
-              <div
-                key={plan.id}
-                className={`sub-plan-card ${isCurrent ? 'current' : ''} ${isSelected ? 'selected' : ''}`}
-                style={{ '--plan-border': colors.border } as React.CSSProperties}
-              >
-                {isCurrent && <div className="sub-current-badge">当前计划</div>}
-                
-                <div className="sub-plan-header" style={{ background: colors.gradient }}>
-                  <div className="sub-plan-icon">{planIcons[plan.name]}</div>
-                  <h3 className="sub-plan-name">{plan.displayName}</h3>
-                  <p className="sub-plan-desc">{plan.description}</p>
+          {error && <AlertBanner variant="warning">{error}</AlertBanner>}
+
+          {success && <AlertBanner variant="success">{success}</AlertBanner>}
+
+          {isPaidPlan && subscription && (
+            <div className="subscription-manage">
+              <div className="subscription-manage-title">当前订阅</div>
+              {subscription.cancelAtPeriodEnd ? (
+                <div style={{ fontSize: '13px', color: '#ffb648', lineHeight: 1.6 }}>
+                  已安排在周期结束后降级为免费版
+                  {periodEndLabel ? `（${periodEndLabel} 前仍可使用 ${currentPlanInfo?.displayName || currentPlan}）` : ''}
                 </div>
-
-                <div className="sub-plan-price">
-                  <span className="sub-price-symbol">$</span>
-                  <span className="sub-price-value">{plan.price}</span>
-                  <span className="sub-price-period">/月</span>
+              ) : (
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  状态：{subscription.status}
+                  {periodEndLabel ? ` · 当前周期至 ${periodEndLabel}` : ''}
                 </div>
-
-                <div className="sub-plan-limits">
-                  <div className="sub-limit-item">
-                    <span className="sub-limit-label">AI 请求</span>
-                    <span className="sub-limit-value">
-                      {formatLimit(plan.limits.aiRequestsPerDay, '次/天')}
-                    </span>
-                  </div>
-                  <div className="sub-limit-item">
-                    <span className="sub-limit-label">工作区</span>
-                    <span className="sub-limit-value">
-                      {formatLimit(plan.limits.workspaces, '个')}
-                    </span>
-                  </div>
-                  <div className="sub-limit-item">
-                    <span className="sub-limit-label">存储空间</span>
-                    <span className="sub-limit-value">
-                      {formatLimit(plan.limits.storageGB, 'GB')}
-                    </span>
-                  </div>
-                </div>
-
-                <ul className="sub-plan-features">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="sub-feature-item">
-                      <Check size={16} className="sub-feature-check" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
+              )}
+              <div className="subscription-manage-actions">
+                {subscription.cancelAtPeriodEnd ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={resuming}
+                    onClick={() => void handleResume()}
+                  >
+                    {resuming ? '恢复中…' : '恢复订阅续费'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={cancelling}
+                    onClick={() => void handleCancel(false)}
+                  >
+                    {cancelling ? '处理中…' : '周期结束后取消'}
+                  </button>
+                )}
                 <button
-                  className={`sub-plan-btn ${isCurrent ? 'current' : ''}`}
-                  onClick={() => handleSubscribe(plan.id)}
-                  disabled={processing || isCurrent}
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={cancelling || resuming}
+                  onClick={() => void handleCancel(true)}
                 >
-                  {processing && isSelected ? (
-                    <Loader2 size={18} className="spin" />
-                  ) : isCurrent ? (
-                    '当前使用中'
-                  ) : (
-                    plan.price === 0 ? '免费使用' : '立即升级'
-                  )}
+                  立即降级免费版
                 </button>
+                {paymentMethods.stripe && (
+                  <button type="button" className="btn btn-secondary" onClick={() => void handleBillingPortal()}>
+                    Stripe 账单管理
+                  </button>
+                )}
               </div>
-            )
-          })}
-        </div>
-      </div>
+            </div>
+          )}
 
-      <style>{`
-        .sub-modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.7);
-          backdrop-filter: blur(8px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          animation: fadeIn 0.2s ease;
-        }
+          {loading ? (
+            <div className="subscription-loading">
+              <Loader2 size={28} className="spin" />
+              <span>正在加载套餐信息...</span>
+            </div>
+          ) : (
+            <div className="subscription-plans-grid">
+              {plans.map((plan) => {
+                const visual = planVisuals[plan.name] || planVisuals.free
+                const isCurrent = plan.name === currentPlan
+                const isProcessing = processingPlanId === plan.id
 
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
+                return (
+                  <div
+                    key={plan.id}
+                    className={`subscription-plan-card${isCurrent ? ' subscription-plan-card--current' : ''}`}
+                  >
+                    <div className="subscription-plan-head" style={{ background: visual.gradient }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                        <div
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '12px',
+                            background: 'rgba(255,255,255,0.18)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {visual.icon}
+                        </div>
+                        {isCurrent && (
+                          <span
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: '999px',
+                              background: 'rgba(255,255,255,0.18)',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            当前计划
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '22px', fontWeight: 800, marginBottom: '4px' }}>{plan.displayName}</div>
+                      <div style={{ fontSize: '13px', lineHeight: 1.6, opacity: 0.9 }}>{plan.description}</div>
+                    </div>
 
-        .sub-modal {
-          background: var(--bg-primary, #1e1e1e);
-          border: 1px solid var(--border-color, #3c3c3c);
-          border-radius: 20px;
-          width: 1000px;
-          max-width: 95vw;
-          max-height: 90vh;
-          overflow-y: auto;
-          padding: 40px;
-          animation: slideUp 0.3s ease;
-        }
+                    <div className="subscription-plan-body">
+                      <div className="subscription-plan-price-row">
+                        <span style={{ fontSize: '16px', color: 'var(--text-secondary)' }}>
+                          {plan.currency === 'CNY' ? '¥' : '$'}
+                        </span>
+                        <span className="subscription-plan-price">{plan.price}</span>
+                        <span className="subscription-plan-period">/月</span>
+                      </div>
 
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+                      <div style={{ display: 'grid', gap: '8px' }}>
+                        {[
+                          ['AI 请求', formatLimit(plan.limits.aiRequestsPerDay, ' / 天')],
+                          ['工作区', formatLimit(plan.limits.workspaces, ' 个')],
+                          ['存储空间', formatLimit(plan.limits.storageGB, ' GB')],
+                        ].map(([label, value]) => (
+                          <div key={label} className="subscription-limit-row">
+                            <span>{label}</span>
+                            <strong>{value}</strong>
+                          </div>
+                        ))}
+                      </div>
 
-        .sub-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 32px;
-        }
+                      <div style={{ display: 'grid', gap: '10px' }}>
+                        {plan.features.map((feature) => (
+                          <div key={feature} className="subscription-feature-row">
+                            <Check size={15} color={visual.border} style={{ marginTop: '2px', flexShrink: 0 }} />
+                            <span>{feature}</span>
+                          </div>
+                        ))}
+                      </div>
 
-        .sub-title {
-          font-size: 28px;
-          font-weight: 700;
-          color: var(--text-primary, #cccccc);
-          margin: 0 0 8px;
-        }
-
-        .sub-subtitle {
-          font-size: 15px;
-          color: var(--text-secondary, #858585);
-          margin: 0;
-        }
-
-        .sub-close-btn {
-          width: 36px;
-          height: 36px;
-          border: none;
-          background: transparent;
-          color: var(--text-secondary, #858585);
-          cursor: pointer;
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s;
-        }
-
-        .sub-close-btn:hover {
-          background: var(--bg-secondary, #252526);
-          color: var(--text-primary, #cccccc);
-        }
-
-        .sub-plans-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
-        }
-
-        .sub-plan-card {
-          background: var(--bg-secondary, #252526);
-          border: 2px solid var(--border-color, #3c3c3c);
-          border-radius: 16px;
-          overflow: hidden;
-          transition: all 0.3s ease;
-          position: relative;
-        }
-
-        .sub-plan-card:hover {
-          transform: translateY(-4px);
-          border-color: var(--plan-border, #3c3c3c);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        .sub-plan-card.current {
-          border-color: #22c55e;
-        }
-
-        .sub-plan-card.selected {
-          border-color: var(--plan-border, #6366f1);
-        }
-
-        .sub-current-badge {
-          position: absolute;
-          top: 12px;
-          right: 12px;
-          background: #22c55e;
-          color: white;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 4px 10px;
-          border-radius: 20px;
-          z-index: 1;
-        }
-
-        .sub-plan-header {
-          padding: 24px;
-          color: white;
-          text-align: center;
-        }
-
-        .sub-plan-icon {
-          width: 48px;
-          height: 48px;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 12px;
-          backdrop-filter: blur(4px);
-        }
-
-        .sub-plan-name {
-          font-size: 20px;
-          font-weight: 600;
-          margin: 0 0 6px;
-        }
-
-        .sub-plan-desc {
-          font-size: 13px;
-          opacity: 0.8;
-          margin: 0;
-        }
-
-        .sub-plan-price {
-          padding: 20px 24px;
-          text-align: center;
-          border-bottom: 1px solid var(--border-color, #3c3c3c);
-        }
-
-        .sub-price-symbol {
-          font-size: 20px;
-          color: var(--text-secondary, #858585);
-          vertical-align: top;
-        }
-
-        .sub-price-value {
-          font-size: 40px;
-          font-weight: 700;
-          color: var(--text-primary, #cccccc);
-        }
-
-        .sub-price-period {
-          font-size: 14px;
-          color: var(--text-secondary, #858585);
-        }
-
-        .sub-plan-limits {
-          padding: 16px 24px;
-          border-bottom: 1px solid var(--border-color, #3c3c3c);
-        }
-
-        .sub-limit-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 8px 0;
-          font-size: 13px;
-        }
-
-        .sub-limit-label {
-          color: var(--text-secondary, #858585);
-        }
-
-        .sub-limit-value {
-          color: var(--text-primary, #cccccc);
-          font-weight: 500;
-        }
-
-        .sub-plan-features {
-          padding: 20px 24px;
-          margin: 0;
-          list-style: none;
-        }
-
-        .sub-feature-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 8px 0;
-          font-size: 14px;
-          color: var(--text-primary, #cccccc);
-        }
-
-        .sub-feature-check {
-          color: #22c55e;
-          flex-shrink: 0;
-        }
-
-        .sub-plan-btn {
-          width: calc(100% - 48px);
-          margin: 0 24px 24px;
-          padding: 14px;
-          border: none;
-          border-radius: 12px;
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-          color: white;
-          font-size: 15px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-        }
-
-        .sub-plan-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
-        }
-
-        .sub-plan-btn:disabled {
-          background: var(--bg-tertiary, #2d2d30);
-          color: var(--text-secondary, #858585);
-          cursor: not-allowed;
-          transform: none;
-        }
-
-        .spin {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-          .sub-plans-grid {
-            grid-template-columns: 1fr;
-          }
-          .sub-modal {
-            padding: 24px;
-          }
-        }
-      `}</style>
-    </div>
+                      <div className="subscription-plan-footer">
+                        <button
+                          className={isCurrent ? 'btn btn-secondary' : 'btn btn-primary'}
+                          onClick={() => handleSubscribe(plan.id, plan.name)}
+                          disabled={!!processingPlanId || isCurrent}
+                          style={{ width: '100%', justifyContent: 'center' }}
+                        >
+                          {isProcessing ? (
+                            <>
+                              <Loader2 size={16} className="spin" style={{ marginRight: '6px' }} />
+                              跳转支付...
+                            </>
+                          ) : isCurrent ? (
+                            '当前使用中'
+                          ) : plan.price === 0 ? (
+                            '继续免费使用'
+                          ) : (
+                            paymentMethods.alipay || paymentMethods.wechat ? '支付宝 / 微信升级' : '立即升级'
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+    </ModalShell>
+    </>
   )
 }
 

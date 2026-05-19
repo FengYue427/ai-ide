@@ -1,3 +1,6 @@
+import { planLimitsByName } from '../../lib/billing/plans'
+import { readJsonResponse } from './apiUtils'
+
 export interface Plan {
   id: string
   name: string
@@ -29,23 +32,39 @@ export interface UsageStatus {
   workspacesLimit: number
 }
 
-const defaultLimits: Record<string, { aiRequestsPerDay: number; workspaces: number; storageGB: number }> = {
-  free: { aiRequestsPerDay: 50, workspaces: 3, storageGB: 1 },
-  pro: { aiRequestsPerDay: 500, workspaces: -1, storageGB: 10 },
-  enterprise: { aiRequestsPerDay: -1, workspaces: -1, storageGB: 100 }
-}
+const defaultLimits = planLimitsByName()
 
 class SubscriptionService {
   private currentPlan: string = 'free'
   private listeners: ((plan: string) => void)[] = []
 
+  /**
+   * After Stripe redirect, webhook may lag — poll until plan matches or attempts exhausted.
+   */
+  async refreshAfterCheckout(expectedPlan?: string | null): Promise<Subscription> {
+    const delaysMs = [400, 800, 1200, 1600, 2000, 2500]
+    let last = await this.getSubscription()
+
+    for (const delay of delaysMs) {
+      if (expectedPlan) {
+        if (last.plan === expectedPlan) return last
+      } else if (last.plan !== 'free') {
+        return last
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, delay))
+      last = await this.getSubscription()
+    }
+
+    return last
+  }
+
   // 获取订阅状态
   async getSubscription(): Promise<Subscription> {
     try {
-      const res = await fetch('/api/subscription')
+      const res = await fetch('/api/subscription', { credentials: 'include' })
       if (res.ok) {
-        const data = await res.json()
-        if (data.subscription) {
+        const data = await readJsonResponse<{ subscription?: Subscription }>(res)
+        if (data?.subscription) {
           this.currentPlan = data.subscription.plan
           return data.subscription
         }
@@ -67,7 +86,7 @@ class SubscriptionService {
   }
 
   // 检查功能是否可用
-  canUseFeature(feature: keyof typeof defaultLimits.free): boolean {
+  canUseFeature(_feature: keyof typeof defaultLimits.free): boolean {
     // 简化版本：Pro 及以上全部可用
     if (this.currentPlan === 'enterprise') return true
     if (this.currentPlan === 'pro') return true
@@ -95,18 +114,12 @@ class SubscriptionService {
   }
 
   // 检查是否超过 AI 用量限制
-  async checkAIQuota(): Promise<{ allowed: boolean; remaining: number }> {
-    const limits = this.getLimits()
-    if (limits.aiRequestsPerDay === -1) {
-      return { allowed: true, remaining: Infinity }
-    }
-    
-    // 这里应该查询实际使用量
-    // 简化版本：假设已用 0
-    const used = 0
+  async checkAIQuota(isLoggedIn = false): Promise<{ allowed: boolean; remaining: number }> {
+    const { fetchAIQuota } = await import('./usageService')
+    const quota = await fetchAIQuota(this.currentPlan, isLoggedIn)
     return {
-      allowed: used < limits.aiRequestsPerDay,
-      remaining: limits.aiRequestsPerDay - used
+      allowed: quota.allowed,
+      remaining: Number.isFinite(quota.remaining) ? quota.remaining : Infinity,
     }
   }
 }

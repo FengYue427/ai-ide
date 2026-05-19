@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { X, Activity, Clock, Cpu, MemoryStick, Play, RotateCcw, BarChart3 } from 'lucide-react'
 
 interface PerformanceMetrics {
@@ -23,8 +23,6 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
 }) => {
   const [metrics, setMetrics] = useState<PerformanceMetrics[]>([])
   const [currentRun, setCurrentRun] = useState<PerformanceMetrics | null>(null)
-  const [showDetails, setShowDetails] = useState(false)
-
   // Start tracking when running begins
   useEffect(() => {
     if (isRunning) {

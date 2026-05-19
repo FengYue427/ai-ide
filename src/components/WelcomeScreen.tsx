@@ -1,5 +1,19 @@
-import React, { useState, useEffect } from 'react'
-import { FileText, Folder, Play, Bot, GitBranch, Settings, Sparkles, Clock, Plus, ArrowRight, Code2, Terminal, Palette, Zap, Globe, ChevronRight } from 'lucide-react'
+import React, { type CSSProperties } from 'react'
+import {
+  ArrowRight,
+  Bot,
+  Clock3,
+  Folder,
+  FolderOpen,
+  GitBranch,
+  Globe,
+  Palette,
+  Play,
+  Plus,
+  Settings,
+  Sparkles,
+  Terminal,
+} from 'lucide-react'
 
 interface RecentProject {
   id: string
@@ -8,6 +22,8 @@ interface RecentProject {
   fileCount: number
 }
 
+type WelcomeFeatureAction = 'ai' | 'run' | 'terminal' | 'git' | 'settings' | 'collab'
+
 interface WelcomeScreenProps {
   recentProjects?: RecentProject[]
   onNewProject: () => void
@@ -15,17 +31,65 @@ interface WelcomeScreenProps {
   onOpenWorkspace: (id: string) => void
   onOpenSettings: () => void
   onOpenAIChat: () => void
+  onOpenTerminal?: () => void
+  onOpenGit?: () => void
+  onOpenCollaboration?: () => void
   shortcuts?: { key: string; action: string }[]
 }
 
 const defaultShortcuts = [
   { key: 'Ctrl+N', action: '新建文件' },
-  { key: 'Ctrl+O', action: '打开文件' },
-  { key: 'Ctrl+S', action: '保存' },
+  { key: 'Ctrl+O', action: '打开项目' },
+  { key: 'Ctrl+S', action: '立即保存' },
   { key: 'Ctrl+Enter', action: '运行代码' },
-  { key: 'Ctrl+Shift+P', action: '命令面板' },
+  { key: 'Ctrl+Shift+P', action: '打开命令面板' },
   { key: 'Ctrl+Shift+F', action: '全局搜索' },
 ]
+
+const featureCards: Array<{
+  icon: typeof Bot
+  title: string
+  desc: string
+  color: string
+  action: WelcomeFeatureAction
+}> = [
+  { icon: Bot, title: 'AI 结对编程', desc: '对话生成、重构和解释代码', color: '#8b5cf6', action: 'ai' },
+  { icon: Play, title: '浏览器内运行', desc: '基于 WebContainer 的即时执行', color: '#2563eb', action: 'run' },
+  { icon: Terminal, title: '集成终端', desc: '边写边跑，少切换上下文', color: '#059669', action: 'terminal' },
+  { icon: GitBranch, title: 'Git 工作流', desc: '在 IDE 内追踪和提交变更', color: '#ec4899', action: 'git' },
+  { icon: Palette, title: '主题与设置', desc: '快速切换工作习惯与界面风格', color: '#f59e0b', action: 'settings' },
+  { icon: Globe, title: '协作扩展', desc: '实验性房间与在线用户', color: '#06b6d4', action: 'collab' },
+]
+
+const quickActions = [
+  {
+    title: '从模板新建项目',
+    description: '选择 React、Node 等 starter 模板开始编码。',
+    icon: Plus,
+    accent: '#10b981',
+    actionKey: 'new',
+  },
+  {
+    title: '打开工作区管理',
+    description: '加载云端/本地快照，或导入文件夹。',
+    icon: FolderOpen,
+    accent: '#3b82f6',
+    actionKey: 'open',
+  },
+  {
+    title: '先和 AI 讨论方案',
+    description: '从需求、调试或重构建议开始。',
+    icon: Bot,
+    accent: '#8b5cf6',
+    actionKey: 'ai',
+  },
+] as const
+
+const actionMap = {
+  new: '模板',
+  open: '管理',
+  ai: 'AI',
+}
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   recentProjects = [],
@@ -34,369 +98,195 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onOpenWorkspace,
   onOpenSettings,
   onOpenAIChat,
-  shortcuts = defaultShortcuts
+  onOpenTerminal,
+  onOpenGit,
+  onOpenCollaboration,
+  shortcuts = defaultShortcuts,
 }) => {
-  const [mounted, setMounted] = useState(false)
-  const [hoveredCard, setHoveredCard] = useState<number | null>(null)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const cardAnimations = [
-    { delay: '0ms', icon: Plus, color: '#10b981', bg: 'linear-gradient(135deg, #10b98120 0%, #05966930 100%)', border: '#10b981' },
-    { delay: '100ms', icon: Folder, color: '#3b82f6', bg: 'linear-gradient(135deg, #3b82f620 0%, #2563eb30 100%)', border: '#3b82f6' },
-    { delay: '200ms', icon: Bot, color: '#a855f7', bg: 'linear-gradient(135deg, #a855f720 0%, #9333ea30 100%)', border: '#a855f7' },
-  ]
-
-  const features = [
-    { icon: <Bot size={20} />, title: 'AI 驱动', desc: '智能代码补全与对话', color: '#a855f7' },
-    { icon: <Play size={20} />, title: '即时运行', desc: '浏览器内执行 Node.js', color: '#3b82f6' },
-    { icon: <Terminal size={20} />, title: '内置终端', desc: '完整的命令行体验', color: '#10b981' },
-    { icon: <Palette size={20} />, title: '多主题', desc: '9种精美配色方案', color: '#f59e0b' },
-    { icon: <GitBranch size={20} />, title: '版本控制', desc: 'Git 集成与协作', color: '#ec4899' },
-    { icon: <Globe size={20} />, title: '实时协作', desc: '多人同时编辑', color: '#06b6d4' },
-  ]
+  const handleFeatureAction = (action: WelcomeFeatureAction) => {
+    switch (action) {
+      case 'ai':
+        onOpenAIChat()
+        break
+      case 'run':
+        onOpenTerminal?.()
+        break
+      case 'terminal':
+        onOpenTerminal?.()
+        break
+      case 'git':
+        onOpenGit?.()
+        break
+      case 'settings':
+        onOpenSettings()
+        break
+      case 'collab':
+        onOpenCollaboration?.()
+        break
+    }
+  }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: `
-          radial-gradient(ellipse at 20% 20%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 80%, rgba(118, 75, 162, 0.15) 0%, transparent 50%),
-          radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 70%),
-          linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%)
-        `,
-        zIndex: 2000,
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '48px 64px',
-        overflow: 'auto',
-        opacity: mounted ? 1 : 0,
-        transition: 'opacity 0.6s ease-out',
-      }}
-    >
-      {/* Header */}
-      <div 
-        style={{ 
-          marginBottom: '48px',
-          transform: mounted ? 'translateY(0)' : 'translateY(-20px)',
-          opacity: mounted ? 1 : 0,
-          transition: 'all 0.6s ease-out 0.1s',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '12px' }}>
-          <div
-            style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 32px rgba(102, 126, 234, 0.4), 0 0 0 1px rgba(255,255,255,0.1) inset',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <div 
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%)',
-              }}
-            />
-            <Code2 size={32} style={{ color: '#fff', position: 'relative', zIndex: 1 }} />
-          </div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '36px', fontWeight: 800, letterSpacing: '-0.02em' }}>
-              AI IDE
-            </h1>
-            <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '15px', fontWeight: 500 }}>
-              AI 原生开源轻量级 IDE · v1.0.0
+    <div className="welcome-screen">
+      <div className="welcome-shell">
+        <header className="welcome-header">
+          <div className="welcome-hero">
+            <div className="welcome-brand-row">
+              <div className="welcome-logo">
+                <img src="/logo-ai-ide.png" alt="" width={56} height={56} decoding="async" />
+              </div>
+              <div>
+                <div className="welcome-badge">
+                  <Sparkles size={14} />
+                  AI 原生浏览器 IDE
+                </div>
+                <h1 className="welcome-title">更快进入思路，更少消耗在环境上</h1>
+              </div>
+            </div>
+            <p className="welcome-lead">
+              打开文件、与 AI 协作、运行代码、管理工作区，全部在一个轻量界面里完成。
+              从下面的入口直接开始工作，不用先穿过一层说明页。
             </p>
           </div>
-        </div>
-      </div>
 
-      {/* Main Content */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '48px', flex: 1, maxWidth: '1400px' }}>
-        {/* Left Column */}
-        <div style={{ transform: mounted ? 'translateX(0)' : 'translateX(-30px)', opacity: mounted ? 1 : 0, transition: 'all 0.6s ease-out 0.2s' }}>
-          {/* Quick Start */}
-          <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              快速开始
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {[
-                { onClick: onNewProject, icon: Plus, title: '新建项目', desc: '从空白项目或模板开始', color: '#10b981', delay: '0.3s' },
-                { onClick: onOpenProject, icon: Folder, title: '打开项目', desc: '从工作区或文件导入', color: '#3b82f6', delay: '0.4s' },
-                { onClick: onOpenAIChat, icon: Bot, title: 'AI 助手', desc: '开始与 AI 对话编程', color: '#a855f7', delay: '0.5s' },
-              ].map((item, index) => (
-                <button
-                  key={index}
-                  onClick={item.onClick}
-                  onMouseEnter={() => setHoveredCard(index)}
-                  onMouseLeave={() => setHoveredCard(null)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '18px',
-                    padding: '22px 26px',
-                    background: `linear-gradient(135deg, ${item.color}10 0%, ${item.color}05 100%)`,
-                    border: `1.5px solid ${hoveredCard === index ? item.color : 'var(--border-color)'}`,
-                    borderRadius: '14px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    transform: hoveredCard === index ? 'translateY(-3px) scale(1.01)' : 'translateY(0) scale(1)',
-                    boxShadow: hoveredCard === index ? `0 12px 40px ${item.color}25` : '0 4px 20px rgba(0,0,0,0.1)',
-                    opacity: mounted ? 1 : 0,
-                    animation: mounted ? `fadeInUp 0.5s ease-out ${item.delay} forwards` : 'none',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '52px',
-                      height: '52px',
-                      borderRadius: '12px',
-                      background: `linear-gradient(135deg, ${item.color}25 0%, ${item.color}15 100%)`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: `0 4px 15px ${item.color}20`,
-                      transition: 'all 0.3s ease',
-                      transform: hoveredCard === index ? 'scale(1.1)' : 'scale(1)',
-                    }}
-                  >
-                    <item.icon size={26} style={{ color: item.color }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '17px', fontWeight: 600, marginBottom: '5px', color: 'var(--text-primary)' }}>{item.title}</div>
-                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{item.desc}</div>
-                  </div>
-                  <ChevronRight 
-                    size={22} 
-                    style={{ 
-                      color: hoveredCard === index ? item.color : 'var(--text-secondary)', 
-                      transition: 'all 0.3s ease',
-                      transform: hoveredCard === index ? 'translateX(4px)' : 'translateX(0)'
-                    }} 
-                  />
-                </button>
-              ))}
+          <button type="button" className="welcome-settings-btn" onClick={onOpenSettings}>
+            <Settings size={16} />
+            设置中心
+          </button>
+        </header>
+
+        <main className="welcome-main">
+          <section className="welcome-panel">
+            <div className="welcome-section-label">
+              <Play size={16} color="var(--accent-color)" />
+              <span>快速开始</span>
             </div>
-          </div>
 
-          {/* Recent Projects */}
-          {recentProjects.length > 0 && (
-            <div style={{ marginTop: '24px' }}>
-              <h2 style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                最近打开
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {recentProjects.slice(0, 5).map((project, index) => (
+            <div className="welcome-quick-list">
+              {quickActions.map((item) => {
+                const ActionIcon = item.icon
+                const onClick =
+                  item.actionKey === 'new' ? onNewProject : item.actionKey === 'open' ? onOpenProject : onOpenAIChat
+
+                return (
+                  <button
+                    key={item.title}
+                    type="button"
+                    className="welcome-quick-card"
+                    style={{ '--quick-accent': item.accent } as CSSProperties}
+                    onClick={onClick}
+                  >
+                    <div className="welcome-quick-icon">
+                      <ActionIcon size={26} />
+                    </div>
+                    <div>
+                      <div className="welcome-quick-title">{item.title}</div>
+                      <div className="welcome-quick-desc">{item.description}</div>
+                    </div>
+                    <div className="welcome-quick-cta">
+                      {actionMap[item.actionKey]}
+                      <ArrowRight size={16} />
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="welcome-recent-block">
+              <div className="welcome-section-label">
+                <Folder size={16} />
+                <span>最近项目</span>
+              </div>
+
+              {recentProjects.length > 0 ? (
+                recentProjects.slice(0, 4).map((project) => (
                   <button
                     key={project.id}
+                    type="button"
+                    className="welcome-recent-item"
                     onClick={() => onOpenWorkspace(project.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                      padding: '14px 18px',
-                      background: 'var(--bg-secondary)',
-                      border: '1.5px solid var(--border-color)',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.25s ease',
-                      opacity: mounted ? 1 : 0,
-                      animation: mounted ? `fadeInUp 0.4s ease-out ${0.6 + index * 0.1}s forwards` : 'none',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--accent-color)'
-                      e.currentTarget.style.background = 'var(--bg-tertiary)'
-                      e.currentTarget.style.transform = 'translateX(4px)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border-color)'
-                      e.currentTarget.style.background = 'var(--bg-secondary)'
-                      e.currentTarget.style.transform = 'translateX(0)'
-                    }}
                   >
-                    <div style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '8px',
-                      background: 'var(--bg-tertiary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <FileText size={18} style={{ color: 'var(--text-secondary)' }} />
+                    <div className="welcome-recent-icon">
+                      <FolderOpen size={18} color="var(--accent-color)" />
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 600 }}>{project.name}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                        {project.fileCount} 个文件 · {new Date(project.lastOpened).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
-                      </div>
+                    <div>
+                      <div className="welcome-recent-name">{project.name}</div>
+                      <div className="welcome-recent-meta">{project.fileCount} 个文件</div>
                     </div>
-                    <Clock size={14} style={{ color: 'var(--text-secondary)' }} />
+                    <div className="welcome-recent-date">
+                      <Clock3 size={14} />
+                      {new Date(project.lastOpened).toLocaleDateString('zh-CN', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </div>
                   </button>
+                ))
+              ) : (
+                <div className="welcome-empty-recent">
+                  还没有最近项目。新建一个工作区后，这里会保留你的最近入口。
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="welcome-side">
+            <div className="welcome-panel welcome-panel--muted">
+              <div className="welcome-section-label">
+                <Sparkles size={16} color="var(--accent-color)" />
+                <span>核心能力</span>
+              </div>
+
+              <div className="welcome-feature-grid">
+                {featureCards.map((feature) => {
+                  const Icon = feature.icon
+                  return (
+                    <button
+                      type="button"
+                      key={feature.title}
+                      className="welcome-feature-card"
+                      style={{ '--feature-color': feature.color } as CSSProperties}
+                      onClick={() => handleFeatureAction(feature.action)}
+                    >
+                      <div className="welcome-feature-icon">
+                        <Icon size={20} />
+                      </div>
+                      <div className="welcome-feature-title">{feature.title}</div>
+                      <div className="welcome-feature-desc">{feature.desc}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="welcome-panel welcome-panel--muted">
+              <div className="welcome-section-label">
+                <Terminal size={16} color="var(--accent-color)" />
+                <span>常用快捷键</span>
+              </div>
+
+              <div className="welcome-shortcut-list">
+                {shortcuts.map((shortcut) => (
+                  <div key={`${shortcut.key}-${shortcut.action}`} className="welcome-shortcut-row">
+                    <span className="welcome-shortcut-action">{shortcut.action}</span>
+                    <kbd className="welcome-kbd">{shortcut.key}</kbd>
+                  </div>
                 ))}
               </div>
             </div>
-          )}
-        </div>
+          </section>
+        </main>
 
-        {/* Right Column */}
-        <div style={{ transform: mounted ? 'translateX(0)' : 'translateX(30px)', opacity: mounted ? 1 : 0, transition: 'all 0.6s ease-out 0.3s' }}>
-          {/* Features */}
-          <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              核心功能
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              {features.map((feature, i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: '18px',
-                    background: `linear-gradient(135deg, ${feature.color}10 0%, transparent 100%)`,
-                    border: '1.5px solid var(--border-color)',
-                    borderRadius: '12px',
-                    transition: 'all 0.3s ease',
-                    cursor: 'default',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = feature.color
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${feature.color}15 0%, ${feature.color}05 100%)`
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-color)'
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${feature.color}10 0%, transparent 100%)`
-                    e.currentTarget.style.transform = 'translateY(0)'
-                  }}
-                >
-                  <div style={{ 
-                    color: feature.color, 
-                    marginBottom: '10px',
-                    filter: `drop-shadow(0 2px 8px ${feature.color}40)`
-                  }}>{feature.icon}</div>
-                  <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '5px' }}>{feature.title}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{feature.desc}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Shortcuts */}
-          <div>
-            <h2 style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              常用快捷键
-            </h2>
-            <div style={{ 
-              background: 'var(--bg-secondary)', 
-              borderRadius: '12px', 
-              border: '1.5px solid var(--border-color)',
-              overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-            }}>
-              {shortcuts.map((shortcut, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '14px 18px',
-                    borderBottom: i < shortcuts.length - 1 ? '1px solid var(--border-color)' : 'none',
-                    transition: 'all 0.2s ease',
-                    background: 'transparent',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-tertiary)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                  }}
-                >
-                  <span style={{ fontSize: '14px', fontWeight: 500 }}>{shortcut.action}</span>
-                  <kbd
-                    style={{
-                      padding: '5px 10px',
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontFamily: 'monospace',
-                      fontWeight: 600,
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    {shortcut.key}
-                  </kbd>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Version */}
-          <div style={{ marginTop: '36px', textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
-              AI IDE v1.0.0 · 开源项目
-            </p>
-            <a 
-              href="https://github.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ 
-                color: 'var(--accent-color)', 
-                textDecoration: 'none',
-                fontSize: '13px',
-                fontWeight: 500,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.8'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1'
-              }}
-            >
-              View on GitHub <ChevronRight size={14} />
-            </a>
-          </div>
-        </div>
+        <footer className="welcome-footer">
+          <a href="/legal/privacy.html" target="_blank" rel="noreferrer">
+            隐私政策
+          </a>
+          <a href="/legal/terms.html" target="_blank" rel="noreferrer">
+            服务条款
+          </a>
+          <span>AI 对话与 API Key 由您选择的模型服务商直接处理。</span>
+        </footer>
       </div>
-
-      {/* CSS Animations */}
-      <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   )
 }

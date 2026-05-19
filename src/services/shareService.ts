@@ -48,7 +48,11 @@ export function deleteShare(id: string): void {
 }
 
 export function generateShareUrl(id: string): string {
-  return `${window.location.origin}?share=${id}`
+  const url = new URL(window.location.href)
+  url.search = ''
+  url.hash = ''
+  url.searchParams.set('share', id)
+  return url.toString()
 }
 
 export function exportAsJson(files: { name: string; content: string }[]): string {

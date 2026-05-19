@@ -1,30 +1,13 @@
-// 插件系统核心架构
-export interface PluginContext {
-  editor: {
-    getValue: () => string
-    setValue: (value: string) => void
-    getSelectedText: () => string | null
-    insertText: (text: string, position?: number) => void
-  }
-  files: {
-    getAll: () => { name: string; content: string; language: string }[]
-    getActive: () => { name: string; content: string; language: string } | null
-    create: (name: string, content: string) => void
-    open: (name: string) => void
-  }
-  terminal: {
-    execute: (command: string) => Promise<string>
-    getHistory: () => string[]
-  }
-  ai: {
-    complete: (prompt: string) => Promise<string>
-  }
-  ui: {
-    showNotification: (message: string, type?: 'info' | 'success' | 'error') => void
-    showModal: (title: string, content: React.ReactNode) => void
-    addToolbarButton: (config: { icon: string; label: string; onClick: () => void }) => void
-  }
-}
+import { ALL_PLUGIN_PERMISSIONS, type PluginPermission } from './pluginTypes'
+import {
+  createSandboxedContext,
+  runPluginActivate,
+  validateManifest,
+  validatePluginSource,
+} from './pluginSandbox'
+import type { PluginContext, PluginManifest } from './pluginTypes'
+
+export type { PluginContext, PluginManifest } from './pluginTypes'
 
 export interface Plugin {
   id: string
@@ -33,63 +16,102 @@ export interface Plugin {
   description: string
   author?: string
   icon?: string
+  manifest?: PluginManifest
+  builtin?: boolean
   activate: (context: PluginContext) => void
   deactivate?: () => void
 }
 
-export interface PluginManifest {
-  id: string
-  name: string
-  version: string
-  description: string
-  author?: string
-  icon?: string
-  entry: string // 插件入口文件路径
-  permissions: Array<'editor' | 'files' | 'terminal' | 'ai' | 'ui'>
+export interface PluginPackage {
+  manifest: PluginManifest
+  source: string
 }
 
 class PluginManager {
   private plugins: Map<string, Plugin> = new Map()
   private activePlugins: Map<string, Plugin> = new Map()
   private context: PluginContext | null = null
+  private onDeactivate?: (pluginId: string) => void
 
   setContext(context: PluginContext) {
     this.context = context
   }
 
-  // 注册插件
+  setOnDeactivate(handler: (pluginId: string) => void) {
+    this.onDeactivate = handler
+  }
+
   register(plugin: Plugin): boolean {
     if (this.plugins.has(plugin.id)) {
       console.warn(`Plugin ${plugin.id} already registered`)
       return false
     }
     this.plugins.set(plugin.id, plugin)
-    console.log(`Plugin registered: ${plugin.name} v${plugin.version}`)
     return true
   }
 
-  // 激活插件
+  registerPackage(pkg: PluginPackage): { ok: true } | { ok: false; error: string } {
+    const manifestError = validateManifest(pkg.manifest)
+    if (manifestError) return { ok: false, error: manifestError }
+
+    const sourceError = validatePluginSource(pkg.source)
+    if (sourceError) return { ok: false, error: sourceError }
+
+    const plugin: Plugin = {
+      id: pkg.manifest.id,
+      name: pkg.manifest.name,
+      version: pkg.manifest.version,
+      description: pkg.manifest.description,
+      author: pkg.manifest.author,
+      icon: pkg.manifest.icon,
+      manifest: pkg.manifest,
+      activate: (context) => runPluginActivate(pkg.source, context),
+    }
+
+    if (this.plugins.has(plugin.id)) {
+      this.deactivate(plugin.id)
+      this.plugins.delete(plugin.id)
+    }
+
+    this.register(plugin)
+    return { ok: true }
+  }
+
+  private buildActivationContext(plugin: Plugin): PluginContext | null {
+    if (!this.context) return null
+
+    const permissions: PluginPermission[] = plugin.builtin
+      ? [...ALL_PLUGIN_PERMISSIONS]
+      : plugin.manifest?.permissions ?? []
+
+    const sandboxed = createSandboxedContext(this.context, permissions)
+    const pluginId = plugin.id
+
+    return {
+      ...sandboxed,
+      ui: {
+        ...sandboxed.ui,
+        addToolbarButton: (config) => {
+          if (!permissions.includes('ui')) {
+            throw new Error('插件无权访问 ui.addToolbarButton')
+          }
+          this.context!.ui.addToolbarButton(config, pluginId)
+        },
+      },
+    }
+  }
+
   activate(pluginId: string): boolean {
-    if (!this.context) {
-      console.error('Plugin context not set')
-      return false
-    }
-
     const plugin = this.plugins.get(pluginId)
-    if (!plugin) {
-      console.error(`Plugin ${pluginId} not found`)
-      return false
-    }
+    if (!plugin) return false
+    if (this.activePlugins.has(pluginId)) return false
 
-    if (this.activePlugins.has(pluginId)) {
-      console.warn(`Plugin ${pluginId} already active`)
-      return false
-    }
+    const activationContext = this.buildActivationContext(plugin)
+    if (!activationContext) return false
 
     try {
-      plugin.activate(this.context)
+      plugin.activate(activationContext)
       this.activePlugins.set(pluginId, plugin)
-      console.log(`Plugin activated: ${plugin.name}`)
       return true
     } catch (error) {
       console.error(`Failed to activate plugin ${pluginId}:`, error)
@@ -97,7 +119,6 @@ class PluginManager {
     }
   }
 
-  // 停用插件
   deactivate(pluginId: string): boolean {
     const plugin = this.activePlugins.get(pluginId)
     if (!plugin) return false
@@ -105,7 +126,7 @@ class PluginManager {
     try {
       plugin.deactivate?.()
       this.activePlugins.delete(pluginId)
-      console.log(`Plugin deactivated: ${plugin.name}`)
+      this.onDeactivate?.(pluginId)
       return true
     } catch (error) {
       console.error(`Failed to deactivate plugin ${pluginId}:`, error)
@@ -113,36 +134,39 @@ class PluginManager {
     }
   }
 
-  // 获取所有插件
   getAllPlugins(): Plugin[] {
     return Array.from(this.plugins.values())
   }
 
-  // 获取激活的插件
   getActivePlugins(): Plugin[] {
     return Array.from(this.activePlugins.values())
   }
 
-  // 检查插件是否激活
   isActive(pluginId: string): boolean {
     return this.activePlugins.has(pluginId)
   }
 
-  // 加载插件（从 URL 或本地存储）
-  async loadPlugin(url: string): Promise<boolean> {
+  async loadPlugin(input: string): Promise<{ ok: boolean; error?: string }> {
+    const trimmed = input.trim()
+    if (!trimmed) return { ok: false, error: '请输入插件包 JSON' }
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('npm:')) {
+      return { ok: false, error: '远程插件加载尚未开放，请粘贴插件 JSON 包' }
+    }
+
     try {
-      // 在实际实现中，这里会动态导入插件代码
-      console.log(`Loading plugin from: ${url}`)
-      // const module = await import(/* @vite-ignore */ url)
-      // this.register(module.default)
-      return true
-    } catch (error) {
-      console.error('Failed to load plugin:', error)
-      return false
+      const pkg = JSON.parse(trimmed) as PluginPackage
+      if (!pkg.manifest || !pkg.source) {
+        return { ok: false, error: 'JSON 须包含 manifest 与 source 字段' }
+      }
+      const result = this.registerPackage(pkg)
+      if (!result.ok) return { ok: false, error: result.error }
+      return { ok: true }
+    } catch {
+      return { ok: false, error: '无法解析插件 JSON' }
     }
   }
 
-  // 卸载插件
   unload(pluginId: string): boolean {
     this.deactivate(pluginId)
     return this.plugins.delete(pluginId)
@@ -151,34 +175,32 @@ class PluginManager {
 
 export const pluginManager = new PluginManager()
 
-// 内置插件示例
 export const createBuiltinPlugins = (): Plugin[] => [
   {
     id: 'format-code',
     name: '代码格式化',
     version: '1.0.0',
     description: '格式化当前文件代码',
+    builtin: true,
     activate(context) {
       context.ui.addToolbarButton({
         icon: 'sparkles',
         label: '格式化',
         onClick: () => {
           const content = context.editor.getValue()
-          // 简单的格式化逻辑
-          const formatted = content
-            .replace(/\s+$/gm, '') // 去除行尾空格
-            .replace(/\n{3,}/g, '\n\n') // 多个空行合并
+          const formatted = content.replace(/\s+$/gm, '').replace(/\n{3,}/g, '\n\n')
           context.editor.setValue(formatted)
           context.ui.showNotification('代码已格式化', 'success')
-        }
+        },
       })
-    }
+    },
   },
   {
     id: 'line-count',
     name: '代码统计',
     version: '1.0.0',
     description: '统计代码行数',
+    builtin: true,
     activate(context) {
       context.ui.addToolbarButton({
         icon: 'bar-chart',
@@ -187,15 +209,16 @@ export const createBuiltinPlugins = (): Plugin[] => [
           const files = context.files.getAll()
           let totalLines = 0
           let totalChars = 0
-          files.forEach(f => {
-            totalLines += f.content.split('\n').length
-            totalChars += f.content.length
+          files.forEach((file) => {
+            totalLines += file.content.split('\n').length
+            totalChars += file.content.length
           })
-          context.ui.showModal('代码统计', 
-            `文件数: ${files.length}\n总行数: ${totalLines}\n总字符: ${totalChars}`
+          context.ui.showModal(
+            '代码统计',
+            `文件数: ${files.length}\n总行数: ${totalLines}\n总字符: ${totalChars}`,
           )
-        }
+        },
       })
-    }
-  }
+    },
+  },
 ]

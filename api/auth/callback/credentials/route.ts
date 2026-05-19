@@ -8,9 +8,15 @@
 import { prisma } from '../../../../src/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { createJWT } from '../../../../src/lib/jwt'
+import { checkRateLimit, resolveRateLimitOptions } from '../../../../lib/api/rateLimit'
+import { rateLimitErrorResponse } from '../../../../lib/api/rateLimitResponse'
+import { buildAuthSetCookie } from '../../../../lib/api/authCookie'
 
 export async function POST(req: Request) {
   try {
+    const rate = checkRateLimit(req, resolveRateLimitOptions('auth:login'))
+    if (!rate.allowed) return rateLimitErrorResponse(rate)
+
     const { email, password } = await req.json()
 
     // 验证输入
@@ -64,7 +70,7 @@ export async function POST(req: Request) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Set-Cookie': `auth-token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800` // 7天
+        'Set-Cookie': buildAuthSetCookie(token),
       }
     })
   } catch (error) {

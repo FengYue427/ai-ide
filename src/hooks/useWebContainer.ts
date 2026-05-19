@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { WebContainer } from '@webcontainer/api'
+import { registerTerminalBridge } from '../services/terminalBridge'
 
 let webcontainerInstance: WebContainer | null = null
 let initPromise: Promise<WebContainer> | null = null
@@ -26,7 +27,7 @@ export function useWebContainer(): UseWebContainerReturn {
   const [output, setOutput] = useState<string[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
-  
+
   const outputRef = useRef<string[]>([])
   const mountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -34,22 +35,20 @@ export function useWebContainer(): UseWebContainerReturn {
   useEffect(() => {
     mountedRef.current = true
     abortControllerRef.current = new AbortController()
-    
+
     async function initWebContainer() {
       if (!mountedRef.current) return
-      
+
       try {
         setIsLoading(true)
         setError(null)
-        
-        // 使用全局 Promise 避免重复初始化
+
         if (!initPromise) {
           initPromise = WebContainer.boot()
         }
-        
+
         const instance = await initPromise
-        
-        // 只有组件仍然挂载时才更新状态
+
         if (mountedRef.current) {
           webcontainerInstance = instance
           setIsReady(true)
@@ -57,10 +56,8 @@ export function useWebContainer(): UseWebContainerReturn {
       } catch (err) {
         if (mountedRef.current) {
           const errorMessage = err instanceof Error ? err.message : 'WebContainer 启动失败'
-          const initError = new Error(errorMessage)
-          setError(initError)
+          setError(new Error(errorMessage))
           console.error('[useWebContainer] Initialization failed:', err)
-          // 重置全局 Promise 以便下次重试
           initPromise = null
         }
       } finally {
@@ -69,30 +66,34 @@ export function useWebContainer(): UseWebContainerReturn {
         }
       }
     }
-    
+
     initWebContainer()
-    
-    // 清理函数
+
     return () => {
       mountedRef.current = false
       abortControllerRef.current?.abort()
     }
   }, [retryCount])
 
-  // 重试功能
   const retry = useCallback(() => {
     if (isLoading) return
     webcontainerInstance = null
     initPromise = null
-    setRetryCount(c => c + 1)
+    setIsReady(false)
+    setRetryCount((count) => count + 1)
   }, [isLoading])
 
-  const writeFile = useCallback(async (path: string, content: string) => {
+  const ensureReady = () => {
     if (!webcontainerInstance) {
-      throw new Error('WebContainer 未就绪')
+      throw new Error('WebContainer 还未就绪')
     }
+    return webcontainerInstance
+  }
+
+  const writeFile = useCallback(async (path: string, content: string) => {
+    const instance = ensureReady()
     try {
-      await webcontainerInstance.fs.writeFile(path, content)
+      await instance.fs.writeFile(path, content)
     } catch (err) {
       console.error('[useWebContainer] Write file failed:', err)
       throw err
@@ -100,11 +101,9 @@ export function useWebContainer(): UseWebContainerReturn {
   }, [])
 
   const mkdir = useCallback(async (path: string) => {
-    if (!webcontainerInstance) {
-      throw new Error('WebContainer 未就绪')
-    }
+    const instance = ensureReady()
     try {
-      await webcontainerInstance.fs.mkdir(path, { recursive: true })
+      await instance.fs.mkdir(path, { recursive: true })
     } catch (err) {
       console.error('[useWebContainer] Mkdir failed:', err)
       throw err
@@ -112,9 +111,7 @@ export function useWebContainer(): UseWebContainerReturn {
   }, [])
 
   const runCommand = useCallback(async (command: string, args: string[] = []) => {
-    if (!webcontainerInstance) {
-      throw new Error('WebContainer 未就绪')
-    }
+    const instance = ensureReady()
     if (isRunning) {
       throw new Error('已有命令正在运行')
     }
@@ -124,7 +121,7 @@ export function useWebContainer(): UseWebContainerReturn {
     setOutput([])
 
     try {
-      const process = await webcontainerInstance.spawn(command, args)
+      const process = await instance.spawn(command, args)
 
       await process.output.pipeTo(new WritableStream({
         write(data) {
@@ -132,11 +129,10 @@ export function useWebContainer(): UseWebContainerReturn {
             outputRef.current = [...outputRef.current, data]
             setOutput(outputRef.current)
           }
-        }
+        },
       }))
 
-      const exitCode = await process.exit
-      return exitCode
+      return await process.exit
     } catch (err) {
       console.error('[useWebContainer] Command failed:', err)
       throw err
@@ -147,9 +143,18 @@ export function useWebContainer(): UseWebContainerReturn {
     }
   }, [isRunning])
 
-  const runNode = useCallback(async (fileName: string = 'index.js') => {
+  const runNode = useCallback(async (fileName = 'index.js') => {
     return runCommand('node', [fileName])
   }, [runCommand])
+
+  useEffect(() => {
+    if (isReady) {
+      registerTerminalBridge(runCommand, () => outputRef.current)
+    } else {
+      registerTerminalBridge(null)
+    }
+    return () => registerTerminalBridge(null)
+  }, [isReady, runCommand])
 
   const installDependencies = useCallback(async () => {
     return runCommand('npm', ['install'])
@@ -167,6 +172,6 @@ export function useWebContainer(): UseWebContainerReturn {
     runNode,
     installDependencies,
     retry,
-    fs: webcontainerInstance?.fs || null
+    fs: webcontainerInstance?.fs || null,
   }
 }

@@ -1,5 +1,19 @@
-import React, { useState } from 'react'
-import { X, Bot, Palette, Keyboard, Save, Globe, Puzzle, Shield, Code2, Database, Cog } from 'lucide-react'
+import React, { useMemo, useRef, useState } from 'react'
+import { McpSettingsSection } from './McpSettingsSection'
+import { ProjectRulesSection } from './ProjectRulesSection'
+import {
+  Bot,
+  Check,
+  Cog,
+  Code2,
+  Database,
+  Globe,
+  Palette,
+  Puzzle,
+  Save,
+  Shield,
+  X,
+} from 'lucide-react'
 import { modelOptions, type AIModel } from '../services/aiService'
 
 interface SettingsCenterProps {
@@ -16,10 +30,77 @@ interface SettingsCenterProps {
   onToggleTheme: () => void
   onToggleAutoSave: () => void
   onChangeLanguage: (lang: string) => void
+  onClearLocalData?: () => void
+  onResetDefaults?: () => void
+  onEditProjectRules?: () => void
+  projectRulesPreview?: string | null
   onClose: () => void
 }
 
 type SettingTab = 'ai' | 'appearance' | 'editor' | 'features' | 'advanced'
+
+const tabs: { id: SettingTab; label: string; description: string; icon: React.ReactNode }[] = [
+  { id: 'ai', label: 'AI 设置', description: '模型、Key 与接入方式', icon: <Bot size={18} /> },
+  { id: 'appearance', label: '外观', description: '主题和界面语言', icon: <Palette size={18} /> },
+  { id: 'editor', label: '编辑器', description: '保存行为与书写习惯', icon: <Code2 size={18} /> },
+  { id: 'features', label: '功能', description: '当前能力与扩展状态', icon: <Puzzle size={18} /> },
+  { id: 'advanced', label: '高级', description: '实验功能与重置操作', icon: <Cog size={18} /> },
+]
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: '12px',
+  border: '1px solid var(--border-color)',
+  background: 'var(--bg-primary)',
+  color: 'var(--text-primary)',
+  fontSize: '14px',
+  outline: 'none',
+}
+
+const cardStyle: React.CSSProperties = {
+  padding: '18px',
+  borderRadius: '16px',
+  border: '1px solid var(--border-color)',
+  background: 'color-mix(in srgb, var(--bg-secondary) 88%, transparent)',
+}
+
+const Toggle = ({
+  checked,
+  onChange,
+}: {
+  checked: boolean
+  onChange: () => void
+}) => (
+  <button
+    onClick={onChange}
+    type="button"
+    style={{
+      width: '52px',
+      height: '30px',
+      borderRadius: '999px',
+      border: '1px solid transparent',
+      background: checked ? 'var(--accent-color)' : 'var(--bg-tertiary)',
+      cursor: 'pointer',
+      position: 'relative',
+      transition: 'all 0.2s ease',
+      flexShrink: 0,
+    }}
+  >
+    <span
+      style={{
+        position: 'absolute',
+        top: '3px',
+        left: checked ? '25px' : '3px',
+        width: '22px',
+        height: '22px',
+        borderRadius: '999px',
+        background: '#fff',
+        transition: 'left 0.2s ease',
+      }}
+    />
+  </button>
+)
 
 const SettingsCenter: React.FC<SettingsCenterProps> = ({
   aiConfig,
@@ -30,496 +111,457 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onToggleTheme,
   onToggleAutoSave,
   onChangeLanguage,
-  onClose
+  onClearLocalData,
+  onResetDefaults,
+  onEditProjectRules,
+  projectRulesPreview = null,
+  onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<SettingTab>('ai')
   const [localAIConfig, setLocalAIConfig] = useState(aiConfig)
   const [localAutoSave, setLocalAutoSave] = useState(autoSaveEnabled)
   const [localTheme, setLocalTheme] = useState(theme)
   const [localLanguage, setLocalLanguage] = useState(language)
+  const persistMcpRef = useRef<(() => Promise<void>) | null>(null)
+
+  const activeMeta = useMemo(() => tabs.find((tab) => tab.id === activeTab) ?? tabs[0], [activeTab])
 
   const handleSave = () => {
-    onSaveAIConfig(localAIConfig)
-    if (localAutoSave !== autoSaveEnabled) onToggleAutoSave()
-    if (localTheme !== theme) onToggleTheme()
-    if (localLanguage !== language) onChangeLanguage(localLanguage)
-    onClose()
+    void (async () => {
+      onSaveAIConfig(localAIConfig)
+      if (localAutoSave !== autoSaveEnabled) onToggleAutoSave()
+      if (localTheme !== theme) onToggleTheme()
+      if (localLanguage !== language) onChangeLanguage(localLanguage)
+      await persistMcpRef.current?.()
+      onClose()
+    })()
   }
-
-  const tabs: { id: SettingTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'ai', label: 'AI 设置', icon: <Bot size={18} /> },
-    { id: 'appearance', label: '外观', icon: <Palette size={18} /> },
-    { id: 'editor', label: '编辑器', icon: <Code2 size={18} /> },
-    { id: 'features', label: '功能', icon: <Puzzle size={18} /> },
-    { id: 'advanced', label: '高级', icon: <Cog size={18} /> }
-  ]
 
   return (
     <div
       style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.8)',
+        inset: 0,
+        background: 'rgba(4, 8, 18, 0.78)',
+        backdropFilter: 'blur(8px)',
         zIndex: 2000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px'
+        padding: '20px',
       }}
       onClick={onClose}
     >
       <div
         style={{
-          background: 'var(--bg-primary)',
-          borderRadius: '12px',
           width: '100%',
-          maxWidth: '800px',
-          maxHeight: '85vh',
-          display: 'flex',
+          maxWidth: '1040px',
+          maxHeight: '88vh',
           overflow: 'hidden',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+          display: 'grid',
+          gridTemplateColumns: '280px 1fr',
+          borderRadius: '24px',
+          border: '1px solid var(--border-color)',
+          background: 'var(--bg-secondary)',
+          boxShadow: 'var(--shadow-panel)',
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Sidebar */}
-        <div
+        <aside
           style={{
-            width: '200px',
-            background: 'var(--bg-secondary)',
             borderRight: '1px solid var(--border-color)',
-            padding: '16px 0'
+            background:
+              'radial-gradient(circle at top left, rgba(124,156,255,0.14), transparent 30%), color-mix(in srgb, var(--bg-secondary) 94%, transparent)',
+            padding: '24px 18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '18px',
           }}
         >
-          <div
-            style={{
-              padding: '0 16px 16px',
-              borderBottom: '1px solid var(--border-color)',
-              marginBottom: '16px'
-            }}
-          >
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>设置中心</h3>
-            <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              配置您的 IDE
-            </p>
-          </div>
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+          <div style={{ padding: '6px 10px 14px' }}>
+            <div
               style={{
-                width: '100%',
-                padding: '12px 16px',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '12px',
-                background: activeTab === tab.id ? 'var(--bg-tertiary)' : 'transparent',
-                border: 'none',
-                borderLeft: `3px solid ${activeTab === tab.id ? 'var(--accent-color)' : 'transparent'}`,
-                color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontSize: '14px',
-                textAlign: 'left'
+                gap: '8px',
+                padding: '6px 10px',
+                borderRadius: '999px',
+                background: 'color-mix(in srgb, var(--accent-color) 10%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--accent-color) 24%, var(--border-color))',
+                color: 'var(--text-secondary)',
+                fontSize: '12px',
+                fontWeight: 700,
+                marginBottom: '14px',
               }}
             >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              <Cog size={14} />
+              Settings Center
+            </div>
+            <h2 style={{ margin: 0, fontSize: '24px', lineHeight: 1.15 }}>把环境调成你顺手的样子</h2>
+            <p style={{ margin: '10px 0 0', fontSize: '13px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+              这里集中管理模型接入、主题、语言、自动保存和实验能力。
+            </p>
+          </div>
 
-        {/* Content */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {/* Header */}
+          <div style={{ display: 'grid', gap: '8px' }}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '14px 14px',
+                  borderRadius: '16px',
+                  border:
+                    activeTab === tab.id
+                      ? '1px solid color-mix(in srgb, var(--accent-color) 34%, var(--border-color))'
+                      : '1px solid transparent',
+                  background:
+                    activeTab === tab.id
+                      ? 'linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 16%, transparent), transparent 80%)'
+                      : 'transparent',
+                  color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  display: 'grid',
+                  gridTemplateColumns: '20px 1fr',
+                  gap: '12px',
+                  alignItems: 'start',
+                }}
+              >
+                <span style={{ marginTop: '2px' }}>{tab.icon}</span>
+                <span>
+                  <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '3px' }}>
+                    {tab.label}
+                  </span>
+                  <span style={{ display: 'block', fontSize: '12px', lineHeight: 1.5 }}>{tab.description}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <section style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div
             style={{
-              padding: '16px 24px',
+              padding: '22px 24px 18px',
               borderBottom: '1px solid var(--border-color)',
               display: 'flex',
+              alignItems: 'flex-start',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              gap: '16px',
             }}
           >
-            <h2 style={{ margin: 0, fontSize: '18px' }}>
-              {tabs.find(t => t.id === activeTab)?.label}
-            </h2>
-            <button onClick={onClose} style={{ padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-              <X size={20} />
+            <div>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '6px' }}>
+                当前分区
+              </div>
+              <h3 style={{ margin: 0, fontSize: '22px' }}>{activeMeta.label}</h3>
+              <p style={{ margin: '8px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
+                {activeMeta.description}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                width: '38px',
+                height: '38px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={18} />
             </button>
           </div>
 
-          {/* Tab Content */}
-          <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
+          <div style={{ flex: 1, overflow: 'auto', padding: '24px', display: 'grid', gap: '18px' }}>
             {activeTab === 'ai' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>
-                    AI 提供商
-                  </label>
-                  <select
-                    value={localAIConfig.provider}
-                    onChange={(e) => {
-                      const newProvider = e.target.value as AIModel
-                      setLocalAIConfig({
-                        ...localAIConfig,
-                        provider: newProvider,
-                        model: modelOptions[newProvider].models[0]
-                      })
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <option value="openai">OpenAI</option>
-                    <option value="deepseek">DeepSeek</option>
-                    <option value="claude">Claude</option>
-                    <option value="google">Google Gemini</option>
-                    <option value="qwen">阿里通义千问</option>
-                    <option value="zhipu">智谱AI GLM</option>
-                    <option value="minimax">MiniMax</option>
-                    <option value="grok">xAI Grok</option>
-                    <option value="ollama">Ollama (本地)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>
-                    API Key
-                  </label>
-                  <input
-                    type="password"
-                    value={localAIConfig.apiKey}
-                    onChange={(e) => setLocalAIConfig({ ...localAIConfig, apiKey: e.target.value })}
-                    placeholder="输入您的 API Key"
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                      fontSize: '14px',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>
-                    模型
-                  </label>
-                  <select
-                    value={localAIConfig.model}
-                    onChange={(e) => setLocalAIConfig({ ...localAIConfig, model: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                      fontSize: '14px',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    {modelOptions[localAIConfig.provider].models.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {localAIConfig.provider === 'ollama' && (
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>
-                      本地端点
-                    </label>
-                    <input
-                      type="text"
-                      value={localAIConfig.endpoint}
-                      onChange={(e) => setLocalAIConfig({ ...localAIConfig, endpoint: e.target.value })}
-                      placeholder="http://localhost:11434"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)',
-                        fontSize: '14px',
-                        boxSizing: 'border-box'
+              <>
+                <div style={{ ...cardStyle, display: 'grid', gap: '16px' }}>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 700 }}>AI 提供商</label>
+                    <select
+                      value={localAIConfig.provider}
+                      onChange={(event) => {
+                        const provider = event.target.value as AIModel
+                        setLocalAIConfig({
+                          ...localAIConfig,
+                          provider,
+                          model: modelOptions[provider].models[0],
+                        })
                       }}
+                      style={inputStyle}
+                    >
+                      <option value="openai">OpenAI</option>
+                      <option value="deepseek">DeepSeek</option>
+                      <option value="claude">Claude</option>
+                      <option value="google">Google Gemini</option>
+                      <option value="qwen">阿里通义千问</option>
+                      <option value="zhipu">智谱 GLM</option>
+                      <option value="minimax">MiniMax</option>
+                      <option value="grok">xAI Grok</option>
+                      <option value="ollama">Ollama（本地）</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 700 }}>API Key</label>
+                    <input
+                      type="password"
+                      value={localAIConfig.apiKey}
+                      onChange={(event) => setLocalAIConfig({ ...localAIConfig, apiKey: event.target.value })}
+                      placeholder="输入你的 API Key"
+                      style={inputStyle}
                     />
                   </div>
-                )}
 
-                <div
-                  style={{
-                    padding: '12px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '8px',
-                    fontSize: '13px'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <Shield size={16} style={{ color: '#10b981' }} />
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 700 }}>模型</label>
+                    <select
+                      value={localAIConfig.model}
+                      onChange={(event) => setLocalAIConfig({ ...localAIConfig, model: event.target.value })}
+                      style={inputStyle}
+                    >
+                      {modelOptions[localAIConfig.provider].models.map((model) => (
+                        <option key={model} value={model}>
+                          {model}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {localAIConfig.provider === 'ollama' && (
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: 700 }}>本地端点</label>
+                      <input
+                        type="text"
+                        value={localAIConfig.endpoint}
+                        onChange={(event) => setLocalAIConfig({ ...localAIConfig, endpoint: event.target.value })}
+                        placeholder="http://localhost:11434"
+                        style={inputStyle}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ ...cardStyle, display: 'grid', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Shield size={16} color="var(--success-color)" />
                     <strong>隐私说明</strong>
                   </div>
-                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
-                    API Key 仅保存在浏览器本地存储中，不会发送到任何第三方服务器。
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6 }}>
+                    API Key 保存在浏览器本地。除你选择的模型服务外，应用不会额外转发到其他第三方服务。
                   </p>
                 </div>
-              </div>
+              </>
             )}
 
             {activeTab === 'appearance' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '12px', fontSize: '13px', fontWeight: 500 }}>
-                    主题
-                  </label>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
-                      onClick={() => setLocalTheme('light')}
-                      style={{
-                        flex: 1,
-                        padding: '20px',
-                        borderRadius: '8px',
-                        border: `2px solid ${localTheme === 'light' ? 'var(--accent-color)' : 'var(--border-color)'}`,
-                        background: '#ffffff',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <div style={{ width: '40px', height: '40px', margin: '0 auto 8px', borderRadius: '50%', background: '#f0f0f0' }} />
-                      <div style={{ color: '#333', fontSize: '13px' }}>亮色</div>
-                    </button>
-                    <button
-                      onClick={() => setLocalTheme('vs-dark')}
-                      style={{
-                        flex: 1,
-                        padding: '20px',
-                        borderRadius: '8px',
-                        border: `2px solid ${localTheme === 'vs-dark' ? 'var(--accent-color)' : 'var(--border-color)'}`,
-                        background: '#1e1e1e',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <div style={{ width: '40px', height: '40px', margin: '0 auto 8px', borderRadius: '50%', background: '#2d2d2d' }} />
-                      <div style={{ color: '#fff', fontSize: '13px' }}>暗色</div>
-                    </button>
+              <>
+                <div style={{ ...cardStyle, display: 'grid', gap: '14px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700 }}>主题</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+                    {[
+                      { value: 'light' as const, label: '浅色', desc: '更适合白天与文档阅读', swatch: '#f3f6fd' },
+                      { value: 'vs-dark' as const, label: '深色', desc: '更聚焦代码与夜间工作', swatch: '#10192b' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setLocalTheme(option.value)}
+                        style={{
+                          ...cardStyle,
+                          padding: '16px',
+                          cursor: 'pointer',
+                          border:
+                            localTheme === option.value
+                              ? '1px solid color-mix(in srgb, var(--accent-color) 40%, var(--border-color))'
+                              : '1px solid var(--border-color)',
+                          background: localTheme === option.value ? 'color-mix(in srgb, var(--accent-color) 10%, var(--bg-secondary))' : 'var(--bg-secondary)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: '72px',
+                            borderRadius: '12px',
+                            marginBottom: '12px',
+                            background: option.swatch,
+                            border: '1px solid rgba(0,0,0,0.08)',
+                          }}
+                        />
+                        <div style={{ fontWeight: 700, marginBottom: '4px' }}>{option.label}</div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{option.desc}</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '12px', fontSize: '13px', fontWeight: 500 }}>
-                    界面语言
-                  </label>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
-                      onClick={() => setLocalLanguage('zh')}
-                      style={{
-                        flex: 1,
-                        padding: '16px',
-                        borderRadius: '8px',
-                        border: `2px solid ${localLanguage === 'zh' ? 'var(--accent-color)' : 'var(--border-color)'}`,
-                        background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        fontSize: '14px'
-                      }}
-                    >
-                      <Globe size={18} />
-                      <span>简体中文</span>
-                    </button>
-                    <button
-                      onClick={() => setLocalLanguage('en')}
-                      style={{
-                        flex: 1,
-                        padding: '16px',
-                        borderRadius: '8px',
-                        border: `2px solid ${localLanguage === 'en' ? 'var(--accent-color)' : 'var(--border-color)'}`,
-                        background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        fontSize: '14px'
-                      }}
-                    >
-                      <Globe size={18} />
-                      <span>English</span>
-                    </button>
+                <div style={{ ...cardStyle, display: 'grid', gap: '14px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700 }}>界面语言</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+                    {[
+                      { value: 'zh', label: '简体中文' },
+                      { value: 'en', label: 'English' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setLocalLanguage(option.value)}
+                        style={{
+                          ...cardStyle,
+                          padding: '16px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          background: localLanguage === option.value ? 'color-mix(in srgb, var(--accent-color) 10%, var(--bg-secondary))' : 'var(--bg-secondary)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <Globe size={18} />
+                          <span style={{ fontWeight: 700 }}>{option.label}</span>
+                        </div>
+                        {localLanguage === option.value && <Check size={18} color="var(--accent-color)" />}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
             {activeTab === 'editor' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div
-                  style={{
-                    padding: '16px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
+              <>
+                <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                   <div>
-                    <div style={{ fontWeight: 500, marginBottom: '4px' }}>自动保存</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      自动保存代码更改到本地存储
+                    <div style={{ fontWeight: 700, marginBottom: '6px' }}>自动保存</div>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                      在你编辑代码时自动保存到本地与工作区状态，减少误关页面带来的损失。
                     </div>
                   </div>
-                  <button
-                    onClick={() => setLocalAutoSave(!localAutoSave)}
-                    style={{
-                      width: '48px',
-                      height: '26px',
-                      borderRadius: '13px',
-                      background: localAutoSave ? '#10b981' : 'var(--bg-tertiary)',
-                      border: 'none',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      transition: 'background 0.2s'
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        background: '#fff',
-                        position: 'absolute',
-                        top: '2px',
-                        left: localAutoSave ? '24px' : '2px',
-                        transition: 'left 0.2s'
-                      }}
-                    />
-                  </button>
+                  <Toggle checked={localAutoSave} onChange={() => setLocalAutoSave((value) => !value)} />
                 </div>
 
-                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                  <div style={{ fontWeight: 500, marginBottom: '8px' }}>字体大小</div>
-                  <input
-                    type="range"
-                    min="12"
-                    max="20"
-                    defaultValue="14"
-                    style={{ width: '100%' }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    <span>12px</span>
-                    <span>16px</span>
-                    <span>20px</span>
+                <div style={{ ...cardStyle, display: 'grid', gap: '12px' }}>
+                  <div style={{ fontWeight: 700 }}>编辑偏好</div>
+                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+                    当前版本先保留简洁设置，把最常用的自动保存、主题和语言收在一处。后续适合继续补充字体、缩进与格式化策略。
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
             {activeTab === 'features' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'grid', gap: '14px' }}>
                 {[
-                  { name: '代码审查', desc: 'AI 驱动的代码质量分析', enabled: true },
-                  { name: '智能补全', desc: 'AI 代码自动补全', enabled: true },
-                  { name: '实时协作', desc: '多人同时编辑', enabled: false },
-                  { name: '性能分析', desc: '代码执行性能追踪', enabled: true }
-                ].map((feature, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      padding: '16px',
-                      background: 'var(--bg-secondary)',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
+                  { name: '代码审查', desc: 'AI 驱动的质量分析与建议', enabled: true, label: '已启用' },
+                  { name: '智能补全', desc: '辅助生成和补全常见代码片段', enabled: true, label: '已启用' },
+                  { name: '实时协作', desc: '实验性房间与在线用户（不同步编辑器）', enabled: true, label: '实验性' },
+                  { name: '性能分析', desc: '查看运行输出和性能趋势', enabled: true, label: '已启用' },
+                  { name: 'MCP 工具', desc: 'Agent 可调用外部 Streamable HTTP MCP', enabled: true, label: '实验性' },
+                ].map((feature) => (
+                  <div key={feature.name} style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                     <div>
-                      <div style={{ fontWeight: 500, marginBottom: '4px' }}>{feature.name}</div>
-                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{feature.desc}</div>
+                      <div style={{ fontWeight: 700, marginBottom: '4px' }}>{feature.name}</div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{feature.desc}</div>
                     </div>
                     <span
                       style={{
-                        padding: '4px 12px',
-                        borderRadius: '12px',
+                        padding: '6px 10px',
+                        borderRadius: '999px',
+                        background: feature.label === '实验性'
+                          ? 'color-mix(in srgb, var(--warning-color, #f59e0b) 14%, transparent)'
+                          : feature.enabled
+                            ? 'color-mix(in srgb, var(--success-color) 14%, transparent)'
+                            : 'var(--bg-tertiary)',
+                        color: feature.label === '实验性'
+                          ? '#f59e0b'
+                          : feature.enabled
+                            ? 'var(--success-color)'
+                            : 'var(--text-secondary)',
                         fontSize: '12px',
-                        background: feature.enabled ? '#10b98120' : 'var(--bg-tertiary)',
-                        color: feature.enabled ? '#10b981' : 'var(--text-secondary)'
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      {feature.enabled ? '已启用' : '已禁用'}
+                      {feature.label ?? (feature.enabled ? '已启用' : '规划中')}
                     </span>
                   </div>
                 ))}
+                {onEditProjectRules ? (
+                  <ProjectRulesSection rulesPreview={projectRulesPreview} onEditRules={onEditProjectRules} />
+                ) : null}
+                <McpSettingsSection onRegisterPersist={(persist) => { persistMcpRef.current = persist }} />
               </div>
             )}
 
             {activeTab === 'advanced' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                  <div style={{ fontWeight: 500, marginBottom: '8px', color: '#ef4444' }}>危险区域</div>
-                  <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    以下操作不可逆，请谨慎操作。
+              <>
+                <div style={{ ...cardStyle, borderColor: 'color-mix(in srgb, var(--danger-color) 36%, var(--border-color))' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--danger-color)', marginBottom: '8px' }}>谨慎操作</div>
+                  <p style={{ margin: '0 0 16px', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    清理本地缓存或恢复默认编辑器设置。不会影响 Neon 云端账号与工作区。
                   </p>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button className="btn btn-danger" style={{ fontSize: '13px' }}>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-secondary" onClick={onClearLocalData}>
                       <Database size={14} style={{ marginRight: '6px' }} />
-                      清除所有数据
+                      清理本地数据
                     </button>
-                    <button className="btn btn-secondary" style={{ fontSize: '13px' }}>
-                      重置设置
+                    <button type="button" className="btn btn-secondary" onClick={onResetDefaults}>
+                      重置默认设置
                     </button>
                   </div>
                 </div>
 
-                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                  <div style={{ fontWeight: 500, marginBottom: '8px' }}>实验性功能</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <input type="checkbox" id="experimental" />
-                    <label htmlFor="experimental" style={{ fontSize: '13px' }}>
-                      启用实验性功能（可能不稳定）
-                    </label>
+                <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, marginBottom: '6px' }}>实验功能</div>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                      为后续迭代预留的入口。等功能成熟后再开放实际开关。
+                    </div>
                   </div>
+                  <span
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '999px',
+                      background: 'var(--bg-tertiary)',
+                      color: 'var(--text-secondary)',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    暂未开放
+                  </span>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
-          {/* Footer */}
           <div
             style={{
-              padding: '16px 24px',
+              padding: '18px 24px',
               borderTop: '1px solid var(--border-color)',
               display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '12px'
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '14px',
             }}
           >
-            <button onClick={onClose} className="btn btn-secondary">
-              取消
-            </button>
-            <button onClick={handleSave} className="btn btn-primary">
-              <Save size={16} style={{ marginRight: '6px' }} />
-              保存更改
-            </button>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>保存后立即应用到当前工作区。</div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={onClose} className="btn btn-secondary">
+                取消
+              </button>
+              <button onClick={handleSave} className="btn btn-primary">
+                <Save size={16} style={{ marginRight: '6px' }} />
+                保存更改
+              </button>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   )

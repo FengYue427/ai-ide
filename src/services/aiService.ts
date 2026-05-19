@@ -9,46 +9,7 @@ export interface AIConfig {
 
 // ==================== 用量限制管理 ====================
 
-const USAGE_KEY = 'ai-usage-today'
-const USAGE_DATE_KEY = 'ai-usage-date'
-
-interface UsageRecord {
-  count: number
-  date: string
-}
-
-function getToday(): string {
-  return new Date().toISOString().split('T')[0]
-}
-
-function getStoredUsage(): UsageRecord {
-  const stored = localStorage.getItem(USAGE_KEY)
-  const storedDate = localStorage.getItem(USAGE_DATE_KEY)
-  const today = getToday()
-  
-  if (stored && storedDate === today) {
-    return JSON.parse(stored)
-  }
-  
-  // 重置为新的一天
-  const fresh: UsageRecord = { count: 0, date: today }
-  localStorage.setItem(USAGE_KEY, JSON.stringify(fresh))
-  localStorage.setItem(USAGE_DATE_KEY, today)
-  return fresh
-}
-
-function incrementUsage(): void {
-  const usage = getStoredUsage()
-  usage.count++
-  localStorage.setItem(USAGE_KEY, JSON.stringify(usage))
-}
-
-// 各计划的每日限额
-const planLimits: Record<string, number> = {
-  free: 50,
-  pro: 500,
-  enterprise: -1 // 无限
-}
+import { checkAIQuotaLocal, recordAIUsageEvent } from './usageService'
 
 export interface QuotaCheck {
   allowed: boolean
@@ -58,31 +19,22 @@ export interface QuotaCheck {
   plan: string
 }
 
-/**
- * 检查 AI 用量配额
- */
+/** @deprecated Prefer usageService.fetchAIQuota for logged-in users */
 export function checkAIQuota(currentPlan: string = 'free'): QuotaCheck {
-  const usage = getStoredUsage()
-  const limit = planLimits[currentPlan] ?? planLimits.free
-  
-  if (limit === -1) {
-    return { allowed: true, used: usage.count, limit, remaining: Infinity, plan: currentPlan }
-  }
-  
-  return {
-    allowed: usage.count < limit,
-    used: usage.count,
-    limit,
-    remaining: Math.max(0, limit - usage.count),
-    plan: currentPlan
-  }
+  return checkAIQuotaLocal(currentPlan)
 }
 
-/**
- * 记录一次 AI 请求用量
- */
-export function recordAIUsage(): void {
-  incrementUsage()
+function trackSuccessfulAIUsage(): void {
+  void import('../store/ideStore').then(({ useIDEStore }) => {
+    const state = useIDEStore.getState()
+    void recordAIUsageEvent(!!state.currentUser, state.currentPlan)
+  })
+}
+
+async function assertQuotaBeforeRequest(skipQuotaCheck?: boolean): Promise<void> {
+  if (skipQuotaCheck) return
+  const { ensureAIQuotaFromStore } = await import('./usageService')
+  await ensureAIQuotaFromStore()
 }
 
 // ==================== 模型配置 ====================
@@ -159,11 +111,15 @@ export const defaultEndpoints: Record<AIModel, string> = {
 export async function sendMessage(
   config: AIConfig,
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
-  onStream?: (chunk: string) => void
+  onStream?: (chunk: string) => void,
+  options?: { skipQuotaCheck?: boolean },
 ): Promise<string> {
+  await assertQuotaBeforeRequest(options?.skipQuotaCheck)
+
   const endpoint = config.endpoint || defaultEndpoints[config.provider]
   const model = config.model || modelOptions[config.provider].models[0]
 
+  let result: string
   switch (config.provider) {
     case 'openai':
     case 'deepseek':
@@ -171,21 +127,23 @@ export async function sendMessage(
     case 'zhipu':
     case 'minimax':
     case 'grok':
-      // 这些provider使用OpenAI兼容的API格式
-      return sendOpenAICompatible(endpoint, config.apiKey, model, messages, onStream)
-
+      result = await sendOpenAICompatible(endpoint, config.apiKey, model, messages, onStream)
+      break
     case 'google':
-      return sendGoogleGemini(endpoint, config.apiKey, model, messages, onStream)
-
+      result = await sendGoogleGemini(endpoint, config.apiKey, model, messages, onStream)
+      break
     case 'claude':
-      return sendClaude(endpoint, config.apiKey, model, messages, onStream)
-
+      result = await sendClaude(endpoint, config.apiKey, model, messages, onStream)
+      break
     case 'ollama':
-      return sendOllama(endpoint, model, messages, onStream)
-
+      result = await sendOllama(endpoint, model, messages, onStream)
+      break
     default:
       throw new Error(`Unsupported provider: ${config.provider}`)
   }
+
+  trackSuccessfulAIUsage()
+  return result
 }
 
 // ==================== 防抖与限流 ====================
@@ -241,8 +199,11 @@ export async function sendMessageWithDebounce(
   options?: {
     debounceMs?: number
     skipDebounce?: boolean
+    skipQuotaCheck?: boolean
   }
 ): Promise<string> {
+  await assertQuotaBeforeRequest(options?.skipQuotaCheck)
+
   const requestKey = generateRequestKey(config, messages)
   const debounceMs = options?.debounceMs || DEBOUNCE_MS
   
@@ -285,11 +246,11 @@ export async function sendMessageWithDebounce(
   
   // 记录到限流历史
   requestHistory.push(Date.now())
-  
-  // 记录 AI 用量（用于计费统计）
-  recordAIUsage()
-  
-  return promise
+
+  return promise.then((result) => {
+    trackSuccessfulAIUsage()
+    return result
+  })
 }
 
 /**
@@ -517,7 +478,7 @@ async function sendGoogleGemini(
   apiKey: string,
   model: string,
   messages: { role: string; content: string }[],
-  onStream?: (chunk: string) => void,
+  _onStream?: (chunk: string) => void,
   signal?: AbortSignal
 ): Promise<string> {
   const response = await fetch(`${endpoint}/${model}:generateContent?key=${apiKey}`, {

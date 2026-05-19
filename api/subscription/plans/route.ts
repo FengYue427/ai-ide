@@ -1,80 +1,43 @@
 /**
- * 订阅计划列表 API - 演示/占位实现
- * 
- * 当前为纯前端模式：
- * - 硬编码计划列表（仅展示用途）
- * - 前端已禁用订阅相关 UI
- * 
- * 如需动态配置，需接入数据库管理计划
+ * Subscription plans — DB-backed when available, static fallback otherwise.
  */
-const plans = [
-  {
-    id: 'free',
-    name: 'free',
-    displayName: '免费版',
-    description: '适合个人初学者',
-    price: 0,
-    currency: 'USD',
-    features: [
-      '基础 AI 对话 (GPT-3.5)',
-      '本地文件编辑',
-      '3 个工作区',
-      '1GB 云存储'
-    ],
-    limits: {
-      aiRequestsPerDay: 50,
-      workspaces: 3,
-      storageGB: 1
-    }
-  },
-  {
-    id: 'pro',
-    name: 'pro',
-    displayName: '专业版',
-    description: '适合专业开发者',
-    price: 9.99,
-    currency: 'USD',
-    features: [
-      '全部 AI 模型访问',
-      '优先响应速度',
-      '无限工作区',
-      '10GB 云存储',
-      '团队协作功能',
-      '高级代码分析'
-    ],
-    limits: {
-      aiRequestsPerDay: 500,
-      workspaces: -1,
-      storageGB: 10
-    }
-  },
-  {
-    id: 'enterprise',
-    name: 'enterprise',
-    displayName: '企业版',
-    description: '适合团队和企业',
-    price: 29.99,
-    currency: 'USD',
-    features: [
-      '全部专业版功能',
-      '私有 AI 模型部署',
-      '100GB 云存储',
-      'SSO 单点登录',
-      '专属技术支持',
-      'API 访问权限'
-    ],
-    limits: {
-      aiRequestsPerDay: -1,
-      workspaces: -1,
-      storageGB: 100
-    }
-  }
-]
+import { jsonResponse } from '../../../lib/api/http'
+import { BILLING_PLANS } from '../../../lib/billing/plans'
+import { ensurePlansSeeded } from '../../../lib/billing/subscriptionDb'
+import { prisma } from '../../../src/lib/prisma'
 
-// 获取订阅计划列表
+function parseJsonField<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value) as T
+  } catch {
+    return fallback
+  }
+}
+
 export async function GET() {
-  return new Response(JSON.stringify({ plans }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' }
-  })
+  try {
+    await ensurePlansSeeded()
+    const records = await prisma.plan.findMany({
+      where: { isActive: true },
+      orderBy: { price: 'asc' },
+    })
+
+    if (records.length > 0) {
+      const plans = records.map((plan) => ({
+        id: plan.name,
+        name: plan.name,
+        displayName: plan.displayName,
+        description: plan.description ?? '',
+        price: plan.price,
+        currency: plan.currency,
+        features: parseJsonField<string[]>(plan.features, []),
+        limits: parseJsonField(plan.limits, BILLING_PLANS[0].limits),
+      }))
+      return jsonResponse({ plans })
+    }
+  } catch (error) {
+    console.warn('[Plans] DB unavailable, using static plans:', error)
+  }
+
+  return jsonResponse({ plans: BILLING_PLANS })
 }

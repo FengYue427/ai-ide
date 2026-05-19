@@ -1,0 +1,130 @@
+/**
+ * Optional BYOK semantic retrieval: chunk workspace files and rank by embedding similarity.
+ */
+
+import type { AIConfig } from './aiService'
+import { canUseEmbeddings, cosineSimilarity, createEmbedding } from './embeddingService'
+
+export interface SemanticChunkHit {
+  path: string
+  text: string
+  score: number
+}
+
+const CHUNK_SIZE = 480
+const CHUNK_OVERLAP = 80
+const MAX_CHUNKS_PER_FILE = 12
+const MAX_FILES = 24
+
+interface ChunkRecord {
+  path: string
+  text: string
+  vector: number[]
+}
+
+const chunkVectorCache = new Map<string, ChunkRecord[]>()
+
+function cacheKey(path: string, content: string): string {
+  return `${path}:${content.length}:${content.slice(0, 64)}`
+}
+
+function splitIntoChunks(content: string): string[] {
+  if (content.length <= CHUNK_SIZE) return [content]
+
+  const chunks: string[] = []
+  let start = 0
+
+  while (start < content.length && chunks.length < MAX_CHUNKS_PER_FILE) {
+    const end = Math.min(content.length, start + CHUNK_SIZE)
+    chunks.push(content.slice(start, end))
+    if (end >= content.length) break
+    start = Math.max(start + 1, end - CHUNK_OVERLAP)
+  }
+
+  return chunks
+}
+
+async function embedChunks(
+  path: string,
+  content: string,
+  config: AIConfig,
+): Promise<ChunkRecord[]> {
+  const key = cacheKey(path, content)
+  const cached = chunkVectorCache.get(key)
+  if (cached) return cached
+
+  const chunks = splitIntoChunks(content)
+  const records: ChunkRecord[] = []
+
+  for (const text of chunks) {
+    const trimmed = text.trim()
+    if (!trimmed) continue
+    const vector = await createEmbedding(trimmed, config)
+    records.push({ path, text: trimmed, vector })
+  }
+
+  chunkVectorCache.set(key, records)
+  return records
+}
+
+export async function findRelevantChunks(
+  query: string,
+  files: { path: string; content: string }[],
+  config: AIConfig,
+  options?: { topK?: number; maxFiles?: number },
+): Promise<SemanticChunkHit[]> {
+  if (!canUseEmbeddings(config) || !query.trim()) return []
+
+  const topK = options?.topK ?? 5
+  const maxFiles = options?.maxFiles ?? MAX_FILES
+  const queryVector = await createEmbedding(query, config)
+
+  const candidates = files
+    .filter((file) => file.content.trim().length > 0)
+    .slice(0, maxFiles)
+
+  const hits: SemanticChunkHit[] = []
+
+  for (const file of candidates) {
+    const records = await embedChunks(file.path, file.content, config)
+    for (const record of records) {
+      hits.push({
+        path: record.path,
+        text: record.text,
+        score: cosineSimilarity(queryVector, record.vector),
+      })
+    }
+  }
+
+  return hits.sort((a, b) => b.score - a.score).slice(0, topK)
+}
+
+export function formatSemanticContextSection(hits: SemanticChunkHit[]): string {
+  if (hits.length === 0) return ''
+
+  const lines = hits.map(
+    (hit, index) =>
+      `${index + 1}. ${hit.path} (相关度 ${(hit.score * 100).toFixed(0)}%)\n\`\`\`\n${hit.text}\n\`\`\``,
+  )
+
+  return `\n\n## 语义检索相关片段（BYOK Embedding）\n${lines.join('\n\n')}`
+}
+
+export async function buildSemanticContextSection(
+  query: string,
+  files: { path: string; content: string }[],
+  config: AIConfig,
+): Promise<string> {
+  try {
+    const hits = await findRelevantChunks(query, files, config)
+    return formatSemanticContextSection(hits)
+  } catch (error) {
+    console.warn('[semanticSearch]', error)
+    return ''
+  }
+}
+
+/** Clear in-memory embedding cache (e.g. after large workspace replace). */
+export function clearSemanticSearchCache(): void {
+  chunkVectorCache.clear()
+}

@@ -1,42 +1,98 @@
 /**
- * 订阅 Checkout API - 演示/占位实现
- * 
- * 当前为纯前端模式：
- * - 不创建真实 Stripe 会话
- * - 返回占位链接（前端已禁用订阅 UI）
- * 
- * 如需完整支付流程，需接入 Stripe + Webhook + 数据库
+ * Subscription checkout — 支付宝 / 微信（优先），Stripe 可选，开发 mock 兜底
  */
+import { jsonResponse, errorResponse } from '../../../lib/api/http'
+import { requireAuth } from '../../../lib/api/requireAuth'
+import { isDevBillingAllowed } from '../../../lib/billing/billingMode'
+import { createCnCheckout, isAlipayConfigured, isCnPaymentConfigured, isWechatPayConfigured } from '../../../lib/billing/cnPayment'
+import type { PaymentChannel } from '../../../lib/billing/paymentOrders'
+import { findPlanByName, getBillablePlanNames, getPlanAmountCents } from '../../../lib/billing/plans'
+import { getUserSubscription, upsertUserSubscription } from '../../../lib/billing/subscriptionDb'
+import { createStripeCheckoutSession, isStripeConfigured } from '../../../lib/billing/stripe'
+
 export async function POST(request: Request) {
   try {
-    const { planId } = await request.json()
+    const auth = await requireAuth(request)
+    if (!auth.ok) return auth.response
 
-    // 模拟不同计划的 Stripe 价格 ID
-    const priceIds: Record<string, string> = {
-      pro: 'price_pro_monthly',
-      enterprise: 'price_enterprise_monthly'
+    const body = (await request.json()) as { planId?: string; channel?: PaymentChannel }
+    const planId = body.planId?.trim()
+    const channel = body.channel
+
+    if (!planId) {
+      return errorResponse('缺少 planId', 400)
     }
 
-    const priceId = priceIds[planId]
-    if (!priceId) {
-      return new Response(JSON.stringify({ error: '无效的计划' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
+    if (planId === 'free') {
+      return errorResponse('免费计划无需结账', 400)
+    }
+
+    if (!getBillablePlanNames().includes(planId)) {
+      return errorResponse('无效的计划', 400)
+    }
+
+    const plan = findPlanByName(planId)
+    if (!plan) {
+      return errorResponse('无效的计划', 400)
+    }
+
+    if (channel === 'alipay' || channel === 'wechat') {
+      if (channel === 'alipay' && !isAlipayConfigured()) {
+        return errorResponse('支付宝未配置，请稍后在服务端配置商户参数', 503)
+      }
+      if (channel === 'wechat' && !isWechatPayConfigured()) {
+        return errorResponse('微信支付未配置，请稍后在服务端配置商户参数', 503)
+      }
+
+      const amountCents = getPlanAmountCents(plan.name)
+      if (amountCents <= 0) {
+        return errorResponse('该计划无需支付', 400)
+      }
+
+      const result = await createCnCheckout({
+        req: request,
+        userId: auth.user.id,
+        planName: plan.name,
+        channel,
       })
+      return jsonResponse(result)
     }
 
-    // 简化版本：返回前端支付页链接
-    const checkoutUrl = `/subscription/checkout?plan=${planId}`
-    
-    return new Response(JSON.stringify({ url: checkoutUrl }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
+    if (isCnPaymentConfigured()) {
+      return errorResponse('请选择支付方式：alipay 或 wechat', 400)
+    }
+
+    if (isStripeConfigured()) {
+      const existing = await getUserSubscription(auth.user.id)
+      const url = await createStripeCheckoutSession({
+        req: request,
+        userId: auth.user.id,
+        email: auth.user.email,
+        planName: plan.name,
+        stripeCustomerId: existing?.stripeCustomerId,
+      })
+      return jsonResponse({ mode: 'stripe', url })
+    }
+
+    if (!isDevBillingAllowed()) {
+      return errorResponse('支付功能尚未配置，请联系管理员', 503)
+    }
+
+    const record = await upsertUserSubscription(auth.user.id, plan.name)
+    return jsonResponse({
+      mode: 'dev_mock',
+      plan: record.plan.name,
+      message: `开发模式：已升级为 ${record.plan.displayName}`,
+      subscription: {
+        plan: record.plan.name,
+        status: record.status,
+        currentPeriodEnd: record.currentPeriodEnd.toISOString(),
+        cancelAtPeriodEnd: record.cancelAtPeriodEnd,
+      },
     })
   } catch (error) {
-    console.error('Checkout error:', error)
-    return new Response(JSON.stringify({ error: '创建支付会话失败' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    console.error('[Checkout] error:', error)
+    const message = error instanceof Error ? error.message : '创建支付会话失败'
+    return errorResponse(message, 500)
   }
 }

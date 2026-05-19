@@ -32,3 +32,8 @@ npm-debug.log*
 
 # Vercel
 .vercel/
+
+# Tests
+test-results/
+playwright-report/
+api-server.log

@@ -88,7 +88,7 @@ export const formatService = {
   },
 
   // 检查代码是否有语法错误（简单检查）
-  checkSyntax(code: string, language: string): { valid: boolean; errors: string[] } {
+  checkSyntax(code: string, _language: string): { valid: boolean; errors: string[] } {
     const errors: string[] = []
     
     // 括号匹配检查

@@ -1,0 +1,126 @@
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.alert-banner {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.alert-banner--success {
+  background: color-mix(in srgb, var(--success-color) 12%, transparent);
+  color: var(--success-color);
+  border: 1px solid color-mix(in srgb, var(--success-color) 28%, var(--border-color));
+}
+
+.alert-banner--warning {
+  background: color-mix(in srgb, var(--warning-color) 12%, transparent);
+  color: var(--warning-color);
+  border: 1px solid color-mix(in srgb, var(--warning-color) 28%, var(--border-color));
+}
+
+.alert-banner--error {
+  background: color-mix(in srgb, var(--danger-color) 12%, transparent);
+  color: var(--danger-color);
+  border: 1px solid color-mix(in srgb, var(--danger-color) 28%, var(--border-color));
+}
+
+.alert-banner--info {
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  color: var(--text-secondary);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 22%, var(--border-color));
+}
+
+.modal--wide {
+  width: min(1080px, 96vw);
+  max-height: 90vh;
+}
+
+.modal--wide .modal-body {
+  overflow-y: auto;
+  max-height: calc(90vh - 64px);
+}
+
+.modal--compact {
+  width: min(420px, 94vw);
+}
+
+.modal-body--grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.btn-pay {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 12px 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: filter 0.2s var(--ease-out), transform 0.15s var(--ease-out);
+}
+
+.btn-pay:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.btn-pay:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn-pay--alipay {
+  background: var(--alipay-blue);
+}
+
+.btn-pay--wechat {
+  background: var(--wechat-green);
+}
+
+.pay-amount {
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.pay-amount-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.pay-qr-wrap {
+  text-align: center;
+}
+
+.pay-qr-wrap p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.pay-qr-wrap img {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.pay-qr-hint {
+  margin-top: var(--space-3);
+  font-size: 12px;
+  color: var(--text-secondary);
+}

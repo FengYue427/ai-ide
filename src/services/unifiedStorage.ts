@@ -197,7 +197,7 @@ export const unifiedStorage = {
       const projectId = key.replace('project:', '')
       await idbService.deleteProject(projectId)
     } else {
-      const db = await idbService.getAllProjects()
+      await idbService.getAllProjects()
       // IndexedDB 删除由 idbService 处理
     }
     

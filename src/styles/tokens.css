@@ -1,0 +1,53 @@
+:root {
+  --bg-primary: #0b1020;
+  --bg-secondary: #121a2b;
+  --bg-tertiary: #1a2438;
+  --bg-elevated: #182338;
+  --border-color: #28344d;
+  --border-strong: #334261;
+  --text-primary: #edf2ff;
+  --text-secondary: #9aa8c7;
+  --accent-color: #7c9cff;
+  --accent-hover: #96b0ff;
+  --success-color: #33c58e;
+  --warning-color: #ffb648;
+  --danger-color: #ff6b81;
+  --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.22);
+  --shadow-panel: 0 24px 80px rgba(4, 8, 20, 0.34);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --font-display: 40px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --gradient-brand: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #0ea5e9 100%);
+  --alipay-blue: #1677ff;
+  --wechat-green: #07c160;
+}
+
+.app.light-theme {
+  --bg-primary: #f5f7fb;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #eef2f9;
+  --bg-elevated: #f8faff;
+  --border-color: #d8e0ee;
+  --border-strong: #c2cee3;
+  --text-primary: #182134;
+  --text-secondary: #5b6885;
+  --accent-color: #365df5;
+  --accent-hover: #2d4fd3;
+  --success-color: #0f9f6e;
+  --warning-color: #ca8a04;
+  --danger-color: #dc4c64;
+  --shadow-soft: 0 16px 40px rgba(40, 55, 84, 0.12);
+  --shadow-panel: 0 24px 80px rgba(56, 73, 104, 0.16);
+  --alipay-blue: #1677ff;
+  --wechat-green: #07c160;
+}

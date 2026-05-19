@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build && cp -r website dist/",
+  "buildCommand": "npm run build:deploy",
   "outputDirectory": "dist",
   "framework": "vite",
   "headers": [
@@ -23,7 +23,7 @@
       "destination": "/website/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

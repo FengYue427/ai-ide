@@ -1,76 +1,88 @@
 /**
- * 单个 Workspace API - 演示/占位实现
- * 
- * 当前为纯前端模式：
- * - 返回固定示例数据（非真实存储）
- * - PUT/DELETE 仅打印日志，不实际保存
- * - 前端直接使用 IndexedDB，不调用此 API
- * 
- * 如需云同步，需接入真实数据库 + 鉴权
+ * Single workspace API — lookup by workspace name (e.g. "default")
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  try {
-    const { id } = params
-    
-    // 实际生产：从数据库查询
-    console.log("Load workspace:", id)
+import { errorResponse, jsonResponse } from '../../../lib/api/http'
+import { requireAuth } from '../../../lib/api/requireAuth'
+import {
+  deleteWorkspaceByName,
+  ensureDefaultWorkspace,
+  getWorkspaceByName,
+  serializeWorkspace,
+  upsertWorkspace,
+} from '../../../lib/api/workspacesService'
 
-    return new Response(JSON.stringify({ 
-      workspace: {
-        id,
-        name: 'default',
-        files: JSON.stringify([
-          { name: 'index.js', content: '// 示例文件', language: 'javascript' }
-        ]),
-        settings: JSON.stringify({ theme: 'vs-dark' }),
-        updatedAt: new Date().toISOString()
-      }
-    }), {
-      status: 200
-    })
+type RouteParams = { params: { id: string } }
+
+export async function GET(_req: Request, { params }: RouteParams) {
+  const auth = await requireAuth(_req)
+  if (!auth.ok) return auth.response
+
+  try {
+    const name = decodeURIComponent(params.id)
+    let workspace = await getWorkspaceByName(auth.user.id, name)
+
+    if (!workspace && name === 'default') {
+      workspace = await ensureDefaultWorkspace(auth.user.id)
+    }
+
+    if (!workspace) {
+      return errorResponse('工作区不存在', 404)
+    }
+
+    return jsonResponse({ workspace: serializeWorkspace(workspace) })
   } catch (error) {
-    return new Response(JSON.stringify({ error: "加载失败" }), {
-      status: 500
-    })
+    console.error('[Workspaces] Load error:', error)
+    return errorResponse('加载工作区失败', 500)
   }
 }
 
-// 保存工作区数据
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  try {
-    const { id } = params
-    const { files, settings, name } = await req.json()
-    
-    // 实际生产：更新数据库
-    console.log("Save workspace:", id, name, files?.length, settings)
+export async function PUT(req: Request, { params }: RouteParams) {
+  const auth = await requireAuth(req)
+  if (!auth.ok) return auth.response
 
-    return new Response(JSON.stringify({ 
+  try {
+    const name = decodeURIComponent(params.id)
+    const body = await req.json()
+    const { files, settings, name: newName } = body
+
+    const filesPayload =
+      typeof files === 'string' ? files : JSON.stringify(files ?? [])
+    const settingsPayload =
+      typeof settings === 'string' ? settings : JSON.stringify(settings ?? {})
+
+    const targetName = typeof newName === 'string' && newName.trim() ? newName.trim() : name
+
+    const workspace = await upsertWorkspace(
+      auth.user.id,
+      targetName,
+      filesPayload,
+      settingsPayload,
+    )
+
+    return jsonResponse({
       success: true,
-      updatedAt: new Date().toISOString()
-    }), {
-      status: 200
+      workspace: serializeWorkspace(workspace),
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: "保存失败" }), {
-      status: 500
-    })
+    console.error('[Workspaces] Save error:', error)
+    return errorResponse('保存工作区失败', 500)
   }
 }
 
-// 删除工作区
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  try {
-    const { id } = params
-    
-    // 实际生产：从数据库删除
-    console.log("Delete workspace:", id)
+export async function DELETE(_req: Request, { params }: RouteParams) {
+  const auth = await requireAuth(_req)
+  if (!auth.ok) return auth.response
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200
-    })
+  try {
+    const name = decodeURIComponent(params.id)
+
+    await deleteWorkspaceByName(auth.user.id, name)
+    return jsonResponse({ success: true })
   } catch (error) {
-    return new Response(JSON.stringify({ error: "删除失败" }), {
-      status: 500
-    })
+    if (error instanceof Error && error.message === 'DEFAULT_WORKSPACE_PROTECTED') {
+      return errorResponse('默认工作区不能删除', 400)
+    }
+    console.error('[Workspaces] Delete error:', error)
+    return errorResponse('删除工作区失败', 500)
   }
 }

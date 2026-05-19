@@ -1,6 +1,17 @@
 import jwt from 'jsonwebtoken'
 
-const JWT_SECRET = process.env.AUTH_SECRET || 'your-fallback-secret-key-change-in-production'
+const FALLBACK_SECRET = 'your-fallback-secret-key-change-in-production'
+
+function resolveJwtSecret(): string {
+  const secret = process.env.AUTH_SECRET?.trim()
+  if (secret) return secret
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('AUTH_SECRET must be set in production')
+  }
+  return FALLBACK_SECRET
+}
+
+const JWT_SECRET = resolveJwtSecret()
 
 export interface JWTPayload {
   userId: string

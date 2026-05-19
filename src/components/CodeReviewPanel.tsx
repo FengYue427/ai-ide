@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X, AlertCircle, AlertTriangle, Lightbulb, CheckCircle, RefreshCw, Shield, Zap, Award } from 'lucide-react'
 import { codeReviewService, type CodeReviewResult, type CodeIssue } from '../services/codeReviewService'
+import { testGenerationService } from '../services/testGenerationService'
 import type { AIModel } from '../services/aiService'
 
 interface CodeReviewPanelProps {
@@ -14,6 +15,7 @@ interface CodeReviewPanelProps {
     endpoint?: string
   }
   onClose: () => void
+  onTestsGenerated?: (fileName: string, content: string) => void
 }
 
 const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
@@ -21,12 +23,15 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
   language,
   filename,
   aiConfig,
-  onClose
+  onClose,
+  onTestsGenerated,
 }) => {
   const [result, setResult] = useState<CodeReviewResult | null>(null)
   const [loading, setLoading] = useState(false)
+  const [generatingTests, setGeneratingTests] = useState(false)
+  const [testError, setTestError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'errors' | 'warnings' | 'suggestions'>('all')
-  const [showQuickCheck, setShowQuickCheck] = useState(true)
+  const [, setShowQuickCheck] = useState(true)
 
   const runReview = async () => {
     setLoading(true)
@@ -41,6 +46,26 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
       setShowQuickCheck(false)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const runGenerateTests = async () => {
+    setGeneratingTests(true)
+    setTestError(null)
+    try {
+      const testCode = await testGenerationService.generateTests(code, language, filename, aiConfig)
+      const base = filename.includes('.') ? filename.replace(/\.[^.]+$/, '') : filename
+      const ext =
+        language === 'typescript' || language === 'tsx'
+          ? 'test.ts'
+          : language === 'python'
+            ? 'test.py'
+            : 'test.js'
+      onTestsGenerated?.(`${base}.${ext}`, testCode)
+    } catch (error) {
+      setTestError(error instanceof Error ? error.message : '生成测试失败')
+    } finally {
+      setGeneratingTests(false)
     }
   }
 
@@ -152,7 +177,23 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                 )}
                 {loading ? '审查中...' : 'AI 深度审查'}
               </button>
+              <button
+                onClick={runGenerateTests}
+                disabled={!aiConfig.apiKey || generatingTests || loading}
+                className="btn btn-secondary"
+                style={{ justifyContent: 'center' }}
+              >
+                {generatingTests ? (
+                  <RefreshCw size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
+                ) : (
+                  <Award size={16} style={{ marginRight: '8px' }} />
+                )}
+                {generatingTests ? '生成中...' : 'AI 生成单元测试'}
+              </button>
             </div>
+            {testError && (
+              <p style={{ marginTop: '12px', fontSize: '12px', color: '#ef4444' }}>{testError}</p>
+            )}
             {!aiConfig.apiKey && (
               <p style={{ marginTop: '16px', fontSize: '12px', color: '#ef4444' }}>
                 请先配置 AI API Key

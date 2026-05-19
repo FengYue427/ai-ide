@@ -1,41 +1,49 @@
 import React from 'react'
-import { GitBranch, AlertCircle, CheckCircle, Circle, Zap, Save, Globe, Bot, Activity, Shield, Code2 } from 'lucide-react'
+import { Activity, AlertCircle, Bot, CheckCircle2, CircleDot, Globe, Save, Settings2, Shield, Sparkles, Zap } from 'lucide-react'
 
 interface StatusBarProps {
-  // 文件信息
   currentFileName: string
   currentFileLanguage: string
   lineCount: number
   charCount: number
+  diagnosticCount?: number
   isModified?: boolean
-
-  // WebContainer 状态
   isWebContainerReady: boolean
-
-  // Git 信息
   gitBranch?: string
   gitModified?: number
-
-  // AI 状态
   aiProvider?: string
   isAIConnected?: boolean
-
-  // 功能状态
   autoSaveEnabled: boolean
   language: string
-
-  // 活动指示器
   activeFeatures?: {
     codeReview?: boolean
     performance?: boolean
     snippets?: boolean
   }
-
-  // 点击回调
   onOpenGitPanel?: () => void
   onOpenAISettings?: () => void
   onToggleAutoSave?: () => void
   onOpenSettings?: () => void
+}
+
+const pillStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '5px 10px',
+  borderRadius: '999px',
+  border: '1px solid var(--border-color)',
+  background: 'color-mix(in srgb, var(--bg-tertiary) 88%, transparent)',
+  color: 'var(--text-secondary)',
+  fontSize: '11px',
+  fontWeight: 700,
+  minHeight: '26px',
+}
+
+const actionButtonStyle: React.CSSProperties = {
+  ...pillStyle,
+  background: 'transparent',
+  cursor: 'pointer',
 }
 
 const StatusBar: React.FC<StatusBarProps> = ({
@@ -43,6 +51,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   currentFileLanguage,
   lineCount,
   charCount,
+  diagnosticCount = 0,
   isModified = false,
   isWebContainerReady,
   gitBranch,
@@ -55,251 +64,104 @@ const StatusBar: React.FC<StatusBarProps> = ({
   onOpenGitPanel,
   onOpenAISettings,
   onToggleAutoSave,
-  onOpenSettings
+  onOpenSettings,
 }) => {
-  const getLanguageIcon = () => {
-    switch (currentFileLanguage) {
-      case 'javascript':
-      case 'typescript':
-        return 'JS'
-      case 'python':
-        return 'PY'
-      case 'html':
-        return 'HTML'
-      case 'css':
-        return 'CSS'
-      case 'json':
-        return 'JSON'
-      case 'markdown':
-        return 'MD'
-      default:
-        return currentFileLanguage.toUpperCase().slice(0, 4)
+  const getLanguageLabel = () => {
+    const map: Record<string, string> = {
+      javascript: 'JavaScript',
+      typescript: 'TypeScript',
+      python: 'Python',
+      html: 'HTML',
+      css: 'CSS',
+      json: 'JSON',
+      markdown: 'Markdown',
+      plaintext: 'Plain Text',
     }
+    return map[currentFileLanguage] ?? currentFileLanguage
   }
 
   return (
     <div
       style={{
-        height: '28px',
-        background: 'var(--bg-secondary)',
+        minHeight: '36px',
         borderTop: '1px solid var(--border-color)',
+        background: 'color-mix(in srgb, var(--bg-secondary) 92%, transparent)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 12px',
-        fontSize: '12px',
-        userSelect: 'none'
+        gap: '16px',
+        padding: '6px 12px',
+        flexWrap: 'wrap',
       }}
     >
-      {/* Left Section - File Info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        {/* File Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {isModified && (
-            <Circle size={8} fill="var(--accent-color)" style={{ color: 'var(--accent-color)' }} />
-          )}
-          <span style={{ fontWeight: 500 }}>{currentFileName}</span>
-          {isModified && <span style={{ opacity: 0.6 }}>(已修改)</span>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ ...pillStyle, color: 'var(--text-primary)', background: 'transparent' }}>
+          {isModified ? <CircleDot size={12} color="var(--warning-color)" /> : <CheckCircle2 size={12} color="var(--success-color)" />}
+          <span>{currentFileName}</span>
         </div>
 
-        {/* Language */}
-        <div
-          style={{
-            padding: '2px 8px',
-            background: 'var(--bg-tertiary)',
-            borderRadius: '4px',
-            fontSize: '11px',
-            fontWeight: 600,
-            textTransform: 'uppercase'
-          }}
-        >
-          {getLanguageIcon()}
+        <div style={pillStyle}>
+          <Sparkles size={12} />
+          <span>{getLanguageLabel()}</span>
         </div>
 
-        {/* Line/Char Count */}
-        <div style={{ opacity: 0.7, display: 'flex', gap: '12px' }}>
+        <div style={pillStyle}>
           <span>{lineCount} 行</span>
+          <span>·</span>
           <span>{charCount} 字符</span>
         </div>
-      </div>
 
-      {/* Center Section - Active Features */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ ...pillStyle, color: diagnosticCount > 0 ? 'var(--warning-color)' : 'var(--success-color)' }}>
+          <AlertCircle size={12} />
+          <span>{diagnosticCount > 0 ? `${diagnosticCount} 个诊断` : '无诊断'}</span>
+        </div>
+
         {activeFeatures.codeReview && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 8px',
-              background: '#3b82f620',
-              borderRadius: '4px',
-              color: '#3b82f6'
-            }}
-            title="代码审查已启用"
-          >
+          <div style={{ ...pillStyle, color: '#60a5fa' }}>
             <Shield size={12} />
-            <span style={{ fontSize: '11px' }}>审查</span>
+            <span>代码审查</span>
           </div>
         )}
         {activeFeatures.performance && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 8px',
-              background: '#10b98120',
-              borderRadius: '4px',
-              color: '#10b981'
-            }}
-            title="性能分析已启用"
-          >
+          <div style={{ ...pillStyle, color: 'var(--success-color)' }}>
             <Activity size={12} />
-            <span style={{ fontSize: '11px' }}>性能</span>
-          </div>
-        )}
-        {activeFeatures.snippets && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 8px',
-              background: '#f59e0b20',
-              borderRadius: '4px',
-              color: '#f59e0b'
-            }}
-            title="代码片段已启用"
-          >
-            <Code2 size={12} />
-            <span style={{ fontSize: '11px' }}>片段</span>
+            <span>性能监测</span>
           </div>
         )}
       </div>
 
-      {/* Right Section - System Status */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        {/* WebContainer Status */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            color: isWebContainerReady ? '#10b981' : '#f59e0b'
-          }}
-          title={isWebContainerReady ? 'WebContainer 就绪' : 'WebContainer 加载中...'}
-        >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ ...pillStyle, color: isWebContainerReady ? 'var(--success-color)' : 'var(--warning-color)' }}>
           <Zap size={12} />
-          <span style={{ fontSize: '11px' }}>
-            {isWebContainerReady ? '就绪' : '加载中'}
-          </span>
+          <span>{isWebContainerReady ? '运行环境已就绪' : '运行环境加载中'}</span>
         </div>
 
-        {/* Auto Save */}
-        <button
-          onClick={onToggleAutoSave}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '2px 8px',
-            background: autoSaveEnabled ? '#10b98120' : 'transparent',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            color: autoSaveEnabled ? '#10b981' : 'var(--text-secondary)',
-            fontSize: '11px'
-          }}
-          title={autoSaveEnabled ? '自动保存已启用' : '自动保存已禁用'}
-        >
+        <button onClick={onToggleAutoSave} style={{ ...actionButtonStyle, color: autoSaveEnabled ? 'var(--success-color)' : 'var(--text-secondary)' }} title="切换自动保存">
           <Save size={12} />
-          <span>{autoSaveEnabled ? '自动保存' : '手动保存'}</span>
+          <span>{autoSaveEnabled ? '自动保存开启' : '手动保存'}</span>
         </button>
 
-        {/* Git Status */}
         {gitBranch && (
-          <button
-            onClick={onOpenGitPanel}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 8px',
-              background: gitModified > 0 ? '#f59e0b20' : 'var(--bg-tertiary)',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              color: gitModified > 0 ? '#f59e0b' : 'var(--text-secondary)',
-              fontSize: '11px'
-            }}
-          >
-            <GitBranch size={12} />
+          <button onClick={onOpenGitPanel} style={{ ...actionButtonStyle, color: gitModified > 0 ? 'var(--warning-color)' : 'var(--text-secondary)' }} title="打开 Git 面板">
             <span>{gitBranch}</span>
-            {gitModified > 0 && (
-              <span style={{ marginLeft: '4px' }}>({gitModified})</span>
-            )}
+            {gitModified > 0 && <span>({gitModified})</span>}
           </button>
         )}
 
-        {/* AI Status */}
-        <button
-          onClick={onOpenAISettings}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '2px 8px',
-            background: isAIConnected ? '#3b82f620' : 'var(--bg-tertiary)',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            color: isAIConnected ? '#3b82f6' : 'var(--text-secondary)',
-            fontSize: '11px'
-          }}
-          title={isAIConnected ? `AI 已连接 (${aiProvider})` : 'AI 未配置'}
-        >
+        <button onClick={onOpenAISettings} style={{ ...actionButtonStyle, color: isAIConnected ? 'var(--accent-color)' : 'var(--text-secondary)' }} title="配置 AI">
           <Bot size={12} />
-          <span>{isAIConnected ? aiProvider : 'AI'}</span>
-          {isAIConnected ? (
-            <CheckCircle size={10} />
-          ) : (
-            <AlertCircle size={10} />
-          )}
+          <span>{isAIConnected ? aiProvider ?? 'AI 已连接' : '配置 AI'}</span>
+          {isAIConnected ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
         </button>
 
-        {/* Language */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '2px 8px',
-            background: 'var(--bg-tertiary)',
-            borderRadius: '4px',
-            fontSize: '11px'
-          }}
-        >
+        <div style={pillStyle}>
           <Globe size={12} />
-          <span>{language === 'zh' ? '中文' : 'EN'}</span>
+          <span>{language === 'zh' ? '中文' : 'English'}</span>
         </div>
 
-        {/* Settings */}
-        <button
-          onClick={onOpenSettings}
-          style={{
-            padding: '4px',
-            background: 'transparent',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center'
-          }}
-          title="打开设置"
-        >
-          <Activity size={14} />
+        <button onClick={onOpenSettings} style={actionButtonStyle} title="打开设置">
+          <Settings2 size={12} />
+          <span>设置</span>
         </button>
       </div>
     </div>

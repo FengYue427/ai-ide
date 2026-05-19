@@ -1,4 +1,5 @@
 import { unifiedStorage, StorageLayer } from './unifiedStorage'
+import { readJsonResponse } from './apiUtils'
 
 export interface User {
   id: string
@@ -13,6 +14,12 @@ export interface Session {
 }
 
 const USER_KEY = 'user'
+const LOCAL_USERS_KEY = 'ai-ide-local-users'
+
+/** Local-only auth fallback: dev or explicit VITE_ALLOW_OFFLINE_AUTH=true. Never in production builds. */
+export function allowOfflineAuthFallback(): boolean {
+  return import.meta.env.DEV || import.meta.env.VITE_ALLOW_OFFLINE_AUTH === 'true'
+}
 
 class AuthService {
   private currentUser: User | null = null
@@ -30,21 +37,59 @@ class AuthService {
     }
   }
 
+  private getSessionExpiry(): string {
+    return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  }
+
+  private async persistSession(user: User): Promise<Session> {
+    const session = { user, expires: this.getSessionExpiry() }
+    this.currentUser = user
+    await unifiedStorage.set(USER_KEY, session, { layer: StorageLayer.LOCAL })
+    this.notifyListeners()
+    return session
+  }
+
+  private async hashPassword(password: string): Promise<string> {
+    if (globalThis.crypto?.subtle) {
+      const data = new TextEncoder().encode(password)
+      const digest = await globalThis.crypto.subtle.digest('SHA-256', data)
+      return Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('')
+    }
+    return btoa(unescape(encodeURIComponent(password)))
+  }
+
+  private getLocalUsers(): Array<User & { passwordHash: string }> {
+    try {
+      const value = localStorage.getItem(LOCAL_USERS_KEY)
+      return value ? JSON.parse(value) : []
+    } catch {
+      return []
+    }
+  }
+
+  private setLocalUsers(users: Array<User & { passwordHash: string }>) {
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users))
+  }
+
   // 获取当前会话
   async getSession(): Promise<Session | null> {
     try {
-      const res = await fetch('/api/auth/session')
+      const res = await fetch('/api/auth/session', { credentials: 'include' })
       if (res.ok) {
-        const session = await res.json()
+        const session = await readJsonResponse<Session>(res)
         if (session?.user) {
-          this.currentUser = session.user
-          await unifiedStorage.set(USER_KEY, session, { layer: StorageLayer.LOCAL })
-          this.notifyListeners()
-          return session
+          return this.persistSession(session.user)
         }
       }
     } catch {
       // 网络错误，使用缓存
+    }
+    const cached = await unifiedStorage.get<Session | null>(USER_KEY, null)
+    if (cached && new Date(cached.expires) > new Date()) {
+      this.currentUser = cached.user
+      return cached
     }
     return null
   }
@@ -76,49 +121,142 @@ class AuthService {
   }
 
   // 登录（邮箱+密码）
-  async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  async login(email: string, password: string): Promise<{ success: boolean; error?: string; user?: User }> {
+    const normalizedEmail = email.trim().toLowerCase()
+
     try {
       const res = await fetch('/api/auth/callback/credentials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        credentials: 'include',
+        body: JSON.stringify({ email: normalizedEmail, password }),
       })
       
       if (res.ok) {
-        await this.getSession() // 刷新会话
-        return { success: true }
-      } else {
-        return { success: false, error: '邮箱或密码错误' }
+        const data = await readJsonResponse<{ user?: User }>(res)
+        const session = data?.user ? await this.persistSession(data.user) : await this.getSession()
+        if (session?.user) return { success: true, user: session.user }
+      } else if (res.status !== 404) {
+        const data = await readJsonResponse<{ error?: string }>(res)
+        return { success: false, error: data?.error || '邮箱或密码错误' }
       }
     } catch {
-      return { success: false, error: '网络错误' }
+      if (!allowOfflineAuthFallback()) {
+        return { success: false, error: '无法连接服务器，请检查网络后重试' }
+      }
     }
+
+    if (!allowOfflineAuthFallback()) {
+      return { success: false, error: '邮箱或密码错误' }
+    }
+
+    const users = this.getLocalUsers()
+    const user = users.find((item) => item.email === normalizedEmail)
+    if (!user) return { success: false, error: '账号不存在，请先注册' }
+
+    const passwordHash = await this.hashPassword(password)
+    if (user.passwordHash !== passwordHash) {
+      return { success: false, error: '邮箱或密码错误' }
+    }
+
+    const { passwordHash: _passwordHash, ...publicUser } = user
+    await this.persistSession(publicUser)
+    return { success: true, user: publicUser }
   }
 
   // 注册
-  async register(email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> {
+  async register(email: string, password: string, name: string): Promise<{ success: boolean; error?: string; user?: User }> {
+    const normalizedEmail = email.trim().toLowerCase()
+
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name })
+        credentials: 'include',
+        body: JSON.stringify({ email: normalizedEmail, password, name }),
       })
       
       if (res.ok) {
-        return { success: true }
-      } else {
-        const data = await res.json()
-        return { success: false, error: data.error || '注册失败' }
+        const data = await readJsonResponse<{ user?: User }>(res)
+        if (data?.user) {
+          await this.persistSession(data.user)
+          return { success: true, user: data.user }
+        }
+      } else if (res.status !== 404) {
+        const data = await readJsonResponse<{ error?: string }>(res)
+        return { success: false, error: data?.error || '注册失败' }
       }
     } catch {
-      return { success: false, error: '网络错误' }
+      if (!allowOfflineAuthFallback()) {
+        return { success: false, error: '无法连接服务器，请检查网络后重试' }
+      }
+    }
+
+    if (!allowOfflineAuthFallback()) {
+      return { success: false, error: '注册失败，请稍后重试' }
+    }
+
+    const users = this.getLocalUsers()
+    if (users.some((user) => user.email === normalizedEmail)) {
+      return { success: false, error: '邮箱已注册，请直接登录' }
+    }
+
+    const user: User & { passwordHash: string } = {
+      id: `local-${Date.now()}`,
+      email: normalizedEmail,
+      name: name || normalizedEmail.split('@')[0],
+      passwordHash: await this.hashPassword(password)
+    }
+    this.setLocalUsers([...users, user])
+    const { passwordHash: _passwordHash, ...publicUser } = user
+    await this.persistSession(publicUser)
+    return { success: true, user: publicUser }
+  }
+
+  async requestPasswordReset(
+    email: string,
+  ): Promise<{ success: boolean; error?: string; message?: string; demo?: boolean }> {
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      })
+
+      const data = await readJsonResponse<{ success?: boolean; error?: string; message?: string; demo?: boolean }>(
+        res,
+      )
+      if (res.ok && data?.success) {
+        return { success: true, message: data.message, demo: data.demo }
+      }
+      return { success: false, error: data?.error || '发送失败，请稍后重试' }
+    } catch {
+      return { success: false, error: '无法连接服务器，请稍后重试' }
+    }
+  }
+
+  /** After GitHub/Google redirect, bridge Auth.js session → auth-token cookie. */
+  async syncOAuthSession(): Promise<{ success: boolean; error?: string; user?: User }> {
+    try {
+      const res = await fetch('/api/auth/oauth/sync', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await readJsonResponse<{ user?: User; error?: string }>(res)
+      if (res.ok && data?.user) {
+        await this.persistSession(data.user)
+        return { success: true, user: data.user }
+      }
+      return { success: false, error: data?.error || 'OAuth 登录同步失败' }
+    } catch {
+      return { success: false, error: '无法连接服务器，请稍后重试' }
     }
   }
 
   // 登出
   async logout(): Promise<void> {
     try {
-      await fetch('/api/auth/signout', { method: 'POST' })
+      await fetch('/api/auth/signout', { method: 'POST', credentials: 'include' })
     } finally {
       this.currentUser = null
       await unifiedStorage.set(USER_KEY, null, { layer: StorageLayer.LOCAL })
@@ -134,10 +272,15 @@ class AuthService {
     }
 
     try {
-      const res = await fetch(`/api/workspaces/default`, {
+      const res = await fetch(`/api/workspaces/${encodeURIComponent(name)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: JSON.stringify(files), settings: JSON.stringify(settings), name })
+        credentials: 'include',
+        body: JSON.stringify({
+          files: JSON.stringify(files),
+          settings: JSON.stringify(settings ?? {}),
+          name,
+        }),
       })
       return res.ok
     } catch {
@@ -152,12 +295,25 @@ class AuthService {
     }
 
     try {
-      const res = await fetch(`/api/workspaces/${id}`)
+      const res = await fetch(`/api/workspaces/${encodeURIComponent(id)}`, {
+        credentials: 'include',
+      })
       if (res.ok) {
-        const data = await res.json()
-        return {
-          files: JSON.parse(data.workspace.files || '[]'),
-          settings: data.workspace.settings ? JSON.parse(data.workspace.settings) : undefined
+        const data = await readJsonResponse<{ workspace?: { files?: string; settings?: string } }>(res)
+        if (data?.workspace) {
+          const rawFiles = JSON.parse(data.workspace.files || '[]') as Array<{
+            name: string
+            content: string
+            language?: string
+          }>
+          return {
+            files: rawFiles.map((file) => ({
+              name: file.name,
+              content: file.content,
+              language: file.language || 'plaintext',
+            })),
+            settings: data.workspace.settings ? JSON.parse(data.workspace.settings) : undefined,
+          }
         }
       }
     } catch {

@@ -2,7 +2,11 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import './styles.css'
+import { initObservability } from './lib/observability'
+import './styles/index.css'
+import './styles/agent-apply.css'
+
+initObservability()
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 

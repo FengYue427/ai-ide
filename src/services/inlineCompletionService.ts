@@ -1,163 +1,60 @@
-import { sendMessage } from './aiService'
-import type { AIModel } from './aiService'
+import { sendMessageWithDebounce, type AIConfig } from './aiService'
 
-export interface CompletionContext {
+const MAX_PREFIX_CHARS = 1200
+const MAX_SUFFIX_CHARS = 400
+
+export interface InlineCompletionRequest {
   prefix: string
   suffix: string
   language: string
   filename: string
+  config: AIConfig
 }
 
-export interface CompletionItem {
-  text: string
-  position: number
+function trimContext(text: string, maxLen: number, fromEnd: boolean): string {
+  if (text.length <= maxLen) return text
+  return fromEnd ? text.slice(-maxLen) : text.slice(0, maxLen)
 }
 
 export const inlineCompletionService = {
-  // 获取内联代码补全建议
-  async getCompletions(
-    context: CompletionContext,
-    config: {
-      provider: AIModel
-      apiKey: string
-      model?: string
-      endpoint?: string
+  async fetchCompletion(request: InlineCompletionRequest): Promise<string | null> {
+    if (!request.config.apiKey?.trim() && request.config.provider !== 'ollama') {
+      return null
     }
-  ): Promise<CompletionItem[]> {
-    const { prefix, suffix, language, filename } = context
 
-    const prompt = `You are an intelligent code completion assistant. Given the code context, provide a concise code completion suggestion.
+    const prefix = trimContext(request.prefix, MAX_PREFIX_CHARS, true)
+    const suffix = trimContext(request.suffix, MAX_SUFFIX_CHARS, false)
 
-Rules:
-1. Only provide the code that should be inserted at the cursor position
-2. Do not include explanations or markdown
-3. The completion should be syntactically correct ${language} code
-4. Keep suggestions short (1-10 lines typically)
-5. Match the existing code style
-6. Consider the surrounding context
-
-File: ${filename}
-Language: ${language}
+    const prompt = `Continue the ${request.language} code in file "${request.filename}".
+Return ONLY the next lines to insert at the cursor — no markdown fences, no explanation.
 
 Code before cursor:
 \`\`\`
-${prefix.slice(-500)}
+${prefix}
 \`\`\`
 
 Code after cursor:
 \`\`\`
-${suffix.slice(0, 200)}
-\`\`\`
+${suffix}
+\`\`\``
 
-Provide only the completion code (the part that goes between prefix and suffix):`
-
+    let raw: string
     try {
-      const messages = [
-        { role: 'system' as const, content: 'You are a code completion engine. Output only code, no explanations.' },
-        { role: 'user' as const, content: prompt }
-      ]
-
-      let completion = ''
-      
-      await sendMessage(
-        config,
-        messages,
-        (chunk: string) => {
-          completion += chunk
-        }
+      raw = await sendMessageWithDebounce(
+        request.config,
+        [{ role: 'user', content: prompt }],
+        undefined,
+        { debounceMs: 600, skipDebounce: false },
       )
-
-      // Clean up the completion
-      completion = completion
-        .replace(/^```[\w]*\n?/gm, '')
-        .replace(/```$/gm, '')
-        .trim()
-
-      // Remove common prefixes that might duplicate existing code
-      const lastLine = prefix.split('\n').pop() || ''
-      if (completion.startsWith(lastLine.trim())) {
-        completion = completion.slice(lastLine.trim().length).trimStart()
-      }
-
-      if (!completion) return []
-
-      return [{
-        text: completion,
-        position: prefix.length
-      }]
-    } catch (error) {
-      console.error('Completion error:', error)
-      return []
+    } catch {
+      return null
     }
+
+    const cleaned = raw
+      .replace(/^```[\w]*\n?/m, '')
+      .replace(/\n?```$/m, '')
+      .trim()
+
+    return cleaned.length > 0 ? cleaned : null
   },
-
-  // 快速补全（基于常见模式）
-  getQuickCompletions(
-    prefix: string,
-    language: string
-  ): CompletionItem[] {
-    const completions: CompletionItem[] = []
-    const linePrefix = prefix.split('\n').pop() || ''
-
-    // Common patterns by language
-    const patterns: Record<string, Array<{ trigger: string; completion: string }>> = {
-      javascript: [
-        { trigger: 'cl', completion: 'console.log()' },
-        { trigger: 'fn', completion: 'function () {}' },
-        { trigger: 'af', completion: '() => {}' },
-        { trigger: 'imp', completion: "import  from ''" },
-        { trigger: 'req', completion: "const  = require('')" },
-        { trigger: 'try', completion: 'try {} catch (error) {}' },
-        { trigger: 'if', completion: 'if () {}' },
-        { trigger: 'for', completion: 'for (let i = 0; i < ; i++) {}' },
-        { trigger: 'forof', completion: 'for (const item of ) {}' },
-      ],
-      typescript: [
-        { trigger: 'cl', completion: 'console.log()' },
-        { trigger: 'fn', completion: 'function ():  {}' },
-        { trigger: 'af', completion: '():  => {}' },
-        { trigger: 'imp', completion: "import  from ''" },
-        { trigger: 'int', completion: 'interface  {}' },
-        { trigger: 'type', completion: 'type  = ' },
-      ],
-      python: [
-        { trigger: 'pr', completion: 'print()' },
-        { trigger: 'def', completion: 'def ():' },
-        { trigger: 'for', completion: 'for  in :' },
-        { trigger: 'if', completion: 'if :' },
-        { trigger: 'try', completion: 'try:\n    \nexcept Exception as e:\n    ' },
-        { trigger: 'imp', completion: 'import ' },
-        { trigger: 'from', completion: 'from  import ' },
-      ],
-      html: [
-        { trigger: 'div', completion: '<div></div>' },
-        { trigger: 'span', completion: '<span></span>' },
-        { trigger: 'p', completion: '<p></p>' },
-        { trigger: 'a', completion: "<a href=''></a>" },
-        { trigger: 'img', completion: "<img src='' alt='' />" },
-        { trigger: 'input', completion: "<input type='text' />" },
-      ],
-      css: [
-        { trigger: 'disp', completion: 'display: ;' },
-        { trigger: 'pos', completion: 'position: ;' },
-        { trigger: 'mar', completion: 'margin: ;' },
-        { trigger: 'pad', completion: 'padding: ;' },
-        { trigger: 'bg', completion: 'background: ;' },
-        { trigger: 'col', completion: 'color: ;' },
-      ]
-    }
-
-    const langPatterns = patterns[language] || []
-    
-    for (const pattern of langPatterns) {
-      if (linePrefix.endsWith(pattern.trigger)) {
-        completions.push({
-          text: pattern.completion,
-          position: prefix.length
-        })
-      }
-    }
-
-    return completions
-  }
 }

@@ -1,128 +1,271 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { modelOptions, type AIModel } from '../services/aiService'
+import type { User as AuthUser } from '../services/authService'
+import type { RecentProject } from '../services/recentFilesService'
+import type { FileItem } from '../types/file'
 
-export interface FileItem {
-  name: string
-  content: string
+export type EditorTheme = 'vs-dark' | 'light'
+
+export interface AIConfigState {
+  provider: AIModel
+  apiKey: string
+  model: string
+  endpoint: string
+}
+
+export interface EditorTarget {
+  line: number
+  column?: number
+  nonce: number
+}
+
+export interface DiffContent {
+  old: string
+  new: string
+}
+
+export interface AgentApplyItem {
+  path: string
+  oldContent: string
+  newContent: string
   language: string
 }
 
-interface IDEState {
-  // 文件
-  files: FileItem[]
-  activeFile: number
-  openedFiles: number[] // 多标签
-  
-  // UI 状态
-  theme: 'vs-dark' | 'light'
-  sidebarVisible: boolean
-  terminalVisible: boolean
-  gitPanelVisible: boolean
-  previewVisible: boolean
-  searchVisible: boolean
-  
-  // 搜索
-  searchQuery: string
-  searchResults: { file: string; line: number; content: string }[]
-  
-  // 操作
-  setFiles: (files: FileItem[]) => void
-  addFile: (file: FileItem) => void
-  updateFile: (index: number, content: string) => void
-  deleteFile: (index: number) => void
-  setActiveFile: (index: number) => void
-  openFile: (index: number) => void
-  closeFile: (index: number) => void
-  
-  setTheme: (theme: 'vs-dark' | 'light') => void
-  toggleSidebar: () => void
-  toggleTerminal: () => void
-  toggleGitPanel: () => void
-  togglePreview: () => void
-  toggleSearch: () => void
-  
-  setSearchQuery: (query: string) => void
-  setSearchResults: (results: { file: string; line: number; content: string }[]) => void
+export interface PluginToolbarButton {
+  id: string
+  pluginId: string
+  icon: string
+  label: string
+  onClick: () => void
 }
 
-export const useIDEStore = create<IDEState>()(
-  persist(
-    (set, get) => ({
-      files: [{ name: 'index.js', content: '// 欢迎使用 AI IDE\nconsole.log("Hello World!");', language: 'javascript' }],
-      activeFile: 0,
-      openedFiles: [0],
-      theme: 'vs-dark',
-      sidebarVisible: true,
-      terminalVisible: false,
-      gitPanelVisible: false,
-      previewVisible: false,
-      searchVisible: false,
-      searchQuery: '',
-      searchResults: [],
+export interface PluginModalState {
+  title: string
+  body: string
+}
 
-      setFiles: (files) => set({ files, activeFile: 0, openedFiles: files.length > 0 ? [0] : [] }),
-      
-      addFile: (file) => set((state) => {
-        const newIndex = state.files.length
-        return {
-          files: [...state.files, file],
-          activeFile: newIndex,
-          openedFiles: [...state.openedFiles, newIndex]
-        }
-      }),
-      
-      updateFile: (index, content) => set((state) => {
-        const newFiles = [...state.files]
-        newFiles[index] = { ...newFiles[index], content }
-        return { files: newFiles }
-      }),
-      
-      deleteFile: (index) => set((state) => {
-        const newFiles = state.files.filter((_, i) => i !== index)
-        const newOpened = state.openedFiles.filter(i => i !== index).map(i => i > index ? i - 1 : i)
-        let newActive = state.activeFile
-        if (newActive === index) {
-          newActive = newOpened.length > 0 ? newOpened[0] : -1
-        } else if (newActive > index) {
-          newActive--
-        }
-        return { files: newFiles, openedFiles: newOpened, activeFile: newActive }
-      }),
-      
-      setActiveFile: (index) => set({ activeFile: index }),
-      
-      openFile: (index) => set((state) => ({
-        activeFile: index,
-        openedFiles: state.openedFiles.includes(index) ? state.openedFiles : [...state.openedFiles, index]
-      })),
-      
-      closeFile: (index) => set((state) => {
-        const newOpened = state.openedFiles.filter(i => i !== index)
-        let newActive = state.activeFile
-        if (state.activeFile === index) {
-          newActive = newOpened.length > 0 ? newOpened[newOpened.length - 1] : -1
-        }
-        return { openedFiles: newOpened, activeFile: newActive }
-      }),
+const defaultFiles: FileItem[] = [
+  { name: 'index.js', content: '// 欢迎使用 AI IDE\nconsole.log("Hello World!");', language: 'javascript' },
+]
 
-      setTheme: (theme) => set({ theme }),
-      toggleSidebar: () => set((state) => ({ sidebarVisible: !state.sidebarVisible })),
-      toggleTerminal: () => set((state) => ({ terminalVisible: !state.terminalVisible })),
-      toggleGitPanel: () => set((state) => ({ gitPanelVisible: !state.gitPanelVisible })),
-      togglePreview: () => set((state) => ({ previewVisible: !state.previewVisible })),
-      toggleSearch: () => set((state) => ({ searchVisible: !state.searchVisible })),
-      
-      setSearchQuery: (query) => set({ searchQuery: query }),
-      setSearchResults: (results) => set({ searchResults: results })
-    }),
-    {
-      name: 'ai-ide-storage',
-      partialize: (state) => ({ 
-        files: state.files, 
-        theme: state.theme,
-        sidebarVisible: state.sidebarVisible,
-        terminalVisible: state.terminalVisible
-      })
-    }
-  )
-)
+const defaultAiConfig: AIConfigState = {
+  provider: 'openai',
+  apiKey: '',
+  model: modelOptions.openai.models[0],
+  endpoint: '',
+}
+
+type BooleanUpdater = boolean | ((prev: boolean) => boolean)
+
+function resolveBoolean(value: BooleanUpdater, prev: boolean): boolean {
+  return typeof value === 'function' ? value(prev) : value
+}
+
+type FilesUpdater = FileItem[] | ((prev: FileItem[]) => FileItem[])
+
+function resolveFiles(value: FilesUpdater, prev: FileItem[]): FileItem[] {
+  return typeof value === 'function' ? value(prev) : value
+}
+
+export interface IDEState {
+  files: FileItem[]
+  activeFile: number
+  newFileName: string
+  theme: EditorTheme
+  autoSaveEnabled: boolean
+  aiConfig: AIConfigState
+  diffContent: DiffContent | null
+  editorTarget: EditorTarget | null
+  diagnosticCount: number
+  recentProjects: RecentProject[]
+  currentUser: AuthUser | null
+  authChecked: boolean
+  currentPlan: string
+  collaborationRoomId: string | null
+
+  showNewFileInput: boolean
+  showTerminal: boolean
+  showTemplateModal: boolean
+  showShareModal: boolean
+  showGitPanel: boolean
+  showAISettings: boolean
+  showImportModal: boolean
+  showSearchPanel: boolean
+  showPreview: boolean
+  showCollaboration: boolean
+  showPluginManager: boolean
+  showDropZone: boolean
+  showDiff: boolean
+  showCodeReview: boolean
+  showSnippetLibrary: boolean
+  showPerformance: boolean
+  showSettingsCenter: boolean
+  showCommandPalette: boolean
+  showChatPanel: boolean
+  showWorkspaceManager: boolean
+  showWorkspacePanel: boolean
+  showThemeSelector: boolean
+  showWelcome: boolean
+  showAuthModal: boolean
+  showSubscriptionModal: boolean
+  showAgentApplyModal: boolean
+  agentApplyQueue: AgentApplyItem[] | null
+  agentApplyIndex: number
+  pluginToolbarButtons: PluginToolbarButton[]
+  pluginModal: PluginModalState | null
+
+  setFiles: (files: FilesUpdater) => void
+  setActiveFile: (index: number) => void
+  setNewFileName: (name: string) => void
+  setTheme: (theme: EditorTheme) => void
+  setAutoSaveEnabled: (enabled: boolean | ((prev: boolean) => boolean)) => void
+  setAiConfig: (config: AIConfigState | ((prev: AIConfigState) => AIConfigState)) => void
+  setDiffContent: (content: DiffContent | null) => void
+  setEditorTarget: (target: EditorTarget | null) => void
+  setDiagnosticCount: (count: number) => void
+  setRecentProjects: (projects: RecentProject[]) => void
+  setCurrentUser: (user: AuthUser | null) => void
+  setAuthChecked: (checked: boolean) => void
+  setCurrentPlan: (plan: string) => void
+  setCollaborationRoomId: (roomId: string | null) => void
+
+  setShowNewFileInput: (show: BooleanUpdater) => void
+  setShowTerminal: (show: BooleanUpdater) => void
+  setShowTemplateModal: (show: boolean) => void
+  setShowShareModal: (show: boolean) => void
+  setShowGitPanel: (show: BooleanUpdater) => void
+  setShowAISettings: (show: boolean) => void
+  setShowImportModal: (show: boolean) => void
+  setShowSearchPanel: (show: boolean) => void
+  setShowPreview: (show: boolean) => void
+  setShowCollaboration: (show: boolean) => void
+  setShowPluginManager: (show: boolean) => void
+  setShowDropZone: (show: boolean) => void
+  setShowDiff: (show: boolean) => void
+  setShowCodeReview: (show: boolean) => void
+  setShowSnippetLibrary: (show: boolean) => void
+  setShowPerformance: (show: boolean) => void
+  setShowSettingsCenter: (show: boolean) => void
+  setShowCommandPalette: (show: boolean) => void
+  setShowChatPanel: (show: boolean) => void
+  setShowWorkspaceManager: (show: boolean) => void
+  setShowWorkspacePanel: (show: boolean) => void
+  setShowThemeSelector: (show: boolean) => void
+  setShowWelcome: (show: boolean) => void
+  setShowAuthModal: (show: boolean) => void
+  setShowSubscriptionModal: (show: boolean) => void
+  setShowAgentApplyModal: (show: boolean) => void
+  setAgentApplyQueue: (queue: AgentApplyItem[] | null) => void
+  setAgentApplyIndex: (index: number) => void
+  addPluginToolbarButton: (button: PluginToolbarButton) => void
+  clearPluginToolbarButtons: (pluginId: string) => void
+  setPluginModal: (modal: PluginModalState | null) => void
+}
+
+export const useIDEStore = create<IDEState>()((set) => ({
+  files: defaultFiles,
+  activeFile: 0,
+  newFileName: '',
+  theme: 'vs-dark',
+  autoSaveEnabled: true,
+  aiConfig: defaultAiConfig,
+  diffContent: null,
+  editorTarget: null,
+  diagnosticCount: 0,
+  recentProjects: [],
+  currentUser: null,
+  authChecked: false,
+  currentPlan: 'free',
+  collaborationRoomId: null,
+
+  showNewFileInput: false,
+  showTerminal: false,
+  showTemplateModal: false,
+  showShareModal: false,
+  showGitPanel: false,
+  showAISettings: false,
+  showImportModal: false,
+  showSearchPanel: false,
+  showPreview: false,
+  showCollaboration: false,
+  showPluginManager: false,
+  showDropZone: false,
+  showDiff: false,
+  showCodeReview: false,
+  showSnippetLibrary: false,
+  showPerformance: false,
+  showSettingsCenter: false,
+  showCommandPalette: false,
+  showChatPanel: false,
+  showWorkspaceManager: false,
+  showWorkspacePanel: false,
+  showThemeSelector: false,
+  showWelcome: false,
+  showAuthModal: false,
+  showSubscriptionModal: false,
+  showAgentApplyModal: false,
+  agentApplyQueue: null,
+  agentApplyIndex: 0,
+  pluginToolbarButtons: [],
+  pluginModal: null,
+
+  setFiles: (files) => set((state) => ({ files: resolveFiles(files, state.files) })),
+  setActiveFile: (activeFile) => set({ activeFile }),
+  setNewFileName: (newFileName) => set({ newFileName }),
+  setTheme: (theme) => set({ theme }),
+  setAutoSaveEnabled: (enabled) =>
+    set((state) => ({ autoSaveEnabled: resolveBoolean(enabled, state.autoSaveEnabled) })),
+  setAiConfig: (config) =>
+    set((state) => ({
+      aiConfig: typeof config === 'function' ? config(state.aiConfig) : config,
+    })),
+  setDiffContent: (diffContent) => set({ diffContent }),
+  setEditorTarget: (editorTarget) => set({ editorTarget }),
+  setDiagnosticCount: (diagnosticCount) => set({ diagnosticCount }),
+  setRecentProjects: (recentProjects) => set({ recentProjects }),
+  setCurrentUser: (currentUser) => set({ currentUser }),
+  setAuthChecked: (authChecked) => set({ authChecked }),
+  setCurrentPlan: (currentPlan) => set({ currentPlan }),
+  setCollaborationRoomId: (collaborationRoomId) => set({ collaborationRoomId }),
+
+  setShowNewFileInput: (value) =>
+    set((state) => ({ showNewFileInput: resolveBoolean(value, state.showNewFileInput) })),
+  setShowTerminal: (value) =>
+    set((state) => ({ showTerminal: resolveBoolean(value, state.showTerminal) })),
+  setShowTemplateModal: (showTemplateModal) => set({ showTemplateModal }),
+  setShowShareModal: (showShareModal) => set({ showShareModal }),
+  setShowGitPanel: (value) =>
+    set((state) => ({ showGitPanel: resolveBoolean(value, state.showGitPanel) })),
+  setShowAISettings: (showAISettings) => set({ showAISettings }),
+  setShowImportModal: (showImportModal) => set({ showImportModal }),
+  setShowSearchPanel: (showSearchPanel) => set({ showSearchPanel }),
+  setShowPreview: (showPreview) => set({ showPreview }),
+  setShowCollaboration: (showCollaboration) => set({ showCollaboration }),
+  setShowPluginManager: (showPluginManager) => set({ showPluginManager }),
+  setShowDropZone: (showDropZone) => set({ showDropZone }),
+  setShowDiff: (showDiff) => set({ showDiff }),
+  setShowCodeReview: (showCodeReview) => set({ showCodeReview }),
+  setShowSnippetLibrary: (showSnippetLibrary) => set({ showSnippetLibrary }),
+  setShowPerformance: (showPerformance) => set({ showPerformance }),
+  setShowSettingsCenter: (showSettingsCenter) => set({ showSettingsCenter }),
+  setShowCommandPalette: (showCommandPalette) => set({ showCommandPalette }),
+  setShowChatPanel: (showChatPanel) => set({ showChatPanel }),
+  setShowWorkspaceManager: (showWorkspaceManager) => set({ showWorkspaceManager }),
+  setShowWorkspacePanel: (showWorkspacePanel) => set({ showWorkspacePanel }),
+  setShowThemeSelector: (showThemeSelector) => set({ showThemeSelector }),
+  setShowWelcome: (showWelcome) => set({ showWelcome }),
+  setShowAuthModal: (showAuthModal) => set({ showAuthModal }),
+  setShowSubscriptionModal: (showSubscriptionModal) => set({ showSubscriptionModal }),
+  setShowAgentApplyModal: (showAgentApplyModal) => set({ showAgentApplyModal }),
+  setAgentApplyQueue: (agentApplyQueue) => set({ agentApplyQueue, agentApplyIndex: 0 }),
+  setAgentApplyIndex: (agentApplyIndex) => set({ agentApplyIndex }),
+  addPluginToolbarButton: (button) =>
+    set((state) => ({
+      pluginToolbarButtons: [...state.pluginToolbarButtons.filter((item) => item.id !== button.id), button],
+    })),
+  clearPluginToolbarButtons: (pluginId) =>
+    set((state) => ({
+      pluginToolbarButtons: state.pluginToolbarButtons.filter((button) => button.pluginId !== pluginId),
+    })),
+  setPluginModal: (pluginModal) => set({ pluginModal }),
+}))

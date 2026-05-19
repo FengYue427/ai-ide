@@ -1,248 +1,449 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { X, Search, Replace, ChevronDown, ChevronRight, FileText, ArrowRight } from 'lucide-react'
-import { searchInFiles, replaceInFile, type SearchResult } from '../services/searchService'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowRight, FileText, Replace, Search, X } from 'lucide-react'
+import { workspaceContextService } from '../services/workspaceContextService'
+import {
+  buildReplacePreview,
+  collectSearchableFiles,
+  highlightMatchSnippet,
+  replaceInFile,
+  searchInFiles,
+  type ReplacePreviewItem,
+  type SearchResult,
+} from '../services/searchService'
 
 interface SearchPanelProps {
   files: { name: string; content: string }[]
-  onNavigate: (file: string, line: number) => void
+  onNavigate: (file: string, line: number, column?: number) => void
   onReplace: (file: string, newContent: string) => void
   onClose: () => void
+}
+
+type SearchScope = 'tabs' | 'workspace'
+
+function ResultSnippet({
+  line,
+  query,
+  options,
+  selected,
+}: {
+  line: string
+  query: string
+  options: { caseSensitive?: boolean; wholeWord?: boolean; regex?: boolean }
+  selected: boolean
+}) {
+  const marked = highlightMatchSnippet(line, query, options)
+  const parts = marked.split(/(⟦|⟧)/)
+  return (
+    <span
+      style={{
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        fontFamily: 'var(--font-mono, monospace)',
+      }}
+      title={line.trim()}
+    >
+      {parts.map((part, index) => {
+        if (part === '⟦' || part === '⟧') return null
+        const prev = parts[index - 1]
+        const highlighted = prev === '⟦'
+        return (
+          <span
+            key={`${index}-${part}`}
+            style={
+              highlighted
+                ? {
+                    fontWeight: 800,
+                    textDecoration: 'underline',
+                    color: selected ? '#fff' : 'var(--accent-color)',
+                  }
+                : undefined
+            }
+          >
+            {part}
+          </span>
+        )
+      })}
+    </span>
+  )
 }
 
 const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace, onClose }) => {
   const [query, setQuery] = useState('')
   const [replaceQuery, setReplaceQuery] = useState('')
   const [showReplace, setShowReplace] = useState(false)
+  const [scope, setScope] = useState<SearchScope>('tabs')
+  const [workspaceVersion, setWorkspaceVersion] = useState(0)
   const [results, setResults] = useState<SearchResult[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [caseSensitive, setCaseSensitive] = useState(false)
   const [wholeWord, setWholeWord] = useState(false)
   const [regex, setRegex] = useState(false)
   const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [replacePreview, setReplacePreview] = useState<ReplacePreviewItem[] | null>(null)
+
+  useEffect(() => workspaceContextService.onChange(() => setWorkspaceVersion((v) => v + 1)), [])
+
+  const searchableFiles = useMemo(() => {
+    if (scope === 'tabs') {
+      return files.map((file) => ({ name: file.name, content: file.content }))
+    }
+    const workspaceFiles = workspaceContextService.getAllFiles().map((file) => ({
+      path: file.path,
+      content: file.content,
+    }))
+    return collectSearchableFiles(files, workspaceFiles)
+  }, [files, scope, workspaceVersion])
+
+  const searchOptions = useMemo(() => ({ caseSensitive, wholeWord, regex }), [caseSensitive, wholeWord, regex])
 
   const performSearch = useCallback(() => {
     if (!query.trim()) {
       setResults([])
+      setSearchError(null)
+      setReplacePreview(null)
       return
     }
+
     setSearching(true)
-    const searchResults = searchInFiles(files, query, { caseSensitive, wholeWord, regex })
-    setResults(searchResults)
-    setSelectedIndex(0)
-    setSearching(false)
-  }, [files, query, caseSensitive, wholeWord, regex])
+    try {
+      const searchResults = searchInFiles(searchableFiles, query, searchOptions)
+      setResults(searchResults)
+      setSelectedIndex(0)
+      setSearchError(null)
+      setReplacePreview(null)
+    } catch (error) {
+      setResults([])
+      setSearchError(error instanceof Error ? error.message : '搜索失败')
+    } finally {
+      setSearching(false)
+    }
+  }, [searchableFiles, query, searchOptions])
 
   useEffect(() => {
-    const timer = setTimeout(performSearch, 300)
-    return () => clearTimeout(timer)
+    const timer = window.setTimeout(performSearch, 220)
+    return () => window.clearTimeout(timer)
   }, [performSearch])
 
   const handleReplace = (result: SearchResult) => {
-    const file = files.find(f => f.name === result.file)
+    const file = searchableFiles.find((item) => item.name === result.file)
     if (!file) return
 
-    const newContent = replaceInFile(file.content, query, replaceQuery, { caseSensitive, wholeWord, regex })
+    const newContent = replaceInFile(file.content, query, replaceQuery, searchOptions)
     onReplace(result.file, newContent)
-    
-    // 更新结果
     performSearch()
   }
 
   const handleReplaceAll = () => {
-    const affectedFiles = new Set(results.map(r => r.file))
-    
+    const affectedFiles = new Set(results.map((result) => result.file))
+
     for (const fileName of affectedFiles) {
-      const file = files.find(f => f.name === fileName)
+      const file = searchableFiles.find((item) => item.name === fileName)
       if (!file) continue
-      
-      const newContent = replaceInFile(file.content, query, replaceQuery, { caseSensitive, wholeWord, regex })
+
+      const newContent = replaceInFile(file.content, query, replaceQuery, searchOptions)
       onReplace(fileName, newContent)
     }
-    
+
+    setReplacePreview(null)
     performSearch()
   }
 
-  const groupedResults = results.reduce((acc, result) => {
-    if (!acc[result.file]) acc[result.file] = []
-    acc[result.file].push(result)
-    return acc
-  }, {} as Record<string, SearchResult[]>)
+  const openReplacePreview = () => {
+    if (!query.trim() || results.length === 0) return
+    setReplacePreview(buildReplacePreview(searchableFiles, query, searchOptions))
+  }
+
+  const groupedResults = results.reduce(
+    (accumulator, result) => {
+      if (!accumulator[result.file]) accumulator[result.file] = []
+      accumulator[result.file].push(result)
+      return accumulator
+    },
+    {} as Record<string, SearchResult[]>,
+  )
+
+  const fileCount = Object.keys(groupedResults).length
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (results.length === 0) return
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setSelectedIndex((index) => (index + 1) % results.length)
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setSelectedIndex((index) => (index - 1 + results.length) % results.length)
+      } else if (event.key === 'Enter') {
+        event.preventDefault()
+        const result = results[selectedIndex]
+        if (result) onNavigate(result.file, result.line, result.column)
+      } else if (event.key === 'Escape') {
+        if (replacePreview) {
+          setReplacePreview(null)
+        } else {
+          onClose()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [results, selectedIndex, onNavigate, onClose, replacePreview])
 
   return (
-    <div className="search-panel" style={{ 
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'var(--bg-primary)',
-      zIndex: 100,
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      {/* 搜索头部 */}
+    <div
+      className="search-panel"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'var(--bg-primary)',
+        zIndex: 100,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <Search size={16} style={{ color: 'var(--text-secondary)' }} />
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索文件内容..."
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={scope === 'workspace' ? '搜索整个工作区…' : '搜索已打开文件…'}
             autoFocus
             style={{
               flex: 1,
-              padding: '6px 10px',
+              padding: '8px 10px',
               fontSize: '13px',
               background: 'var(--bg-secondary)',
               border: '1px solid var(--border-color)',
-              borderRadius: '4px',
-              color: 'var(--text-primary)'
+              borderRadius: '8px',
+              color: 'var(--text-primary)',
             }}
           />
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+            }}
+            title="关闭搜索 (Esc)"
+          >
             <X size={16} />
           </button>
         </div>
 
-        {/* 替换输入 */}
         {showReplace && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <ArrowRight size={16} style={{ color: 'var(--text-secondary)', marginLeft: '24px' }} />
             <input
               type="text"
               value={replaceQuery}
-              onChange={(e) => setReplaceQuery(e.target.value)}
+              onChange={(event) => setReplaceQuery(event.target.value)}
               placeholder="替换为..."
               style={{
                 flex: 1,
-                padding: '6px 10px',
+                padding: '8px 10px',
                 fontSize: '13px',
                 background: 'var(--bg-secondary)',
                 border: '1px solid var(--border-color)',
-                borderRadius: '4px',
-                color: 'var(--text-primary)'
+                borderRadius: '8px',
+                color: 'var(--text-primary)',
               }}
             />
           </div>
         )}
 
-        {/* 选项和统计 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={caseSensitive} onChange={(e) => setCaseSensitive(e.target.checked)} />
-              区分大小写
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} />
-              全词匹配
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={regex} onChange={(e) => setRegex(e.target.checked)} />
-              正则
-            </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', flexWrap: 'wrap' }}>
+            {[
+              { label: '区分大小写', checked: caseSensitive, onChange: setCaseSensitive },
+              { label: '全词匹配', checked: wholeWord, onChange: setWholeWord },
+              { label: '正则', checked: regex, onChange: setRegex },
+            ].map((option) => (
+              <label
+                key={option.label}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={option.checked}
+                  onChange={(event) => option.onChange(event.target.checked)}
+                />
+                {option.label}
+              </label>
+            ))}
           </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              onClick={() => setShowReplace(!showReplace)}
-              style={{
-                padding: '4px 10px',
-                fontSize: '12px',
-                background: 'var(--bg-tertiary)',
-                border: 'none',
-                borderRadius: '4px',
-                color: 'var(--text-primary)',
-                cursor: 'pointer'
-              }}
-            >
-              <Replace size={12} style={{ marginRight: '4px' }} />
-              {showReplace ? '隐藏替换' : '显示替换'}
-            </button>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-              {results.length} 个结果
-            </span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {(['tabs', 'workspace'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setScope(value)}
+                className="btn btn-secondary"
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background:
+                    scope === value
+                      ? 'color-mix(in srgb, var(--accent-color) 12%, transparent)'
+                      : undefined,
+                }}
+              >
+                {value === 'tabs' ? '打开文件' : '工作区'}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* 替换全部按钮 */}
-        {showReplace && results.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '8px',
+            marginTop: '8px',
+          }}
+        >
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+            {results.length} 处 · {fileCount} 个文件
+            {scope === 'workspace' ? ` · 共 ${searchableFiles.length} 个可搜文件` : ''}
+          </span>
           <button
-            onClick={handleReplaceAll}
+            onClick={() => setShowReplace((value) => !value)}
+            className="btn btn-secondary"
+            style={{ padding: '5px 9px', fontSize: '12px' }}
+          >
+            <Replace size={12} style={{ marginRight: '4px' }} />
+            {showReplace ? '隐藏替换' : '显示替换'}
+          </button>
+        </div>
+
+        {searchError && (
+          <div style={{ marginTop: '8px', color: 'var(--danger-color)', fontSize: '12px' }}>{searchError}</div>
+        )}
+
+        {showReplace && results.length > 0 && !replacePreview && (
+          <button
+            onClick={openReplacePreview}
+            className="btn btn-primary"
+            style={{ marginTop: '8px', width: '100%', padding: '7px', fontSize: '12px' }}
+          >
+            预览并全部替换（{results.length} 处）
+          </button>
+        )}
+
+        {replacePreview && (
+          <div
             style={{
-              marginTop: '8px',
-              width: '100%',
-              padding: '6px',
-              fontSize: '12px',
-              background: 'var(--accent-color)',
-              border: 'none',
-              borderRadius: '4px',
-              color: 'var(--bg-primary)',
-              cursor: 'pointer'
+              marginTop: '10px',
+              padding: '12px',
+              borderRadius: '12px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-secondary)',
             }}
           >
-            全部替换 ({results.length} 处)
-          </button>
+            <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>替换预览</div>
+            <div style={{ maxHeight: '120px', overflow: 'auto', fontSize: '12px', marginBottom: '10px' }}>
+              {replacePreview.map((item) => (
+                <div key={item.file} style={{ marginBottom: '4px', color: 'var(--text-secondary)' }}>
+                  <span style={{ color: 'var(--accent-color)', fontWeight: 600 }}>{item.file}</span>
+                  {' · '}
+                  {item.matchCount} 处
+                  {item.sampleLines.length > 0 ? ` (行 ${item.sampleLines.join(', ')})` : ''}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setReplacePreview(null)}>
+                取消
+              </button>
+              <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={handleReplaceAll}>
+                确认替换
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* 搜索结果 */}
       <div style={{ flex: 1, overflow: 'auto' }}>
         {Object.entries(groupedResults).map(([file, fileResults]) => (
           <div key={file}>
-            <div style={{ 
-              padding: '6px 16px', 
-              background: 'var(--bg-secondary)',
-              fontSize: '12px',
-              color: 'var(--accent-color)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
+            <div
+              style={{
+                padding: '7px 16px',
+                background: 'var(--bg-secondary)',
+                fontSize: '12px',
+                color: 'var(--accent-color)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
               <FileText size={12} />
-              {file} ({fileResults.length})
+              {file}（{fileResults.length}）
             </div>
-            {fileResults.map((result, idx) => {
-              const globalIdx = results.indexOf(result)
+            {fileResults.map((result, index) => {
+              const globalIndex = results.indexOf(result)
+              const selected = globalIndex === selectedIndex
               return (
                 <div
-                  key={`${file}-${idx}`}
+                  key={`${file}-${index}`}
                   onClick={() => {
-                    setSelectedIndex(globalIdx)
-                    onNavigate(result.file, result.line)
+                    setSelectedIndex(globalIndex)
+                    onNavigate(result.file, result.line, result.column)
                   }}
                   style={{
-                    padding: '6px 16px 6px 32px',
+                    padding: '7px 16px 7px 32px',
                     fontSize: '12px',
                     cursor: 'pointer',
-                    background: globalIdx === selectedIndex ? 'var(--accent-color)' : 'transparent',
-                    color: globalIdx === selectedIndex ? 'var(--bg-primary)' : 'var(--text-primary)',
+                    background: selected ? 'var(--accent-color)' : 'transparent',
+                    color: selected ? '#fff' : 'var(--text-primary)',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    gap: '8px',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                    <span style={{ opacity: 0.5, minWidth: '30px' }}>{result.line}</span>
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {result.content.slice(0, 50)}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', minWidth: 0 }}>
+                    <span style={{ opacity: 0.6, minWidth: '30px' }}>{result.line}</span>
+                    <ResultSnippet
+                      line={result.content}
+                      query={query}
+                      options={searchOptions}
+                      selected={selected}
+                    />
                   </div>
                   {showReplace && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
+                      onClick={(event) => {
+                        event.stopPropagation()
                         handleReplace(result)
                       }}
                       style={{
-                        padding: '2px 6px',
+                        padding: '3px 7px',
                         fontSize: '10px',
-                        background: globalIdx === selectedIndex ? 'var(--bg-primary)' : 'var(--bg-tertiary)',
+                        background: selected ? 'var(--bg-primary)' : 'var(--bg-tertiary)',
                         border: 'none',
-                        borderRadius: '3px',
-                        color: globalIdx === selectedIndex ? 'var(--accent-color)' : 'var(--text-primary)',
-                        cursor: 'pointer'
+                        borderRadius: '6px',
+                        color: selected ? 'var(--accent-color)' : 'var(--text-primary)',
+                        cursor: 'pointer',
+                        flexShrink: 0,
                       }}
                     >
                       替换
@@ -253,10 +454,10 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
             })}
           </div>
         ))}
-        
+
         {results.length === 0 && query && (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-            {searching ? '搜索中...' : '未找到匹配'}
+            {searching ? '正在搜索...' : '未找到匹配项'}
           </div>
         )}
       </div>
