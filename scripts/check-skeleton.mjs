@@ -27,24 +27,26 @@ const schema = readFileSync(join(root, 'prisma/schema.prisma'), 'utf8')
 if (schema.includes('model PaymentOrder')) ok('Prisma PaymentOrder model')
 else bad('Missing PaymentOrder in schema — run npm run db:neon')
 
-const requiredRoutes = [
-  'api/auth/register/route.ts',
-  'api/auth/session/route.ts',
-  'api/auth/signout/route.ts',
-  'api/auth/oauth/sync/route.ts',
-  'api/subscription/checkout/route.ts',
-  'api/subscription/payment-methods/route.ts',
-  'api/payment/alipay/notify/route.ts',
-  'api/payment/wechat/notify/route.ts',
-  'api/payment/orders/[id]/route.ts',
-  'api/payment/dev/simulate/route.ts',
-  'api/health/route.ts',
-  'api/mcp/proxy/route.ts',
+const requiredApi = [
+  'api/[[...path]]/route.ts',
+  'lib/api/dispatch.ts',
+  'lib/api/handlers/health.ts',
+  'lib/api/handlers/auth/register.ts',
+  'lib/api/handlers/auth/session.ts',
+  'lib/api/handlers/auth/signout.ts',
+  'lib/api/handlers/auth/oauth/sync.ts',
+  'lib/api/handlers/subscription/checkout.ts',
+  'lib/api/handlers/subscription/payment-methods.ts',
+  'lib/api/handlers/payment/alipay/notify.ts',
+  'lib/api/handlers/payment/wechat/notify.ts',
+  'lib/api/handlers/payment/orders/byId.ts',
+  'lib/api/handlers/payment/dev/simulate.ts',
+  'lib/api/handlers/mcp/proxy.ts',
 ]
 
-for (const route of requiredRoutes) {
-  if (existsSync(join(root, route))) ok(`route ${route}`)
-  else bad(`Missing ${route}`)
+for (const file of requiredApi) {
+  if (existsSync(join(root, file))) ok(`api ${file}`)
+  else bad(`Missing ${file}`)
 }
 
 if (existsSync(join(root, 'docs/BILLING_SKELETON.md'))) ok('docs/BILLING_SKELETON.md')
