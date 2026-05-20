@@ -3,9 +3,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "functions": {
-    "api/[...path].ts": {
-      "maxDuration": 60,
-      "includeFiles": "node_modules/.prisma/**"
+    "api/catchall.ts": {
+      "maxDuration": 60
     }
   },
   "headers": [
@@ -27,6 +26,10 @@
     {
       "source": "/website/(.*)",
       "destination": "/website/$1"
+    },
+    {
+      "source": "/api/(?!catchall(?:/|$))(.*)",
+      "destination": "/api/catchall?__p=$1"
     },
     {
       "source": "/((?!api/).*)",

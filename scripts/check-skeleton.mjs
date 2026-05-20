@@ -28,7 +28,7 @@ if (schema.includes('model PaymentOrder')) ok('Prisma PaymentOrder model')
 else bad('Missing PaymentOrder in schema — run npm run db:neon')
 
 const requiredApi = [
-  'api/[...path].ts',
+  'api/catchall.ts',
   'lib/api/dispatch.ts',
   'lib/api/handlers/health.ts',
   'lib/api/handlers/auth/register.ts',
