@@ -77,12 +77,15 @@ export function checkRateLimit(req: Request, options: RateLimitOptions): RateLim
   }
 }
 
-export function resolveRateLimitOptions(kind: 'auth:register' | 'auth:login' | 'auth:forgot' | 'usage:ai'): RateLimitOptions {
+export function resolveRateLimitOptions(
+  kind: 'auth:register' | 'auth:login' | 'auth:forgot' | 'usage:ai' | 'workspaces:write',
+): RateLimitOptions {
   const defaults: Record<string, RateLimitOptions> = {
     'auth:register': { key: 'auth:register', limit: 5, windowMs: 15 * 60_000 },
     'auth:login': { key: 'auth:login', limit: 20, windowMs: 15 * 60_000 },
     'auth:forgot': { key: 'auth:forgot', limit: 5, windowMs: 60 * 60_000 },
     'usage:ai': { key: 'usage:ai', limit: 120, windowMs: 60_000 },
+    'workspaces:write': { key: 'workspaces:write', limit: 60, windowMs: 60_000 },
   }
   return defaults[kind]
 }

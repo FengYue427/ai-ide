@@ -8,13 +8,14 @@
 import { prisma } from '../../../../../src/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { createJWT } from '../../../../../src/lib/jwt'
-import { checkRateLimit, resolveRateLimitOptions } from '../../../rateLimit'
+import { resolveRateLimitOptions } from '../../../rateLimit'
+import { checkRateLimitDistributed } from '../../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../../rateLimitResponse'
 import { buildAuthSetCookie } from '../../../authCookie'
 
 export async function POST(req: Request) {
   try {
-    const rate = checkRateLimit(req, resolveRateLimitOptions('auth:login'))
+    const rate = await checkRateLimitDistributed(req, resolveRateLimitOptions('auth:login'))
     if (!rate.allowed) return rateLimitErrorResponse(rate)
 
     const { email, password } = await req.json()
@@ -65,7 +66,6 @@ export async function POST(req: Request) {
         name: user.name,
         image: user.image
       },
-      token
     }), {
       status: 200,
       headers: {

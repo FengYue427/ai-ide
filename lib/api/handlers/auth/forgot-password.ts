@@ -1,9 +1,10 @@
-import { checkRateLimit, resolveRateLimitOptions } from '../../rateLimit'
+import { resolveRateLimitOptions } from '../../rateLimit'
+import { checkRateLimitDistributed } from '../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../rateLimitResponse'
 
 export async function POST(req: Request) {
   try {
-    const rate = checkRateLimit(req, resolveRateLimitOptions('auth:forgot'))
+    const rate = await checkRateLimitDistributed(req, resolveRateLimitOptions('auth:forgot'))
     if (!rate.allowed) return rateLimitErrorResponse(rate)
 
     const { email } = await req.json()

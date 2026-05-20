@@ -150,6 +150,13 @@ class PluginManager {
     const trimmed = input.trim()
     if (!trimmed) return { ok: false, error: '请输入插件包 JSON' }
 
+    // Production builds should not execute user-provided code. This is a safety gate:
+    // - CSP (script-src 'self') blocks unsafe-eval, which would break new Function anyway.
+    // - More importantly, running untrusted code in-browser is a high-risk surface.
+    if (import.meta.env.PROD) {
+      return { ok: false, error: '生产环境默认禁用第三方插件（仅允许内置插件）' }
+    }
+
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('npm:')) {
       return { ok: false, error: '远程插件加载尚未开放，请粘贴插件 JSON 包' }
     }

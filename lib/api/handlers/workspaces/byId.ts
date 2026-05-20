@@ -3,6 +3,7 @@
  */
 import { errorResponse, jsonResponse } from '../../http'
 import { requireAuth } from '../../requireAuth'
+import { readJsonWithLimit } from '../../body'
 import {
   deleteWorkspaceByName,
   ensureDefaultWorkspace,
@@ -10,6 +11,39 @@ import {
   serializeWorkspace,
   upsertWorkspace,
 } from '../../workspacesService'
+import { resolveRateLimitOptions } from '../../rateLimit'
+import { checkRateLimitDistributed } from '../../rateLimitKv'
+import { rateLimitErrorResponse } from '../../rateLimitResponse'
+
+const MAX_WORKSPACE_BODY_BYTES = 2_000_000
+const MAX_WORKSPACE_FILES = 200
+const MAX_FILE_NAME_LEN = 200
+const MAX_FILE_CONTENT_LEN = 200_000
+
+function validateWorkspacePayload(files: unknown, settings: unknown): string | null {
+  const filesStr = typeof files === 'string' ? files : null
+  const settingsStr = typeof settings === 'string' ? settings : null
+
+  if (filesStr && filesStr.length > MAX_WORKSPACE_BODY_BYTES) return 'files 字段过大'
+  if (settingsStr && settingsStr.length > MAX_WORKSPACE_BODY_BYTES) return 'settings 字段过大'
+
+  if (!filesStr && Array.isArray(files)) {
+    if (files.length > MAX_WORKSPACE_FILES) return `文件数过多（最多 ${MAX_WORKSPACE_FILES}）`
+    for (const item of files) {
+      if (!item || typeof item !== 'object') return 'files 格式无效'
+      const name = (item as any).name
+      const content = (item as any).content
+      if (typeof name !== 'string' || !name.trim() || name.length > MAX_FILE_NAME_LEN) return '文件名无效'
+      if (typeof content !== 'string' || content.length > MAX_FILE_CONTENT_LEN) return '文件内容过大'
+    }
+  }
+
+  if (!settingsStr && settings != null && typeof settings !== 'object') {
+    return 'settings 格式无效'
+  }
+
+  return null
+}
 
 export async function GET(_req: Request, ctx?: { params: Record<string, string> }) {
   const auth = await requireAuth(_req)
@@ -45,14 +79,29 @@ export async function PUT(req: Request, ctx?: { params: Record<string, string> }
   if (!id) return errorResponse('缺少工作区名称', 400)
 
   try {
+    const rate = await checkRateLimitDistributed(req, {
+      ...resolveRateLimitOptions('workspaces:write'),
+      suffix: auth.user.id,
+    })
+    if (!rate.allowed) return rateLimitErrorResponse(rate)
+
     const name = decodeURIComponent(id)
-    const body = await req.json()
-    const { files, settings, name: newName } = body
+    const parsed = await readJsonWithLimit<{ files?: unknown; settings?: unknown; name?: unknown }>(
+      req,
+      MAX_WORKSPACE_BODY_BYTES,
+      '工作区请求体过大',
+    )
+    if (!parsed.ok) return parsed.response
+
+    const { files, settings, name: newName } = parsed.value
 
     const filesPayload =
       typeof files === 'string' ? files : JSON.stringify(files ?? [])
     const settingsPayload =
       typeof settings === 'string' ? settings : JSON.stringify(settings ?? {})
+
+    const payloadError = validateWorkspacePayload(files, settings)
+    if (payloadError) return errorResponse(payloadError, 413)
 
     const targetName = typeof newName === 'string' && newName.trim() ? newName.trim() : name
 

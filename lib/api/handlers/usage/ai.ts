@@ -2,7 +2,8 @@
  * AI usage quota — server-backed daily counts (authenticated users).
  */
 import { jsonResponse, errorResponse } from '../../http'
-import { checkRateLimit, resolveRateLimitOptions } from '../../rateLimit'
+import { resolveRateLimitOptions } from '../../rateLimit'
+import { checkRateLimitDistributed } from '../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../rateLimitResponse'
 import { optionalAuth, requireAuth } from '../../requireAuth'
 import {
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     const auth = await requireAuth(req)
     if (!auth.ok) return auth.response
 
-    const rate = checkRateLimit(req, {
+    const rate = await checkRateLimitDistributed(req, {
       ...resolveRateLimitOptions('usage:ai'),
       suffix: auth.user.id,
     })
