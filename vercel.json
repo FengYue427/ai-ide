@@ -3,8 +3,11 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "functions": {
-    "api/catchall.ts": {
+    "api/index.ts": {
       "maxDuration": 60
+    },
+    "api/health.ts": {
+      "maxDuration": 15
     }
   },
   "headers": [
@@ -28,8 +31,8 @@
       "destination": "/website/$1"
     },
     {
-      "source": "/api/(?!catchall(?:/|$))(.*)",
-      "destination": "/api/catchall?__p=$1"
+      "source": "/api/(.*)",
+      "destination": "/api?__p=$1"
     },
     {
       "source": "/((?!api/).*)",

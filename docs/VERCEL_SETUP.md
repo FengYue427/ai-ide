@@ -73,7 +73,7 @@ https://<your-domain>/api/subscription/webhook
 | Framework | Vite |
 | Build Command | `npm run build:deploy` |
 | Output Directory | `dist` |
-| API | `api/catchall.ts` + rewrite（**1** 个 Serverless Function，`lib/api/dispatch.ts`） |
+| API | `api/index.ts` + rewrite + `api/health.ts`（2 个函数，`lib/api/dispatch.ts`） |
 
 `vercel.json` 已配置 COOP/COEP（WebContainer 需要）。
 

@@ -1,14 +1,13 @@
 /**
- * Single Vercel Serverless entry. Rewrites send /api/foo/bar → /api/catchall?__p=foo/bar.
+ * Single Vercel Serverless entry at /api.
+ * vercel.json rewrites /api/foo/bar → /api?__p=foo/bar
  */
 import { dispatchApiRequest } from '../lib/api/dispatch'
 
 async function requestForDispatch(request: Request): Promise<Request> {
   const url = new URL(request.url)
-  if (url.pathname !== '/api/catchall') return request
-
   const rest = url.searchParams.get('__p')
-  if (rest == null || rest === '') return request
+  if (!rest) return request
 
   url.pathname = '/api/' + rest
   url.searchParams.delete('__p')
@@ -27,7 +26,7 @@ async function handle(request: Request): Promise<Response> {
   try {
     return await dispatchApiRequest(await requestForDispatch(request))
   } catch (error) {
-    console.error('[api/catchall]', error)
+    console.error('[api]', error)
     return new Response(
       JSON.stringify({
         error: 'Internal server error',
