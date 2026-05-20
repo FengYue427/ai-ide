@@ -34,7 +34,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
 
   const activeCount = useMemo(() => plugins.filter((plugin) => activeIds.has(plugin.id)).length, [plugins, activeIds])
 
-  const togglePlugin = (pluginId: string) => {
+  const togglePlugin = async (pluginId: string) => {
     setError(null)
     setSuccess(null)
 
@@ -42,7 +42,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       pluginManager.deactivate(pluginId)
       setSuccess('插件已停用。')
     } else {
-      const activated = pluginManager.activate(pluginId)
+      const activated = await pluginManager.activate(pluginId)
       if (activated) {
         setSuccess('插件已启用。')
       } else {

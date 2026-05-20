@@ -1,10 +1,10 @@
-import { ALL_PLUGIN_PERMISSIONS, type PluginPermission } from './pluginTypes'
+import { ALL_PLUGIN_PERMISSIONS, hasUi, normalizePluginPermissions } from './pluginPermissions'
 import {
   createSandboxedContext,
-  runPluginActivate,
   validateManifest,
   validatePluginSource,
 } from './pluginSandbox'
+import { runPluginActivateInSandbox, type PluginSandboxHandle } from './pluginSandboxRunner'
 import type { PluginContext, PluginManifest } from './pluginTypes'
 
 export type { PluginContext, PluginManifest } from './pluginTypes'
@@ -18,7 +18,7 @@ export interface Plugin {
   icon?: string
   manifest?: PluginManifest
   builtin?: boolean
-  activate: (context: PluginContext) => void
+  activate: (context: PluginContext) => void | Promise<void>
   deactivate?: () => void
 }
 
@@ -30,6 +30,7 @@ export interface PluginPackage {
 class PluginManager {
   private plugins: Map<string, Plugin> = new Map()
   private activePlugins: Map<string, Plugin> = new Map()
+  private sandboxHandles: Map<string, PluginSandboxHandle> = new Map()
   private context: PluginContext | null = null
   private onDeactivate?: (pluginId: string) => void
 
@@ -65,11 +66,24 @@ class PluginManager {
       author: pkg.manifest.author,
       icon: pkg.manifest.icon,
       manifest: pkg.manifest,
-      activate: (context) => runPluginActivate(pkg.source, context),
+      activate: async (context) => {
+        const handle = await runPluginActivateInSandbox(
+          pkg.manifest.id,
+          pkg.source,
+          context,
+          pkg.manifest.permissions,
+          {
+            onRegisterButton: ({ icon, label, onClick }) => {
+              context.ui.addToolbarButton({ icon, label, onClick }, pkg.manifest.id)
+            },
+          },
+        )
+        this.sandboxHandles.set(pkg.manifest.id, handle)
+      },
     }
 
     if (this.plugins.has(plugin.id)) {
-      this.deactivate(plugin.id)
+      void this.deactivate(plugin.id)
       this.plugins.delete(plugin.id)
     }
 
@@ -80,7 +94,7 @@ class PluginManager {
   private buildActivationContext(plugin: Plugin): PluginContext | null {
     if (!this.context) return null
 
-    const permissions: PluginPermission[] = plugin.builtin
+    const permissions: string[] = plugin.builtin
       ? [...ALL_PLUGIN_PERMISSIONS]
       : plugin.manifest?.permissions ?? []
 
@@ -92,7 +106,7 @@ class PluginManager {
       ui: {
         ...sandboxed.ui,
         addToolbarButton: (config) => {
-          if (!permissions.includes('ui')) {
+          if (!hasUi(new Set(normalizePluginPermissions(permissions)))) {
             throw new Error('插件无权访问 ui.addToolbarButton')
           }
           this.context!.ui.addToolbarButton(config, pluginId)
@@ -101,7 +115,7 @@ class PluginManager {
     }
   }
 
-  activate(pluginId: string): boolean {
+  async activate(pluginId: string): Promise<boolean> {
     const plugin = this.plugins.get(pluginId)
     if (!plugin) return false
     if (this.activePlugins.has(pluginId)) return false
@@ -110,12 +124,21 @@ class PluginManager {
     if (!activationContext) return false
 
     try {
-      plugin.activate(activationContext)
+      await plugin.activate(activationContext)
       this.activePlugins.set(pluginId, plugin)
       return true
     } catch (error) {
+      this.disposeSandbox(pluginId)
       console.error(`Failed to activate plugin ${pluginId}:`, error)
       return false
+    }
+  }
+
+  private disposeSandbox(pluginId: string): void {
+    const handle = this.sandboxHandles.get(pluginId)
+    if (handle) {
+      handle.dispose()
+      this.sandboxHandles.delete(pluginId)
     }
   }
 
@@ -125,6 +148,7 @@ class PluginManager {
 
     try {
       plugin.deactivate?.()
+      this.disposeSandbox(pluginId)
       this.activePlugins.delete(pluginId)
       this.onDeactivate?.(pluginId)
       return true
@@ -150,9 +174,6 @@ class PluginManager {
     const trimmed = input.trim()
     if (!trimmed) return { ok: false, error: '请输入插件包 JSON' }
 
-    // Production builds should not execute user-provided code. This is a safety gate:
-    // - CSP (script-src 'self') blocks unsafe-eval, which would break new Function anyway.
-    // - More importantly, running untrusted code in-browser is a high-risk surface.
     if (import.meta.env.PROD) {
       return { ok: false, error: '生产环境默认禁用第三方插件（仅允许内置插件）' }
     }

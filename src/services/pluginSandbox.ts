@@ -1,11 +1,20 @@
+import type { PluginContext, PluginManifest } from './pluginTypes'
 import {
-  ALL_PLUGIN_PERMISSIONS,
-  type PluginContext,
-  type PluginManifest,
-  type PluginPermission,
-} from './pluginTypes'
+  hasAi,
+  hasEditorRead,
+  hasEditorWrite,
+  hasFilesRead,
+  hasFilesWrite,
+  hasTerminalAny,
+  hasTerminalFull,
+  hasUi,
+  normalizePluginPermissions,
+  validateExtendedPermissions,
+} from './pluginPermissions'
+import { isTerminalCommandAllowed } from './pluginTerminalPolicy'
 
-export { ALL_PLUGIN_PERMISSIONS, type PluginPermission }
+export { ALL_PLUGIN_PERMISSIONS } from './pluginPermissions'
+export type { ExtendedPluginPermission as PluginPermission } from './pluginPermissions'
 
 const BLOCKED_PATTERNS: RegExp[] = [
   /\beval\s*\(/,
@@ -28,15 +37,7 @@ export function validateManifest(manifest: PluginManifest): string | null {
   }
   if (!manifest.name?.trim()) return '插件名称不能为空'
   if (!manifest.version?.trim()) return '插件版本不能为空'
-  if (!Array.isArray(manifest.permissions) || manifest.permissions.length === 0) {
-    return '至少声明一项权限'
-  }
-  for (const perm of manifest.permissions) {
-    if (!ALL_PLUGIN_PERMISSIONS.includes(perm as PluginPermission)) {
-      return `未知权限: ${perm}`
-    }
-  }
-  return null
+  return validateExtendedPermissions(manifest.permissions)
 }
 
 export function validatePluginSource(source: string): string | null {
@@ -58,48 +59,47 @@ function deny<T extends string>(name: T): () => never {
 
 export function createSandboxedContext(
   base: PluginContext,
-  permissions: PluginPermission[],
+  permissions: readonly string[],
 ): PluginContext {
-  const allowed = new Set(permissions)
+  const perms = new Set(normalizePluginPermissions(permissions))
 
   return {
-    editor: allowed.has('editor')
-      ? base.editor
-      : {
-          getValue: deny('editor.getValue'),
-          setValue: deny('editor.setValue'),
-          getSelectedText: deny('editor.getSelectedText'),
-          insertText: deny('editor.insertText'),
-        },
-    files: allowed.has('files')
-      ? base.files
-      : {
-          getAll: deny('files.getAll'),
-          getActive: deny('files.getActive'),
-          create: deny('files.create'),
-          open: deny('files.open'),
-        },
-    terminal: allowed.has('terminal')
-      ? base.terminal
-      : {
-          execute: deny('terminal.execute'),
-          getHistory: deny('terminal.getHistory'),
-        },
-    ai: allowed.has('ai')
-      ? base.ai
-      : {
-          complete: deny('ai.complete'),
-        },
-    ui: allowed.has('ui')
-      ? base.ui
-      : {
-          showNotification: deny('ui.showNotification'),
-          showModal: deny('ui.showModal'),
-          addToolbarButton: deny('ui.addToolbarButton'),
-        },
+    editor: {
+      getValue: hasEditorRead(perms) ? base.editor.getValue : deny('editor.getValue'),
+      getSelectedText: hasEditorRead(perms) ? base.editor.getSelectedText : deny('editor.getSelectedText'),
+      setValue: hasEditorWrite(perms) ? base.editor.setValue : deny('editor.setValue'),
+      insertText: hasEditorWrite(perms) ? base.editor.insertText : deny('editor.insertText'),
+    },
+    files: {
+      getAll: hasFilesRead(perms) ? base.files.getAll : deny('files.getAll'),
+      getActive: hasFilesRead(perms) ? base.files.getActive : deny('files.getActive'),
+      open: hasFilesRead(perms) ? base.files.open : deny('files.open'),
+      create: hasFilesWrite(perms) ? base.files.create : deny('files.create'),
+    },
+    terminal: {
+      getHistory: hasTerminalAny(perms) ? base.terminal.getHistory : deny('terminal.getHistory'),
+      execute: hasTerminalAny(perms)
+        ? async (command: string) => {
+            const mode = hasTerminalFull(perms) ? 'full' : 'safe'
+            if (!isTerminalCommandAllowed(command, mode)) {
+              throw new Error('插件无权执行该终端命令（仅允许安全命令白名单）')
+            }
+            return base.terminal.execute(command)
+          }
+        : deny('terminal.execute'),
+    },
+    ai: {
+      complete: hasAi(perms) ? base.ai.complete : deny('ai.complete'),
+    },
+    ui: {
+      showNotification: hasUi(perms) ? base.ui.showNotification : deny('ui.showNotification'),
+      showModal: hasUi(perms) ? base.ui.showModal : deny('ui.showModal'),
+      addToolbarButton: hasUi(perms) ? base.ui.addToolbarButton : deny('ui.addToolbarButton'),
+    },
   }
 }
 
+/** @deprecated Third-party plugins should use runPluginActivateInSandbox (Worker). */
 export function runPluginActivate(source: string, context: PluginContext): void {
   const error = validatePluginSource(source)
   if (error) throw new Error(error)

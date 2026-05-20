@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
-export const ALL_PLUGIN_PERMISSIONS = ['editor', 'files', 'terminal', 'ai', 'ui'] as const
-export type PluginPermission = (typeof ALL_PLUGIN_PERMISSIONS)[number]
+export type { ExtendedPluginPermission as PluginPermission } from './pluginPermissions'
+export { ALL_PLUGIN_PERMISSIONS } from './pluginPermissions'
 
 export interface PluginManifest {
   id: string
@@ -11,7 +11,7 @@ export interface PluginManifest {
   author?: string
   icon?: string
   entry: string
-  permissions: PluginPermission[]
+  permissions: string[]
 }
 
 export interface PluginContext {

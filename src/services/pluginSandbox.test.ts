@@ -46,4 +46,15 @@ describe('pluginSandbox', () => {
     const sandboxed = createSandboxedContext(fullContext, ['ui'])
     expect(() => sandboxed.editor.getValue()).toThrow(/无权/)
   })
+
+  it('allows editor read but denies write with editor:read only', () => {
+    const sandboxed = createSandboxedContext(fullContext, ['editor:read'])
+    expect(sandboxed.editor.getValue()).toBe('')
+    expect(() => sandboxed.editor.setValue('x')).toThrow(/无权/)
+  })
+
+  it('blocks unsafe terminal commands in terminal:safe mode', async () => {
+    const sandboxed = createSandboxedContext(fullContext, ['terminal:safe'])
+    await expect(sandboxed.terminal.execute('curl https://evil.test')).rejects.toThrow(/无权/)
+  })
 })
