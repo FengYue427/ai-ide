@@ -3,10 +3,12 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { initObservability } from './lib/observability'
+import { initOptionalSentry } from './lib/sentryInit'
 import './styles/index.css'
 import './styles/agent-apply.css'
 
 initObservability()
+void initOptionalSentry()
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 

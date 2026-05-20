@@ -6,6 +6,7 @@ import { resolveRateLimitOptions } from '../../rateLimit'
 import { checkRateLimitDistributed } from '../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../rateLimitResponse'
 import { optionalAuth, requireAuth } from '../../requireAuth'
+import { trackServerEvent } from '../../logger'
 import {
   buildQuotaSnapshot,
   consumeAiUsage,
@@ -48,6 +49,12 @@ export async function POST(req: Request) {
 
     const result = await consumeAiUsage(auth.user.id, amount)
     if (!result.ok) {
+      trackServerEvent(req, 'usage.ai.quota_exceeded', {
+        userId: auth.user.id,
+        plan: result.quota.plan,
+        used: result.quota.used,
+        limit: result.quota.limit,
+      })
       return jsonResponse(
         {
           error: '今日 AI 配额已用完',

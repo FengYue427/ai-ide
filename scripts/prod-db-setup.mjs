@@ -3,8 +3,8 @@
  *
  * Usage:
  *   DATABASE_URL="postgresql://..." node scripts/prod-db-setup.mjs
- *   # or with .env.local present:
- *   node scripts/prod-db-setup.mjs
+ *   USE_PRISMA_MIGRATIONS=true node scripts/prod-db-setup.mjs
+ *   node scripts/prod-db-setup.mjs --migrations
  */
 import { existsSync, readFileSync } from 'fs'
 import { dirname, join } from 'path'
@@ -13,6 +13,8 @@ import { spawnSync } from 'child_process'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const envPath = join(root, '.env.local')
+const useMigrations =
+  process.argv.includes('--migrations') || process.env.USE_PRISMA_MIGRATIONS === 'true'
 
 if (existsSync(envPath)) {
   for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
@@ -36,6 +38,7 @@ if (!process.env.DATABASE_URL?.trim()) {
 
 console.log('=== Production DB setup ===')
 console.log('Target:', process.env.DATABASE_URL.replace(/:[^:@/]+@/, ':****@'))
+console.log('Mode:', useMigrations ? 'prisma migrate deploy' : 'prisma db push')
 
 function run(cmd, args) {
   const result = spawnSync(cmd, args, { cwd: root, stdio: 'inherit', shell: true, env: process.env })
@@ -43,7 +46,11 @@ function run(cmd, args) {
 }
 
 run('npx', ['prisma', 'generate'])
-run('npx', ['prisma', 'db', 'push'])
+if (useMigrations) {
+  run('npx', ['prisma', 'migrate', 'deploy'])
+} else {
+  run('npx', ['prisma', 'db', 'push'])
+}
 run('npm', ['run', 'db:seed'])
 
 console.log('\n✅ Database schema and billing plans are ready.')

@@ -40,6 +40,9 @@
     "rc:preflight": "node scripts/rc-preflight.mjs",
     "billing:preflight": "node scripts/billing-cn-preflight.mjs",
     "prod:db": "node scripts/prod-db-setup.mjs",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
     "db:neon": "npm run db:check && npm run prod:db",
     "smoke:production": "node scripts/smoke-production.mjs",
     "deploy:check": "node scripts/deploy-check.mjs",
@@ -102,5 +105,8 @@
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "vitest": "^3.2.4"
+  },
+  "optionalDependencies": {
+    "@sentry/react": "^8.55.2"
   }
 }

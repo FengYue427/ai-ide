@@ -7,7 +7,7 @@ import { jsonResponse } from '../http'
 import { getBillingCapabilities } from '../../billing/billingMode'
 import { prisma } from '../../../src/lib/prisma'
 
-export async function GET() {
+export async function GET(_req: Request) {
   const billing = getBillingCapabilities()
   const { payload, statusCode } = await buildHealthCheck({
     version: process.env.npm_package_version ?? '1.0.0-rc.1',

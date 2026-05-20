@@ -1,6 +1,7 @@
 import { planLimitsByName } from '../../lib/billing/plans'
 import type { QuotaCheck } from './aiService'
-import { readJsonResponse } from './apiUtils'
+import { readJsonResponse, apiFetch } from './apiUtils'
+import { trackEvent } from '../lib/observability'
 
 const USAGE_KEY = 'ai-usage-today'
 const USAGE_DATE_KEY = 'ai-usage-date'
@@ -76,7 +77,7 @@ export async function fetchAIQuota(currentPlan: string, isLoggedIn: boolean): Pr
   }
 
   try {
-    const response = await fetch('/api/usage/ai', { credentials: 'include' })
+    const response = await apiFetch('/api/usage/ai', { credentials: 'include' })
     const data = await readJsonResponse<{ source?: string; quota?: QuotaCheck }>(response)
     if (response.ok && data?.quota) {
       return data.quota
@@ -116,7 +117,7 @@ export async function recordAIUsageEvent(
   }
 
   try {
-    const response = await fetch('/api/usage/ai', {
+    const response = await apiFetch('/api/usage/ai', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -124,6 +125,7 @@ export async function recordAIUsageEvent(
     })
     if (response.status === 429) {
       const data = await readJsonResponse<{ quota?: QuotaCheck }>(response)
+      trackEvent('usage.ai.quota_exceeded', { quota: data?.quota })
       if (data?.quota) {
         throw new QuotaExceededError(data.quota)
       }

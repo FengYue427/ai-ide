@@ -1,5 +1,6 @@
 import { unifiedStorage, StorageLayer } from './unifiedStorage'
-import { readJsonResponse } from './apiUtils'
+import { readJsonResponse, apiFetch } from './apiUtils'
+import { trackEvent } from '../lib/observability'
 
 export interface User {
   id: string
@@ -76,7 +77,7 @@ class AuthService {
   // 获取当前会话
   async getSession(): Promise<Session | null> {
     try {
-      const res = await fetch('/api/auth/session', { credentials: 'include' })
+      const res = await apiFetch('/api/auth/session', { credentials: 'include' })
       if (res.ok) {
         const session = await readJsonResponse<Session>(res)
         if (session?.user) {
@@ -125,7 +126,7 @@ class AuthService {
     const normalizedEmail = email.trim().toLowerCase()
 
     try {
-      const res = await fetch('/api/auth/callback/credentials', {
+      const res = await apiFetch('/api/auth/callback/credentials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -135,7 +136,10 @@ class AuthService {
       if (res.ok) {
         const data = await readJsonResponse<{ user?: User }>(res)
         const session = data?.user ? await this.persistSession(data.user) : await this.getSession()
-        if (session?.user) return { success: true, user: session.user }
+        if (session?.user) {
+          trackEvent('auth.login.success', { userId: session.user.id })
+          return { success: true, user: session.user }
+        }
       } else if (res.status !== 404) {
         const data = await readJsonResponse<{ error?: string }>(res)
         return { success: false, error: data?.error || '邮箱或密码错误' }
@@ -169,7 +173,7 @@ class AuthService {
     const normalizedEmail = email.trim().toLowerCase()
 
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -180,6 +184,7 @@ class AuthService {
         const data = await readJsonResponse<{ user?: User }>(res)
         if (data?.user) {
           await this.persistSession(data.user)
+          trackEvent('auth.register.success', { userId: data.user.id })
           return { success: true, user: data.user }
         }
       } else if (res.status !== 404) {
@@ -217,7 +222,7 @@ class AuthService {
     email: string,
   ): Promise<{ success: boolean; error?: string; message?: string; demo?: boolean }> {
     try {
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await apiFetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
@@ -238,7 +243,7 @@ class AuthService {
   /** After GitHub/Google redirect, bridge Auth.js session → auth-token cookie. */
   async syncOAuthSession(): Promise<{ success: boolean; error?: string; user?: User }> {
     try {
-      const res = await fetch('/api/auth/oauth/sync', {
+      const res = await apiFetch('/api/auth/oauth/sync', {
         method: 'POST',
         credentials: 'include',
       })
@@ -256,7 +261,7 @@ class AuthService {
   // 登出
   async logout(): Promise<void> {
     try {
-      await fetch('/api/auth/signout', { method: 'POST', credentials: 'include' })
+      await apiFetch('/api/auth/signout', { method: 'POST', credentials: 'include' })
     } finally {
       this.currentUser = null
       await unifiedStorage.set(USER_KEY, null, { layer: StorageLayer.LOCAL })
@@ -272,7 +277,7 @@ class AuthService {
     }
 
     try {
-      const res = await fetch(`/api/workspaces/${encodeURIComponent(name)}`, {
+      const res = await apiFetch(`/api/workspaces/${encodeURIComponent(name)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -295,7 +300,7 @@ class AuthService {
     }
 
     try {
-      const res = await fetch(`/api/workspaces/${encodeURIComponent(id)}`, {
+      const res = await apiFetch(`/api/workspaces/${encodeURIComponent(id)}`, {
         credentials: 'include',
       })
       if (res.ok) {

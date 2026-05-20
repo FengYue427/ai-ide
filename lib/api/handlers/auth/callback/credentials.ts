@@ -12,6 +12,7 @@ import { resolveRateLimitOptions } from '../../../rateLimit'
 import { checkRateLimitDistributed } from '../../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../../rateLimitResponse'
 import { buildAuthSetCookie } from '../../../authCookie'
+import { trackServerEvent } from '../../../logger'
 
 export async function POST(req: Request) {
   try {
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
     })
 
     console.log("[Auth] User logged in:", user.email)
+    trackServerEvent(req, 'auth.login.success', { userId: user.id })
 
     return new Response(JSON.stringify({
       success: true,

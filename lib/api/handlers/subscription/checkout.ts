@@ -9,6 +9,7 @@ import type { PaymentChannel } from '../../../billing/paymentOrders'
 import { findPlanByName, getBillablePlanNames, getPlanAmountCents } from '../../../billing/plans'
 import { getUserSubscription, upsertUserSubscription } from '../../../billing/subscriptionDb'
 import { createStripeCheckoutSession, isStripeConfigured } from '../../../billing/stripe'
+import { trackServerEvent } from '../../logger'
 
 export async function POST(request: Request) {
   try {
@@ -55,6 +56,12 @@ export async function POST(request: Request) {
         planName: plan.name,
         channel,
       })
+      trackServerEvent(request, 'billing.checkout.created', {
+        userId: auth.user.id,
+        plan: plan.name,
+        channel,
+        mode: 'cn',
+      })
       return jsonResponse(result)
     }
 
@@ -70,6 +77,12 @@ export async function POST(request: Request) {
         email: auth.user.email,
         planName: plan.name,
         stripeCustomerId: existing?.stripeCustomerId,
+      })
+      trackServerEvent(request, 'billing.checkout.created', {
+        userId: auth.user.id,
+        plan: plan.name,
+        channel: 'stripe',
+        mode: 'stripe',
       })
       return jsonResponse({ mode: 'stripe', url })
     }

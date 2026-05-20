@@ -3,11 +3,22 @@
  * vercel.json rewrites /api/foo/bar → /api?__p=foo/bar
  */
 import { dispatchApiRequest } from '../lib/api/dispatch'
+import { logApi } from '../lib/api/logger'
+import { attachRequestId, resolveRequestId } from '../lib/api/requestId'
 
-async function requestForDispatch(request: Request): Promise<Request> {
+async function requestForDispatch(request: Request, requestId: string): Promise<Request> {
   const url = new URL(request.url)
   const rest = url.searchParams.get('__p')
-  if (!rest) return request
+  const headers = new Headers(request.headers)
+  headers.set('x-request-id', requestId)
+
+  if (!rest) {
+    return new Request(request.url, {
+      method: request.method,
+      headers,
+      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.arrayBuffer() : undefined,
+    })
+  }
 
   url.pathname = '/api/' + rest
   url.searchParams.delete('__p')
@@ -17,22 +28,47 @@ async function requestForDispatch(request: Request): Promise<Request> {
 
   return new Request(url.toString(), {
     method: request.method,
-    headers: request.headers,
+    headers,
     body: body && body.byteLength > 0 ? body : undefined,
   })
 }
 
 async function handle(request: Request): Promise<Response> {
+  const requestId = resolveRequestId(request)
+  const started = Date.now()
+  const routeHint = new URL(request.url).searchParams.get('__p') || new URL(request.url).pathname
+
   try {
-    return await dispatchApiRequest(await requestForDispatch(request))
+    const response = attachRequestId(
+      await dispatchApiRequest(await requestForDispatch(request, requestId)),
+      requestId,
+    )
+    logApi('info', 'api.request', {
+      requestId,
+      route: routeHint,
+      method: request.method,
+      status: response.status,
+      durationMs: Date.now() - started,
+    })
+    return response
   } catch (error) {
-    console.error('[api]', error)
-    return new Response(
-      JSON.stringify({
-        error: 'Internal server error',
-        detail: error instanceof Error ? error.message : String(error),
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    logApi('error', 'api.unhandled', {
+      requestId,
+      route: routeHint,
+      method: request.method,
+      durationMs: Date.now() - started,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return attachRequestId(
+      new Response(
+        JSON.stringify({
+          error: 'Internal server error',
+          requestId,
+          detail: error instanceof Error ? error.message : String(error),
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      ),
+      requestId,
     )
   }
 }

@@ -3,28 +3,27 @@
 ## 内置（无需配置）
 
 - **API**：`GET /api/health` — 数据库连通性，供 Uptime 与 `npm run smoke:production`
-- **前端**：`src/lib/observability.ts` 在 `main.tsx` 注册 `window.error` / `unhandledrejection`，`ErrorBoundary` 会调用 `reportError`
+- **API 请求链路**：每个 `/api/*` 响应带 `X-Request-Id`；Vercel Logs 为 JSON 行（`api.request`、`auth.login.success` 等）
+- **前端**：`src/lib/observability.ts` 注册 `window.error` / `unhandledrejection`；`ErrorBoundary` 调用 `reportError`
+- **前端 API**：`apiFetch()` 自动附带 `X-Request-Id`，便于与后端日志关联
+- **业务事件**：`trackEvent()`（前端）、`trackServerEvent()`（API handler）
+
+### 结构化 API 日志示例
+
+```json
+{"ts":"...","level":"info","message":"api.request","requestId":"...","route":"auth/register","method":"POST","status":200,"durationMs":42}
+{"ts":"...","level":"info","message":"auth.login.success","event":"auth.login.success","requestId":"...","userId":"..."}
+```
 
 ## 可选：Sentry（推荐生产）
 
 1. 在 [sentry.io](https://sentry.io) 创建项目，拿到 DSN  
 2. 安装依赖：`npm install @sentry/react`  
-3. 在 `src/main.tsx` 的 `initObservability()` 之后添加：
+3. 设置 Vercel 环境变量：`VITE_SENTRY_DSN=https://...@sentry.io/...`
 
-```ts
-import * as Sentry from '@sentry/react'
-import { setErrorReporter } from './lib/observability'
+应用会在 `main.tsx` 中通过 `initOptionalSentry()` 自动初始化（DSN 存在且依赖已安装时）。
 
-const dsn = import.meta.env.VITE_SENTRY_DSN
-if (dsn) {
-  Sentry.init({ dsn, environment: import.meta.env.MODE })
-  setErrorReporter((error, context) => {
-    Sentry.captureException(error, { extra: context })
-  })
-}
-```
-
-4. Vercel 环境变量：`VITE_SENTRY_DSN=https://...@sentry.io/...`
+也可手动扩展 `setErrorReporter` / `setEventReporter`（见 `src/lib/observability.ts`）。
 
 ## 可选：Vercel Analytics
 
@@ -40,5 +39,9 @@ npm run admin:lookup -- user@example.com
 
 ## API 5xx 告警
 
-- Vercel：**Observability → Logs**，对 `status:500` 配置通知  
+- Vercel：**Observability → Logs**，过滤 `level":"error"` 或 `api.unhandled`
 - 外部监控：每 1～5 分钟请求 `GET https://<domain>/api/health`，非 200 告警
+
+## 发布与回滚
+
+见 [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md)。
