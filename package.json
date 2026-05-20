@@ -34,6 +34,8 @@
     "verify:env:prod": "node scripts/verify-env.mjs --production",
     "predeploy:check": "npm run test:local && node scripts/verify-env.mjs",
     "check:release": "npm run test:local && node scripts/verify-env.mjs --production",
+    "check:release:billing": "npm run test:local && node scripts/verify-env.mjs --production --require-cn-billing",
+    "s0:gate": "npm run test:local && node scripts/check-skeleton.mjs --skip-tests && node scripts/verify-env.mjs --production",
     "check:skeleton": "node scripts/check-skeleton.mjs",
     "rc:preflight": "node scripts/rc-preflight.mjs",
     "billing:preflight": "node scripts/billing-cn-preflight.mjs",

@@ -63,8 +63,10 @@ npm run test:integration:local
 
 ```bash
 npm run test:local    # 快速：tsc + 单元测试（无需数据库）
-npm run rc:preflight  # RC 发版前：test:local + API 路由骨架（有 .env.local 时顺带验 env）
-npm run check:release # 生产 env 规则（需配置 DATABASE_URL / AUTH_SECRET / APP_URL）
+npm run rc:preflight      # RC：test:local + API 骨架（有 .env.local 时顺带验 env）
+npm run s0:gate           # S0：test:local + 骨架 + verify-env --production（路径 A，不要求商户）
+npm run check:release     # 同 verify 习惯；需 .env.local 含 DATABASE_URL / AUTH_SECRET / APP_URL
+npm run check:release:billing  # 路径 B：再加 --require-cn-billing
 npm run deploy:check  # 可选 APP_URL=… 远程 health 冒烟
 npm run test:all      # 构建 + 单元测试 + 冒烟测试
 npm test              # prisma generate + tsc + 生产构建

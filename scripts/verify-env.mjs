@@ -4,6 +4,7 @@
  * Usage:
  *   node scripts/verify-env.mjs
  *   node scripts/verify-env.mjs --production
+ *   node scripts/verify-env.mjs --production --require-cn-billing   # Path B: merchants required
  */
 import { existsSync, readFileSync } from 'fs'
 import { dirname, join } from 'path'
@@ -11,6 +12,8 @@ import { fileURLToPath } from 'url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const production = process.argv.includes('--production')
+/** When set, require Alipay or WeChat env for production (Path B). Default Path A does not require merchants. */
+const requireCnBilling = process.argv.includes('--require-cn-billing')
 const urlArgIndex = process.argv.indexOf('--url')
 const remoteUrl = urlArgIndex >= 0 ? process.argv[urlArgIndex + 1]?.replace(/\/$/, '') : ''
 const envPath = join(root, '.env.local')
@@ -38,18 +41,10 @@ const required = [
   { key: 'AUTH_SECRET', hint: 'openssl rand -base64 32' },
 ]
 
-const recommended = [{ key: 'APP_URL', hint: 'https://your-domain.vercel.app' }]
+const recommended = [{ key: 'APP_URL', hint: 'https://your-domain.vercel.app (required on Vercel Production)' }]
 
 const productionCnPay = [
   { key: 'APP_URL', hint: 'https://your-domain.com (notify & return URLs)' },
-]
-
-const productionCnPayOptional = [
-  { key: 'ALIPAY_APP_ID', hint: 'Alipay open platform' },
-  { key: 'ALIPAY_PRIVATE_KEY', hint: 'or ALIPAY_PRIVATE_KEY_PATH' },
-  { key: 'WECHAT_APP_ID', hint: 'WeChat pay' },
-  { key: 'WECHAT_MCH_ID', hint: 'merchant id' },
-  { key: 'WECHAT_API_V3_KEY', hint: 'APIv3 key' },
 ]
 
 const productionStripe = [
@@ -95,20 +90,35 @@ check(required, 'Required for cloud auth + API:')
 check(recommended, 'Recommended:', { soft: !production })
 
 if (production) {
-  check(productionCnPay, 'Required for CN payment callbacks:')
-  const hasAlipay = process.env.ALIPAY_APP_ID?.trim()
-  const hasWechat = process.env.WECHAT_MCH_ID?.trim()
-  if (!hasAlipay && !hasWechat) {
-    console.log('\n  ❌ Configure at least Alipay OR WeChat Pay for production billing')
-    failed++
+  if (requireCnBilling) {
+    check(productionCnPay, 'Required for CN payment callbacks (--require-cn-billing):')
+    const hasAlipay = process.env.ALIPAY_APP_ID?.trim()
+    const hasWechat = process.env.WECHAT_MCH_ID?.trim()
+    if (!hasAlipay && !hasWechat) {
+      console.log('\n  ❌ Configure at least Alipay OR WeChat Pay when using --require-cn-billing')
+      failed++
+    } else {
+      console.log('\nCN payment (production):')
+      if (hasAlipay) console.log('  ✅ Alipay')
+      if (hasWechat) console.log('  ✅ WeChat Pay')
+    }
   } else {
-    console.log('\nCN payment (production):')
-    if (hasAlipay) console.log('  ✅ Alipay')
-    if (hasWechat) console.log('  ✅ WeChat Pay')
+    console.log(
+      '\nBilling (production): Path A — public beta without merchants is OK. Before real CN payments, run with --require-cn-billing (see docs/DEPLOY_CHECKLIST.md).',
+    )
+    const hasAlipay = process.env.ALIPAY_APP_ID?.trim()
+    const hasWechat = process.env.WECHAT_MCH_ID?.trim()
+    if (hasAlipay || hasWechat) {
+      console.log('  ℹ️  Alipay/WeChat env present — ensure notify URLs use APP_URL')
+    }
   }
   check(productionStripe, 'Optional Stripe (overseas):', { soft: true })
   if (process.env.ALLOW_DEV_BILLING === 'true') {
-    console.log('\n  ⚠️  ALLOW_DEV_BILLING=true — disable in production')
+    console.log('\n  ❌ ALLOW_DEV_BILLING=true — must be unset/false in production')
+    failed++
+  }
+  if (process.env.VITE_ALLOW_OFFLINE_AUTH === 'true') {
+    console.log('\n  ❌ VITE_ALLOW_OFFLINE_AUTH=true — must not be set for production builds')
     failed++
   }
 } else if (process.env.STRIPE_SECRET_KEY) {

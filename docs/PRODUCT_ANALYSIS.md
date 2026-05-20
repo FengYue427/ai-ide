@@ -72,7 +72,7 @@
 
 | 目录 | 职责 |
 |------|------|
-| `api/` | 25 个 HTTP 路由（见下文 API 清单） |
+| `api/` | Vercel：`api/health.ts` + `api/index.ts`（rewrite）+ `lib/api/dispatch.ts` 路由全部 `/api/*` |
 | `lib/api/` | Cookie、限流、HTTP 工具、健康检查、工作区服务 |
 | `lib/auth/` | OAuth 配置与请求处理、邮件骨架 |
 | `lib/billing/` | 计划、Stripe、支付宝/微信、`fulfillOrder`、`billingMode` |

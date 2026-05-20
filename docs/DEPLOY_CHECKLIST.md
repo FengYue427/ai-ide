@@ -4,6 +4,22 @@
 
 ---
 
+## 阶段 S0 — 生产可信（必须先完成）
+
+与 [OPTIMIZATION_PLAN.md](./OPTIMIZATION_PLAN.md) 轨道 P0 对齐；**未完成前不对外宣称「全栈已上线」**。
+
+| 步骤 | 命令 / 动作 | 通过标准 |
+|------|-------------|----------|
+| S0-1 本地门禁 | `npm run s0:gate` | 单测 + API 骨架 + **生产 env 规则**（不要求已接支付宝/微信，路径 A 公测） |
+| S0-2 部署拓扑 | 仓库已含 `api/health.ts`、`api/index.ts`、`vercel.json` rewrite | 勿再拆成 20+ 个 `api/**/route.ts`（Hobby 12 函数上限） |
+| S0-3 部署后冒烟 | `APP_URL=https://你的域名 npm run deploy:check` | `smoke:production` 4/4；`/api/health` 为 JSON 且 `database: connected` |
+| S0-4 路径 B 收款前 | `node scripts/verify-env.mjs --production --require-cn-billing` | 已配置支付宝或微信商户相关变量 |
+| S0-5 安全基线 | Vercel Production 环境变量人工核对 | 无 `ALLOW_DEV_BILLING`；构建无 `VITE_ALLOW_OFFLINE_AUTH`（`verify-env --production` 会失败） |
+
+**路径说明**：默认 `verify-env --production` 为 **路径 A（公测、不接国内商户）**；接支付宝/微信上线前再加 `--require-cn-billing`。
+
+---
+
 ## 第 1 步：生成生产密钥（本机 PowerShell）
 
 ```powershell
@@ -26,6 +42,8 @@ Vercel → 你的项目 → **Settings → Environment Variables**
 | `APP_URL` | `https://ai-ide-flame.vercel.app`（你的生产域名） | Production |
 
 **不要**在 Production 设置：`ALLOW_DEV_BILLING`、`VITE_ALLOW_OFFLINE_AUTH`。
+
+国内收款（路径 B）上线前：在本地或 CI 用 `node scripts/verify-env.mjs --production --require-cn-billing` 校验商户变量；详见 [CN_PAYMENT_SETUP.md](./CN_PAYMENT_SETUP.md)。
 
 可选 OAuth：`VITE_ENABLE_OAUTH=true` + 服务端 `AUTH_GITHUB_*` / `AUTH_GOOGLE_*`（见 `.env.example`）。
 
@@ -114,6 +132,8 @@ GitHub → Actions → 最新 `main` 应绿：
 | 现象 | 处理 |
 |------|------|
 | `/api/health` 503 | Vercel 未设 `DATABASE_URL` 或未 Redeploy |
+| `/api/health` 500 / FUNCTION_INVOCATION_FAILED | 查 Functions 日志；确认 Prisma 使用 Neon adapter、Neon Pooled URL |
+| `/api/auth/session` 404 | 确认 `vercel.json` 含 `/api/(.*)` → `/api?__p=$1` 且已部署最新 `main` |
 | 注册 500 | 对生产库执行 `npm run prod:db` |
 | 登录后刷新掉线 | 检查 `AUTH_SECRET` 是否部署后改过 |
 | 仅前端无 API | 确认访问的是 Vercel 域名而非纯 `vite preview` |

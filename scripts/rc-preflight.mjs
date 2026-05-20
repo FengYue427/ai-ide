@@ -34,5 +34,7 @@ if (existsSync(join(root, '.env.local'))) {
 }
 
 console.log('\n✅ RC preflight passed')
-console.log('Before production deploy: npm run check:release')
+console.log('S0 production gate (env only, no remote smoke): npm run s0:gate')
+console.log('Stricter release (local + prod env rules): npm run check:release')
+console.log('CN merchants before Path B: npm run check:release:billing')
 console.log('After Vercel deploy: APP_URL=https://… npm run deploy:check')
