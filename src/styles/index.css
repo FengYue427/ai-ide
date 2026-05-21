@@ -2,6 +2,7 @@
 @import './base.css';
 @import './toolbar.css';
 @import './workspace.css';
+@import './workspace-manager.css';
 @import './editor.css';
 @import './panels.css';
 @import './chat.css';

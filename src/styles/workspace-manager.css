@@ -1,0 +1,231 @@
+/* Workspace Manager modal */
+.wm-modal {
+  width: min(920px, 96vw);
+  max-height: 88vh;
+}
+
+.wm-modal-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.wm-body {
+  display: grid;
+  gap: var(--space-4);
+  overflow-y: auto;
+}
+
+.wm-panel {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.wm-panel--hero {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), transparent 72%);
+}
+
+.wm-panel--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.wm-hero-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.wm-hero-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.wm-backup-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wm-backup-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.wm-backup-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.wm-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wm-form-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.wm-form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.wm-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.wm-input:focus {
+  border-color: var(--accent-color);
+}
+
+.wm-search-wrap {
+  position: relative;
+}
+
+.wm-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.wm-search-input {
+  padding-left: 38px;
+}
+
+.wm-state-panel {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.wm-state-panel--loading {
+  padding: var(--space-6);
+}
+
+.wm-state-panel--empty {
+  padding: 48px var(--space-6);
+}
+
+.wm-empty-icon {
+  margin-bottom: var(--space-3);
+  opacity: 0.5;
+}
+
+.wm-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.wm-empty-desc {
+  font-size: 13px;
+}
+
+.wm-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.wm-card-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.wm-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.wm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--space-2);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.wm-badge--cloud {
+  background: color-mix(in srgb, #3b82f6 18%, transparent);
+  color: #60a5fa;
+}
+
+.wm-badge--local {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.wm-card-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: var(--space-2);
+}
+
+.wm-card-meta {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.wm-card-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wm-card-meta-theme {
+  text-transform: uppercase;
+}
+
+.wm-card-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.wm-btn-icon-gap {
+  margin-right: 6px;
+}
+
+.wm-file-input-hidden {
+  display: none;
+}
+
+.wm-import-label {
+  cursor: pointer;
+}
+
+.wm-flash-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

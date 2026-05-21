@@ -47,7 +47,7 @@
 | 会话过期 | `apiFetch` 401 → 清会话 + 登录弹窗 | ✅ |
 | P0 生产冒烟 | [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) | 🔄 |
 | P2 样式债（Settings/Chat） | `settings.css` + `QuotaIndicator` + `chat.css` 扩展 | ✅ |
-| P2 样式债（Workspace） | `workspace-manager.css` 迁移 | ⏳ |
+| P2 样式债（Workspace） | `workspace-manager.css` 迁移 | ✅ |
 
 **IDE 能力**（IDE-1/2/3 基础已完成，见 [IDE_GAP_CHECKLIST.md](./IDE_GAP_CHECKLIST.md)）。
 
