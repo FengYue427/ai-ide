@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldUseNeonAdapter } from './prisma'
+import { sanitizeDatabaseUrl, shouldUseNeonAdapter } from './prisma'
 
 describe('shouldUseNeonAdapter', () => {
   it('uses default driver for local CI postgres', () => {
@@ -14,5 +14,14 @@ describe('shouldUseNeonAdapter', () => {
         'postgresql://user:pass@ep-abc-123.us-east-2.aws.neon.tech/neondb?sslmode=require',
       ),
     ).toBe(true)
+  })
+})
+
+describe('sanitizeDatabaseUrl', () => {
+  it('removes channel_binding query param', () => {
+    const url =
+      'postgresql://u:p@ep-x.aws.neon.tech/db?sslmode=require&channel_binding=require'
+    expect(sanitizeDatabaseUrl(url)).not.toContain('channel_binding')
+    expect(sanitizeDatabaseUrl(url)).toContain('sslmode=require')
   })
 })

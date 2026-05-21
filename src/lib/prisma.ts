@@ -1,17 +1,26 @@
-import { PrismaNeon } from '@prisma/adapter-neon'
+import { PrismaNeonHTTP } from '@prisma/adapter-neon'
 import { PrismaClient } from '@prisma/client'
-import { neonConfig } from '@neondatabase/serverless'
-import ws from 'ws'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-/** Neon serverless URLs need the WebSocket driver on Vercel. Standard Postgres uses the default engine. */
+/** Neon serverless URLs use the HTTP driver on Vercel (WebSocket/ws crashes serverless). */
 export function shouldUseNeonAdapter(connectionString: string): boolean {
   if (process.env.USE_NEON_DRIVER === 'true') return true
   if (process.env.USE_NEON_DRIVER === 'false') return false
   return /neon\.tech/i.test(connectionString)
+}
+
+/** channel_binding breaks some serverless drivers — strip for Neon HTTP. */
+export function sanitizeDatabaseUrl(connectionString: string): string {
+  try {
+    const url = new URL(connectionString)
+    url.searchParams.delete('channel_binding')
+    return url.toString()
+  } catch {
+    return connectionString.replace(/[&?]channel_binding=[^&]*/gi, '').replace(/\?&/, '?')
+  }
 }
 
 function createPrismaClient(): PrismaClient {
@@ -21,8 +30,7 @@ function createPrismaClient(): PrismaClient {
   }
 
   if (shouldUseNeonAdapter(connectionString)) {
-    neonConfig.webSocketConstructor = ws
-    const adapter = new PrismaNeon({ connectionString })
+    const adapter = new PrismaNeonHTTP(sanitizeDatabaseUrl(connectionString), {})
     return new PrismaClient({ adapter })
   }
 
@@ -36,7 +44,7 @@ export function getPrisma(): PrismaClient {
   return globalForPrisma.prisma
 }
 
-/** Lazy Prisma client — Neon adapter on Neon URLs; default driver for local/CI Postgres. */
+/** Lazy Prisma client — Neon HTTP on Neon URLs; default driver for local/CI Postgres. */
 export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   get(_target, prop) {
     const client = getPrisma()
