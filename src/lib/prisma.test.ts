@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sanitizeDatabaseUrl, shouldUseNeonAdapter } from './prisma'
+import { sanitizeDatabaseUrl, shouldUseNeonAdapter } from './dbUrl'
 
 describe('shouldUseNeonAdapter', () => {
   it('uses default driver for local CI postgres', () => {

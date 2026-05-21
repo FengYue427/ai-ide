@@ -1,18 +1,30 @@
 /**
  * Health check for uptime monitors and post-deploy smoke tests.
  * GET /api/health — no auth required.
+ *
+ * Uses @neondatabase/serverless HTTP for Neon (no Prisma import — smaller Vercel bundle).
  */
+import { neon } from '@neondatabase/serverless'
 import { buildHealthCheck } from '../healthStatus'
 import { jsonResponse } from '../http'
 import { getBillingCapabilities } from '../../billing/billingMode'
-import { prisma } from '../../../src/lib/prisma'
+import { sanitizeDatabaseUrl, shouldUseNeonAdapter } from '../../../src/lib/dbUrl'
 
 export async function GET(_req: Request) {
   const billing = getBillingCapabilities()
+  const dbUrl = process.env.DATABASE_URL?.trim()
+
   const { payload, statusCode } = await buildHealthCheck({
     version: process.env.npm_package_version ?? '1.0.0-rc.1',
-    hasDatabaseUrl: Boolean(process.env.DATABASE_URL?.trim()),
+    hasDatabaseUrl: Boolean(dbUrl),
     pingDatabase: async () => {
+      if (!dbUrl) throw new Error('DATABASE_URL not set')
+      if (shouldUseNeonAdapter(dbUrl)) {
+        const sql = neon(sanitizeDatabaseUrl(dbUrl))
+        await sql`SELECT 1`
+        return
+      }
+      const { prisma } = await import('../../../src/lib/prisma')
       await prisma.$queryRaw`SELECT 1`
     },
     billing: {

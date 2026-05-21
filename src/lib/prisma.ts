@@ -1,26 +1,11 @@
 import { PrismaNeonHTTP } from '@prisma/adapter-neon'
 import { PrismaClient } from '@prisma/client'
+import { sanitizeDatabaseUrl, shouldUseNeonAdapter } from './dbUrl'
+
+export { sanitizeDatabaseUrl, shouldUseNeonAdapter } from './dbUrl'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
-}
-
-/** Neon serverless URLs use the HTTP driver on Vercel (WebSocket/ws crashes serverless). */
-export function shouldUseNeonAdapter(connectionString: string): boolean {
-  if (process.env.USE_NEON_DRIVER === 'true') return true
-  if (process.env.USE_NEON_DRIVER === 'false') return false
-  return /neon\.tech/i.test(connectionString)
-}
-
-/** channel_binding breaks some serverless drivers — strip for Neon HTTP. */
-export function sanitizeDatabaseUrl(connectionString: string): string {
-  try {
-    const url = new URL(connectionString)
-    url.searchParams.delete('channel_binding')
-    return url.toString()
-  } catch {
-    return connectionString.replace(/[&?]channel_binding=[^&]*/gi, '').replace(/\?&/, '?')
-  }
 }
 
 function createPrismaClient(): PrismaClient {
