@@ -1,0 +1,127 @@
+.modal--collab {
+  width: min(620px, 92vw);
+}
+
+.collab-hero {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), transparent 75%);
+}
+
+.collab-hero__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.collab-hero__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.collab-beta-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--warning-color) 16%, transparent);
+  color: var(--warning-color);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.collab-hero__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.collab-limits {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--warning-color) 28%, var(--border-color));
+  background: color-mix(in srgb, var(--warning-color) 8%, transparent);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.collab-panel {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.collab-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.collab-form-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+}
+
+.collab-hint {
+  margin-top: var(--space-2);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.collab-copy-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+}
+
+.collab-room-id {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.collab-members-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.collab-members {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.collab-member {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.collab-member-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.collab-member-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.collab-leave-btn {
+  border-color: color-mix(in srgb, var(--danger-color) 40%, var(--border-color)) !important;
+  color: var(--danger-color) !important;
+}

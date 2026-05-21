@@ -49,7 +49,7 @@ const tabs: { id: SettingTab; label: string; description: string; icon: React.Re
 const featureList = [
   { name: '代码审查', desc: 'AI 驱动的质量分析与建议', enabled: true, label: '已启用' as const },
   { name: '智能补全', desc: '辅助生成和补全常见代码片段', enabled: true, label: '已启用' as const },
-  { name: '实时协作', desc: '实验性房间与在线用户（不同步编辑器）', enabled: true, label: '实验性' as const },
+  { name: '实时协作', desc: 'Yjs + WebRTC 房间同步（Beta，非生产级 OT）', enabled: true, label: 'Beta' as const },
   { name: '性能分析', desc: '查看运行输出和性能趋势', enabled: true, label: '已启用' as const },
   { name: 'MCP 工具', desc: 'Agent 可调用外部 Streamable HTTP MCP', enabled: true, label: '实验性' as const },
 ]
@@ -309,7 +309,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     </div>
                     <span
                       className={`settings-badge ${
-                        feature.label === '实验性'
+                        feature.label === '实验性' || feature.label === 'Beta'
                           ? 'settings-badge--experimental'
                           : feature.enabled
                             ? 'settings-badge--enabled'

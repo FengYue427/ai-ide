@@ -49,6 +49,8 @@
 | P2 样式债（Settings/Chat） | `settings.css` + `QuotaIndicator` + `chat.css` 扩展 | ✅ |
 | P2 样式债（Workspace） | `workspace-manager.css` 迁移 | ✅ |
 | P2 Modal 统一 | 主要 Modal → `ModalShell` + `modals.css` | ✅ |
+| P3 Chat @ 上下文 | `mentionContextService` 注入 system prompt | ✅ |
+| P3 协作 Beta | `CollaborationPanel` 说明 + 设置页 Beta 标签 | ✅ |
 
 **IDE 能力**（IDE-1/2/3 基础已完成，见 [IDE_GAP_CHECKLIST.md](./IDE_GAP_CHECKLIST.md)）。
 

@@ -14,6 +14,7 @@ import { fetchAIQuota } from '../services/usageService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { QuotaIndicator } from './ui/QuotaIndicator'
 import { getActiveMentionQuery, insertMention } from '../lib/mentionQuery'
+import { buildMentionContextSection } from '../services/mentionContextService'
 import {
   appendProjectRules,
   collectRulesSources,
@@ -269,10 +270,18 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerate
             : `当前编辑器文件:\n\`\`\`\n${currentCode}\n\`\`\``
 
         const mcpSection = await buildMcpToolsPromptSection()
-        const agentSystemPrompt = await augmentWithSemanticContext(
+        let agentSystemPrompt = await augmentWithSemanticContext(
           applyProjectRules(workspaceSummary),
           textToSend,
         )
+        const mentionSection = buildMentionContextSection(
+          textToSend,
+          editorFiles,
+          projectIndexManager.getIndex(),
+        )
+        if (mentionSection) {
+          agentSystemPrompt = `${agentSystemPrompt}\n\n${mentionSection}`
+        }
         aiMessages = aiAgentService.buildMessages(
           textToSend,
           appendMcpToolsToPrompt(agentSystemPrompt, mcpSection),
@@ -297,6 +306,14 @@ ${currentCode}
         }
 
         systemPrompt = await augmentWithSemanticContext(applyProjectRules(systemPrompt), textToSend)
+        const mentionSection = buildMentionContextSection(
+          textToSend,
+          editorFiles,
+          projectIndexManager.getIndex(),
+        )
+        if (mentionSection) {
+          systemPrompt = `${systemPrompt}\n\n${mentionSection}`
+        }
 
         aiMessages = [
           { role: 'system' as const, content: systemPrompt },
@@ -394,7 +411,10 @@ ${currentCode}
   )
 
   const pickMention = (hit: IndexSearchHit) => {
-    const label = hit.type === 'symbol' ? `${hit.name}` : hit.path
+    const label =
+      hit.type === 'symbol' && hit.path
+        ? `${hit.path}#${hit.name}`
+        : hit.path || hit.name
     const cursor = inputRef.current?.selectionStart ?? input.length
     const next = insertMention(input, cursor, label)
     setInput(next.text)
@@ -626,7 +646,9 @@ ${currentCode}
             ref={inputRef}
             className="chat-input chat-input--composer"
             placeholder={
-              isConfigured ? '输入消息；@ 提及符号/文件；Enter 发送' : '请先配置 API Key 或本地 Ollama'
+              isConfigured
+                ? '输入消息；@ 文件或符号（会注入上下文）；Enter 发送'
+                : '请先配置 API Key 或本地 Ollama'
             }
             value={input}
             onChange={handleInputChange}

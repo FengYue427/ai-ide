@@ -1,7 +1,7 @@
 /** Returns the @-mention query before the cursor, or null if not in a mention. */
 export function getActiveMentionQuery(text: string, cursor: number): string | null {
   const head = text.slice(0, cursor)
-  const match = head.match(/@([\w./-]*)$/)
+  const match = head.match(/@([\w./#:-]*)$/)
   return match ? match[1] : null
 }
 
@@ -13,7 +13,7 @@ export function insertMention(
 ): { text: string; cursor: number } {
   const head = text.slice(0, cursor)
   const tail = text.slice(cursor)
-  const match = head.match(/@([\w./-]*)$/)
+  const match = head.match(/@([\w./#:-]*)$/)
   if (!match) return { text, cursor }
 
   const before = head.slice(0, head.length - match[0].length)

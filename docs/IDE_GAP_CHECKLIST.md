@@ -61,6 +61,7 @@
 | C3 | **Composer 多文件** | 强 | Agent + `agentApplyService` 确认应用 | Diff 预览 + 部分接受 | ✅ IDE-1 基础 |
 | C4 | **Rules / 项目指令** | .cursorrules | `.aide/rules.md` 注入 + 设置中心编辑入口 | 设置 UI 编辑 | ✅ IDE-3 |
 | C5 | MCP 工具 | 有 | 代理 + 设置 + 自动跟进轮次 | MCP 客户端骨架 | 🔶 Phase IDE-3 |
+| C5b | **Chat @ 提及注入** | 有 | `@file` / `@path#symbol` → system prompt | 与索引联动 | ✅ P3 |
 | C6 | 后台 Agent | 有 | 无 | 长任务队列（需后端） | ⬜ |
 
 ---
@@ -85,7 +86,7 @@
 | E2 | 账号 + 云同步 | 有 | 有 API | 生产部署稳定 | 🚧 P0 |
 | E3 | 国内支付 | 无 | 骨架 | 沙箱 → 生产 | 🚧 P1 |
 | E4 | 插件市场 | VS Code | 沙箱示例 | 清单 + 安装流 | ⬜ |
-| E5 | 实时协作 | 有 | Yjs 实验 | 标注「实验」或加深 | 🔶 |
+| E5 | 实时协作 | 有 | Yjs + WebRTC Beta 文案 | 信令/冲突策略 | 🔶 Beta 已标注 |
 
 ---
 
