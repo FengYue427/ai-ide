@@ -1,18 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, Download, Link2, Trash2, Upload, X } from 'lucide-react'
+import { Check, Copy, Download, Link2, Trash2, Upload } from 'lucide-react'
 import { deleteShare, exportAsJson, generateShareUrl, getAllShares, importFromJson, saveShare } from '../services/shareService'
+import { ModalShell } from './ui/ModalShell'
 
 interface ShareModalProps {
   files: { name: string; content: string; language: string }[]
   onImport: (files: { name: string; content: string; language: string }[]) => void
   onClose: () => void
-}
-
-const surfaceStyle: React.CSSProperties = {
-  padding: '16px',
-  borderRadius: '16px',
-  border: '1px solid var(--border-color)',
-  background: 'var(--bg-primary)',
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => {
@@ -86,204 +80,140 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ width: '640px', maxWidth: '92vw' }} onClick={(event) => event.stopPropagation()}>
-        <div className="modal-header">
-          <span className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Link2 size={18} />
-            分享与导入
-          </span>
-          <div className="modal-close" onClick={onClose}>
-            <X size={18} />
-          </div>
+    <ModalShell
+      className="modal--share"
+      bodyClassName="modal-body--stack"
+      ariaLabel="分享与导入"
+      title={
+        <span className="modal-title-row">
+          <Link2 size={18} />
+          分享与导入
+        </span>
+      }
+      onClose={onClose}
+      footer={
+        <button type="button" className="btn btn-secondary" onClick={onClose}>
+          关闭
+        </button>
+      }
+    >
+      <div className="share-hero">
+        <div className="share-hero__title">当前工作区快照</div>
+        <div className="share-hero__desc">
+          你可以生成分享链接、导出 JSON 备份，或者从历史快照与 JSON 文本恢复项目。
         </div>
-
-        <div className="modal-body" style={{ display: 'grid', gap: '16px' }}>
-          <div
-            style={{
-              ...surfaceStyle,
-              background: 'linear-gradient(135deg, rgba(124,156,255,0.10), transparent 75%)',
-            }}
-          >
-            <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>当前工作区快照</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              你可以生成分享链接、导出 JSON 备份，或者从历史快照与 JSON 文本恢复项目。
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-              <span className="status-pill">{files.length} 个文件</span>
-              <span className="status-pill">{totalChars.toLocaleString()} 字符</span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {[
-              { id: 'share', label: '创建分享' },
-              { id: 'history', label: '历史记录' },
-              { id: 'import', label: '导入 JSON' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as typeof activeTab)
-                  setError('')
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  borderRadius: '12px',
-                  border: `1px solid ${activeTab === tab.id ? 'color-mix(in srgb, var(--accent-color) 34%, var(--border-color))' : 'var(--border-color)'}`,
-                  background: activeTab === tab.id ? 'color-mix(in srgb, var(--accent-color) 10%, transparent)' : 'var(--bg-tertiary)',
-                  color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {activeTab === 'share' && (
-            <div style={{ display: 'grid', gap: '14px' }}>
-              <div style={surfaceStyle}>
-                {!shareUrl ? (
-                  <div style={{ display: 'grid', gap: '14px' }}>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                      生成一个本地分享快照链接，方便你稍后恢复，或分享给同一环境里的其他人使用。
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                      <button className="btn btn-primary" onClick={handleShare}>
-                        <Link2 size={14} style={{ marginRight: '6px' }} />
-                        生成分享链接
-                      </button>
-                      <button className="btn btn-secondary" onClick={handleExport}>
-                        <Download size={14} style={{ marginRight: '6px' }} />
-                        导出 JSON
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gap: '12px' }}>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>链接已生成，现在可以复制或重新生成。</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px' }}>
-                      <input
-                        type="text"
-                        value={shareUrl}
-                        readOnly
-                        style={{
-                          width: '100%',
-                          padding: '12px 14px',
-                          borderRadius: '12px',
-                          border: '1px solid var(--border-color)',
-                          background: 'var(--bg-secondary)',
-                          color: 'var(--text-primary)',
-                          fontSize: '13px',
-                        }}
-                      />
-                      <button className="btn btn-primary" onClick={handleCopy}>
-                        {copied ? <Check size={14} /> : <Copy size={14} />}
-                        <span style={{ marginLeft: '6px' }}>{copied ? '已复制' : '复制'}</span>
-                      </button>
-                    </div>
-                    <div>
-                      <button className="btn btn-secondary" onClick={handleShare}>
-                        重新生成
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'history' && (
-            <div style={{ display: 'grid', gap: '10px', maxHeight: '360px', overflow: 'auto' }}>
-              {shares.length === 0 ? (
-                <div style={{ ...surfaceStyle, textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                  还没有保存过分享快照。
-                </div>
-              ) : (
-                shares.map((share) => (
-                  <div
-                    key={share.id}
-                    style={{
-                      ...surfaceStyle,
-                      display: 'grid',
-                      gridTemplateColumns: '1fr auto',
-                      gap: '12px',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>{share.files.length} 个文件</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        {new Date(share.createdAt).toLocaleString()}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="btn btn-secondary" onClick={() => handleLoad(share.files)}>
-                        加载
-                      </button>
-                      <button className="btn btn-secondary" onClick={() => handleDelete(share.id)}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {activeTab === 'import' && (
-            <div style={{ display: 'grid', gap: '12px' }}>
-              <div style={surfaceStyle}>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '12px' }}>
-                  粘贴导出的 JSON 内容即可恢复项目。也支持通过 URL 参数 `?share=xxx` 进入分享恢复流程。
-                </div>
-                <textarea
-                  value={importText}
-                  onChange={(event) => setImportText(event.target.value)}
-                  placeholder='{"files":[{"name":"src/App.tsx","content":"..."}]}'
-                  style={{
-                    width: '100%',
-                    height: '160px',
-                    padding: '12px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    fontSize: '13px',
-                    fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-                    resize: 'vertical',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-
-              {error && (
-                <div style={{ padding: '10px 12px', borderRadius: '12px', background: 'rgba(248,81,73,0.1)', color: '#ff7b72', fontSize: '13px' }}>
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <button className="btn btn-primary" onClick={handleImport}>
-                  <Upload size={14} style={{ marginRight: '6px' }} />
-                  导入项目
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>
-            关闭
-          </button>
+        <div className="share-hero__meta">
+          <span className="status-pill">{files.length} 个文件</span>
+          <span className="status-pill">{totalChars.toLocaleString()} 字符</span>
         </div>
       </div>
-    </div>
+
+      <div className="share-tabs">
+        {[
+          { id: 'share' as const, label: '创建分享' },
+          { id: 'history' as const, label: '历史记录' },
+          { id: 'import' as const, label: '导入 JSON' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`share-tab ${activeTab === tab.id ? 'share-tab--active' : ''}`}
+            onClick={() => {
+              setActiveTab(tab.id)
+              setError('')
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'share' && (
+        <div className="share-stack">
+          <div className="modal-surface">
+            {!shareUrl ? (
+              <div className="import-stack">
+                <p className="share-hint">
+                  生成一个本地分享快照链接，方便你稍后恢复，或分享给同一环境里的其他人使用。
+                </p>
+                <div className="share-actions-row">
+                  <button type="button" className="btn btn-primary" onClick={handleShare}>
+                    <Link2 size={14} className="btn-icon-gap" />
+                    生成分享链接
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={handleExport}>
+                    <Download size={14} className="btn-icon-gap" />
+                    导出 JSON
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="import-stack">
+                <p className="share-hint">链接已生成，现在可以复制或重新生成。</p>
+                <div className="share-copy-row">
+                  <input type="text" className="form-input" value={shareUrl} readOnly />
+                  <button type="button" className="btn btn-primary" onClick={handleCopy}>
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    <span className="btn-icon-gap">{copied ? '已复制' : '复制'}</span>
+                  </button>
+                </div>
+                <button type="button" className="btn btn-secondary" onClick={handleShare}>
+                  重新生成
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="share-history-list">
+          {shares.length === 0 ? (
+            <div className="modal-surface share-empty">还没有保存过分享快照。</div>
+          ) : (
+            shares.map((share) => (
+              <div key={share.id} className="modal-surface share-history-item">
+                <div>
+                  <div className="share-history-title">{share.files.length} 个文件</div>
+                  <div className="share-history-time">{new Date(share.createdAt).toLocaleString()}</div>
+                </div>
+                <div className="share-history-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => handleLoad(share.files)}>
+                    加载
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={() => handleDelete(share.id)} title="删除">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === 'import' && (
+        <div className="share-stack">
+          <div className="modal-surface">
+            <p className="share-hint share-hint--spaced">
+              粘贴导出的 JSON 内容即可恢复项目。也支持通过 URL 参数 `?share=xxx` 进入分享恢复流程。
+            </p>
+            <textarea
+              className="share-code-textarea"
+              value={importText}
+              onChange={(event) => setImportText(event.target.value)}
+              placeholder='{"files":[{"name":"src/App.tsx","content":"..."}]}'
+            />
+          </div>
+
+          {error && <div className="alert-banner alert-banner--error">{error}</div>}
+
+          <button type="button" className="btn btn-primary" onClick={handleImport}>
+            <Upload size={14} className="btn-icon-gap" />
+            导入项目
+          </button>
+        </div>
+      )}
+    </ModalShell>
   )
 }
 
