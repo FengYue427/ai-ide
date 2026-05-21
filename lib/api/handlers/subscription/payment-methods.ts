@@ -1,9 +1,11 @@
 import { jsonResponse } from '../../http'
 import { getBillingCapabilities } from '../../../billing/billingMode'
+import { pricingNoteForPath, resolveBillingPath } from '../../../billing/billingPath'
 import { BILLING_PLANS, formatPlanPrice } from '../../../billing/plans'
 
 export async function GET() {
   const capabilities = getBillingCapabilities()
+  const billingPath = resolveBillingPath(capabilities)
   const plans = BILLING_PLANS.map((plan) => ({
     name: plan.name,
     displayName: plan.displayName,
@@ -18,11 +20,8 @@ export async function GET() {
   return jsonResponse({
     ...capabilities,
     cnReady,
-    pricingNote: cnReady
-      ? '支持支付宝、微信支付；专业版 ¥19/月，团队版 ¥49/月'
-      : capabilities.devMock
-        ? '开发模式：可一键模拟升级（未配置商户时）'
-        : '支付渠道未配置',
+    billingPath,
+    pricingNote: pricingNoteForPath(billingPath, capabilities),
     plans,
   })
 }

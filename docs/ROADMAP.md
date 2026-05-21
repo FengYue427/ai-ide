@@ -42,7 +42,7 @@
 
 ## 二、当前阶段
 
-**Phase 4 — 公测体验**（2026-05）：P2/P3 本轮目标 **已完成**；下一步见 [PLAN_NEXT_2026.md](./PLAN_NEXT_2026.md) 轨道 **P0'（上市门禁）**。
+**Phase 4 — 公测体验**（2026-05）：P2/P3 ✅；**P0'/P1** 代码门禁 ✅（见 [P0_P1_STATUS.md](./P0_P1_STATUS.md)）。下一步：**P4** 或生产 `deploy:check` + 法务审阅。
 
 **Phase 4 交付清单**：
 
@@ -51,7 +51,10 @@
 | E2E UI | `vite preview` + `e2e/helpers` 预填工作区 | ✅ |
 | 路径 A 计费 UX | 未接支付时公测横幅 +「查看套餐」+ 按钮「公测免费」 | ✅ |
 | 会话过期 | `apiFetch` 401 → 清会话 + 登录弹窗 | ✅ |
-| P0 生产冒烟 | [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) | 🔄 |
+| P0' 集成测试 + 安全基线 | `npm run p0:gate` | ✅ |
+| P0 生产冒烟 | [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) | 🔶 `APP_URL` + deploy:check |
+| P1 路径 A 公测计费 | `billingPath` + 公测文案 | ✅ |
+| P1 路径 B 骨架 | checkout / notify / dev simulate | ✅ 代码 |
 | P2 样式债（Settings/Chat） | `settings.css` + `QuotaIndicator` + `chat.css` 扩展 | ✅ |
 | P2 样式债（Workspace） | `workspace-manager.css` 迁移 | ✅ |
 | P2 Modal 统一 | 主要 Modal → `ModalShell` + `modals.css` | ✅ |
@@ -82,7 +85,8 @@
 | 层级 | 命令 | 何时跑 |
 |------|------|--------|
 | 快速 | `npm run test:local` | 每次改 TS |
-| 单元 | `npm run test:unit` | 同上（103 用例） |
+| 单元 | `npm run test:unit` | 同上（109 用例） |
+| P0' 门禁 | `npm run p0:gate` | 单测 + 集成 + security-baseline |
 | 构建 | `npm test` | PR / 合并前 |
 | API 全量 | `npm run test:integration:local` | DB 可用、发版前 |
 | 骨架 | `npm run check:skeleton` | 计费/路由变更后 |
@@ -128,6 +132,7 @@
 - [PLAN_NEXT_2026.md](./PLAN_NEXT_2026.md)
 - [LAUNCH_READINESS.md](./LAUNCH_READINESS.md)
 - [COMPETITIVE_BENCHMARK_2026.md](./COMPETITIVE_BENCHMARK_2026.md)
+- [P0_P1_STATUS.md](./P0_P1_STATUS.md)
 - [OPTIMIZATION_PLAN.md](./OPTIMIZATION_PLAN.md)
 
 ### 其它

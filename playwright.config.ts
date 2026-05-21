@@ -4,16 +4,14 @@ const uiPort = 4173
 const stackPort = 3000
 const isCi = !!process.env.CI
 
-/** CI: serve production build via preview (stable). Local: Vite dev server. */
-const uiWebServerCommand = isCi
-  ? `npx vite preview --host 127.0.0.1 --port ${uiPort} --strictPort`
-  : `npx vite --host 127.0.0.1 --port ${uiPort}`
+/** Always preview production build — matches CI and avoids dev-server flake on Windows. */
+const uiWebServerCommand = `npx vite preview --host 127.0.0.1 --port ${uiPort} --strictPort`
 
 export default defineConfig({
   testDir: 'e2e',
   timeout: 90_000,
   fullyParallel: true,
-  workers: isCi ? 2 : undefined,
+  workers: isCi ? 2 : 4,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
@@ -29,7 +27,7 @@ export default defineConfig({
         command: uiWebServerCommand,
         url: `http://127.0.0.1:${uiPort}`,
         reuseExistingServer: !isCi,
-        timeout: isCi ? 180_000 : 120_000,
+        timeout: 180_000,
       },
     },
     {

@@ -38,6 +38,14 @@ describe('billingMode', () => {
 
   it('never allows dev simulate in production', () => {
     process.env.NODE_ENV = 'production'
+    delete process.env.VERCEL_ENV
     expect(isDevPaymentSimulateAllowed()).toBe(false)
+  })
+
+  it('allows dev simulate when NODE_ENV is unset (local dev:api)', () => {
+    delete process.env.NODE_ENV
+    delete process.env.VERCEL_ENV
+    delete process.env.ALLOW_DEV_BILLING
+    expect(isDevPaymentSimulateAllowed()).toBe(true)
   })
 })

@@ -2,27 +2,9 @@
  * Verify DATABASE_URL connectivity (Prisma)
  * Usage: node scripts/check-db.mjs
  */
-import { readFileSync, existsSync } from 'fs'
-import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
+import { loadEnvLocal } from './load-env-local.mjs'
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const envPath = join(root, '.env.local')
-
-if (existsSync(envPath)) {
-  for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const t = line.trim()
-    if (!t || t.startsWith('#')) continue
-    const eq = t.indexOf('=')
-    if (eq === -1) continue
-    const key = t.slice(0, eq).trim()
-    let val = t.slice(eq + 1).trim()
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-      val = val.slice(1, -1)
-    }
-    process.env[key] = val
-  }
-}
+loadEnvLocal()
 
 const url = process.env.DATABASE_URL
 if (!url) {

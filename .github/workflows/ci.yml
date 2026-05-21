@@ -72,6 +72,10 @@ jobs:
         run: npm run test:integration:local
         env:
           SKIP_DB_SETUP: '1'
+          NODE_ENV: development
+
+      - name: Security baseline (P0')
+        run: node scripts/security-baseline.mjs
 
       - name: Upload API log on failure
         if: failure()

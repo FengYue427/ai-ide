@@ -9,8 +9,10 @@ import { spawn, spawnSync } from 'node:child_process'
 import { createWriteStream } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadEnvLocal } from './load-env-local.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+loadEnvLocal()
 const apiBase = (process.env.API_BASE || 'http://127.0.0.1:3001').replace(/\/$/, '')
 const skipDbSetup = process.env.SKIP_DB_SETUP === '1'
 
@@ -53,7 +55,7 @@ function startApiServer() {
       cwd: root,
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: true,
-      env: process.env,
+      env: { ...process.env, NODE_ENV: process.env.NODE_ENV || 'development' },
     })
 
     const logStream = createWriteStream(apiLogPath, { flags: 'a' })

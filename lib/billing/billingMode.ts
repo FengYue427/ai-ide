@@ -10,9 +10,12 @@ export function isDevBillingAllowed(): boolean {
 
 /** Simulate CN payment notify in dev/test (never production). */
 export function isDevPaymentSimulateAllowed(): boolean {
+  if (process.env.VERCEL_ENV === 'production') return false
   if (process.env.NODE_ENV === 'production') return false
   if (process.env.ALLOW_DEV_BILLING === 'true') return true
-  return process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+  const nodeEnv = process.env.NODE_ENV
+  if (!nodeEnv || nodeEnv === 'development' || nodeEnv === 'test') return true
+  return false
 }
 
 export type BillingCapabilities = {

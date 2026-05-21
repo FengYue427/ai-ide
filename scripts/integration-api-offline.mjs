@@ -61,8 +61,16 @@ async function run() {
 
   try {
     const subscription = await fetch(`${apiBase}/api/subscription`, { signal: AbortSignal.timeout(5000) })
-    if (subscription.status === 401) pass('subscription without auth', '401')
-    else fail('subscription without auth', `expected 401, got ${subscription.status}`)
+    if (subscription.ok) {
+      const json = await subscription.json()
+      if (json?.subscription?.plan === 'free') {
+        pass('subscription without auth', 'anonymous free plan')
+      } else {
+        fail('subscription without auth', `expected free plan, got ${json?.subscription?.plan}`)
+      }
+    } else {
+      fail('subscription without auth', `expected 200, got ${subscription.status}`)
+    }
   } catch (error) {
     fail('subscription without auth', error instanceof Error ? error.message : String(error))
   }

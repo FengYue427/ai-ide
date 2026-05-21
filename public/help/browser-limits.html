@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>浏览器能力说明 — AI IDE</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.7; color: #1a1a1a; }
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; }
+    th { background: #f8fafc; }
+    a { color: #2563eb; }
+    .muted { color: #666; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <p class="muted"><a href="/">← 返回 AI IDE</a></p>
+  <h1>浏览器版能力边界</h1>
+  <p class="muted">对标桌面 IDE（Cursor / VS Code）时，以下限制来自浏览器与 WebContainer 运行时。</p>
+
+  <h2>运行环境</h2>
+  <table>
+    <tr><th>能力</th><th>状态</th><th>说明</th></tr>
+    <tr><td>Node / npm 脚本</td><td>✅</td><td>WebContainer 内运行；首次需等待环境就绪</td></tr>
+    <tr><td>本机已安装的运行时</td><td>❌</td><td>无法直接调用系统 node/python</td></tr>
+    <tr><td>断点调试器</td><td>❌</td><td>请用终端输出与 console.log</td></tr>
+    <tr><td>大仓库</td><td>🔶</td><td>默认约 100 文件 / 10MB 上限</td></tr>
+  </table>
+
+  <h2>Git 与协作</h2>
+  <table>
+    <tr><th>能力</th><th>状态</th><th>说明</th></tr>
+    <tr><td>状态 / diff / 提交</td><td>✅</td><td>基于 isomorphic-git 与虚拟文件系统</td></tr>
+    <tr><td>实时协作</td><td>🔶 Beta</td><td>实验功能，无生产 SLA</td></tr>
+  </table>
+
+  <h2>AI</h2>
+  <p>对话与 API Key 由您选择的模型服务商直接处理；平台仅记录用量配额（不含对话正文）。</p>
+
+  <p class="muted">完整文档见仓库 <code>docs/BROWSER_LIMITATIONS.md</code>。</p>
+</body>
+</html>

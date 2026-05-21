@@ -16,6 +16,7 @@ const checks = [
   { name: 'health', path: '/api/health', expectOk: true },
   { name: 'session', path: '/api/auth/session', expectOk: true },
   { name: 'workspaces 401', path: '/api/workspaces', expectStatus: 401 },
+  { name: 'subscription anonymous', path: '/api/subscription', expectSubscriptionFree: true },
   { name: 'index', path: '/', expectOk: true },
 ]
 
@@ -29,19 +30,26 @@ for (const check of checks) {
     const ct = res.headers.get('content-type') || ''
     let detail = `HTTP ${res.status}`
 
+    let json = null
     if (ct.includes('application/json')) {
-      const json = await res.json()
+      json = await res.json()
       if (check.name === 'health') {
         const billing = json.billing ? ` billing=${JSON.stringify(json.billing)}` : ''
         detail = `${json.status} db=${json.database}${billing}`
       } else if (check.name === 'session') {
         detail = json.user ? `user=${json.user.email}` : 'anonymous'
+      } else if (check.expectSubscriptionFree) {
+        detail = json?.subscription?.plan === 'free' ? 'anonymous free plan' : `plan=${json?.subscription?.plan}`
       }
     }
 
-    const ok =
+    let ok =
       (check.expectOk && res.ok) ||
       (check.expectStatus !== undefined && res.status === check.expectStatus)
+
+    if (check.expectSubscriptionFree) {
+      ok = res.ok && json?.subscription?.plan === 'free'
+    }
 
     if (ok) {
       console.log(`✅ ${check.name} — ${detail}`)

@@ -209,6 +209,7 @@ async function run() {
   }
 
   // 7a2. CN payment simulate (dev only — full order + fulfill path)
+  let simulatedOrderId = null
   try {
     const { res, json } = await api('/api/payment/dev/simulate', {
       method: 'POST',
@@ -217,12 +218,26 @@ async function run() {
     if (res.status === 403) {
       pass('payment dev simulate', 'skipped (production-like env)')
     } else if (res.ok && json?.plan === 'enterprise') {
-      pass('payment dev simulate', 'enterprise')
+      simulatedOrderId = json.orderId || null
+      pass('payment dev simulate', `enterprise order=${json.outTradeNo || 'ok'}`)
     } else {
       fail('payment dev simulate', json?.error || `HTTP ${res.status}`)
     }
   } catch (e) {
     fail('payment dev simulate', e.message)
+  }
+
+  if (simulatedOrderId) {
+    try {
+      const { res, json } = await api(`/api/payment/orders/${simulatedOrderId}`)
+      if (res.ok && json?.order?.status === 'paid') {
+        pass('payment order GET', `paid ${json.order.planName}`)
+      } else {
+        fail('payment order GET', json?.error || `status=${json?.order?.status}`)
+      }
+    } catch (e) {
+      fail('payment order GET', e.message)
+    }
   }
 
   // 7b. Dev checkout (no Stripe)

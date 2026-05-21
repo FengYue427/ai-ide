@@ -31,6 +31,15 @@ function shouldNotifyUnauthorized(input: RequestInfo | URL): boolean {
   return !raw.includes('/api/auth/session') && !raw.includes('/api/auth/signin')
 }
 
+/** User-facing message for fetch failures (offline, DNS, CORS). */
+export function formatFetchError(error: unknown, fallback = '网络异常，请稍后重试'): string {
+  if (error instanceof TypeError && /fetch|network|Failed/i.test(error.message)) {
+    return '无法连接服务器，请检查网络后重试'
+  }
+  if (error instanceof Error && error.message.trim()) return error.message
+  return fallback
+}
+
 export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (!headers.has('X-Request-Id')) {

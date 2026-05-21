@@ -284,6 +284,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <a href="/legal/terms.html" target="_blank" rel="noreferrer">
             服务条款
           </a>
+          <a href="/help/browser-limits.html" target="_blank" rel="noreferrer">
+            浏览器能力说明
+          </a>
           <span>AI 对话与 API Key 由您选择的模型服务商直接处理。</span>
         </footer>
       </div>
