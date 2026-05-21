@@ -1,0 +1,12 @@
+{
+  "manifest": {
+    "id": "workspace-hints",
+    "name": "工作区提示",
+    "version": "1.0.0",
+    "description": "在工具栏显示当前打开文件数量（仅 UI 权限）",
+    "author": "AI IDE",
+    "entry": "main.js",
+    "permissions": ["ui"]
+  },
+  "source": "function activate(context) {\n  var count = context.files.getAll().length;\n  context.ui.addToolbarButton({\n    icon: 'folder',\n    label: '文件 ' + count,\n    onClick: function () {\n      context.ui.showModal('工作区', '当前编辑器中共有 ' + count + ' 个文件。');\n    },\n  });\n}"
+}

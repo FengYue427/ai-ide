@@ -168,7 +168,7 @@
 | Yjs + WebRTC 房间 | ★★★☆☆ | `collaborationService`、`useCollaborationSync` |
 | 与编辑器文件同步 | ★★★☆☆ | 基础已接，非生产级 OT |
 | 插件沙箱 | ★★★☆☆ | 示例 JSON + 单元测试 |
-| 插件市场 | ☆☆☆☆☆ | 未做 |
+| 插件市场 | ☆☆☆☆☆ → ★★☆☆☆ | 官方目录 M3（`pluginCatalogService`）；第三方与签名见 P4 |
 
 ### 3.8 UI/UX 与国际化
 

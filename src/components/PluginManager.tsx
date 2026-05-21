@@ -1,25 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, Check, ExternalLink, Plus, Puzzle, Trash2, X } from 'lucide-react'
+import { AlertCircle, Check, Download, ExternalLink, Plus, Puzzle, Trash2 } from 'lucide-react'
 import helloPluginExample from '../../examples/hello.plugin.json'
+import {
+  installCatalogEntry,
+  isPluginInstalled,
+  PLUGIN_CATALOG,
+} from '../services/pluginCatalogService'
 import { pluginManager, type Plugin } from '../services/pluginService'
 import { loadInstalledPluginPackages, saveInstalledPluginPackages } from '../services/pluginStorage'
+import { ModalShell } from './ui/ModalShell'
 
 interface PluginManagerProps {
   onClose: () => void
 }
 
-const panelStyle: React.CSSProperties = {
-  padding: '16px',
-  borderRadius: '16px',
-  border: '1px solid var(--border-color)',
-  background: 'var(--bg-primary)',
-}
+type PluginTab = 'installed' | 'market' | 'manual'
 
 const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
+  const [tab, setTab] = useState<PluginTab>('installed')
   const [plugins, setPlugins] = useState<Plugin[]>([])
   const [activeIds, setActiveIds] = useState<Set<string>>(new Set())
   const [newPluginJson, setNewPluginJson] = useState('')
-  const [showAddForm, setShowAddForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -32,35 +33,36 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     refreshState()
   }, [])
 
+  const installedIds = useMemo(() => plugins.map((plugin) => plugin.id), [plugins])
   const activeCount = useMemo(() => plugins.filter((plugin) => activeIds.has(plugin.id)).length, [plugins, activeIds])
 
+  const flash = (type: 'error' | 'success', text: string) => {
+    setError(type === 'error' ? text : null)
+    setSuccess(type === 'success' ? text : null)
+  }
+
   const togglePlugin = async (pluginId: string) => {
+    flash('success', '')
     setError(null)
-    setSuccess(null)
 
     if (activeIds.has(pluginId)) {
       pluginManager.deactivate(pluginId)
-      setSuccess('插件已停用。')
+      flash('success', '插件已停用。')
     } else {
       const activated = await pluginManager.activate(pluginId)
-      if (activated) {
-        setSuccess('插件已启用。')
-      } else {
-        setError('插件启用失败，请检查插件兼容性。')
-      }
+      flash('success', activated ? '插件已启用。' : '')
+      if (!activated) flash('error', '插件启用失败，请检查权限与兼容性。')
     }
-
     refreshState()
   }
 
   const handleAddPlugin = async () => {
     if (!newPluginJson.trim()) return
-
     setError(null)
     setSuccess(null)
     const result = await pluginManager.loadPlugin(newPluginJson)
     if (!result.ok) {
-      setError(result.error || '插件加载失败')
+      flash('error', result.error || '插件加载失败')
       return
     }
 
@@ -71,13 +73,27 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       without.push(JSON.parse(newPluginJson.trim()))
       await saveInstalledPluginPackages(without)
     } catch {
-      setError('插件已加载但未能写入本地存储')
+      flash('error', '插件已加载但未能写入本地存储')
+      return
     }
 
     refreshState()
-    setSuccess('插件已安装并通过沙箱校验。')
+    flash('success', '插件已安装并通过沙箱校验。')
     setNewPluginJson('')
-    setShowAddForm(false)
+    setTab('installed')
+  }
+
+  const handleInstallCatalog = async (entryId: string) => {
+    setError(null)
+    setSuccess(null)
+    const result = await installCatalogEntry(entryId)
+    if (!result.ok) {
+      flash('error', result.error || '安装失败')
+      return
+    }
+    refreshState()
+    flash('success', '已从插件市场安装，可在「已安装」中启用。')
+    setTab('installed')
   }
 
   const removePlugin = async (pluginId: string) => {
@@ -85,173 +101,205 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     const packages = await loadInstalledPluginPackages()
     await saveInstalledPluginPackages(packages.filter((item) => item.manifest.id !== pluginId))
     refreshState()
-    setSuccess('插件已移除。')
+    flash('success', '插件已移除。')
+  }
+
+  const renderPluginCard = (plugin: Plugin) => {
+    const isActive = activeIds.has(plugin.id)
+    return (
+      <div key={plugin.id} className={`plugins-panel ${isActive ? 'plugins-panel--active' : ''}`}>
+        <div className="plugins-row">
+          <div>
+            <div className="plugins-card-head">
+              <span className="plugins-card-title">{plugin.name}</span>
+              <span className="status-pill">v{plugin.version}</span>
+              {plugin.builtin && <span className="status-pill">内置</span>}
+              {isActive && <span className="status-pill" style={{ color: 'var(--success-color)' }}>运行中</span>}
+            </div>
+            <p className="plugins-card-desc">{plugin.description}</p>
+            {plugin.author && <div className="plugins-card-meta">作者：{plugin.author}</div>}
+            {plugin.manifest && (
+              <div className="plugins-card-meta" style={{ marginTop: 6 }}>
+                权限：{plugin.manifest.permissions.join(' · ')}
+              </div>
+            )}
+          </div>
+          <div className="plugins-card-actions">
+            <button
+              type="button"
+              className={isActive ? 'btn btn-secondary' : 'btn btn-primary'}
+              onClick={() => void togglePlugin(plugin.id)}
+            >
+              {isActive ? '停用' : '启用'}
+            </button>
+            {!plugin.builtin && (
+              <button type="button" className="btn btn-secondary" onClick={() => void removePlugin(plugin.id)}>
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ width: '860px', maxWidth: '96vw', maxHeight: '88vh' }} onClick={(event) => event.stopPropagation()}>
-        <div className="modal-header">
-          <span className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Puzzle size={18} />
-            插件管理
-          </span>
-          <div className="modal-close" onClick={onClose}>
-            <X size={18} />
-          </div>
-        </div>
-
-        <div className="modal-body" style={{ display: 'grid', gap: '16px', overflowY: 'auto' }}>
-          <div
-            style={{
-              ...panelStyle,
-              background: 'linear-gradient(135deg, rgba(245,158,11,0.10), transparent 70%)',
-            }}
-          >
-            <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '6px' }}>把 IDE 变成更贴合你工作方式的工具</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-              这里可以启用内置插件、加载外部扩展，并快速查看当前运行状态。适合把高频能力按自己的习惯拼起来。
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-              <span className="status-pill">{plugins.length} 个插件</span>
-              <span className="status-pill">{activeCount} 个启用中</span>
-            </div>
-          </div>
-
-          {(error || success) && (
-            <div
-              style={{
-                padding: '12px 14px',
-                borderRadius: '12px',
-                background: error ? 'rgba(248,81,73,0.10)' : 'rgba(51,197,142,0.10)',
-                color: error ? '#ff7b72' : '#33c58e',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              {error ? <AlertCircle size={16} /> : <Check size={16} />}
-              {error || success}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700 }}>已安装插件</div>
-            <button className="btn btn-secondary" onClick={() => setShowAddForm((value) => !value)}>
-              <Plus size={14} style={{ marginRight: '6px' }} />
-              {showAddForm ? '收起加载入口' : '加载新插件'}
-            </button>
-          </div>
-
-          {showAddForm && (
-            <div style={panelStyle}>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  粘贴插件 JSON（manifest.permissions + source 中的 activate）。安装前会做沙箱校验。
-                </div>
-                <textarea
-                  value={newPluginJson}
-                  onChange={(event) => setNewPluginJson(event.target.value)}
-                  placeholder='{"manifest":{...},"source":"function activate(context){...}"}'
-                  rows={8}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    fontSize: '12px',
-                    fontFamily: 'ui-monospace, monospace',
-                    resize: 'vertical',
-                  }}
-                />
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button type="button" className="btn btn-primary" onClick={() => void handleAddPlugin()}>
-                    安装插件
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setNewPluginJson(JSON.stringify(helloPluginExample, null, 2))}
-                  >
-                    加载示例
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {plugins.length === 0 ? (
-            <div style={{ ...panelStyle, textAlign: 'center', color: 'var(--text-secondary)' }}>
-              还没有可用插件。
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {plugins.map((plugin) => {
-                const isActive = activeIds.has(plugin.id)
-                return (
-                  <div
-                    key={plugin.id}
-                    style={{
-                      ...panelStyle,
-                      borderColor: isActive ? 'color-mix(in srgb, var(--accent-color) 34%, var(--border-color))' : 'var(--border-color)',
-                      background: isActive ? 'linear-gradient(135deg, rgba(124,156,255,0.08), transparent 82%)' : 'var(--bg-primary)',
-                    }}
-                  >
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'start' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '15px', fontWeight: 700 }}>{plugin.name}</span>
-                          <span className="status-pill">v{plugin.version}</span>
-                          {isActive && <span className="status-pill" style={{ color: '#33c58e' }}>运行中</span>}
-                        </div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '8px' }}>
-                          {plugin.description}
-                        </div>
-                        {plugin.author && (
-                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>作者：{plugin.author}</div>
-                        )}
-                        {plugin.manifest && (
-                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                            权限：{plugin.manifest.permissions.join(' · ')}
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <button className={isActive ? 'btn btn-secondary' : 'btn btn-primary'} onClick={() => togglePlugin(plugin.id)}>
-                          {isActive ? '停用' : '启用'}
-                        </button>
-                        {!plugin.builtin && (
-                          <button type="button" className="btn btn-secondary" onClick={() => void removePlugin(plugin.id)}>
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>插件系统 v1.0 · 实验功能</span>
+    <ModalShell
+      className="modal--plugins"
+      bodyClassName="modal-body--stack"
+      ariaLabel="插件管理"
+      title={
+        <span className="modal-title-row">
+          <Puzzle size={18} />
+          插件管理
+        </span>
+      }
+      onClose={onClose}
+      footer={
+        <>
+          <span className="plugins-footer-note">插件系统 v1.1 · 沙箱 + 官方目录</span>
           <a
-            href="https://github.com/your-repo/ai-ide-plugins"
+            href="https://github.com/FengYue427/ai-ide"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--accent-color)', fontSize: '13px', textDecoration: 'none' }}
+            className="plugins-footer-note"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent-color)', textDecoration: 'none' }}
           >
-            插件文档
+            仓库说明
             <ExternalLink size={13} />
           </a>
+        </>
+      }
+    >
+      <div className="plugins-hero">
+        <div className="plugins-hero__title">把 IDE 拼成更贴合你工作方式的工具</div>
+        <p className="plugins-hero__desc">
+          内置插件、官方市场目录与手动 JSON 安装。第三方插件在 Worker 沙箱中运行，并受权限令牌约束。
+        </p>
+        <div className="plugins-hero__meta">
+          <span className="status-pill">{plugins.length} 个已安装</span>
+          <span className="status-pill">{activeCount} 个运行中</span>
+          <span className="status-pill">{PLUGIN_CATALOG.length} 个市场条目</span>
         </div>
       </div>
-    </div>
+
+      {(error || success) && (
+        <div className={`alert-banner wm-flash-row alert-banner--${error ? 'error' : 'success'}`}>
+          {error ? <AlertCircle size={16} /> : <Check size={16} />}
+          {error || success}
+        </div>
+      )}
+
+      <div className="plugins-tabs">
+        {[
+          { id: 'installed' as const, label: '已安装' },
+          { id: 'market' as const, label: '插件市场' },
+          { id: 'manual' as const, label: '手动安装' },
+        ].map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`plugins-tab ${tab === item.id ? 'plugins-tab--active' : ''}`}
+            onClick={() => {
+              setTab(item.id)
+              setError(null)
+              setSuccess(null)
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'installed' && (
+        <div className="plugins-grid">
+          {plugins.length === 0 ? (
+            <div className="plugins-panel plugins-card-desc" style={{ textAlign: 'center' }}>
+              还没有插件。打开「插件市场」安装官方示例。
+            </div>
+          ) : (
+            plugins.map(renderPluginCard)
+          )}
+        </div>
+      )}
+
+      {tab === 'market' && (
+        <div className="plugins-grid">
+          {PLUGIN_CATALOG.map((entry) => {
+            const installed = isPluginInstalled(entry.id, installedIds)
+            return (
+              <div key={entry.id} className="plugins-panel">
+                <div className="plugins-row">
+                  <div>
+                    <div className="plugins-card-head">
+                      <span className="plugins-card-title">{entry.name}</span>
+                      <span className="plugins-market-badge">官方</span>
+                      <span className="status-pill">v{entry.version}</span>
+                    </div>
+                    <p className="plugins-card-desc">{entry.description}</p>
+                    <div className="plugins-card-meta">作者：{entry.author}</div>
+                    <div className="plugins-tags">
+                      {entry.tags.map((tag) => (
+                        <span key={tag} className="plugins-tag">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="plugins-card-meta" style={{ marginTop: 8 }}>
+                      权限：{entry.permissions.join(' · ')}
+                    </div>
+                  </div>
+                  <div className="plugins-card-actions">
+                    {installed ? (
+                      <span className="status-pill" style={{ color: 'var(--success-color)' }}>
+                        已安装
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => void handleInstallCatalog(entry.id)}
+                      >
+                        <Download size={14} className="btn-icon-gap" />
+                        安装
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {tab === 'manual' && (
+        <div className="plugins-panel">
+          <p className="plugins-card-desc" style={{ marginBottom: 12 }}>
+            粘贴插件 JSON（manifest + source）。开发环境可安装任意通过校验的包；生产环境默认禁用手动第三方 JSON。
+          </p>
+          <textarea
+            className="plugins-code"
+            value={newPluginJson}
+            onChange={(event) => setNewPluginJson(event.target.value)}
+            placeholder='{"manifest":{...},"source":"function activate(context){...}"}'
+            rows={10}
+          />
+          <div className="plugins-actions-row">
+            <button type="button" className="btn btn-primary" onClick={() => void handleAddPlugin()}>
+              <Plus size={14} className="btn-icon-gap" />
+              安装插件
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setNewPluginJson(JSON.stringify(helloPluginExample, null, 2))}
+            >
+              加载示例 JSON
+            </button>
+          </div>
+        </div>
+      )}
+    </ModalShell>
   )
 }
 

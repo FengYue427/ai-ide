@@ -170,6 +170,10 @@ class PluginManager {
     return this.activePlugins.has(pluginId)
   }
 
+  installPackage(pkg: PluginPackage): { ok: true } | { ok: false; error: string } {
+    return this.registerPackage(pkg)
+  }
+
   async loadPlugin(input: string): Promise<{ ok: boolean; error?: string }> {
     const trimmed = input.trim()
     if (!trimmed) return { ok: false, error: '请输入插件包 JSON' }
