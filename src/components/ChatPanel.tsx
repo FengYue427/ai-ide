@@ -12,7 +12,7 @@ import { getOldContentForPath } from '../services/fileApplyService'
 import { extractCodeBlocks, generateCodePrompt, sendMessage, type AIConfig, type QuotaCheck } from '../services/aiService'
 import { fetchAIQuota } from '../services/usageService'
 import { workspaceContextService } from '../services/workspaceContextService'
-import { formatQuotaLabel, quotaBarColor, quotaBarPercent } from '../lib/quotaDisplay'
+import { QuotaIndicator } from './ui/QuotaIndicator'
 import { getActiveMentionQuery, insertMention } from '../lib/mentionQuery'
 import {
   appendProjectRules,
@@ -442,207 +442,72 @@ ${currentCode}
   }
 
   return (
-    <div
-      className="chat-container"
-      style={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        background:
-          'radial-gradient(circle at top left, rgba(124,156,255,0.12), transparent 26%), linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 96%, transparent), color-mix(in srgb, var(--bg-primary) 94%, transparent))',
-        opacity: mounted ? 1 : 0,
-        transform: mounted ? 'translateX(0)' : 'translateX(10px)',
-        transition: 'all 0.35s ease-out',
-      }}
-    >
-      <div
-        style={{
-          padding: '14px',
-          borderBottom: '1px solid var(--border-color)',
-          display: 'grid',
-          gap: '10px',
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.03), transparent)',
-        }}
-      >
-        <div
-          style={{
-            padding: '14px',
-            borderRadius: '16px',
-            border: '1px solid var(--border-color)',
-            background: 'color-mix(in srgb, var(--bg-secondary) 88%, transparent)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+    <div className={`chat-container chat-panel ${mounted ? 'chat-panel--mounted' : ''}`}>
+      <div className="chat-panel-header">
+        <div className="chat-session-card">
+          <div className="chat-session-card__title">
             <Bot size={16} color="var(--accent-color)" />
-            <strong style={{ fontSize: '13px' }}>当前 AI 会话</strong>
+            <strong>当前 AI 会话</strong>
           </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ padding: '5px 8px', borderRadius: '999px', background: 'var(--bg-tertiary)', fontSize: '11px', color: 'var(--text-secondary)' }}>
-              {aiConfig.provider}
-            </span>
-            <span style={{ padding: '5px 8px', borderRadius: '999px', background: 'var(--bg-tertiary)', fontSize: '11px', color: 'var(--text-secondary)' }}>
-              {aiConfig.model || '未指定模型'}
-            </span>
-            <span
-              style={{
-                padding: '5px 8px',
-                borderRadius: '999px',
-                background: isConfigured ? 'color-mix(in srgb, var(--success-color) 16%, transparent)' : 'color-mix(in srgb, var(--warning-color) 16%, transparent)',
-                fontSize: '11px',
-                color: isConfigured ? 'var(--success-color)' : 'var(--warning-color)',
-              }}
-            >
+          <div className="chat-chips">
+            <span className="chat-chip">{aiConfig.provider}</span>
+            <span className="chat-chip">{aiConfig.model || '未指定模型'}</span>
+            <span className={`chat-chip ${isConfigured ? 'chat-chip--success' : 'chat-chip--warning'}`}>
               {isConfigured ? '已配置' : '待配置'}
             </span>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '10px' }}>
-          <div
-            style={{
-              padding: '12px 14px',
-              borderRadius: '14px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-primary)',
-            }}
-          >
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>今日用量</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ flex: 1, height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                <div
-                  style={{
-                    width: `${quotaBarPercent(quota.used, quota.limit)}%`,
-                    height: '100%',
-                    borderRadius: '999px',
-                    background: quotaBarColor(quota.used, quota.limit),
-                  }}
-                />
-              </div>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                {formatQuotaLabel(quota.used, quota.limit)}
-              </span>
-            </div>
-          </div>
+        <div className="chat-toolbar-row">
+          <QuotaIndicator quota={quota} label="今日用量" compact showPlan />
 
           <button
             type="button"
             onClick={() => setAgentMode((value) => !value)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '0 14px',
-              borderRadius: '14px',
-              border: `1px solid ${agentMode ? 'color-mix(in srgb, var(--accent-color) 34%, var(--border-color))' : 'var(--border-color)'}`,
-              background: agentMode ? 'color-mix(in srgb, var(--accent-color) 12%, transparent)' : 'var(--bg-primary)',
-              color: 'var(--text-primary)',
-              cursor: 'pointer',
-            }}
+            className={`chat-mode-btn ${agentMode ? 'chat-mode-btn--active' : ''}`}
             title="Agent 模式：自动解析多文件改动并写入编辑器"
           >
             <Zap size={14} color={agentMode ? 'var(--accent-color)' : 'var(--text-secondary)'} />
-            <span style={{ fontSize: '12px', fontWeight: 700 }}>Agent{agentMode ? ' 开' : ''}</span>
+            <span>Agent{agentMode ? ' 开' : ''}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setUseWorkspaceContext((value) => !value)}
             disabled={workspaceStats.selectedFiles === 0}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '0 14px',
-              borderRadius: '14px',
-              border: `1px solid ${useWorkspaceContext ? 'color-mix(in srgb, var(--accent-color) 34%, var(--border-color))' : 'var(--border-color)'}`,
-              background: useWorkspaceContext ? 'color-mix(in srgb, var(--accent-color) 12%, transparent)' : 'var(--bg-primary)',
-              color: workspaceStats.selectedFiles === 0 ? 'var(--text-secondary)' : 'var(--text-primary)',
-              cursor: workspaceStats.selectedFiles === 0 ? 'not-allowed' : 'pointer',
-              opacity: workspaceStats.selectedFiles === 0 ? 0.65 : 1,
-            }}
-            title={workspaceStats.selectedFiles === 0 ? '先在工作区中导入文件，才能启用完整上下文。' : `已选择 ${workspaceStats.selectedFiles} 个工作区文件`}
+            className={`chat-mode-btn ${useWorkspaceContext ? 'chat-mode-btn--active' : ''}`}
+            title={
+              workspaceStats.selectedFiles === 0
+                ? '先在工作区中导入文件，才能启用完整上下文。'
+                : `已选择 ${workspaceStats.selectedFiles} 个工作区文件`
+            }
           >
             <FolderOpen size={14} />
             <CheckSquare size={14} color={useWorkspaceContext ? 'var(--accent-color)' : 'var(--text-secondary)'} />
-            <span style={{ fontSize: '12px', fontWeight: 700 }}>工作区上下文{workspaceStats.selectedFiles > 0 ? ` (${workspaceStats.selectedFiles})` : ''}</span>
+            <span>工作区上下文{workspaceStats.selectedFiles > 0 ? ` (${workspaceStats.selectedFiles})` : ''}</span>
           </button>
         </div>
       </div>
 
-      <div
-        className="chat-messages"
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '14px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-        }}
-      >
+      <div className="chat-messages">
         {messages.map((message, index) => {
           const isAssistant = message.role === 'assistant'
           return (
-            <div
-              key={index}
-              style={{
-                display: 'flex',
-                justifyContent: isAssistant ? 'flex-start' : 'flex-end',
-                gap: '10px',
-                alignItems: 'flex-start',
-              }}
-            >
+            <div key={index} className={`chat-msg-row ${isAssistant ? '' : 'chat-msg-row--user'}`}>
               {isAssistant && (
-                <div
-                  style={{
-                    width: '30px',
-                    height: '30px',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'linear-gradient(135deg, rgba(124,156,255,0.22), rgba(168,85,247,0.18))',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    flexShrink: 0,
-                  }}
-                >
+                <div className="chat-msg-avatar chat-msg-avatar--assistant">
                   <Bot size={14} color="#c4b5fd" />
                 </div>
               )}
 
-              <div
-                style={{
-                  maxWidth: '92%',
-                  padding: '10px 12px',
-                  borderRadius: isAssistant ? '16px 16px 16px 8px' : '16px 16px 8px 16px',
-                  background: isAssistant
-                    ? 'linear-gradient(135deg, rgba(124,156,255,0.14), rgba(168,85,247,0.08))'
-                    : 'linear-gradient(135deg, rgba(51,197,142,0.18), rgba(51,197,142,0.08))',
-                  border: `1px solid ${isAssistant ? 'rgba(124,156,255,0.20)' : 'rgba(51,197,142,0.22)'}`,
-                  boxShadow: '0 10px 24px rgba(0,0,0,0.14)',
-                }}
-              >
+              <div className={`chat-msg-bubble ${isAssistant ? 'chat-msg-bubble--assistant' : 'chat-msg-bubble--user'}`}>
                 {message.content.split('\n').map((line, lineIndex) => (
-                  <div key={lineIndex} style={{ lineHeight: 1.55, fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
-                    {line || ' '}
-                  </div>
+                  <div key={lineIndex}>{line || ' '}</div>
                 ))}
               </div>
 
               {!isAssistant && (
-                <div
-                  style={{
-                    width: '30px',
-                    height: '30px',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'linear-gradient(135deg, rgba(51,197,142,0.22), rgba(51,197,142,0.12))',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    flexShrink: 0,
-                  }}
-                >
+                <div className="chat-msg-avatar chat-msg-avatar--user">
                   <User size={14} color="#5ee9b5" />
                 </div>
               )}
@@ -651,33 +516,14 @@ ${currentCode}
         })}
 
         {loading && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-            <div
-              style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'linear-gradient(135deg, rgba(124,156,255,0.22), rgba(168,85,247,0.18))',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
+          <div className="chat-loading-row">
+            <div className="chat-msg-avatar chat-msg-avatar--assistant">
               <Bot size={14} color="#c4b5fd" />
             </div>
-            <div
-              style={{
-                padding: '10px 12px',
-                borderRadius: '16px 16px 16px 8px',
-                background: 'linear-gradient(135deg, rgba(124,156,255,0.14), rgba(168,85,247,0.08))',
-                border: '1px solid rgba(124,156,255,0.20)',
-                boxShadow: '0 10px 24px rgba(0,0,0,0.14)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>思考中</span>
-                <span className="typing-dots" style={{ display: 'inline-flex', gap: '4px' }}>
+            <div className="chat-loading-bubble">
+              <div className="chat-loading-bubble__inner">
+                <span>思考中</span>
+                <span className="typing-dots">
                   <span className="dot" />
                   <span className="dot" />
                   <span className="dot" />
@@ -691,41 +537,18 @@ ${currentCode}
       </div>
 
       {pendingAgentChanges && pendingAgentChanges.length > 0 && onGenerateFiles ? (
-        <div
-          style={{
-            margin: '0 12px 8px',
-            padding: '10px 12px',
-            borderRadius: '12px',
-            border: '1px solid color-mix(in srgb, var(--accent-color) 35%, var(--border-color))',
-            background: 'color-mix(in srgb, var(--accent-color) 10%, transparent)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '10px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <div className="chat-agent-bar">
+          <span className="chat-agent-bar__text">
             Agent 建议修改 {pendingAgentChanges.length} 个文件：
             {pendingAgentChanges.map((c) => c.path).join('、')}
           </span>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={() => setPendingAgentChanges(null)}
-              style={{
-                padding: '6px 10px',
-                borderRadius: '8px',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-primary)',
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
+          <div className="chat-agent-bar__actions">
+            <button type="button" className="chat-btn-ghost" onClick={() => setPendingAgentChanges(null)}>
               忽略
             </button>
             <button
               type="button"
+              className="chat-btn-ghost"
               onClick={() => {
                 setAgentApplyQueue(
                   pendingAgentChanges.map((change) => ({
@@ -738,20 +561,12 @@ ${currentCode}
                 setShowAgentApplyModal(true)
                 setPendingAgentChanges(null)
               }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-primary)',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
             >
               预览变更
             </button>
             <button
               type="button"
+              className="chat-btn-primary-sm"
               onClick={() => {
                 onGenerateFiles(
                   pendingAgentChanges.map((change) => ({
@@ -762,16 +577,6 @@ ${currentCode}
                 )
                 setPendingAgentChanges(null)
               }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: 'none',
-                background: 'var(--accent-color)',
-                color: '#fff',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
             >
               直接应用
             </button>
@@ -779,35 +584,14 @@ ${currentCode}
         </div>
       ) : null}
 
-      <div
-        style={{
-          padding: '10px 12px',
-          borderTop: '1px solid var(--border-color)',
-          display: 'flex',
-          gap: '8px',
-          flexWrap: 'wrap',
-          background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.08))',
-        }}
-      >
+      <div className="chat-quick-actions">
         {quickActions.map((action) => (
           <button
             key={action.label}
+            type="button"
+            className="chat-quick-btn"
             onClick={action.action}
             disabled={loading || !isConfigured}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 10px',
-              borderRadius: '10px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-primary)',
-              color: 'var(--text-secondary)',
-              cursor: loading || !isConfigured ? 'not-allowed' : 'pointer',
-              opacity: loading || !isConfigured ? 0.6 : 1,
-              fontSize: '12px',
-              fontWeight: 700,
-            }}
           >
             <action.icon size={14} />
             {action.label}
@@ -815,52 +599,15 @@ ${currentCode}
         ))}
       </div>
 
-      <div
-        className="chat-input-area"
-        style={{
-          padding: '12px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          borderTop: '1px solid var(--border-color)',
-          background: 'linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.12))',
-        }}
-      >
+      <div className="chat-input-area chat-input-area--stacked">
         {mentionHits.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2px',
-              padding: '6px',
-              borderRadius: '10px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-primary)',
-              maxHeight: '160px',
-              overflow: 'auto',
-            }}
-          >
+          <div className="chat-mention-list">
             {mentionHits.map((hit, index) => (
               <button
                 key={`${hit.type}-${hit.path}-${hit.name}-${hit.line ?? 0}`}
                 type="button"
+                className={`chat-mention-item ${index === mentionIndex ? 'chat-mention-item--active' : ''}`}
                 onClick={() => pickMention(hit)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '6px 8px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background:
-                    index === mentionIndex
-                      ? 'color-mix(in srgb, var(--accent-color) 16%, transparent)'
-                      : 'transparent',
-                  color: 'var(--text-primary)',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
               >
                 <span style={{ opacity: 0.7 }}>{hit.type === 'symbol' ? '◎' : '📄'}</span>
                 <span>{hit.type === 'symbol' ? hit.name : hit.path}</span>
@@ -874,10 +621,10 @@ ${currentCode}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+        <div className="chat-input-row">
           <textarea
             ref={inputRef}
-            className="chat-input"
+            className="chat-input chat-input--composer"
             placeholder={
               isConfigured ? '输入消息；@ 提及符号/文件；Enter 发送' : '请先配置 API Key 或本地 Ollama'
             }
@@ -886,63 +633,18 @@ ${currentCode}
             onKeyDown={handleKeyDown}
             disabled={!isConfigured || loading}
             rows={1}
-            style={{
-              flex: 1,
-              resize: 'none',
-              padding: '12px 14px',
-              borderRadius: '14px',
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-primary)',
-              fontSize: '13px',
-              lineHeight: 1.5,
-              minHeight: '44px',
-              maxHeight: '120px',
-              outline: 'none',
-              opacity: !isConfigured || loading ? 0.7 : 1,
-            }}
           />
           <button
-            className="chat-send"
+            type="button"
+            className="chat-send chat-send--square"
             onClick={() => handleSend()}
             disabled={!isConfigured || loading || !input.trim()}
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: !isConfigured || loading || !input.trim() ? 'var(--bg-tertiary)' : 'var(--accent-color)',
-              border: '1px solid transparent',
-              color: !isConfigured || loading || !input.trim() ? 'var(--text-secondary)' : '#fff',
-              cursor: !isConfigured || loading || !input.trim() ? 'not-allowed' : 'pointer',
-              opacity: !isConfigured || loading || !input.trim() ? 0.6 : 1,
-            }}
           >
             <Send size={16} />
           </button>
         </div>
       </div>
 
-      <style>{`
-        .typing-dots .dot {
-          width: 5px;
-          height: 5px;
-          border-radius: 999px;
-          background: rgba(199, 210, 254, 0.9);
-          display: inline-block;
-          animation: typingDot 1.1s infinite ease-in-out;
-        }
-
-        .typing-dots .dot:nth-child(2) { animation-delay: 0.15s; }
-        .typing-dots .dot:nth-child(3) { animation-delay: 0.3s; }
-
-        @keyframes typingDot {
-          0%, 80%, 100% { transform: translateY(0); opacity: 0.55; }
-          40% { transform: translateY(-3px); opacity: 1; }
-        }
-      `}</style>
     </div>
   )
 }

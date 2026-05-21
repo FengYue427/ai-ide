@@ -25,6 +25,8 @@ export function allowOfflineAuthFallback(): boolean {
 class AuthService {
   private currentUser: User | null = null
   private listeners: ((user: User | null) => void)[] = []
+  private sessionExpiredHandler: (() => void) | null = null
+  private handlingExpiry = false
 
   constructor() {
     // 初始化时从 unifiedStorage 恢复（缓存）
@@ -255,6 +257,28 @@ class AuthService {
       return { success: false, error: data?.error || 'OAuth 登录同步失败' }
     } catch {
       return { success: false, error: '无法连接服务器，请稍后重试' }
+    }
+  }
+
+  onSessionExpired(handler: (() => void) | null): void {
+    this.sessionExpiredHandler = handler
+  }
+
+  /** JWT/cookie expired — clear local session without calling signout API. */
+  async handleSessionExpired(): Promise<void> {
+    if (this.handlingExpiry) return
+    this.handlingExpiry = true
+    try {
+      if (!this.currentUser) {
+        const cached = await unifiedStorage.get<Session | null>(USER_KEY, null)
+        if (!cached?.user) return
+      }
+      this.currentUser = null
+      await unifiedStorage.set(USER_KEY, null, { layer: StorageLayer.LOCAL })
+      this.notifyListeners()
+      this.sessionExpiredHandler?.()
+    } finally {
+      this.handlingExpiry = false
     }
   }
 

@@ -13,6 +13,7 @@ import { useCollaborationSync } from '../hooks/useCollaborationSync'
 import { useGitStatus } from '../hooks/useGitStatus'
 import { useMcpBootstrap } from '../hooks/useMcpBootstrap'
 import { useProjectIndexSync } from '../hooks/useProjectIndexSync'
+import { useSessionGuard } from '../hooks/useSessionGuard'
 import { useWorkspacePersistence } from '../hooks/useWorkspacePersistence'
 import { useIDEStore } from '../store/ideStore'
 import { AppToolbar } from './AppToolbar'
@@ -87,6 +88,7 @@ export function AppShell() {
   } = useWebContainer()
 
   useAppBootstrap()
+  useSessionGuard(notify)
   useMcpBootstrap()
   useProjectIndexSync()
   const gitStatus = useGitStatus(fs, files)

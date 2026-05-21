@@ -96,7 +96,7 @@
 | F1 | `vercel.json` 不吞 `/api/*` | ✅ |
 | F2 | Vercel `APP_URL` + health JSON | 🔶 (`npm run deploy:check`) |
 | F3 | `test:integration:local` 全绿 | 🔶 |
-| F4 | E2E 欢迎页/订阅回归 | 🔶（命令面板 placeholder 已对齐） |
+| F4 | E2E 欢迎页/订阅回归 | ✅（`e2e/helpers` + CI preview） |
 
 ---
 

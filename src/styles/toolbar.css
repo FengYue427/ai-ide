@@ -127,6 +127,24 @@
   padding: 0;
 }
 
+.toolbar-upgrade-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.toolbar-upgrade-btn:hover {
+  filter: brightness(1.05);
+}
+
 .toolbar-kbd {
   padding: 2px 6px;
   border-radius: 6px;

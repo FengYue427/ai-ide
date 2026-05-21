@@ -38,20 +38,20 @@
 
 ## 二、当前阶段（执行中）
 
-**IDE 能力追赶**（见 [IDE_GAP_CHECKLIST.md](./IDE_GAP_CHECKLIST.md)）：
+**Phase 4 — 公测体验与发布收尾**（2026-05）：
 
-- **IDE-1**：项目索引、命令面板 `@`、Agent 确认应用
-- **IDE-2**：侧栏大纲、F12 跨文件、`.aide/rules`、Chat `@` 补全
+| 项 | 说明 | 状态 |
+|----|------|------|
+| E2E UI | `vite preview` + `e2e/helpers` 预填工作区 | ✅ |
+| 路径 A 计费 UX | 未接支付时公测横幅 +「查看套餐」+ 按钮「公测免费」 | ✅ |
+| 会话过期 | `apiFetch` 401 → 清会话 + 登录弹窗 | ✅ |
+| P0 生产冒烟 | [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) | 🔄 |
+| P2 样式债（Settings/Chat） | `settings.css` + `QuotaIndicator` + `chat.css` 扩展 | ✅ |
+| P2 样式债（Workspace） | `workspace-manager.css` 迁移 | ⏳ |
 
-对应 [OPTIMIZATION_PLAN.md](./OPTIMIZATION_PLAN.md) **轨道 P0**：
+**IDE 能力**（IDE-1/2/3 基础已完成，见 [IDE_GAP_CHECKLIST.md](./IDE_GAP_CHECKLIST.md)）。
 
-| 项 | 说明 |
-|----|------|
-| 集成测试本地绿线 | `npm run db:neon` → `npm run dev:stack` → `npm run test:integration:local` |
-| Vercel 生产 | [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) |
-| E2E 回归 | UI class 化后跑 `npm run test:e2e` |
-
-**商业化**：商户未接时走 **路径 A（内测不收款）** 或 **路径 B（CN_PAYMENT_SETUP）** — 见优化规划 §4。
+**商业化**：商户未接时默认 **路径 A（内测不收款）**；接商户后走 **路径 B** — [CN_PAYMENT_SETUP.md](./CN_PAYMENT_SETUP.md)。
 
 ---
 
@@ -59,7 +59,7 @@
 
 | 阶段 | 目标 | 状态 |
 |------|------|------|
-| **A** 本地与 CI 打绿 | 全栈测试与 CI 一致 | 🔄 执行中（P0） |
+| **A** 本地与 CI 打绿 | 全栈测试与 CI 一致 | 🔄 E2E UI ✅；integration 待绿 |
 | **B** Vercel 生产 | 真实注册 + 云工作区 | ⏳ 待 P0 |
 | **C** 产品闭环 | 文档/UI/配额与实现一致 | 大部分 ✅，见分析文档 |
 | **D** 商业化就绪 | 国内支付或 Stripe live | ⏳ 待决策（P1） |

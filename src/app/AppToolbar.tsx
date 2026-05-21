@@ -188,26 +188,16 @@ export function AppToolbar({
         </button>
       )}
 
-      {currentUser && currentPlan !== 'enterprise' && (
-        <button
-          type="button"
-          onClick={onOpenSubscription}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 12px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            border: 'none',
-            borderRadius: '10px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            color: 'white',
-            fontWeight: 500,
-          }}
-        >
+      {currentPlan !== 'enterprise' && (
+        <button type="button" onClick={onOpenSubscription} className="toolbar-upgrade-btn">
           <Zap size={14} />
-          <span>{currentPlan === 'free' ? '升级套餐 ¥19起' : '升级团队版'}</span>
+          <span>
+            {!currentUser
+              ? '查看套餐'
+              : currentPlan === 'free'
+                ? '升级套餐 ¥19起'
+                : '升级团队版'}
+          </span>
         </button>
       )}
 

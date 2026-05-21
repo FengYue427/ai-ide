@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Building2, Check, Crown, Loader2, Zap } from 'lucide-react'
+import { BETA_BILLING_NOTE, hasCheckoutPayment } from '../../lib/billing/checkout'
 import { readJsonResponse } from '../services/apiUtils'
 import { authService } from '../services/authService'
 import { subscriptionService } from '../services/subscriptionService'
@@ -173,6 +174,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
   }, [])
 
   const currentPlanInfo = useMemo(() => plans.find((plan) => plan.name === currentPlan), [plans, currentPlan])
+  const checkoutAvailable = hasCheckoutPayment(paymentMethods)
 
   const handleSubscribe = async (planId: string, planName: string) => {
     if (planName === 'free') {
@@ -222,6 +224,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
       } finally {
         setProcessingPlanId(null)
       }
+      return
+    }
+
+    if (!checkoutAvailable) {
+      setSuccess(BETA_BILLING_NOTE)
       return
     }
 
@@ -352,6 +359,12 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
           {pricingNote && (
             <AlertBanner variant="info">{pricingNote}</AlertBanner>
+          )}
+
+          {!checkoutAvailable && !loading && (
+            <div className="subscription-beta-banner" role="status">
+              {BETA_BILLING_NOTE}
+            </div>
           )}
 
           {error && <AlertBanner variant="warning">{error}</AlertBanner>}
@@ -506,8 +519,10 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                             '当前使用中'
                           ) : plan.price === 0 ? (
                             '继续免费使用'
-                          ) : (
+                          ) : checkoutAvailable ? (
                             paymentMethods.alipay || paymentMethods.wechat ? '支付宝 / 微信升级' : '立即升级'
+                          ) : (
+                            '公测免费'
                           )}
                         </button>
                       </div>

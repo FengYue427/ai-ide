@@ -18,6 +18,16 @@
   max-width: 760px;
 }
 
+.subscription-beta-banner {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 28%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
 .subscription-manage {
   padding: var(--space-4);
   border-radius: 14px;

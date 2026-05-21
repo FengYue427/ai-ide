@@ -20,10 +20,26 @@ export function getResponseRequestId(response: Response): string | null {
   return response.headers.get('x-request-id')?.trim() || null
 }
 
+let unauthorizedHandler: (() => void) | null = null
+
+export function setApiUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler
+}
+
+function shouldNotifyUnauthorized(input: RequestInfo | URL): boolean {
+  const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+  return !raw.includes('/api/auth/session') && !raw.includes('/api/auth/signin')
+}
+
 export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (!headers.has('X-Request-Id')) {
     headers.set('X-Request-Id', createClientRequestId())
   }
-  return fetch(input, { ...init, headers })
+  return fetch(input, { ...init, headers }).then((response) => {
+    if (response.status === 401 && shouldNotifyUnauthorized(input)) {
+      unauthorizedHandler?.()
+    }
+    return response
+  })
 }

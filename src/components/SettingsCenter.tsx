@@ -1,6 +1,8 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { McpSettingsSection } from './McpSettingsSection'
 import { ProjectRulesSection } from './ProjectRulesSection'
+import { QuotaIndicator } from './ui/QuotaIndicator'
+import { Toggle } from './ui/Toggle'
 import {
   Bot,
   Check,
@@ -14,19 +16,16 @@ import {
   Shield,
   X,
 } from 'lucide-react'
-import { modelOptions, type AIModel } from '../services/aiService'
+import { modelOptions, type AIModel, type QuotaCheck } from '../services/aiService'
+import { fetchAIQuota } from '../services/usageService'
+import { useIDEStore, type AIConfigState } from '../store/ideStore'
 
 interface SettingsCenterProps {
-  aiConfig: {
-    provider: AIModel
-    apiKey: string
-    model: string
-    endpoint: string
-  }
+  aiConfig: AIConfigState
   theme: 'vs-dark' | 'light'
   autoSaveEnabled: boolean
   language: string
-  onSaveAIConfig: (config: any) => void
+  onSaveAIConfig: (config: AIConfigState) => void
   onToggleTheme: () => void
   onToggleAutoSave: () => void
   onChangeLanguage: (lang: string) => void
@@ -47,60 +46,13 @@ const tabs: { id: SettingTab; label: string; description: string; icon: React.Re
   { id: 'advanced', label: '高级', description: '实验功能与重置操作', icon: <Cog size={18} /> },
 ]
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: '12px',
-  border: '1px solid var(--border-color)',
-  background: 'var(--bg-primary)',
-  color: 'var(--text-primary)',
-  fontSize: '14px',
-  outline: 'none',
-}
-
-const cardStyle: React.CSSProperties = {
-  padding: '18px',
-  borderRadius: '16px',
-  border: '1px solid var(--border-color)',
-  background: 'color-mix(in srgb, var(--bg-secondary) 88%, transparent)',
-}
-
-const Toggle = ({
-  checked,
-  onChange,
-}: {
-  checked: boolean
-  onChange: () => void
-}) => (
-  <button
-    onClick={onChange}
-    type="button"
-    style={{
-      width: '52px',
-      height: '30px',
-      borderRadius: '999px',
-      border: '1px solid transparent',
-      background: checked ? 'var(--accent-color)' : 'var(--bg-tertiary)',
-      cursor: 'pointer',
-      position: 'relative',
-      transition: 'all 0.2s ease',
-      flexShrink: 0,
-    }}
-  >
-    <span
-      style={{
-        position: 'absolute',
-        top: '3px',
-        left: checked ? '25px' : '3px',
-        width: '22px',
-        height: '22px',
-        borderRadius: '999px',
-        background: '#fff',
-        transition: 'left 0.2s ease',
-      }}
-    />
-  </button>
-)
+const featureList = [
+  { name: '代码审查', desc: 'AI 驱动的质量分析与建议', enabled: true, label: '已启用' as const },
+  { name: '智能补全', desc: '辅助生成和补全常见代码片段', enabled: true, label: '已启用' as const },
+  { name: '实时协作', desc: '实验性房间与在线用户（不同步编辑器）', enabled: true, label: '实验性' as const },
+  { name: '性能分析', desc: '查看运行输出和性能趋势', enabled: true, label: '已启用' as const },
+  { name: 'MCP 工具', desc: 'Agent 可调用外部 Streamable HTTP MCP', enabled: true, label: '实验性' as const },
+]
 
 const SettingsCenter: React.FC<SettingsCenterProps> = ({
   aiConfig,
@@ -117,14 +69,27 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   projectRulesPreview = null,
   onClose,
 }) => {
+  const currentPlan = useIDEStore((s) => s.currentPlan)
+  const currentUser = useIDEStore((s) => s.currentUser)
   const [activeTab, setActiveTab] = useState<SettingTab>('ai')
   const [localAIConfig, setLocalAIConfig] = useState(aiConfig)
   const [localAutoSave, setLocalAutoSave] = useState(autoSaveEnabled)
   const [localTheme, setLocalTheme] = useState(theme)
   const [localLanguage, setLocalLanguage] = useState(language)
+  const [quota, setQuota] = useState<QuotaCheck>({
+    allowed: true,
+    used: 0,
+    limit: 50,
+    remaining: 50,
+    plan: currentPlan,
+  })
   const persistMcpRef = useRef<(() => Promise<void>) | null>(null)
 
   const activeMeta = useMemo(() => tabs.find((tab) => tab.id === activeTab) ?? tabs[0], [activeTab])
+
+  useEffect(() => {
+    void fetchAIQuota(currentPlan, !!currentUser).then(setQuota)
+  }, [currentPlan, currentUser])
 
   const handleSave = () => {
     void (async () => {
@@ -138,155 +103,58 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(4, 8, 18, 0.78)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 2000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '1040px',
-          maxHeight: '88vh',
-          overflow: 'hidden',
-          display: 'grid',
-          gridTemplateColumns: '280px 1fr',
-          borderRadius: '24px',
-          border: '1px solid var(--border-color)',
-          background: 'var(--bg-secondary)',
-          boxShadow: 'var(--shadow-panel)',
-        }}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <aside
-          style={{
-            borderRight: '1px solid var(--border-color)',
-            background:
-              'radial-gradient(circle at top left, rgba(124,156,255,0.14), transparent 30%), color-mix(in srgb, var(--bg-secondary) 94%, transparent)',
-            padding: '24px 18px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '18px',
-          }}
-        >
-          <div style={{ padding: '6px 10px 14px' }}>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 10px',
-                borderRadius: '999px',
-                background: 'color-mix(in srgb, var(--accent-color) 10%, transparent)',
-                border: '1px solid color-mix(in srgb, var(--accent-color) 24%, var(--border-color))',
-                color: 'var(--text-secondary)',
-                fontSize: '12px',
-                fontWeight: 700,
-                marginBottom: '14px',
-              }}
-            >
+    <div className="settings-overlay" onClick={onClose}>
+      <div className="settings-dialog" onClick={(event) => event.stopPropagation()}>
+        <aside className="settings-sidebar">
+          <div className="settings-sidebar__intro">
+            <div className="settings-kicker">
               <Cog size={14} />
               Settings Center
             </div>
-            <h2 style={{ margin: 0, fontSize: '24px', lineHeight: 1.15 }}>把环境调成你顺手的样子</h2>
-            <p style={{ margin: '10px 0 0', fontSize: '13px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-              这里集中管理模型接入、主题、语言、自动保存和实验能力。
-            </p>
+            <h2 className="settings-sidebar__title">把环境调成你顺手的样子</h2>
+            <p className="settings-sidebar__desc">这里集中管理模型接入、主题、语言、自动保存和实验能力。</p>
           </div>
 
-          <div style={{ display: 'grid', gap: '8px' }}>
+          <div className="settings-nav">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '14px 14px',
-                  borderRadius: '16px',
-                  border:
-                    activeTab === tab.id
-                      ? '1px solid color-mix(in srgb, var(--accent-color) 34%, var(--border-color))'
-                      : '1px solid transparent',
-                  background:
-                    activeTab === tab.id
-                      ? 'linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 16%, transparent), transparent 80%)'
-                      : 'transparent',
-                  color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  display: 'grid',
-                  gridTemplateColumns: '20px 1fr',
-                  gap: '12px',
-                  alignItems: 'start',
-                }}
+                className={`settings-nav-btn ${activeTab === tab.id ? 'settings-nav-btn--active' : ''}`}
               >
-                <span style={{ marginTop: '2px' }}>{tab.icon}</span>
+                <span className="settings-nav-btn__icon">{tab.icon}</span>
                 <span>
-                  <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '3px' }}>
-                    {tab.label}
-                  </span>
-                  <span style={{ display: 'block', fontSize: '12px', lineHeight: 1.5 }}>{tab.description}</span>
+                  <span className="settings-nav-btn__label">{tab.label}</span>
+                  <span className="settings-nav-btn__hint">{tab.description}</span>
                 </span>
               </button>
             ))}
           </div>
         </aside>
 
-        <section style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div
-            style={{
-              padding: '22px 24px 18px',
-              borderBottom: '1px solid var(--border-color)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              gap: '16px',
-            }}
-          >
+        <section className="settings-main">
+          <div className="settings-header">
             <div>
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '6px' }}>
-                当前分区
-              </div>
-              <h3 style={{ margin: 0, fontSize: '22px' }}>{activeMeta.label}</h3>
-              <p style={{ margin: '8px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                {activeMeta.description}
-              </p>
+              <div className="settings-header__kicker">当前分区</div>
+              <h3 className="settings-header__title">{activeMeta.label}</h3>
+              <p className="settings-header__desc">{activeMeta.description}</p>
             </div>
-            <button
-              onClick={onClose}
-              style={{
-                width: '38px',
-                height: '38px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '12px',
-                border: '1px solid var(--border-color)',
-                background: 'transparent',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" className="settings-close-btn" onClick={onClose} aria-label="关闭设置">
               <X size={18} />
             </button>
           </div>
 
-          <div style={{ flex: 1, overflow: 'auto', padding: '24px', display: 'grid', gap: '18px' }}>
+          <div className="settings-body">
             {activeTab === 'ai' && (
               <>
-                <div style={{ ...cardStyle, display: 'grid', gap: '16px' }}>
-                  <div style={{ display: 'grid', gap: '8px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: 700 }}>AI 提供商</label>
+                <QuotaIndicator quota={quota} showPlan compact={false} />
+
+                <div className="settings-card settings-card--grid">
+                  <div className="settings-field">
+                    <label className="settings-label">AI 提供商</label>
                     <select
+                      className="settings-select"
                       value={localAIConfig.provider}
                       onChange={(event) => {
                         const provider = event.target.value as AIModel
@@ -296,7 +164,6 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                           model: modelOptions[provider].models[0],
                         })
                       }}
-                      style={inputStyle}
                     >
                       <option value="openai">OpenAI</option>
                       <option value="deepseek">DeepSeek</option>
@@ -310,23 +177,23 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     </select>
                   </div>
 
-                  <div style={{ display: 'grid', gap: '8px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: 700 }}>API Key</label>
+                  <div className="settings-field">
+                    <label className="settings-label">API Key</label>
                     <input
                       type="password"
+                      className="settings-input"
                       value={localAIConfig.apiKey}
                       onChange={(event) => setLocalAIConfig({ ...localAIConfig, apiKey: event.target.value })}
                       placeholder="输入你的 API Key"
-                      style={inputStyle}
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gap: '8px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: 700 }}>模型</label>
+                  <div className="settings-field">
+                    <label className="settings-label">模型</label>
                     <select
+                      className="settings-select"
                       value={localAIConfig.model}
                       onChange={(event) => setLocalAIConfig({ ...localAIConfig, model: event.target.value })}
-                      style={inputStyle}
                     >
                       {modelOptions[localAIConfig.provider].models.map((model) => (
                         <option key={model} value={model}>
@@ -337,26 +204,27 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   </div>
 
                   {localAIConfig.provider === 'ollama' && (
-                    <div style={{ display: 'grid', gap: '8px' }}>
-                      <label style={{ fontSize: '13px', fontWeight: 700 }}>本地端点</label>
+                    <div className="settings-field">
+                      <label className="settings-label">本地端点</label>
                       <input
                         type="text"
+                        className="settings-input"
                         value={localAIConfig.endpoint}
                         onChange={(event) => setLocalAIConfig({ ...localAIConfig, endpoint: event.target.value })}
                         placeholder="http://localhost:11434"
-                        style={inputStyle}
                       />
                     </div>
                   )}
                 </div>
 
-                <div style={{ ...cardStyle, display: 'grid', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="settings-card settings-card--grid">
+                  <div className="settings-privacy-row">
                     <Shield size={16} color="var(--success-color)" />
                     <strong>隐私说明</strong>
                   </div>
-                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6 }}>
+                  <p className="settings-privacy-text">
                     API Key 保存在浏览器本地。除你选择的模型服务外，应用不会额外转发到其他第三方服务。
+                    {!currentUser && ' 登录账号后可同步云端配额统计。'}
                   </p>
                 </div>
               </>
@@ -364,66 +232,43 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
 
             {activeTab === 'appearance' && (
               <>
-                <div style={{ ...cardStyle, display: 'grid', gap: '14px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700 }}>主题</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+                <div className="settings-card settings-card--grid">
+                  <div className="settings-label">主题</div>
+                  <div className="settings-grid-2">
                     {[
-                      { value: 'light' as const, label: '浅色', desc: '更适合白天与文档阅读', swatch: '#f3f6fd' },
-                      { value: 'vs-dark' as const, label: '深色', desc: '更聚焦代码与夜间工作', swatch: '#10192b' },
+                      { value: 'light' as const, label: '浅色', desc: '更适合白天与文档阅读', swatch: 'light' as const },
+                      { value: 'vs-dark' as const, label: '深色', desc: '更聚焦代码与夜间工作', swatch: 'dark' as const },
                     ].map((option) => (
                       <button
                         key={option.value}
+                        type="button"
                         onClick={() => setLocalTheme(option.value)}
-                        style={{
-                          ...cardStyle,
-                          padding: '16px',
-                          cursor: 'pointer',
-                          border:
-                            localTheme === option.value
-                              ? '1px solid color-mix(in srgb, var(--accent-color) 40%, var(--border-color))'
-                              : '1px solid var(--border-color)',
-                          background: localTheme === option.value ? 'color-mix(in srgb, var(--accent-color) 10%, var(--bg-secondary))' : 'var(--bg-secondary)',
-                        }}
+                        className={`settings-option-card ${localTheme === option.value ? 'settings-option-card--active' : ''}`}
                       >
-                        <div
-                          style={{
-                            height: '72px',
-                            borderRadius: '12px',
-                            marginBottom: '12px',
-                            background: option.swatch,
-                            border: '1px solid rgba(0,0,0,0.08)',
-                          }}
-                        />
-                        <div style={{ fontWeight: 700, marginBottom: '4px' }}>{option.label}</div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{option.desc}</div>
+                        <div className={`settings-theme-swatch settings-theme-swatch--${option.swatch}`} />
+                        <div className="settings-option-card__title">{option.label}</div>
+                        <div className="settings-option-card__desc">{option.desc}</div>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div style={{ ...cardStyle, display: 'grid', gap: '14px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700 }}>界面语言</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+                <div className="settings-card settings-card--grid">
+                  <div className="settings-label">界面语言</div>
+                  <div className="settings-grid-2">
                     {[
                       { value: 'zh', label: '简体中文' },
                       { value: 'en', label: 'English' },
                     ].map((option) => (
                       <button
                         key={option.value}
+                        type="button"
                         onClick={() => setLocalLanguage(option.value)}
-                        style={{
-                          ...cardStyle,
-                          padding: '16px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          background: localLanguage === option.value ? 'color-mix(in srgb, var(--accent-color) 10%, var(--bg-secondary))' : 'var(--bg-secondary)',
-                        }}
+                        className={`settings-option-card settings-option-card--lang ${localLanguage === option.value ? 'settings-option-card--active' : ''}`}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div className="settings-option-card__lang">
                           <Globe size={18} />
-                          <span style={{ fontWeight: 700 }}>{option.label}</span>
+                          <span>{option.label}</span>
                         </div>
                         {localLanguage === option.value && <Check size={18} color="var(--accent-color)" />}
                       </button>
@@ -435,19 +280,19 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
 
             {activeTab === 'editor' && (
               <>
-                <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                <div className="settings-card settings-card--row">
                   <div>
-                    <div style={{ fontWeight: 700, marginBottom: '6px' }}>自动保存</div>
-                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    <div className="settings-row-title">自动保存</div>
+                    <div className="settings-row-desc">
                       在你编辑代码时自动保存到本地与工作区状态，减少误关页面带来的损失。
                     </div>
                   </div>
-                  <Toggle checked={localAutoSave} onChange={() => setLocalAutoSave((value) => !value)} />
+                  <Toggle checked={localAutoSave} onChange={() => setLocalAutoSave((value) => !value)} aria-label="自动保存" />
                 </div>
 
-                <div style={{ ...cardStyle, display: 'grid', gap: '12px' }}>
-                  <div style={{ fontWeight: 700 }}>编辑偏好</div>
-                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+                <div className="settings-card settings-card--grid">
+                  <div className="settings-row-title">编辑偏好</div>
+                  <div className="settings-row-desc">
                     当前版本先保留简洁设置，把最常用的自动保存、主题和语言收在一处。后续适合继续补充字体、缩进与格式化策略。
                   </div>
                 </div>
@@ -455,39 +300,23 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
             )}
 
             {activeTab === 'features' && (
-              <div style={{ display: 'grid', gap: '14px' }}>
-                {[
-                  { name: '代码审查', desc: 'AI 驱动的质量分析与建议', enabled: true, label: '已启用' },
-                  { name: '智能补全', desc: '辅助生成和补全常见代码片段', enabled: true, label: '已启用' },
-                  { name: '实时协作', desc: '实验性房间与在线用户（不同步编辑器）', enabled: true, label: '实验性' },
-                  { name: '性能分析', desc: '查看运行输出和性能趋势', enabled: true, label: '已启用' },
-                  { name: 'MCP 工具', desc: 'Agent 可调用外部 Streamable HTTP MCP', enabled: true, label: '实验性' },
-                ].map((feature) => (
-                  <div key={feature.name} style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+              <div className="settings-features">
+                {featureList.map((feature) => (
+                  <div key={feature.name} className="settings-card settings-card--row">
                     <div>
-                      <div style={{ fontWeight: 700, marginBottom: '4px' }}>{feature.name}</div>
-                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{feature.desc}</div>
+                      <div className="settings-row-title">{feature.name}</div>
+                      <div className="settings-row-desc">{feature.desc}</div>
                     </div>
                     <span
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: '999px',
-                        background: feature.label === '实验性'
-                          ? 'color-mix(in srgb, var(--warning-color, #f59e0b) 14%, transparent)'
+                      className={`settings-badge ${
+                        feature.label === '实验性'
+                          ? 'settings-badge--experimental'
                           : feature.enabled
-                            ? 'color-mix(in srgb, var(--success-color) 14%, transparent)'
-                            : 'var(--bg-tertiary)',
-                        color: feature.label === '实验性'
-                          ? '#f59e0b'
-                          : feature.enabled
-                            ? 'var(--success-color)'
-                            : 'var(--text-secondary)',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        whiteSpace: 'nowrap',
-                      }}
+                            ? 'settings-badge--enabled'
+                            : 'settings-badge--muted'
+                      }`}
                     >
-                      {feature.label ?? (feature.enabled ? '已启用' : '规划中')}
+                      {feature.label}
                     </span>
                   </div>
                 ))}
@@ -500,12 +329,12 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
 
             {activeTab === 'advanced' && (
               <>
-                <div style={{ ...cardStyle, borderColor: 'color-mix(in srgb, var(--danger-color) 36%, var(--border-color))' }}>
-                  <div style={{ fontWeight: 700, color: 'var(--danger-color)', marginBottom: '8px' }}>谨慎操作</div>
-                  <p style={{ margin: '0 0 16px', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                <div className="settings-card settings-card--danger settings-card--grid">
+                  <div className="settings-danger-title">谨慎操作</div>
+                  <p className="settings-row-desc">
                     清理本地缓存或恢复默认编辑器设置。不会影响 Neon 云端账号与工作区。
                   </p>
-                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <div className="settings-actions-row">
                     <button type="button" className="btn btn-secondary" onClick={onClearLocalData}>
                       <Database size={14} style={{ marginRight: '6px' }} />
                       清理本地数据
@@ -516,46 +345,24 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   </div>
                 </div>
 
-                <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                <div className="settings-card settings-card--row">
                   <div>
-                    <div style={{ fontWeight: 700, marginBottom: '6px' }}>实验功能</div>
-                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                      为后续迭代预留的入口。等功能成熟后再开放实际开关。
-                    </div>
+                    <div className="settings-row-title">实验功能</div>
+                    <div className="settings-row-desc">为后续迭代预留的入口。等功能成熟后再开放实际开关。</div>
                   </div>
-                  <span
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: '999px',
-                      background: 'var(--bg-tertiary)',
-                      color: 'var(--text-secondary)',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                    }}
-                  >
-                    暂未开放
-                  </span>
+                  <span className="settings-badge settings-badge--muted">暂未开放</span>
                 </div>
               </>
             )}
           </div>
 
-          <div
-            style={{
-              padding: '18px 24px',
-              borderTop: '1px solid var(--border-color)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '14px',
-            }}
-          >
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>保存后立即应用到当前工作区。</div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={onClose} className="btn btn-secondary">
+          <div className="settings-footer">
+            <div className="settings-footer__hint">保存后立即应用到当前工作区。</div>
+            <div className="settings-footer__actions">
+              <button type="button" onClick={onClose} className="btn btn-secondary">
                 取消
               </button>
-              <button onClick={handleSave} className="btn btn-primary">
+              <button type="button" onClick={handleSave} className="btn btn-primary">
                 <Save size={16} style={{ marginRight: '6px' }} />
                 保存更改
               </button>
