@@ -11,7 +11,6 @@ const SAFE_COMMANDS = new Set([
   'find',
   'node',
   'npm',
-  'npx',
   'pnpm',
   'yarn',
   'python',
@@ -23,11 +22,36 @@ const SAFE_COMMANDS = new Set([
 
 const UNSAFE_SHELL_CHARS = /[;&|`$<>]/
 
+const NPM_SAFE_SUBCOMMANDS = new Set([
+  'test',
+  'run',
+  'install',
+  'ci',
+  'list',
+  'outdated',
+  'why',
+  'view',
+  'version',
+])
+
 function tokenize(commandLine: string): string[] {
   const trimmed = commandLine.trim()
   if (!trimmed) return []
   const matches = trimmed.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)
   return (matches ?? []).map((token) => token.replace(/^["']|["']$/g, ''))
+}
+
+function isNodeEvalInvocation(tokens: string[]): boolean {
+  if (tokens[0]?.toLowerCase() !== 'node') return false
+  const flags = tokens.slice(1)
+  return flags.some((t) => t === '-e' || t === '--eval' || t.startsWith('-e'))
+}
+
+function isNpmAllowed(tokens: string[]): boolean {
+  if (tokens[0]?.toLowerCase() !== 'npm') return true
+  const sub = tokens[1]?.toLowerCase()
+  if (!sub) return false
+  return NPM_SAFE_SUBCOMMANDS.has(sub)
 }
 
 export function isTerminalCommandAllowed(commandLine: string, mode: 'full' | 'safe'): boolean {
@@ -42,6 +66,10 @@ export function isTerminalCommandAllowed(commandLine: string, mode: 'full' | 'sa
 
   const [command, subcommand] = tokens
   const base = command.toLowerCase()
+
+  if (base === 'npx') return false
+  if (isNodeEvalInvocation(tokens)) return false
+  if (!isNpmAllowed(tokens)) return false
 
   if (!SAFE_COMMANDS.has(base)) return false
 

@@ -29,6 +29,15 @@ const BLOCKED_PATTERNS: RegExp[] = [
   /\bsessionStorage\b/,
   /__proto__/,
   /\bprocess\b/,
+  /\bconstructor\s*\(/,
+  /\b__defineGetter__\b/,
+  /\b__defineSetter__\b/,
+  /\bProxy\b/,
+  /\bReflect\b/,
+  /\bglobalThis\b/,
+  /\bpostMessage\s*\(/,
+  /\bimportScripts\b/,
+  /\bWebSocket\b/,
 ]
 
 export function validateManifest(manifest: PluginManifest): string | null {
@@ -80,7 +89,8 @@ export function createSandboxedContext(
       getHistory: hasTerminalAny(perms) ? base.terminal.getHistory : deny('terminal.getHistory'),
       execute: hasTerminalAny(perms)
         ? async (command: string) => {
-            const mode = hasTerminalFull(perms) ? 'full' : 'safe'
+            const mode =
+              !import.meta.env.PROD && hasTerminalFull(perms) ? 'full' : 'safe'
             if (!isTerminalCommandAllowed(command, mode)) {
               throw new Error('插件无权执行该终端命令（仅允许安全命令白名单）')
             }
@@ -101,6 +111,9 @@ export function createSandboxedContext(
 
 /** @deprecated Third-party plugins should use runPluginActivateInSandbox (Worker). */
 export function runPluginActivate(source: string, context: PluginContext): void {
+  if (import.meta.env.PROD) {
+    throw new Error('生产环境禁止在主线程执行插件代码，请使用 Worker 沙箱')
+  }
   const error = validatePluginSource(source)
   if (error) throw new Error(error)
 

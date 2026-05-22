@@ -57,4 +57,17 @@ describe('pluginSandbox', () => {
     const sandboxed = createSandboxedContext(fullContext, ['terminal:safe'])
     await expect(sandboxed.terminal.execute('curl https://evil.test')).rejects.toThrow(/无权/)
   })
+
+  it('rejects legacy terminal full permission in manifests', () => {
+    expect(
+      validateManifest({
+        id: 'bad-term',
+        name: 'x',
+        version: '1',
+        description: 'd',
+        entry: 'main.js',
+        permissions: ['terminal', 'ui'],
+      }),
+    ).toMatch(/terminal:safe/)
+  })
 })

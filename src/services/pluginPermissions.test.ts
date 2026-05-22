@@ -36,4 +36,8 @@ describe('pluginPermissions', () => {
     const perms = new Set(normalizePluginPermissions(['terminal:safe']))
     expect(hasTerminalSafe(perms)).toBe(true)
   })
+
+  it('rejects legacy terminal full scope', () => {
+    expect(validateExtendedPermissions(['terminal', 'ui'])).toMatch(/terminal:safe/)
+  })
 })

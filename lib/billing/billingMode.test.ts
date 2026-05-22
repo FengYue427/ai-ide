@@ -19,9 +19,17 @@ describe('billingMode', () => {
 
   it('disallows dev mock in production without override', () => {
     process.env.NODE_ENV = 'production'
+    delete process.env.VERCEL_ENV
     delete process.env.ALLOW_DEV_BILLING
     delete process.env.STRIPE_SECRET_KEY
     delete process.env.ALIPAY_APP_ID
+    expect(isDevBillingAllowed()).toBe(false)
+  })
+
+  it('disallows dev mock on Vercel production even if NODE_ENV unset', () => {
+    delete process.env.NODE_ENV
+    process.env.VERCEL_ENV = 'production'
+    delete process.env.ALLOW_DEV_BILLING
     expect(isDevBillingAllowed()).toBe(false)
   })
 

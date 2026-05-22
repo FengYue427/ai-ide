@@ -44,10 +44,9 @@ export async function POST(req: Request) {
     })
     if (!rate.allowed) return rateLimitErrorResponse(rate)
 
-    const body = (await req.json().catch(() => ({}))) as { amount?: number }
-    const raw =
-      typeof body.amount === 'number' && body.amount > 0 ? Math.floor(body.amount) : 1
-    const amount = Math.min(raw, 10)
+    // Server-authoritative: one successful AI request consumes exactly one unit.
+    void (await req.json().catch(() => ({})))
+    const amount = 1
 
     const result = await consumeAiUsage(auth.user.id, amount)
     if (!result.ok) {

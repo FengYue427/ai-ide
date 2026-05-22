@@ -3,9 +3,11 @@ import { isStripeConfigured } from './stripe'
 
 /** Dev mock upgrade when no real payment provider is configured. */
 export function isDevBillingAllowed(): boolean {
+  if (process.env.VERCEL_ENV === 'production') return false
+  if (process.env.NODE_ENV === 'production') return false
   if (isCnPaymentConfigured() || isStripeConfigured()) return false
   if (process.env.ALLOW_DEV_BILLING === 'true') return true
-  return process.env.NODE_ENV !== 'production'
+  return true
 }
 
 /** Simulate CN payment notify in dev/test (never production). */

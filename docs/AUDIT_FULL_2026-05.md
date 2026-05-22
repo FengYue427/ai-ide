@@ -26,17 +26,17 @@
 | S1 | **`POST /api/mcp/proxy` 无登录即可 SSRF** | `lib/api/handlers/mcp/proxy.ts` | ✅ 已加 `requireAuth` |
 | S2 | SSRF 仅拦 localhost，未拦内网段 | `lib/api/mcpProxy.ts` | ✅ 已拦 10/8、172.16–31、169.254 等 |
 | S3 | 客户端可传 `Authorization`/`Cookie` 到上游 | `mcp/proxy.ts` headers | ✅ `sanitizeMcpProxyHeaders` |
-| S4 | 插件 `new Function` 执行 + 权限未强制 | `pluginSandboxRunner.ts` | ⬜ 架构债，官方目录仍沙箱执行 |
-| S5 | 生产 `AUTH_SECRET` 未设时开发回退密钥 | `src/lib/jwt.ts` | ⬜ 勿在非 production 环境部署 |
+| S4 | 插件 `new Function` 执行 + 权限未强制 | `pluginSandboxRunner.ts` | 🔶 Worker 隔离 + 权限网关；禁止 `terminal` 全权 |
+| S5 | 生产 `AUTH_SECRET` 未设时开发回退密钥 | `src/lib/jwt.ts` | ✅ 生产缺 secret 抛错 + baseline 检查 |
 
 ### 2.2 P1 — 应尽快处理
 
 | # | 问题 | 说明 |
 |---|------|------|
-| S6 | `POST /api/usage/ai` 信任客户端 `amount` | ✅ 已限制单次 ≤10；仍非服务端计量 |
-| S7 | 配额失败时前端可继续用本地额度 | `usageService.ts` 降级逻辑 |
-| S8 | `dev_mock` 结账在错误 env 可假升级 | `billingMode.ts` + Vercel 禁 `ALLOW_DEV_BILLING` |
-| S9 | 插件 `terminal` 权限可执行任意命令 | `pluginTerminalPolicy.ts` |
+| S6 | `POST /api/usage/ai` 信任客户端 `amount` | ✅ 服务端固定每次 +1 |
+| S7 | 配额失败时前端可继续用本地额度 | `usageService.ts` | ✅ 登录用户 fail-closed + 会话缓存 |
+| S8 | `dev_mock` 结账在错误 env 可假升级 | `billingMode.ts` | ✅ `VERCEL_ENV`/`NODE_ENV` production 禁用 |
+| S9 | 插件 `terminal` 权限可执行任意命令 | `pluginTerminalPolicy.ts` | ✅ 仅 safe 白名单；禁止 `terminal` 全权 |
 | S10 | API 500 曾返回内部 `error.message` | ✅ 生产环境已隐藏 `detail` |
 
 ### 2.3 做得好的地方
@@ -91,7 +91,7 @@
 | 外观 | 界面语言 | ✅ **已修** | `zh-CN`/`en-US` + `useI18n().setLanguage` |
 | 编辑器 | 自动保存 Toggle | ✅ | |
 | 编辑器 | 「编辑偏好」 | ⬜ 占位 | 无子项 |
-| 功能 | 五项能力列表 | ⬜ **仅展示** | 无开关，易误解为可切换 |
+| 功能 | 五项能力列表 | ✅ **能力说明** | 已标注非开关；MCP/规则可配置 |
 | 功能 | 项目规则 | ✅ | 跳转 `.aide/rules.md` |
 | 功能 | MCP + Agent 跟进 | ✅ | 保存时 `persistMcpRef` |
 | 高级 | 清理本地数据 | ✅ | 确认框层级已修 |
@@ -158,7 +158,11 @@
 | 确认框 z-index 高于设置 | `overlays.css` |
 | 语言 `zh`/`en` → `zh-CN`/`en-US`，接通 `useI18n` | `language.ts`, `PanelHost.tsx`, `SettingsCenter.tsx`, `i18n/index.tsx` |
 | 重置默认写入 `ai-config` | `PanelHost.tsx` |
-| 用量 POST `amount` 上限 10 | `usage/ai.ts` |
+| 用量 POST 服务端固定 +1 | `usage/ai.ts` |
+| 登录配额 fail-closed + 缓存 | `usageService.ts` |
+| 禁止 terminal 全权 / safe 白名单收紧 | `pluginPermissions.ts`, `pluginTerminalPolicy.ts` |
+| dev_mock 禁 Vercel production | `billingMode.ts` |
+| Worker API 权限网关 | `pluginSandboxRunner.ts` |
 | 生产 API 500 不泄露 stack | `api/index.ts` |
 | 设置打开时同步 props | `SettingsCenter.tsx` useEffect |
 

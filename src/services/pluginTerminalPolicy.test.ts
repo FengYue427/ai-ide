@@ -16,6 +16,16 @@ describe('pluginTerminalPolicy', () => {
     expect(isTerminalCommandAllowed('curl https://evil.test', 'safe')).toBe(false)
   })
 
+  it('blocks npx and node eval in safe mode', () => {
+    expect(isTerminalCommandAllowed('npx eslint .', 'safe')).toBe(false)
+    expect(isTerminalCommandAllowed('node -e "process.exit(1)"', 'safe')).toBe(false)
+  })
+
+  it('blocks npm scripts outside allowlist in safe mode', () => {
+    expect(isTerminalCommandAllowed('npm publish', 'safe')).toBe(false)
+    expect(isTerminalCommandAllowed('npm test', 'safe')).toBe(true)
+  })
+
   it('allows any command in full mode', () => {
     expect(isTerminalCommandAllowed('curl https://example.com', 'full')).toBe(true)
   })

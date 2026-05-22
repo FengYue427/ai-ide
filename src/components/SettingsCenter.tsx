@@ -309,6 +309,12 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
 
             {activeTab === 'features' && (
               <div className="settings-features">
+                <div className="settings-card settings-card--grid">
+                  <div className="settings-row-title">能力说明</div>
+                  <div className="settings-row-desc">
+                    下列条目描述当前产品已具备的能力，不是独立开关。MCP、项目规则等可在本页下方配置并保存。
+                  </div>
+                </div>
                 {featureList.map((feature) => (
                   <div key={feature.name} className="settings-card settings-card--row">
                     <div>

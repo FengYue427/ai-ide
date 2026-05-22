@@ -1,3 +1,13 @@
+import {
+  hasAi,
+  hasEditorRead,
+  hasEditorWrite,
+  hasFilesRead,
+  hasFilesWrite,
+  hasTerminalAny,
+  hasUi,
+  normalizePluginPermissions,
+} from './pluginPermissions'
 import type { PluginContext } from './pluginTypes'
 import { validatePluginSource } from './pluginSandbox'
 
@@ -147,7 +157,38 @@ self.onmessage = async (event) => {
 `
 }
 
-function dispatchContextCall(context: PluginContext, path: string, args: unknown[]): unknown {
+function isApiPathAllowed(path: string, permissions: readonly string[]): boolean {
+  const perms = new Set(normalizePluginPermissions(permissions))
+  const [scope, method] = path.split('.')
+  switch (scope) {
+    case 'editor':
+      if (method === 'getValue' || method === 'getSelectedText') return hasEditorRead(perms)
+      if (method === 'setValue' || method === 'insertText') return hasEditorWrite(perms)
+      return false
+    case 'files':
+      if (method === 'getAll' || method === 'getActive' || method === 'open') return hasFilesRead(perms)
+      if (method === 'create') return hasFilesWrite(perms)
+      return false
+    case 'terminal':
+      return hasTerminalAny(perms)
+    case 'ai':
+      return hasAi(perms)
+    case 'ui':
+      return hasUi(perms)
+    default:
+      return false
+  }
+}
+
+function dispatchContextCall(
+  context: PluginContext,
+  path: string,
+  args: unknown[],
+  permissions: readonly string[],
+): unknown {
+  if (!isApiPathAllowed(path, permissions)) {
+    throw new Error(`插件无权访问 ${path}`)
+  }
   const [scope, method] = path.split('.')
   switch (scope) {
     case 'editor': {
@@ -179,7 +220,7 @@ export async function runPluginActivateInSandbox(
   pluginId: string,
   source: string,
   context: PluginContext,
-  _permissions: readonly string[],
+  permissions: readonly string[],
   options?: {
     timeoutMs?: number
     onRegisterButton?: (button: { buttonId: string; icon: string; label: string; onClick: () => void }) => void
@@ -248,7 +289,7 @@ export async function runPluginActivateInSandbox(
         if (msg.type === 'apiCall') {
           void (async () => {
             try {
-              const result = await dispatchContextCall(context, msg.path, msg.args)
+              const result = await dispatchContextCall(context, msg.path, msg.args, permissions)
               worker.postMessage({
                 type: 'apiResult',
                 callId: msg.callId,

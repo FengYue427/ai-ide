@@ -55,6 +55,14 @@ if (list.status !== 0) {
   if (failed === 0) pass('no obvious live keys in tracked source')
 }
 
+console.log('\nJWT / auth secret policy:')
+const jwtSrc = readFileSync(join(root, 'src', 'lib', 'jwt.ts'), 'utf8')
+if (!/AUTH_SECRET must be set in production/.test(jwtSrc)) {
+  fail('jwt.ts must throw when AUTH_SECRET missing in production')
+} else {
+  pass('jwt.ts enforces AUTH_SECRET in production')
+}
+
 console.log('\nProduction env rules (inline):')
 if (process.env.ALLOW_DEV_BILLING === 'true') fail('ALLOW_DEV_BILLING must not be true in production/CI')
 else pass('ALLOW_DEV_BILLING unset or false')

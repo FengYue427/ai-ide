@@ -5,6 +5,7 @@ import { trackEvent } from '../lib/observability'
 
 const USAGE_KEY = 'ai-usage-today'
 const USAGE_DATE_KEY = 'ai-usage-date'
+const SERVER_QUOTA_CACHE_KEY = 'ai-quota-server-cache'
 
 interface LocalUsageRecord {
   count: number
@@ -22,6 +23,13 @@ export class QuotaExceededError extends Error {
     super(`今天的 AI 请求额度已用完（${quota.used}/${quota.limit}）`)
     this.name = 'QuotaExceededError'
     this.quota = quota
+  }
+}
+
+export class QuotaSyncError extends Error {
+  constructor(message = '无法同步 AI 配额到服务器，请检查网络后重试') {
+    super(message)
+    this.name = 'QuotaSyncError'
   }
 }
 
@@ -71,6 +79,29 @@ function incrementLocalUsage(currentPlan: string, amount = 1): void {
   localStorage.setItem(USAGE_KEY, JSON.stringify(usage))
 }
 
+function cacheServerQuota(quota: QuotaCheck): void {
+  try {
+    sessionStorage.setItem(
+      SERVER_QUOTA_CACHE_KEY,
+      JSON.stringify({ quota, date: getToday(), at: Date.now() }),
+    )
+  } catch {
+    // ignore quota cache failures
+  }
+}
+
+function readCachedServerQuota(currentPlan: string): QuotaCheck | null {
+  try {
+    const raw = sessionStorage.getItem(SERVER_QUOTA_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { quota?: QuotaCheck; date?: string }
+    if (parsed.date !== getToday() || !parsed.quota) return null
+    return { ...parsed.quota, plan: parsed.quota.plan || currentPlan }
+  } catch {
+    return null
+  }
+}
+
 export async function fetchAIQuota(currentPlan: string, isLoggedIn: boolean): Promise<QuotaCheck> {
   if (!isLoggedIn) {
     return checkAIQuotaLocal(currentPlan)
@@ -80,13 +111,28 @@ export async function fetchAIQuota(currentPlan: string, isLoggedIn: boolean): Pr
     const response = await apiFetch('/api/usage/ai', { credentials: 'include' })
     const data = await readJsonResponse<{ source?: string; quota?: QuotaCheck }>(response)
     if (response.ok && data?.quota) {
+      cacheServerQuota(data.quota)
       return data.quota
     }
   } catch {
-    // fallback below
+    // use cache or fail-closed below
   }
 
-  return checkAIQuotaLocal(currentPlan)
+  const cached = readCachedServerQuota(currentPlan)
+  if (cached) return cached
+
+  const limit = planLimits[currentPlan] ?? planLimits.free
+  if (limit === -1) {
+    return { allowed: true, used: 0, limit, remaining: Infinity, plan: currentPlan }
+  }
+
+  return {
+    allowed: false,
+    used: limit,
+    limit,
+    remaining: 0,
+    plan: currentPlan,
+  }
 }
 
 export async function ensureAIQuotaAllowed(
@@ -121,7 +167,7 @@ export async function recordAIUsageEvent(
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: 1 }),
+      body: JSON.stringify({}),
     })
     if (response.status === 429) {
       const data = await readJsonResponse<{ quota?: QuotaCheck }>(response)
@@ -129,13 +175,17 @@ export async function recordAIUsageEvent(
       if (data?.quota) {
         throw new QuotaExceededError(data.quota)
       }
-      throw new QuotaExceededError(
-        await fetchAIQuota('free', true),
-      )
+      throw new QuotaExceededError(await fetchAIQuota(currentPlan, true))
+    }
+    if (!response.ok) {
+      throw new QuotaSyncError()
+    }
+    const data = await readJsonResponse<{ quota?: QuotaCheck }>(response)
+    if (data?.quota) {
+      cacheServerQuota(data.quota)
     }
   } catch (error) {
-    if (error instanceof QuotaExceededError) throw error
-    // Server unreachable — keep local fallback for UX
-    incrementLocalUsage(currentPlan)
+    if (error instanceof QuotaExceededError || error instanceof QuotaSyncError) throw error
+    throw new QuotaSyncError()
   }
 }

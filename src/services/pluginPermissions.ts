@@ -6,7 +6,6 @@ export const ALL_PLUGIN_PERMISSIONS = [
   'files',
   'files:read',
   'files:write',
-  'terminal',
   'terminal:safe',
   'ai',
   'ui',
@@ -42,8 +41,9 @@ export function hasFilesWrite(perms: Set<ExtendedPluginPermission>): boolean {
   return perms.has('files') || perms.has('files:write')
 }
 
-export function hasTerminalFull(perms: Set<ExtendedPluginPermission>): boolean {
-  return perms.has('terminal')
+/** @deprecated Legacy `terminal` scope; third-party plugins must use terminal:safe only. */
+export function hasTerminalFull(_perms: Set<ExtendedPluginPermission>): boolean {
+  return false
 }
 
 export function hasTerminalSafe(perms: Set<ExtendedPluginPermission>): boolean {
@@ -65,6 +65,9 @@ export function hasUi(perms: Set<ExtendedPluginPermission>): boolean {
 export function validateExtendedPermissions(permissions: readonly string[]): string | null {
   if (!Array.isArray(permissions) || permissions.length === 0) {
     return '至少声明一项权限'
+  }
+  if (permissions.includes('terminal')) {
+    return '不再支持 terminal 全权权限，请改用 terminal:safe'
   }
   for (const perm of permissions) {
     if (!ALL_PLUGIN_PERMISSIONS.includes(perm as ExtendedPluginPermission)) {
