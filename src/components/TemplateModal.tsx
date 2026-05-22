@@ -10,7 +10,7 @@ interface TemplateModalProps {
 }
 
 const TemplateModal: React.FC<TemplateModalProps> = ({ onSelect, onClose }) => {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
 
   return (
     <ModalShell
@@ -36,7 +36,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({ onSelect, onClose }) => {
             type="button"
             className="template-card"
             onClick={() => {
-              const files = applyTemplate(template)
+              const files = applyTemplate(template, language)
               onSelect(files)
             }}
           >

@@ -16,7 +16,7 @@ import {
   Shield,
   X,
 } from 'lucide-react'
-import { modelOptions, type AIModel, type QuotaCheck } from '../services/aiService'
+import { modelOptions, modelProviderTranslationKey, type AIModel, type QuotaCheck } from '../services/aiService'
 import { fetchAIQuota } from '../services/usageService'
 import { useI18n, type Language } from '../i18n'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
@@ -227,16 +227,13 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                         })
                       }}
                     >
-                      <option value="openai">OpenAI</option>
-                      <option value="deepseek">DeepSeek</option>
-                      <option value="claude">Claude</option>
-                      <option value="google">Google Gemini</option>
-                      <option value="qwen">Qwen</option>
-                      <option value="zhipu">GLM</option>
-                      <option value="minimax">MiniMax</option>
-                      <option value="grok">xAI Grok</option>
-                      <option value="ollama">Ollama</option>
+                      {(Object.keys(modelOptions) as AIModel[]).map((provider) => (
+                        <option key={provider} value={provider}>
+                          {t(modelProviderTranslationKey(provider, 'name'))}
+                        </option>
+                      ))}
                     </select>
+                    <p className="settings-privacy-text">{t(modelProviderTranslationKey(localAIConfig.provider, 'desc'))}</p>
                   </div>
 
                   <div className="settings-field">

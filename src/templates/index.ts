@@ -1,3 +1,6 @@
+import { createTranslator, type Language } from '../i18n'
+import type { TranslationKey } from '../i18n/translations'
+
 export interface Template {
   id: string
   name: string
@@ -7,11 +10,19 @@ export interface Template {
   dependencies?: Record<string, string>
 }
 
+/** Replaced in applyTemplate with locale-specific file comments. */
+const I18N_FILE_MARKER = '// __I18N__'
+
+const templateFileI18nKeys: Partial<Record<string, Partial<Record<string, TranslationKey>>>> = {
+  vanilla: { 'index.js': 'template.file.vanilla.indexJs.comment' },
+  node: { 'index.js': 'template.file.node.indexJs.header' },
+}
+
 export const templates: Template[] = [
   {
     id: 'vanilla',
     name: 'Vanilla JS',
-    description: '纯 JavaScript 项目，从零开始',
+    description: 'Vanilla JavaScript starter',
     icon: '📦',
     files: {
       'index.html': `<!DOCTYPE html>
@@ -27,14 +38,14 @@ export const templates: Template[] = [
 </html>`,
       'index.js': `console.log('Hello from Vanilla JS!');
 
-// 你的代码在这里
-document.querySelector('h1').style.color = '#58a6ff';`
-    }
+${I18N_FILE_MARKER}
+document.querySelector('h1').style.color = '#58a6ff';`,
+    },
   },
   {
     id: 'react',
     name: 'React',
-    description: 'React 18 + Vite 现代开发环境',
+    description: 'React 18 + Vite',
     icon: '⚛️',
     files: {
       'index.html': `<!DOCTYPE html>
@@ -75,30 +86,34 @@ function App() {
 }
 
 export default App`,
-      'package.json': JSON.stringify({
-        name: 'react-app',
-        type: 'module',
-        scripts: {
-          dev: 'vite',
-          build: 'vite build',
-          preview: 'vite preview'
+      'package.json': JSON.stringify(
+        {
+          name: 'react-app',
+          type: 'module',
+          scripts: {
+            dev: 'vite',
+            build: 'vite build',
+            preview: 'vite preview',
+          },
+          dependencies: {
+            react: '^18.2.0',
+            'react-dom': '^18.2.0',
+          },
+          devDependencies: {
+            vite: '^5.0.0',
+            '@vitejs/plugin-react': '^4.2.0',
+          },
         },
-        dependencies: {
-          react: '^18.2.0',
-          'react-dom': '^18.2.0'
-        },
-        devDependencies: {
-          vite: '^5.0.0',
-          '@vitejs/plugin-react': '^4.2.0'
-        }
-      }, null, 2)
+        null,
+        2,
+      ),
     },
-    dependencies: { npm: 'install' }
+    dependencies: { npm: 'install' },
   },
   {
     id: 'vue',
     name: 'Vue',
-    description: 'Vue 3 组合式 API 项目',
+    description: 'Vue 3 Composition API',
     icon: '🟢',
     files: {
       'index.html': `<!DOCTYPE html>
@@ -130,32 +145,36 @@ const count = ref(0)
     <button @click="count++">Click me</button>
   </div>
 </template>`,
-      'package.json': JSON.stringify({
-        name: 'vue-app',
-        type: 'module',
-        scripts: {
-          dev: 'vite',
-          build: 'vite build',
-          preview: 'vite preview'
+      'package.json': JSON.stringify(
+        {
+          name: 'vue-app',
+          type: 'module',
+          scripts: {
+            dev: 'vite',
+            build: 'vite build',
+            preview: 'vite preview',
+          },
+          dependencies: {
+            vue: '^3.3.0',
+          },
+          devDependencies: {
+            vite: '^5.0.0',
+            '@vitejs/plugin-vue': '^4.5.0',
+          },
         },
-        dependencies: {
-          vue: '^3.3.0'
-        },
-        devDependencies: {
-          vite: '^5.0.0',
-          '@vitejs/plugin-vue': '^4.5.0'
-        }
-      }, null, 2)
+        null,
+        2,
+      ),
     },
-    dependencies: { npm: 'install' }
+    dependencies: { npm: 'install' },
   },
   {
     id: 'node',
     name: 'Node.js',
-    description: 'Node.js 后端项目',
+    description: 'Node.js backend starter',
     icon: '🟩',
     files: {
-      'index.js': `// Node.js 后端示例
+      'index.js': `${I18N_FILE_MARKER}
 const http = require('http');
 
 const server = http.createServer((req, res) => {
@@ -171,20 +190,39 @@ const PORT = 3000;
 server.listen(PORT, () => {
   console.log('Server running at http://localhost:' + PORT + '/');
 });`,
-      'package.json': JSON.stringify({
-        name: 'node-app',
-        version: '1.0.0',
-        main: 'index.js',
-        scripts: {
-          start: 'node index.js',
-          dev: 'node index.js'
-        }
-      }, null, 2)
-    }
-  }
+      'package.json': JSON.stringify(
+        {
+          name: 'node-app',
+          version: '1.0.0',
+          main: 'index.js',
+          scripts: {
+            start: 'node index.js',
+            dev: 'node index.js',
+          },
+        },
+        null,
+        2,
+      ),
+    },
+  },
 ]
 
-export function applyTemplate(template: Template): { name: string; content: string; language: string }[] {
+function localizeTemplateFileContent(
+  templateId: string,
+  path: string,
+  content: string,
+  locale: Language,
+): string {
+  const key = templateFileI18nKeys[templateId]?.[path]
+  if (!key || !content.includes(I18N_FILE_MARKER)) return content
+  const t = createTranslator(locale)
+  return content.replace(I18N_FILE_MARKER, t(key))
+}
+
+export function applyTemplate(
+  template: Template,
+  locale: Language = 'zh-CN',
+): { name: string; content: string; language: string }[] {
   return Object.entries(template.files).map(([path, content]) => {
     const ext = path.split('.').pop() || ''
     const langMap: Record<string, string> = {
@@ -196,12 +234,12 @@ export function applyTemplate(template: Template): { name: string; content: stri
       html: 'html',
       css: 'css',
       json: 'json',
-      md: 'markdown'
+      md: 'markdown',
     }
     return {
       name: path,
-      content,
-      language: langMap[ext] || 'plaintext'
+      content: localizeTemplateFileContent(template.id, path, content, locale),
+      language: langMap[ext] || 'plaintext',
     }
   })
 }

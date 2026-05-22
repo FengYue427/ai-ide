@@ -9,7 +9,8 @@ export interface AIConfig {
 
 // ==================== 用量限制管理 ====================
 
-import { createTranslator, type Language } from '../i18n'
+import { createTranslator, type Language, type TranslationKey } from '../i18n'
+import { getApiLanguage } from '../lib/apiLanguage'
 import { checkAIQuotaLocal } from './usageService'
 
 export interface QuotaCheck {
@@ -37,61 +38,60 @@ async function reserveQuotaBeforeRequest(skipQuotaCheck?: boolean): Promise<void
 
 // ==================== 模型配置 ====================
 
-export const modelOptions: Record<AIModel, { name: string; models: string[]; needsKey: boolean; description?: string }> = {
+export type ModelOptionMeta = { models: string[]; needsKey: boolean }
+
+export const modelOptions: Record<AIModel, ModelOptionMeta> = {
   openai: {
-    name: 'OpenAI',
     models: ['gpt-5.4', 'gpt-5.4-thinking', 'gpt-5.4-pro', 'gpt-5', 'gpt-4o', 'gpt-4o-mini', 'o3-mini'],
     needsKey: true,
-    description: 'GPT-5.4系列是2026年3月发布的最新旗舰模型，统一了GPT和Codex产品线'
   },
   deepseek: {
-    name: 'DeepSeek',
     models: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3.2', 'deepseek-r1', 'deepseek-chat', 'deepseek-coder'],
     needsKey: true,
-    description: 'DeepSeek V4已于2026年4月24日发布（Preview版），官方确认API可用；模型名为deepseek-v4-pro / deepseek-v4-flash'
   },
   claude: {
-    name: 'Claude (Anthropic)',
     models: ['claude-opus-4.7', 'claude-opus-4.6', 'claude-sonnet-4.6', 'claude-sonnet-4.5', 'claude-haiku-4'],
     needsKey: true,
-    description: 'Claude Opus 4.6和Sonnet 4.6是2026年2月发布的最新模型，编程能力领先'
   },
   google: {
-    name: 'Google Gemini',
     models: ['gemini-3.1-pro', 'gemini-3-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-pro', 'gemini-2.5-flash'],
     needsKey: true,
-    description: 'Gemini 3.1 Pro是2026年2月发布的最强全能模型，性价比极高'
   },
   qwen: {
-    name: '阿里通义千问',
     models: ['qwen-3.5-max', 'qwen-3.5-plus', 'qwen-3.5-9b', 'qwen-3.5-4b', 'qwen-3.5-2b'],
     needsKey: true,
-    description: 'Qwen 3.5系列2026年3月发布，0.8B-9B小模型支持iPhone本地运行'
   },
   zhipu: {
-    name: '智谱AI GLM',
     models: ['glm-5', 'glm-5.1', 'glm-4-plus', 'glm-4-flash'],
     needsKey: true,
-    description: 'GLM-5是2026年最重要的开源模型，744B参数，华为昇腾芯片训练'
   },
   minimax: {
-    name: 'MiniMax',
     models: ['minimax-m2.5', 'minimax-m2.5-lightning'],
     needsKey: true,
-    description: 'MiniMax M2.5在SWE-bench上得分80.2%，接近Claude Opus水平'
   },
   grok: {
-    name: 'xAI Grok',
     models: ['grok-4.20', 'grok-4.20-reasoning'],
     needsKey: true,
-    description: 'Grok 4.20系列：API可用性可能取决于账号权限/地区；如不可用请切换模型或更换endpoint'
   },
   ollama: {
-    name: 'Ollama (本地)',
     models: ['llama4-maverick', 'llama4-scout', 'qwen2.5', 'glm4', 'codellama', 'mistral'],
     needsKey: false,
-    description: 'Llama 4 Scout支持1000万token上下文，完全开源'
-  }
+  },
+}
+
+export function modelProviderTranslationKey(
+  provider: AIModel,
+  field: 'name' | 'desc',
+): TranslationKey {
+  return `ai.provider.${provider}.${field}` as TranslationKey
+}
+
+function aiServiceError(
+  key: 'ai.error.rateLimit' | 'ai.error.aborted',
+  params?: Record<string, string | number>,
+): Error {
+  const t = createTranslator(getApiLanguage())
+  return new Error(t(key, params))
 }
 
 export const defaultEndpoints: Record<AIModel, string> = {
@@ -207,7 +207,7 @@ export async function sendMessageWithDebounce(
   // 检查限流
   const rateLimit = checkRateLimit()
   if (!rateLimit.allowed) {
-    throw new Error(`请求过于频繁，请 ${rateLimit.retryAfter} 秒后再试`)
+    throw aiServiceError('ai.error.rateLimit', { seconds: rateLimit.retryAfter ?? 60 })
   }
   
   // 取消之前的相同请求（防抖）
@@ -260,7 +260,7 @@ async function sendMessageInternal(
   const model = config.model || modelOptions[config.provider].models[0]
   
   if (abortController?.signal.aborted) {
-    throw new Error('请求已取消')
+    throw aiServiceError('ai.error.aborted')
   }
   
   // 包装 onStream 以检查中断信号
@@ -360,7 +360,7 @@ async function sendOpenAICompatible(
       while (true) {
         if (signal?.aborted) {
           reader.cancel()
-          throw new Error('请求已取消')
+          throw aiServiceError('ai.error.aborted')
         }
         
         const { done, value } = await reader.read()
@@ -385,7 +385,7 @@ async function sendOpenAICompatible(
       }
     } catch (err) {
       if (signal?.aborted) {
-        throw new Error('请求已取消')
+        throw aiServiceError('ai.error.aborted')
       }
       throw err
     }
@@ -433,7 +433,7 @@ async function sendClaude(
       while (true) {
         if (signal?.aborted) {
           reader.cancel()
-          throw new Error('请求已取消')
+          throw aiServiceError('ai.error.aborted')
         }
         
         const { done, value } = await reader.read()
@@ -459,7 +459,7 @@ async function sendClaude(
       }
     } catch (err) {
       if (signal?.aborted) {
-        throw new Error('请求已取消')
+        throw aiServiceError('ai.error.aborted')
       }
       throw err
     }
@@ -536,7 +536,7 @@ async function sendOllama(
       while (true) {
         if (signal?.aborted) {
           reader.cancel()
-          throw new Error('请求已取消')
+          throw aiServiceError('ai.error.aborted')
         }
         
         const { done, value } = await reader.read()
@@ -558,7 +558,7 @@ async function sendOllama(
       }
     } catch (err) {
       if (signal?.aborted) {
-        throw new Error('请求已取消')
+        throw aiServiceError('ai.error.aborted')
       }
       throw err
     }

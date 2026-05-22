@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Bot, Sparkles } from 'lucide-react'
 import { useI18n } from '../i18n'
-import { AIModel, modelOptions, defaultEndpoints } from '../services/aiService'
+import { AIModel, modelOptions, modelProviderTranslationKey, defaultEndpoints } from '../services/aiService'
 import { ModalShell } from './ui/ModalShell'
 
 interface AISettingsModalProps {
@@ -70,7 +70,7 @@ const AISettingsModal: React.FC<AISettingsModalProps> = ({ config, onSave, onClo
               className={`ai-provider-btn ${provider === key ? 'ai-provider-btn--active' : ''}`}
               onClick={() => handleProviderChange(key)}
             >
-              {modelOptions[key].name}
+              {t(modelProviderTranslationKey(key, 'name'))}
             </button>
           ))}
         </div>
