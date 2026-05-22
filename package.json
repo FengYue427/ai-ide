@@ -46,6 +46,7 @@
     "db:migrate:status": "prisma migrate status",
     "db:neon": "npm run db:check && npm run prod:db",
     "smoke:production": "node scripts/smoke-production.mjs",
+    "smoke:report": "node scripts/smoke-report.mjs https://ai-ide-flame.vercel.app",
     "deploy:check": "node scripts/deploy-check.mjs",
     "p0:gate": "npm run test:local && npm run test:integration:local && node scripts/security-baseline.mjs",
     "mlp:preflight": "npm run p0:gate && npm run build && npm run test:smoke",

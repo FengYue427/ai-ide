@@ -20,7 +20,8 @@
 
 - **代码**：P0'/P1/i18n/P4-1 首包已交付；本地 `p0:gate` 曾全绿（170 单测）。
 - **生产**：`ai-ide-flame.vercel.app` → `health: degraded`, `database: unavailable` → 实际 **D0～D0.5**（云 API 不可用）。
-- **对外**：可 **RC/公测公告（BYOK）**；**不可** D2 MLP 或 D3 可收款 GA，直至 Phase 2（[NEXT_EXECUTION.md](./NEXT_EXECUTION.md)）完成。
+- **对外**：可 **RC/公测公告（BYOK）**；欢迎页会探测 `/api/health` 并提示云端是否可用；**不可** D2 MLP 或 D3 可收款 GA，直至 Phase 2 运维项完成（[PHASE2_STATUS.md](./PHASE2_STATUS.md)、[NEXT_EXECUTION.md](./NEXT_EXECUTION.md)）。
+- **冒烟记录**：`npm run smoke:report` → [PRODUCTION_SMOKE_LAST.md](./PRODUCTION_SMOKE_LAST.md)（当前 **1/5**）。
 
 ---
 

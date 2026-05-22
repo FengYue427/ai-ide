@@ -14,6 +14,7 @@ import {
   Sparkles,
   Terminal,
 } from 'lucide-react'
+import { useCloudHealth } from '../hooks/useCloudHealth'
 import { useI18n } from '../i18n'
 import type { TranslationKey } from '../i18n'
 
@@ -52,6 +53,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   shortcuts: shortcutsProp,
 }) => {
   const { t, locale } = useI18n()
+  const cloudHealth = useCloudHealth()
   const legalPrivacy = locale === 'en-US' ? '/legal/privacy-en.html' : '/legal/privacy.html'
   const legalTerms = locale === 'en-US' ? '/legal/terms-en.html' : '/legal/terms.html'
 
@@ -180,9 +182,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 <img src="/logo-ai-ide.png" alt="" width={56} height={56} decoding="async" />
               </div>
               <div>
-                <div className="welcome-badge">
-                  <Sparkles size={14} />
-                  {t('welcome.badge')}
+                <div className="welcome-badge-row">
+                  <div className="welcome-badge">
+                    <Sparkles size={14} />
+                    {t('welcome.badge')}
+                  </div>
+                  <span className="welcome-rc-badge">{t('welcome.rcBadge')}</span>
                 </div>
                 <h1 className="welcome-title">{t('welcome.title')}</h1>
               </div>
@@ -195,6 +200,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {t('welcome.settings')}
           </button>
         </header>
+
+        {cloudHealth.status !== 'loading' && (
+          <p
+            className={`welcome-cloud-banner ${
+              cloudHealth.status === 'ok' ? 'welcome-cloud-banner--ok' : 'welcome-cloud-banner--warn'
+            }`}
+            role="status"
+          >
+            {cloudHealth.status === 'ok' ? t('welcome.cloudOk') : t('welcome.cloudDegraded')}
+          </p>
+        )}
 
         <main className="welcome-main">
           <section className="welcome-panel">

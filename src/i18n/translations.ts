@@ -45,6 +45,10 @@ export const translations = {
     'common.close': '关闭',
     'modal.dialog': '对话框',
     'welcome.badge': 'AI 原生浏览器 IDE',
+    'welcome.rcBadge': 'RC 公测',
+    'welcome.cloudOk': '云端账号服务正常，可注册并同步工作区。',
+    'welcome.cloudDegraded':
+      '云端数据库暂不可用：注册/云工作区可能失败。你仍可使用 BYOK 与本地编辑；维护者请检查部署环境变量。',
     'welcome.title': '更快进入思路，更少消耗在环境上',
     'welcome.lead':
       '打开文件、与 AI 协作、运行代码、管理工作区，全部在一个轻量界面里完成。从下面的入口直接开始工作，不用先穿过一层说明页。',
@@ -1161,6 +1165,10 @@ export const translations = {
     'common.close': 'Close',
     'modal.dialog': 'Dialog',
     'welcome.badge': 'AI-native browser IDE',
+    'welcome.rcBadge': 'RC beta',
+    'welcome.cloudOk': 'Cloud accounts are available — sign in and sync workspaces.',
+    'welcome.cloudDegraded':
+      'Cloud database is unavailable — sign-in and cloud workspaces may fail. BYOK and local editing still work.',
     'welcome.title': 'Get into flow faster, spend less time on setup',
     'welcome.lead':
       'Open files, pair with AI, run code, and manage workspaces in one lightweight UI. Pick an entry below and start—no extra intro screen.',

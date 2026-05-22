@@ -2,7 +2,18 @@
 
 > 开源 AI 原生轻量 IDE —— 在浏览器里跑完整开发环境
 
+**版本 `v1.0.0-rc.1` · RC 公测** — 见 [CHANGELOG.md](./CHANGELOG.md)
+
 **[🚀 立即体验](https://ai-ide-flame.vercel.app)**
+
+| 模式 | 说明 |
+|------|------|
+| **BYOK（推荐）** | 自带 API Key，本地/浏览器编辑，无需云数据库 |
+| **云账号** | 注册、云工作区同步需部署方配置 `DATABASE_URL` 等 — [VERCEL_ENV_PHASE2.md](docs/VERCEL_ENV_PHASE2.md) |
+| **订阅** | 公测期路径 A：**不收款**，专业功能免费开放（见应用内说明） |
+
+> 维护者：部署后请跑 `APP_URL=https://你的域名 npm run smoke:production`（目标 5/5）。  
+> 上市评估：[docs/LAUNCH_ASSESSMENT_2026-05.md](docs/LAUNCH_ASSESSMENT_2026-05.md) · 执行清单：[docs/NEXT_EXECUTION.md](docs/NEXT_EXECUTION.md)
 
 ## ✨ 核心亮点
 
@@ -11,7 +22,7 @@
 - 💻 **浏览器内运行** — WebContainer 支持在浏览器中运行 Node.js
 - 🎨 **VS Code 同款编辑器** — Monaco Editor，语法高亮、智能补全
 - 🌙 **9种主题** — 深色、浅色、Monokai、Dracula 等
-- 🔄 **实时协作** — WebRTC 多人在线编辑
+- 🔄 **实时协作（Beta）** — WebRTC 多人在线编辑
 - 📦 **零安装** — 打开浏览器即可使用
 
 ## 快速开始

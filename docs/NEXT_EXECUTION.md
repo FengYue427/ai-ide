@@ -64,8 +64,8 @@ npm run deploy:check
 
 | ID | 任务 | 状态 |
 |----|------|------|
-| P2-14 | README + CHANGELOG：RC 公测、BYOK、云账号前提 | ⬜ |
-| P2-15 | 更新 [LAUNCH_READINESS.md](./LAUNCH_READINESS.md) 档位为 D2 已达标 | ⬜ |
+| P2-14 | README + CHANGELOG：RC 公测、BYOK、云账号前提 | ✅ batch 21 |
+| P2-15 | 更新 [LAUNCH_READINESS.md](./LAUNCH_READINESS.md) 档位为 D2 已达标 | ⬜（需 smoke 5/5 + P2-5/6） |
 | P2-16 | 竞品分复评（目标仍 ≥2.2，属长期） | ⬜ |
 
 ---

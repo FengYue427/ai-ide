@@ -58,6 +58,14 @@
   display: block;
 }
 
+.welcome-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .welcome-badge {
   display: inline-flex;
   align-items: center;
@@ -69,7 +77,39 @@
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
-  margin-bottom: 10px;
+}
+
+.welcome-rc-badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.welcome-cloud-banner {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.welcome-cloud-banner--ok {
+  color: var(--text-secondary);
+  background: color-mix(in srgb, #22c55e 12%, transparent);
+  border: 1px solid color-mix(in srgb, #22c55e 35%, var(--border-color));
+}
+
+.welcome-cloud-banner--warn {
+  color: var(--text-primary);
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+  border: 1px solid color-mix(in srgb, #f59e0b 40%, var(--border-color));
 }
 
 .welcome-title {

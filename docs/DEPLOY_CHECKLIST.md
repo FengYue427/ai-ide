@@ -91,6 +91,8 @@ vercel --prod
 $env:APP_URL="https://ai-ide-flame.vercel.app"
 npm run deploy:check
 npm run smoke:production -- $env:APP_URL
+npm run smoke:report
+# 报告写入 docs/PRODUCTION_SMOKE_LAST.md，可粘贴到 issue / 验收记录
 ```
 
 **Vercel 面板预览 403？** 见 [VERCEL_DEPLOYMENT_URLS.md](./VERCEL_DEPLOYMENT_URLS.md)（部署保护 vs 生产域名）。
