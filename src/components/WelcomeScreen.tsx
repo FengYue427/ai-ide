@@ -52,6 +52,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   shortcuts: shortcutsProp,
 }) => {
   const { t, locale } = useI18n()
+  const legalPrivacy = locale === 'en-US' ? '/legal/privacy-en.html' : '/legal/privacy.html'
+  const legalTerms = locale === 'en-US' ? '/legal/terms-en.html' : '/legal/terms.html'
 
   const shortcuts = useMemo(() => {
     if (shortcutsProp) return shortcutsProp
@@ -317,10 +319,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </main>
 
         <footer className="welcome-footer">
-          <a href="/legal/privacy.html" target="_blank" rel="noreferrer">
+          <a href={legalPrivacy} target="_blank" rel="noreferrer">
             {t('welcome.footer.privacy')}
           </a>
-          <a href="/legal/terms.html" target="_blank" rel="noreferrer">
+          <a href={legalTerms} target="_blank" rel="noreferrer">
             {t('welcome.footer.terms')}
           </a>
           <a href="/help/browser-limits.html" target="_blank" rel="noreferrer">

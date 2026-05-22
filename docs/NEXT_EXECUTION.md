@@ -9,11 +9,11 @@
 
 | 顺序 | ID | 任务 | 负责人动作 | 状态 |
 |------|-----|------|------------|------|
-| 1 | P0'-1 | `npm run p0:gate` 全绿 | 本地已修 Neon HTTP 无事务：注册拆步 + `consumeAiUsage` 顺序路径 | 🔶 待你本机再跑 |
+| 1 | P0'-1 | `npm run p0:gate` 全绿 | ✅ batch 18（集成 22/22 + security-baseline） | ✅ |
 | 2 | P0'-2 | 生产冒烟 | `APP_URL=https://ai-ide-flame.vercel.app npm run smoke:production` | 🔶 需可访问 Vercel |
 | 3 | P0'-2b | `npm run deploy:check` | 与冒烟同一 URL，记入 DEPLOY_CHECKLIST | ⬜ |
 | 4 | P0'-4 | 生产 30min 人工 | 注册 → 云工作区 → AI 对话 — [AUTH_BILLING_QA.md](./AUTH_BILLING_QA.md) | ⬜ |
-| 5 | L12 | 法务审阅 | 替换 `public/legal/*.html` 占位正文 | ⬜ |
+| 5 | L12 | 法务审阅 | 中英模板页 + 欢迎页按语言链接；正式运营前法务签字 | 🔶 模板就绪 |
 | 6 | L11 | Git remote | 轮换嵌入 PAT → SSH / 凭据管理器 | ⬜ |
 | 7 | L21 | Sentry（可选） | Vercel 设 `VITE_SENTRY_DSN` — 代码已接 `sentryInit.ts` | ⬜ |
 

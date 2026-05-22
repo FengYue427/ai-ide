@@ -1,31 +1,28 @@
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../../src/lib/prisma'
 import { prismaSupportsTransactions } from '../../src/lib/prismaTransactions'
+import { prismaUpsert, type UpsertDelegate } from './prismaUpsert'
 import { BILLING_PLANS } from './plans'
 import { mapStripeSubscriptionStatus } from './stripeStatus'
 
+export type SubscriptionWithPlan = Prisma.SubscriptionGetPayload<{ include: { plan: true } }>
+
 export async function ensurePlansSeeded(): Promise<void> {
   for (const plan of BILLING_PLANS) {
-    await prisma.plan.upsert({
+    const payload = {
+      displayName: plan.displayName,
+      description: plan.description,
+      price: plan.price,
+      currency: plan.currency,
+      features: JSON.stringify(plan.features),
+      limits: JSON.stringify(plan.limits),
+      isActive: true,
+    }
+    await prismaUpsert({
+      delegate: prisma.plan as unknown as UpsertDelegate<{ name: string }>,
       where: { name: plan.name },
-      create: {
-        name: plan.name,
-        displayName: plan.displayName,
-        description: plan.description,
-        price: plan.price,
-        currency: plan.currency,
-        features: JSON.stringify(plan.features),
-        limits: JSON.stringify(plan.limits),
-        isActive: true,
-      },
-      update: {
-        displayName: plan.displayName,
-        description: plan.description,
-        price: plan.price,
-        currency: plan.currency,
-        features: JSON.stringify(plan.features),
-        limits: JSON.stringify(plan.limits),
-        isActive: true,
-      },
+      create: { name: plan.name, ...payload },
+      update: payload,
     })
   }
 }
@@ -58,14 +55,12 @@ export async function upsertUserSubscription(userId: string, planName: string, s
   if (!prismaSupportsTransactions()) {
     const existing = await prisma.subscription.findUnique({ where: { userId } })
     if (existing) {
-      return prisma.subscription.update({
-        where: { userId },
-        data: payload,
-        include: { plan: true },
-      })
+      await prisma.subscription.update({ where: { userId }, data: payload })
+    } else {
+      await prisma.subscription.create({ data: { userId, ...payload } })
     }
-    return prisma.subscription.create({
-      data: { userId, ...payload },
+    return prisma.subscription.findUniqueOrThrow({
+      where: { userId },
       include: { plan: true },
     })
   }
@@ -85,6 +80,13 @@ export async function getUserSubscription(userId: string) {
   })
 }
 
+async function reloadSubscriptionWithPlan(userId: string): Promise<SubscriptionWithPlan> {
+  return prisma.subscription.findUniqueOrThrow({
+    where: { userId },
+    include: { plan: true },
+  })
+}
+
 /** Mark paid subscription to end at current period (keeps access until period end). */
 export async function scheduleSubscriptionCancel(userId: string) {
   const record = await getUserSubscription(userId)
@@ -92,14 +94,14 @@ export async function scheduleSubscriptionCancel(userId: string) {
     throw new Error('当前没有可取消的付费订阅')
   }
 
-  return prisma.subscription.update({
+  await prisma.subscription.update({
     where: { userId },
     data: {
       cancelAtPeriodEnd: true,
       status: 'active',
     },
-    include: { plan: true },
   })
+  return reloadSubscriptionWithPlan(userId)
 }
 
 /** Remove paid subscription record — API falls back to free tier. */
@@ -108,11 +110,11 @@ export async function downgradeUserToFree(userId: string) {
 }
 
 export async function clearSubscriptionCancelFlag(userId: string) {
-  return prisma.subscription.update({
+  await prisma.subscription.update({
     where: { userId },
     data: { cancelAtPeriodEnd: false },
-    include: { plan: true },
   })
+  return reloadSubscriptionWithPlan(userId)
 }
 
 export async function findSubscriptionByStripeId(stripeSubscriptionId: string) {
@@ -163,7 +165,7 @@ export async function syncSubscriptionFromStripe(stripeSub: {
     throw new Error(`未知计划: ${targetPlanName}`)
   }
 
-  return prisma.subscription.update({
+  await prisma.subscription.update({
     where: { userId: record.userId },
     data: {
       planId: plan.id,
@@ -177,8 +179,8 @@ export async function syncSubscriptionFromStripe(stripeSub: {
           ? stripeSub.customer
           : stripeSub.customer?.id ?? record.stripeCustomerId,
     },
-    include: { plan: true },
   })
+  return reloadSubscriptionWithPlan(record.userId)
 }
 
 export async function markSubscriptionPastDueByStripeSubscriptionId(
@@ -187,9 +189,9 @@ export async function markSubscriptionPastDueByStripeSubscriptionId(
   const record = await findSubscriptionByStripeId(stripeSubscriptionId)
   if (!record) return null
 
-  return prisma.subscription.update({
+  await prisma.subscription.update({
     where: { userId: record.userId },
     data: { status: 'past_due' },
-    include: { plan: true },
   })
+  return reloadSubscriptionWithPlan(record.userId)
 }

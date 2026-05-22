@@ -37,15 +37,20 @@ export async function getPaymentOrderById(id: string) {
 
 /** Returns true if transitioned pending → paid (false if already paid or missing). */
 export async function markPaymentOrderPaid(outTradeNo: string, tradeNo?: string): Promise<boolean> {
-  const result = await prisma.paymentOrder.updateMany({
-    where: { outTradeNo, status: 'pending' },
+  const order = await prisma.paymentOrder.findUnique({ where: { outTradeNo } })
+  if (!order) return false
+  if (order.status === 'paid') return false
+  if (order.status !== 'pending') return false
+
+  await prisma.paymentOrder.update({
+    where: { outTradeNo },
     data: {
       status: 'paid',
       tradeNo: tradeNo ?? undefined,
       paidAt: new Date(),
     },
   })
-  return result.count > 0
+  return true
 }
 
 export async function closePaymentOrder(outTradeNo: string) {

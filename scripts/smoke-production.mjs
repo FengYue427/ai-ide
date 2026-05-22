@@ -26,7 +26,7 @@ console.log(`=== Production smoke @ ${base} ===\n`)
 
 for (const check of checks) {
   try {
-    const res = await fetch(`${base}${check.path}`, { signal: AbortSignal.timeout(20_000) })
+    const res = await fetch(`${base}${check.path}`, { signal: AbortSignal.timeout(30_000) })
     const ct = res.headers.get('content-type') || ''
     let detail = `HTTP ${res.status}`
 

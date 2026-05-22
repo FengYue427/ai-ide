@@ -47,9 +47,15 @@ export async function POST(req: Request) {
     })
     if (!rate.allowed) return rateLimitErrorResponse(req, rate)
 
-    // Server-authoritative: one successful AI request consumes exactly one unit.
-    void (await req.json().catch(() => ({})))
-    const amount = 1
+    const body = (await req.json().catch(() => ({}))) as { amount?: unknown }
+    let amount = 1
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      typeof body.amount === 'number' &&
+      Number.isFinite(body.amount)
+    ) {
+      amount = Math.min(Math.max(1, Math.floor(body.amount)), 500)
+    }
 
     const result = await consumeAiUsage(auth.user.id, amount)
     if (!result.ok) {

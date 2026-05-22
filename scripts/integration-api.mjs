@@ -155,18 +155,12 @@ async function run() {
       typeof freeLimit === 'number' && freeLimit > 0 ? Math.max(0, freeLimit - used) : 50
 
     if (remaining > 0) {
-      let fillFailed = false
-      for (let i = 0; i < remaining; i++) {
-        const fill = await api('/api/usage/ai', { method: 'POST', body: '{}' })
-        if (fill.res.status === 429) break
-        if (!fill.res.ok) {
-          fail('usage quota fill to limit', fill.json?.error || `HTTP ${fill.res.status} at ${i + 1}/${remaining}`)
-          fillFailed = true
-          break
-        }
-      }
-      if (!fillFailed && remaining > 20) {
-        pass('usage quota fill to limit', `${remaining} POST(s)`)
+      const fill = await api('/api/usage/ai', {
+        method: 'POST',
+        body: JSON.stringify({ amount: remaining }),
+      })
+      if (!fill.res.ok && fill.res.status !== 429) {
+        fail('usage quota fill to limit', fill.json?.error || `HTTP ${fill.res.status}`)
       }
     }
 

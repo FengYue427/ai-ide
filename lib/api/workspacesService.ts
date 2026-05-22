@@ -1,3 +1,5 @@
+import type { UserWorkspace } from '@prisma/client'
+import { prismaUpsert, type UpsertDelegate } from '../billing/prismaUpsert'
 import { prisma } from '../../src/lib/prisma'
 
 export function serializeWorkspace(workspace: {
@@ -66,7 +68,8 @@ export async function upsertWorkspace(
 ) {
   const isDefault = name === 'default'
 
-  return prisma.userWorkspace.upsert({
+  return prismaUpsert<UserWorkspace>({
+    delegate: prisma.userWorkspace as unknown as UpsertDelegate<UserWorkspace>,
     where: { userId_name: { userId, name } },
     create: {
       userId,

@@ -8,8 +8,8 @@
 
 | ID | 项 | 状态 | 验证 |
 |----|-----|------|------|
-| P0'-1 | 集成测试 | 🔶 | batch 17：注册拆步、`consumeAiUsage`/订阅 upsert 无事务路径、集成测按次 POST 灌满配额；Neon 可达时再跑 `p0:gate` |
-| P0'-2 | 部署冒烟 | 🔶 脚本就绪 | 推送后执行 `APP_URL=https://你的域名 npm run smoke:production`（曾见 API 500，需 Vercel env 对齐） |
+| P0'-1 | 集成测试 | ✅ | batch 18：`prismaUpsert`、Neon 禁用 update+include、`p0:gate` 22/22 + security-baseline |
+| P0'-2 | 部署冒烟 | 🔶 | 脚本就绪；本机网络需能访问 Vercel（CI/本地跑 `smoke:production`） |
 | P0'-3 | E2E CI | ✅ | CI `test:e2e`；本地 `npm run test:e2e:local`（12/12） |
 | P0'-4 | Cookie / APP_URL | 🔶 文档 | [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) §2 |
 | P0'-5 | 离线登录策略 | ✅ | S0-3b + `allowOfflineAuthFallback()` |
@@ -20,7 +20,7 @@
 
 ### 工程修复（本轮）
 
-- **Neon HTTP**：`register` 不再嵌套 `workspaces.create`；`consumeAiUsage` 在 Neon URL 下走顺序写入（`prismaSupportsTransactions`）
+- **Neon HTTP**：`register` 拆步；`prismaUpsert` 替代 `upsert`；订阅/订单 `update` 后 `findUniqueOrThrow`（禁止 update+include）；dev 下用量 POST 可传 `amount`（集成灌配额）
 - `scripts/load-env-local.mjs`：`run-integration-local` 继承 `.env.local` 的 `DATABASE_URL`
 - `integration-api-offline`：未登录订阅返回 free plan（与 API 一致）
 - `billingMode`：未设置 `NODE_ENV` 时允许 dev payment simulate（本地 dev:api）
