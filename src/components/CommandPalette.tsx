@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { projectIndexManager } from '../services/projectIndexManager'
 import { parsePackageScripts } from '../services/packageJsonService'
 import { workspaceContextService } from '../services/workspaceContextService'
+import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import type { FileItem } from '../types/file'
 import {
@@ -116,6 +117,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   theme,
   autoSaveEnabled,
 }) => {
+  const { t } = useI18n()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [indexVersion, setIndexVersion] = useState(() => projectIndexManager.getVersion())
@@ -152,13 +154,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       title: `npm run ${script.name}`,
       subtitle: script.command,
       icon: <Terminal size={18} />,
-      category: 'npm scripts',
+      category: t('command.cat.npm'),
       action: () => {
         void onRunNpmScript(script.name)
         onClose()
       },
     }))
-  }, [files, onClose, onRunNpmScript])
+  }, [files, onClose, onRunNpmScript, t])
 
   const indexCommands: Command[] = useMemo(() => {
     const raw = searchQuery.trim()
@@ -173,21 +175,21 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       subtitle:
         hit.type === 'symbol'
           ? `${hit.kind ?? 'symbol'} · ${hit.path}:${hit.line}`
-          : '工作区 / 编辑器文件',
+          : t('command.index.workspace'),
       icon: <Code2 size={18} />,
-      category: '索引 (@)',
+      category: t('command.cat.index'),
       action: () => revealPath(hit.path, hit.line ?? 1),
     }))
-  }, [indexVersion, searchQuery, setActiveFile, setEditorTarget, onClose])
+  }, [indexVersion, searchQuery, setActiveFile, setEditorTarget, onClose, t])
 
   const commands: Command[] = useMemo(
     () => [
       ...files.map((file, index) => ({
         id: `file-${index}`,
         title: file.name,
-        subtitle: '打开文件',
+        subtitle: t('command.openFile'),
         icon: <FileText size={18} />,
-        category: '文件',
+        category: t('command.cat.files'),
         action: () => {
           onSelectFile(index)
           onClose()
@@ -195,11 +197,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       })),
       {
         id: 'new-file',
-        title: '新建文件',
-        subtitle: '创建一个空白文件',
+        title: t('command.newFile'),
+        subtitle: t('command.newFile.sub'),
         icon: <FileText size={18} />,
         shortcut: 'Ctrl+N',
-        category: '文件',
+        category: t('command.cat.files'),
         action: () => {
           onNewFile()
           onClose()
@@ -207,10 +209,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'new-from-template',
-        title: '从模板新建项目',
-        subtitle: 'React、Node 等 starter',
+        title: t('command.newTemplate'),
+        subtitle: t('command.newTemplate.sub'),
         icon: <FileText size={18} />,
-        category: '文件',
+        category: t('command.cat.files'),
         action: () => {
           onOpenTemplate()
           onClose()
@@ -218,10 +220,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'workspace-import',
-        title: '导入文件夹到工作区',
-        subtitle: '打开导入面板',
+        title: t('command.importFolder'),
+        subtitle: t('command.importFolder.sub'),
         icon: <Folder size={18} />,
-        category: '文件',
+        category: t('command.cat.files'),
         action: () => {
           onOpenWorkspaceImport()
           onClose()
@@ -229,9 +231,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'export-file',
-        title: '导出当前文件',
+        title: t('command.exportFile'),
         icon: <Download size={18} />,
-        category: '文件',
+        category: t('command.cat.files'),
         action: () => {
           onExportFile()
           onClose()
@@ -239,9 +241,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'export-zip',
-        title: '导出项目 ZIP',
+        title: t('command.exportZip'),
         icon: <Package size={18} />,
-        category: '文件',
+        category: t('command.cat.files'),
         action: () => {
           onExportZip()
           onClose()
@@ -249,9 +251,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'import-files',
-        title: '导入文件或项目',
+        title: t('command.import'),
         icon: <Folder size={18} />,
-        category: '文件',
+        category: t('command.cat.files'),
         action: () => {
           onOpenImport()
           onClose()
@@ -259,11 +261,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'run-code',
-        title: '运行代码',
-        subtitle: '执行当前文件',
+        title: t('command.run'),
+        subtitle: t('command.run.sub'),
         icon: <Play size={18} />,
         shortcut: 'Ctrl+Enter',
-        category: '运行',
+        category: t('command.cat.run'),
         action: () => {
           onRunCode()
           onClose()
@@ -271,9 +273,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'toggle-terminal',
-        title: '显示或隐藏终端',
+        title: t('command.terminal'),
         icon: <Terminal size={18} />,
-        category: '运行',
+        category: t('command.cat.run'),
         action: () => {
           onOpenTerminal()
           onClose()
@@ -281,10 +283,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'performance',
-        title: '性能分析',
-        subtitle: '查看代码执行表现',
+        title: t('command.performance'),
+        subtitle: t('command.performance.sub'),
         icon: <Activity size={18} />,
-        category: '运行',
+        category: t('command.cat.run'),
         action: () => {
           onOpenPerformance()
           onClose()
@@ -292,10 +294,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'ai-chat',
-        title: 'AI 助手',
-        subtitle: '打开对话面板',
+        title: t('command.ai'),
+        subtitle: t('command.ai.sub'),
         icon: <Bot size={18} />,
-        category: 'AI',
+        category: t('command.cat.ai'),
         action: () => {
           onOpenAIChat()
           onClose()
@@ -303,10 +305,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'code-review',
-        title: '代码审查',
-        subtitle: '检查代码质量与风险',
+        title: t('command.review'),
+        subtitle: t('command.review.sub'),
         icon: <Shield size={18} />,
-        category: 'AI',
+        category: t('command.cat.ai'),
         action: () => {
           onOpenCodeReview()
           onClose()
@@ -314,10 +316,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'snippets',
-        title: '代码片段库',
-        subtitle: '插入常用片段',
+        title: t('command.snippets'),
+        subtitle: t('command.snippets.sub'),
         icon: <Code2 size={18} />,
-        category: 'AI',
+        category: t('command.cat.ai'),
         action: () => {
           onOpenSnippetLibrary()
           onClose()
@@ -325,10 +327,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'git',
-        title: 'Git 面板',
-        subtitle: '查看改动与历史',
+        title: t('command.git'),
+        subtitle: t('command.git.sub'),
         icon: <GitBranch size={18} />,
-        category: '协作',
+        category: t('command.cat.collab'),
         action: () => {
           onOpenGit()
           onClose()
@@ -336,10 +338,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'share',
-        title: '分享项目',
-        subtitle: '生成快照或导入分享',
+        title: t('command.share'),
+        subtitle: t('command.share.sub'),
         icon: <Share2 size={18} />,
-        category: '协作',
+        category: t('command.cat.collab'),
         action: () => {
           onOpenShare()
           onClose()
@@ -347,10 +349,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'collaboration',
-        title: '实时协作',
-        subtitle: '加入共享房间',
+        title: t('command.collab'),
+        subtitle: t('command.collab.sub'),
         icon: <Users size={18} />,
-        category: '协作',
+        category: t('command.cat.collab'),
         action: () => {
           onOpenCollaboration()
           onClose()
@@ -358,10 +360,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'preview',
-        title: '预览面板',
-        subtitle: '查看 HTML 或文本输出',
+        title: t('command.preview'),
+        subtitle: t('command.preview.sub'),
         icon: <Eye size={18} />,
-        category: '视图',
+        category: t('command.cat.view'),
         action: () => {
           onOpenPreview()
           onClose()
@@ -369,10 +371,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'search',
-        title: '全局搜索',
-        subtitle: '在文件中查找内容',
+        title: t('command.search'),
+        subtitle: t('command.search.sub'),
         icon: <Search size={18} />,
-        category: '视图',
+        category: t('command.cat.view'),
         action: () => {
           onOpenSearch()
           onClose()
@@ -380,10 +382,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'plugins',
-        title: '插件管理',
-        subtitle: '启用或加载扩展',
+        title: t('command.plugins'),
+        subtitle: t('command.plugins.sub'),
         icon: <Puzzle size={18} />,
-        category: '视图',
+        category: t('command.cat.view'),
         action: () => {
           onOpenPluginManager()
           onClose()
@@ -391,10 +393,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'welcome-home',
-        title: '返回欢迎页',
-        subtitle: '快速开始、模板与最近项目',
+        title: t('command.welcome'),
+        subtitle: t('command.welcome.sub'),
         icon: <Home size={18} />,
-        category: '视图',
+        category: t('command.cat.view'),
         action: () => {
           onOpenWelcome()
           onClose()
@@ -402,11 +404,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'settings',
-        title: '设置中心',
-        subtitle: '调整编辑器与 AI 配置',
+        title: t('command.settings'),
+        subtitle: t('command.settings.sub'),
         icon: <Settings size={18} />,
         shortcut: 'Ctrl+,',
-        category: '设置',
+        category: t('command.cat.settings'),
         action: () => {
           onOpenSettings()
           onClose()
@@ -414,10 +416,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'theme-selector',
-        title: '主题选择器',
-        subtitle: '浏览全部编辑器主题',
+        title: t('command.themePicker'),
+        subtitle: t('command.themePicker.sub'),
         icon: <Palette size={18} />,
-        category: '设置',
+        category: t('command.cat.settings'),
         action: () => {
           onOpenThemeSelector()
           onClose()
@@ -425,9 +427,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'toggle-theme',
-        title: `切换到${theme === 'vs-dark' ? '亮色' : '暗色'}主题`,
+        title: theme === 'vs-dark' ? t('command.themeToLight') : t('command.themeToDark'),
         icon: theme === 'vs-dark' ? <Sun size={18} /> : <Moon size={18} />,
-        category: '设置',
+        category: t('command.cat.settings'),
         action: () => {
           onToggleTheme()
           onClose()
@@ -435,9 +437,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'toggle-autosave',
-        title: `${autoSaveEnabled ? '关闭' : '开启'}自动保存`,
+        title: autoSaveEnabled ? t('command.autosaveOff') : t('command.autosaveOn'),
         icon: <Save size={18} />,
-        category: '设置',
+        category: t('command.cat.settings'),
         action: () => {
           onToggleAutoSave()
           onClose()
@@ -468,6 +470,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       onSelectFile,
       onToggleAutoSave,
       onToggleTheme,
+      onOpenTemplate,
+      onOpenWorkspaceImport,
+      onOpenThemeSelector,
+      onOpenWelcome,
+      t,
       theme,
     ],
   )
@@ -561,7 +568,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
             type="text"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="命令 / 文件名，或 @ 搜索符号与文件"
+            placeholder={t('command.placeholder')}
             autoFocus
             style={{
               flex: 1,
@@ -579,8 +586,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           {filteredCommands.length === 0 ? (
             <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <Search size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
-              <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '6px' }}>没有找到匹配命令</div>
-              <div style={{ fontSize: '13px' }}>试试输入文件名、功能名，或用 @ 搜索符号（如 @login）。</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '6px' }}>{t('command.empty.title')}</div>
+              <div style={{ fontSize: '13px' }}>{t('command.empty.desc')}</div>
             </div>
           ) : (
             Object.entries(groupedCommands).map(([category, categoryCommands]) => (
@@ -648,9 +655,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
             fontSize: '12px',
           }}
         >
-          <span>Enter 执行</span>
-          <span>↑↓ 选择</span>
-          <span>ESC 关闭</span>
+          <span>{t('command.footer.enter')}</span>
+          <span>{t('command.footer.navigate')}</span>
+          <span>{t('command.footer.close')}</span>
         </div>
       </div>
     </div>

@@ -4,6 +4,8 @@ import { BETA_BILLING_NOTE, hasCheckoutPayment } from '../../lib/billing/checkou
 import { readJsonResponse } from '../services/apiUtils'
 import { authService } from '../services/authService'
 import { subscriptionService } from '../services/subscriptionService'
+import { useI18n } from '../i18n'
+import type { TranslationKey } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import CnPayModal from './CnPayModal'
 import { AlertBanner } from './ui/AlertBanner'
@@ -36,38 +38,52 @@ interface SubscriptionModalProps {
   currentPlan?: string
 }
 
-const fallbackPlans: Plan[] = [
-  {
-    id: 'free',
-    name: 'free',
-    displayName: '免费版',
-    description: '个人学习与日常小项目，配额已放宽。',
-    price: 0,
-    currency: 'CNY',
-    features: ['基础 AI 对话', '10 个云工作区', '每日 200 次配额'],
-    limits: { aiRequestsPerDay: 200, workspaces: 10, storageGB: 3 },
-  },
-  {
-    id: 'pro',
-    name: 'pro',
-    displayName: '专业版',
-    description: '高频个人开发者，¥19/月。',
-    price: 19,
-    currency: 'CNY',
-    features: ['每日 5000 次配额', '无限工作区', '支付宝 / 微信付款'],
-    limits: { aiRequestsPerDay: 5000, workspaces: -1, storageGB: 30 },
-  },
-  {
-    id: 'enterprise',
-    name: 'enterprise',
-    displayName: '团队版',
-    description: '小团队与重度用户，¥49/月。',
-    price: 49,
-    currency: 'CNY',
-    features: ['配额不限', '无限工作区', '团队能力（规划）'],
-    limits: { aiRequestsPerDay: -1, workspaces: -1, storageGB: 100 },
-  },
-]
+function buildFallbackPlans(t: (key: TranslationKey) => string): Plan[] {
+  return [
+    {
+      id: 'free',
+      name: 'free',
+      displayName: t('subscription.plan.free.name'),
+      description: t('subscription.plan.free.desc'),
+      price: 0,
+      currency: 'CNY',
+      features: [
+        t('subscription.plan.free.f1'),
+        t('subscription.plan.free.f2'),
+        t('subscription.plan.free.f3'),
+      ],
+      limits: { aiRequestsPerDay: 200, workspaces: 10, storageGB: 3 },
+    },
+    {
+      id: 'pro',
+      name: 'pro',
+      displayName: t('subscription.plan.pro.name'),
+      description: t('subscription.plan.pro.desc'),
+      price: 19,
+      currency: 'CNY',
+      features: [
+        t('subscription.plan.pro.f1'),
+        t('subscription.plan.pro.f2'),
+        t('subscription.plan.pro.f3'),
+      ],
+      limits: { aiRequestsPerDay: 5000, workspaces: -1, storageGB: 30 },
+    },
+    {
+      id: 'enterprise',
+      name: 'enterprise',
+      displayName: t('subscription.plan.enterprise.name'),
+      description: t('subscription.plan.enterprise.desc'),
+      price: 49,
+      currency: 'CNY',
+      features: [
+        t('subscription.plan.enterprise.f1'),
+        t('subscription.plan.enterprise.f2'),
+        t('subscription.plan.enterprise.f3'),
+      ],
+      limits: { aiRequestsPerDay: -1, workspaces: -1, storageGB: 100 },
+    },
+  ]
+}
 
 const planVisuals: Record<string, { gradient: string; border: string; icon: React.ReactNode }> = {
   free: {
@@ -88,7 +104,9 @@ const planVisuals: Record<string, { gradient: string; border: string; icon: Reac
 }
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentPlan = 'free' }) => {
+  const { t, locale } = useI18n()
   const setCurrentPlan = useIDEStore((s) => s.setCurrentPlan)
+  const fallbackPlans = useMemo(() => buildFallbackPlans(t), [t])
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [processingPlanId, setProcessingPlanId] = useState<string | null>(null)
@@ -155,13 +173,13 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
           setPlans(data.plans)
         } else {
           setPlans(fallbackPlans)
-          setError('暂时无法读取在线套餐信息，先为你展示默认方案。')
+          setError(t('subscription.plans.loadError'))
         }
       })
       .catch(() => {
         if (!cancelled) {
           setPlans(fallbackPlans)
-          setError('暂时无法读取在线套餐信息，先为你展示默认方案。')
+          setError(t('subscription.plans.loadError'))
         }
       })
       .finally(() => {
@@ -171,7 +189,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [fallbackPlans, setCurrentPlan, t])
 
   const currentPlanInfo = useMemo(() => plans.find((plan) => plan.name === currentPlan), [plans, currentPlan])
   const checkoutAvailable = hasCheckoutPayment(paymentMethods)
@@ -184,7 +202,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
     const session = await authService.getSession()
     if (!session?.user) {
-      setError('请先登录后再升级订阅')
+      setError(t('subscription.loginRequired'))
       return
     }
 
@@ -217,10 +235,10 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
           setSuccess(data.message || `已升级为 ${data.plan}`)
           window.setTimeout(() => onClose(), 1200)
         } else {
-          setError(data?.error || '开发模式升级失败')
+          setError(data?.error || t('subscription.devUpgradeFailed'))
         }
       } catch {
-        setError('支付请求失败，请检查网络或稍后重试。')
+        setError(t('subscription.payFailed'))
       } finally {
         setProcessingPlanId(null)
       }
@@ -232,10 +250,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
       return
     }
 
-    setError('支付尚未配置，请在服务端设置支付宝或微信商户参数。')
+    setError(t('subscription.payNotConfigured'))
   }
 
-  const formatLimit = (value: number, unit: string) => (value === -1 ? '无限制' : `${value}${unit}`)
+  const formatLimit = (value: number, unit: string) =>
+    value === -1 ? t('subscription.unlimited') : `${value}${unit}`
 
   const handleCancel = async (immediate: boolean) => {
     setCancelling(true)
@@ -254,7 +273,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
         error?: string
       }>(response)
       if (!response.ok) {
-        setError(data?.error || '取消订阅失败')
+        setError(data?.error || t('subscription.cancelFailed'))
         return
       }
       if (data?.subscription) {
@@ -262,9 +281,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
         setCurrentPlan(data.subscription.plan)
         subscriptionService.subscribeToPlan(data.subscription.plan)
       }
-      setSuccess(data?.message || '订阅状态已更新')
+      setSuccess(data?.message || t('subscription.updated'))
     } catch {
-      setError('取消订阅失败，请稍后重试')
+      setError(t('subscription.cancelFailedRetry'))
     } finally {
       setCancelling(false)
     }
@@ -285,7 +304,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
         error?: string
       }>(response)
       if (!response.ok) {
-        setError(data?.error || '恢复订阅失败')
+        setError(data?.error || t('subscription.resumeFailed'))
         return
       }
       if (data?.subscription) {
@@ -293,9 +312,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
         setCurrentPlan(data.subscription.plan)
         subscriptionService.subscribeToPlan(data.subscription.plan)
       }
-      setSuccess(data?.message || '订阅已恢复')
+      setSuccess(data?.message || t('subscription.resumed'))
     } catch {
-      setError('恢复订阅失败，请稍后重试')
+      setError(t('subscription.resumeFailedRetry'))
     } finally {
       setResuming(false)
     }
@@ -314,9 +333,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
         window.location.href = data.url
         return
       }
-      setError(data?.error || '无法打开 Stripe 客户门户')
+      setError(data?.error || t('subscription.portalFailed'))
     } catch {
-      setError('无法打开账单管理页面')
+      setError(t('subscription.portalPageFailed'))
     } finally {
       setProcessingPlanId(null)
     }
@@ -325,7 +344,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
   const isPaidPlan = currentPlan !== 'free'
   const periodEndLabel =
     subscription?.currentPeriodEnd &&
-    new Date(subscription.currentPeriodEnd).toLocaleDateString('zh-CN', {
+    new Date(subscription.currentPeriodEnd).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -339,21 +358,25 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
           onClose={() => setCnPayPlan(null)}
           onSuccess={() => {
             void loadSubscription()
-            setSuccess('支付成功，订阅已更新')
+            setSuccess(t('subscription.paySuccess'))
           }}
         />
       )}
     <ModalShell
-      title="订阅计划"
+      title={t('subscription.title')}
       onClose={onClose}
       className="modal--wide"
       bodyClassName="modal-body--grid"
-      ariaLabel="订阅计划"
+      ariaLabel={t('subscription.title')}
     >
           <div className="subscription-hero">
-            <div className="subscription-hero-title">选择更适合你的工作节奏</div>
+            <div className="subscription-hero-title">{t('subscription.hero.title')}</div>
             <p className="subscription-hero-desc">
-              当前计划{currentPlanInfo ? `是 ${currentPlanInfo.displayName}` : '已启用'}。升级后可以获得更高的 AI 配额、更大的工作区容量，以及更完整的协作与管理能力。
+              {t('subscription.hero.desc', {
+                planSuffix: currentPlanInfo
+                  ? t('subscription.hero.planIs', { name: currentPlanInfo.displayName })
+                  : t('subscription.hero.planActive'),
+              })}
             </p>
           </div>
 
@@ -373,16 +396,23 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
           {isPaidPlan && subscription && (
             <div className="subscription-manage">
-              <div className="subscription-manage-title">当前订阅</div>
+              <div className="subscription-manage-title">{t('subscription.manage.title')}</div>
               {subscription.cancelAtPeriodEnd ? (
                 <div style={{ fontSize: '13px', color: '#ffb648', lineHeight: 1.6 }}>
-                  已安排在周期结束后降级为免费版
-                  {periodEndLabel ? `（${periodEndLabel} 前仍可使用 ${currentPlanInfo?.displayName || currentPlan}）` : ''}
+                  {t('subscription.manage.cancelScheduled')}
+                  {periodEndLabel
+                    ? t('subscription.manage.cancelUntil', {
+                        date: periodEndLabel,
+                        plan: currentPlanInfo?.displayName || currentPlan,
+                      })
+                    : ''}
                 </div>
               ) : (
                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  状态：{subscription.status}
-                  {periodEndLabel ? ` · 当前周期至 ${periodEndLabel}` : ''}
+                  {t('subscription.manage.status', { status: subscription.status })}
+                  {periodEndLabel
+                    ? t('subscription.manage.periodEnd', { date: periodEndLabel })
+                    : ''}
                 </div>
               )}
               <div className="subscription-manage-actions">
@@ -393,7 +423,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                     disabled={resuming}
                     onClick={() => void handleResume()}
                   >
-                    {resuming ? '恢复中…' : '恢复订阅续费'}
+                    {resuming ? t('subscription.resuming') : t('subscription.resume')}
                   </button>
                 ) : (
                   <button
@@ -402,7 +432,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                     disabled={cancelling}
                     onClick={() => void handleCancel(false)}
                   >
-                    {cancelling ? '处理中…' : '周期结束后取消'}
+                    {cancelling ? t('subscription.processing') : t('subscription.cancelEnd')}
                   </button>
                 )}
                 <button
@@ -411,11 +441,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                   disabled={cancelling || resuming}
                   onClick={() => void handleCancel(true)}
                 >
-                  立即降级免费版
+                  {t('subscription.downgradeNow')}
                 </button>
                 {paymentMethods.stripe && (
                   <button type="button" className="btn btn-secondary" onClick={() => void handleBillingPortal()}>
-                    Stripe 账单管理
+                    {t('subscription.stripePortal')}
                   </button>
                 )}
               </div>
@@ -425,7 +455,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
           {loading ? (
             <div className="subscription-loading">
               <Loader2 size={28} className="spin" />
-              <span>正在加载套餐信息...</span>
+              <span>{t('subscription.loading')}</span>
             </div>
           ) : (
             <div className="subscription-plans-grid">
@@ -464,7 +494,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                               fontWeight: 700,
                             }}
                           >
-                            当前计划
+                            {t('subscription.currentPlan')}
                           </span>
                         )}
                       </div>
@@ -478,14 +508,23 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                           {plan.currency === 'CNY' ? '¥' : '$'}
                         </span>
                         <span className="subscription-plan-price">{plan.price}</span>
-                        <span className="subscription-plan-period">/月</span>
+                        <span className="subscription-plan-period">{t('subscription.perMonth')}</span>
                       </div>
 
                       <div style={{ display: 'grid', gap: '8px' }}>
                         {[
-                          ['AI 请求', formatLimit(plan.limits.aiRequestsPerDay, ' / 天')],
-                          ['工作区', formatLimit(plan.limits.workspaces, ' 个')],
-                          ['存储空间', formatLimit(plan.limits.storageGB, ' GB')],
+                          [
+                            t('subscription.limit.ai'),
+                            formatLimit(plan.limits.aiRequestsPerDay, t('subscription.perDay')),
+                          ],
+                          [
+                            t('subscription.limit.workspaces'),
+                            formatLimit(plan.limits.workspaces, t('subscription.unit.workspaces')),
+                          ],
+                          [
+                            t('subscription.limit.storage'),
+                            formatLimit(plan.limits.storageGB, ' GB'),
+                          ],
                         ].map(([label, value]) => (
                           <div key={label} className="subscription-limit-row">
                             <span>{label}</span>
@@ -513,16 +552,18 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                           {isProcessing ? (
                             <>
                               <Loader2 size={16} className="spin" style={{ marginRight: '6px' }} />
-                              跳转支付...
+                              {t('subscription.checkout.redirect')}
                             </>
                           ) : isCurrent ? (
-                            '当前使用中'
+                            t('subscription.checkout.current')
                           ) : plan.price === 0 ? (
-                            '继续免费使用'
+                            t('subscription.checkout.free')
                           ) : checkoutAvailable ? (
-                            paymentMethods.alipay || paymentMethods.wechat ? '支付宝 / 微信升级' : '立即升级'
+                            paymentMethods.alipay || paymentMethods.wechat
+                              ? t('subscription.checkout.cn')
+                              : t('subscription.checkout.upgrade')
                           ) : (
-                            '公测免费'
+                            t('subscription.checkout.beta')
                           )}
                         </button>
                       </div>
