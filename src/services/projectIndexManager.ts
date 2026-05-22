@@ -1,9 +1,10 @@
 import {
   buildProjectIndex,
-  collectIndexSources,
+  collectIndexSourcesWithStats,
   patchIndexedFile,
   removeIndexedFile,
   searchProjectIndex,
+  type IndexBuildStats,
   type IndexSearchHit,
   type ProjectIndex,
 } from './projectIndexService'
@@ -13,8 +14,16 @@ type IndexListener = () => void
 
 const EMPTY_INDEX: ProjectIndex = { files: [], builtAt: 0 }
 
+const EMPTY_STATS: IndexBuildStats = {
+  totalFiles: 0,
+  eligibleFiles: 0,
+  indexedFiles: 0,
+  capped: false,
+}
+
 class ProjectIndexManager {
   private index: ProjectIndex = EMPTY_INDEX
+  private stats: IndexBuildStats = EMPTY_STATS
   private version = 0
   private listeners = new Set<IndexListener>()
 
@@ -24,6 +33,10 @@ class ProjectIndexManager {
 
   getVersion(): number {
     return this.version
+  }
+
+  getIndexStats(): IndexBuildStats {
+    return this.stats
   }
 
   subscribe(listener: IndexListener): () => void {
@@ -48,7 +61,8 @@ class ProjectIndexManager {
     editorFiles: { name: string; content: string; language?: string }[],
     workspaceFiles?: { path: string; content: string; language?: string }[],
   ): ProjectIndex {
-    const sources = collectIndexSources(editorFiles, workspaceFiles)
+    const { sources, stats } = collectIndexSourcesWithStats(editorFiles, workspaceFiles)
+    this.stats = stats
     this.index = buildProjectIndex(sources)
     this.emit()
     return this.index

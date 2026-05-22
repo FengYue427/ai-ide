@@ -24,9 +24,27 @@ export function getResponseRequestId(response: Response): string | null {
 }
 
 let unauthorizedHandler: (() => void) | null = null
+let apiErrorHandler: ((detail: { status: number; path: string }) => void) | null = null
+let lastApiErrorToastAt = 0
 
 export function setApiUnauthorizedHandler(handler: (() => void) | null): void {
   unauthorizedHandler = handler
+}
+
+export function setApiErrorHandler(
+  handler: ((detail: { status: number; path: string }) => void) | null,
+): void {
+  apiErrorHandler = handler
+}
+
+function requestPath(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input
+  if (input instanceof URL) return input.pathname
+  return input.url
+}
+
+function shouldSurfaceApiError(path: string): boolean {
+  return !path.includes('/api/auth/session') && !path.includes('/api/health')
 }
 
 function shouldNotifyUnauthorized(input: RequestInfo | URL): boolean {
@@ -53,9 +71,17 @@ export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   if (!headers.has('X-App-Language')) {
     headers.set('X-App-Language', getApiLanguage())
   }
+  const path = requestPath(input)
   return fetch(input, { ...init, headers }).then((response) => {
     if (response.status === 401 && shouldNotifyUnauthorized(input)) {
       unauthorizedHandler?.()
+    }
+    if (response.status >= 500 && shouldSurfaceApiError(path)) {
+      const now = Date.now()
+      if (now - lastApiErrorToastAt > 4000) {
+        lastApiErrorToastAt = now
+        apiErrorHandler?.({ status: response.status, path })
+      }
     }
     return response
   })

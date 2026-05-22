@@ -24,10 +24,10 @@
 
 | 顺序 | ID | 任务 | 退出标准 | 状态 |
 |------|-----|------|----------|------|
-| 1 | **P2-1** | 修复 Vercel `DATABASE_URL` | `smoke:production` **5/5**；`health` 为 `ok` + `database=connected` | ⬜ **当前 blocker** |
-| 2 | P2-2 | `npm run deploy:check` | 全绿并记入 [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) | ⬜ |
+| 1 | **P2-1** | 修复 Vercel `DATABASE_URL` | `smoke:production` **5/5**；`health` 为 `ok` + `database=connected` | ⬜ **运维** — 见 [VERCEL_ENV_PHASE2.md](./VERCEL_ENV_PHASE2.md) |
+| 2 | P2-2 | `npm run deploy:check` | 全绿并记入 DEPLOY_CHECKLIST | ⬜ |
 | 3 | P2-3 | `prisma migrate deploy` 生产 | schema 与 Neon 一致 | ⬜ |
-| 4 | P2-4 | 核对 `AUTH_SECRET`、`APP_URL`、Cookie 域 | [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) §2 勾选 | ⬜ |
+| 4 | P2-4 | 核对 `AUTH_SECRET`、`APP_URL`、Cookie 域 | 同上清单 | ⬜ |
 
 ```powershell
 # W1 验收命令
@@ -46,7 +46,7 @@ npm run deploy:check
 | ID | 任务 | 状态 |
 |----|------|------|
 | P2-5 | 人工 30min：[AUTH_BILLING_QA.md](./AUTH_BILLING_QA.md) 注册→云工作区→AI | ⬜ |
-| P2-6 | 法务审阅 `public/legal/*.html` 并替换占位 | 🔶 中英模板已有 |
+| P2-6 | 法务审阅 `public/legal/*.html` | ⏸️ **最后做**（模板已就绪） |
 | P2-7 | 可选 `VITE_SENTRY_DSN` | ⬜ |
 | P2-8 | Git remote：轮换 PAT → SSH | ⬜ |
 | P2-9 | 英文 UI：[I18N_SMOKE_CHECKLIST.md](./I18N_SMOKE_CHECKLIST.md) 生产跑一遍 | ⬜ |
@@ -55,10 +55,10 @@ npm run deploy:check
 
 | ID | 任务 | 状态 |
 |----|------|------|
-| P2-10 | 索引截断 UI 提示（「已索引 N/M 文件」） | ⬜ |
-| P2-11 | 关键路径离线/API 失败 toast（L16） | ⬜ |
-| P2-12 | 找回密码：配置 SMTP 或隐藏入口 | ⬜ |
-| P2-13 | `mlp:preflight` 纳入发版习惯 / CI nightly | ⬜ |
+| P2-10 | 索引截断 UI 提示 | ✅ batch 20 — Chat 区显示 indexed/eligible |
+| P2-11 | API 5xx toast | ✅ batch 20 — `useApiErrorFeedback` |
+| P2-12 | 找回密码隐藏（无 SMTP） | ✅ batch 20 — `VITE_ENABLE_PASSWORD_RESET` |
+| P2-13 | `mlp:preflight` CI | ✅ batch 20 — `workflow_dispatch` job |
 
 ### 对外 RC（W4）
 

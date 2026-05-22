@@ -218,6 +218,14 @@
   background: color-mix(in srgb, var(--accent-color) 12%, transparent);
 }
 
+.chat-index-hint {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
 .chat-mode-btn:disabled {
   color: var(--text-secondary);
   cursor: not-allowed;

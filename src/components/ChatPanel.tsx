@@ -86,6 +86,7 @@ ${t('ai.chat.prompt')}`
   const [mentionHits, setMentionHits] = useState<IndexSearchHit[]>([])
   const [mentionIndex, setMentionIndex] = useState(0)
   const [indexVersion, setIndexVersion] = useState(() => projectIndexManager.getVersion())
+  const indexStats = useMemo(() => projectIndexManager.getIndexStats(), [indexVersion])
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [quota, setQuota] = useState<QuotaCheck>({
     allowed: true,
@@ -528,6 +529,16 @@ ${t('ai.chat.prompt')}`
             </span>
           </button>
         </div>
+        {indexStats.indexedFiles > 0 && (
+          <p className="chat-index-hint" title={t('chat.indexHintTitle')}>
+            {indexStats.capped
+              ? t('chat.indexCapped', {
+                  indexed: indexStats.indexedFiles,
+                  eligible: indexStats.eligibleFiles,
+                })
+              : t('chat.indexOk', { count: indexStats.indexedFiles })}
+          </p>
+        )}
       </div>
 
       <div className="chat-messages">

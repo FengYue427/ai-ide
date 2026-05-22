@@ -2,6 +2,18 @@
 
 上线 Vercel 前，在本地用 **`npm run dev:stack`**（Neon + API 3001）按本清单走一遍。
 
+### 生产 30min 记录（P2-5）
+
+```
+日期：
+APP_URL：
+注册：     OK / FAIL
+云工作区：  OK / FAIL
+AI 对话：   OK / FAIL
+smoke 5/5： OK / FAIL
+备注：
+```
+
 ---
 
 ## 一、登录 / 注册（邮箱密码）
@@ -27,7 +39,7 @@
 
 ### 已知限制
 
-- **找回密码**：接口为演示，**不会发真实邮件**；界面会提示暂未接入邮件。
+- **找回密码**：默认**隐藏**入口；配置 `AUTH_EMAIL_SERVER` 后设 `VITE_ENABLE_PASSWORD_RESET=true` 才显示。未接 SMTP 时勿开启。
 - **OAuth（GitHub / Google·Gmail）**：需 `VITE_ENABLE_OAUTH=true` + 服务端 `AUTH_*` + `AUTH_URL`/`APP_URL`；路由 `/api/auth/oauth/*`，回站 `?oauth_sync=1` 同步 JWT。配置见 [OAUTH_SETUP.md](./OAUTH_SETUP.md)。
 - **仅 `npm run dev`（无 API）**：可走浏览器本地账号（`VITE_ALLOW_OFFLINE_AUTH`）；**生产构建禁止**离线注册。
 

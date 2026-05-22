@@ -8,7 +8,7 @@ import {
   isPathIgnoredByGitignore,
   type GitignoreRule,
 } from './gitignoreService'
-import { capIndexSources } from './indexLimits'
+import { capIndexSources, type IndexSource } from './indexLimits'
 
 export type SymbolKind =
   | 'function'
@@ -36,6 +36,31 @@ export interface IndexedFile {
 export interface ProjectIndex {
   files: IndexedFile[]
   builtAt: number
+}
+
+export type IndexBuildStats = {
+  totalFiles: number
+  eligibleFiles: number
+  indexedFiles: number
+  capped: boolean
+}
+
+export function buildIndexSourcesWithStats(
+  merged: IndexSource[],
+  gitignoreRules: GitignoreRule[] = gitignoreRulesFromSources(merged),
+): { sources: IndexSource[]; stats: IndexBuildStats } {
+  const eligible = merged.filter((file) => shouldIndexPath(file.path, gitignoreRules))
+  const sources = capIndexSources(eligible)
+
+  return {
+    sources,
+    stats: {
+      totalFiles: merged.length,
+      eligibleFiles: eligible.length,
+      indexedFiles: sources.length,
+      capped: sources.length < eligible.length,
+    },
+  }
 }
 
 export interface IndexSearchHit {
@@ -124,10 +149,8 @@ export function shouldIndexPath(path: string, gitignoreRules: GitignoreRule[] = 
 export function buildProjectIndex(
   sources: { path: string; content: string; language?: string }[],
 ): ProjectIndex {
-  const gitignoreRules = gitignoreRulesFromSources(sources)
-  const files: IndexedFile[] = capIndexSources(
-    sources.filter((source) => shouldIndexPath(source.path, gitignoreRules)),
-  ).map((source) => ({
+  const { sources: indexable, stats: _stats } = buildIndexSourcesWithStats(sources)
+  const files: IndexedFile[] = indexable.map((source) => ({
       path: source.path,
       language: source.language ?? detectLanguageFromPath(source.path),
       symbols: extractSymbolsFromContent(source.path, source.content),
@@ -224,6 +247,18 @@ export function collectIndexSources(
   }
 
   const merged = [...byPath.values()]
-  const gitignoreRules = gitignoreRulesFromSources(merged)
-  return capIndexSources(merged.filter((file) => shouldIndexPath(file.path, gitignoreRules)))
+  return buildIndexSourcesWithStats(merged).sources
 }
+
+export function collectIndexSourcesWithStats(
+  editorFiles: { name: string; content: string; language?: string }[],
+  workspaceFiles: { path: string; content: string; language?: string }[] = [],
+): { sources: { path: string; content: string; language?: string }[]; stats: IndexBuildStats } {
+  const byPath = new Map<string, { path: string; content: string; language?: string }>()
+  for (const file of workspaceFiles) byPath.set(file.path, file)
+  for (const file of editorFiles) {
+    byPath.set(file.name, { path: file.name, content: file.content, language: file.language })
+  }
+  return buildIndexSourcesWithStats([...byPath.values()])
+}
+

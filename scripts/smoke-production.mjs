@@ -58,6 +58,9 @@ for (const check of checks) {
       if (!dbOk) {
         detail += ' — set DATABASE_URL on Vercel (Neon pooler, sslmode=require)'
       }
+      if (Array.isArray(json?.hints) && json.hints.length > 0) {
+        detail += ` | ${json.hints[0]}`
+      }
     }
 
     if (ok) {

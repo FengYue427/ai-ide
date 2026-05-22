@@ -13,6 +13,7 @@ import { useCollaborationSync } from '../hooks/useCollaborationSync'
 import { useGitStatus } from '../hooks/useGitStatus'
 import { useMcpBootstrap } from '../hooks/useMcpBootstrap'
 import { useProjectIndexSync } from '../hooks/useProjectIndexSync'
+import { useApiErrorFeedback } from '../hooks/useApiErrorFeedback'
 import { useSessionGuard } from '../hooks/useSessionGuard'
 import { useWorkspacePersistence } from '../hooks/useWorkspacePersistence'
 import { useI18n } from '../i18n'
@@ -91,6 +92,7 @@ export function AppShell() {
 
   useAppBootstrap()
   useSessionGuard(notify, t)
+  useApiErrorFeedback(notify, t)
   useMcpBootstrap()
   useProjectIndexSync()
   const gitStatus = useGitStatus(fs, files)

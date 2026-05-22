@@ -10,6 +10,7 @@ describe('buildHealthCheck', () => {
     expect(result.statusCode).toBe(503)
     expect(result.payload.database).toBe('not_configured')
     expect(result.payload.status).toBe('degraded')
+    expect(result.payload.hints?.length).toBeGreaterThan(0)
   })
 
   it('returns ok when database ping succeeds', async () => {
@@ -31,5 +32,6 @@ describe('buildHealthCheck', () => {
     })
     expect(result.statusCode).toBe(503)
     expect(result.payload.database).toBe('unavailable')
+    expect(result.payload.hints?.length).toBeGreaterThan(0)
   })
 })

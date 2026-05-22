@@ -4,6 +4,7 @@ export type HealthPayload = {
   version: string
   timestamp: string
   database?: string
+  hints?: string[]
   billing?: {
     alipay: boolean
     wechat: boolean
@@ -29,6 +30,10 @@ export async function buildHealthCheck(options: {
   if (!options.hasDatabaseUrl) {
     payload.status = 'degraded'
     payload.database = 'not_configured'
+    payload.hints = [
+      'Set DATABASE_URL on Vercel (Neon pooler URL with sslmode=require).',
+      'Set AUTH_SECRET (32+ random chars) and APP_URL to your deployment origin.',
+    ]
     return { payload, statusCode: 503 }
   }
 
@@ -39,6 +44,10 @@ export async function buildHealthCheck(options: {
   } catch {
     payload.status = 'degraded'
     payload.database = 'unavailable'
+    payload.hints = [
+      'Verify Neon project is active and DATABASE_URL uses the pooler host.',
+      'Redeploy after changing env vars; run npm run smoke:production.',
+    ]
     return { payload, statusCode: 503 }
   }
 }

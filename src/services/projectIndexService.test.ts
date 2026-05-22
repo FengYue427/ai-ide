@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { MAX_INDEX_FILES } from './indexLimits'
 import {
+  buildIndexSourcesWithStats,
   buildProjectIndex,
   extractSymbolsFromContent,
   patchIndexedFile,
@@ -49,6 +51,17 @@ const x = 1`
     const removed = removeIndexedFile(patched, 'src/a.ts')
     expect(removed.files).toHaveLength(1)
     expect(removed.files[0]?.path).toBe('src/b.ts')
+  })
+
+  it('caps index sources when eligible files exceed limit', () => {
+    const merged = Array.from({ length: MAX_INDEX_FILES + 10 }, (_, i) => ({
+      path: `src/f${i}.ts`,
+      content: 'export function fn() {}',
+    }))
+    const { stats } = buildIndexSourcesWithStats(merged)
+    expect(stats.eligibleFiles).toBe(MAX_INDEX_FILES + 10)
+    expect(stats.indexedFiles).toBe(MAX_INDEX_FILES)
+    expect(stats.capped).toBe(true)
   })
 
   it('respects .gitignore in workspace sources', () => {

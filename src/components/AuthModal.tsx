@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { X, Mail, Lock, Github, Chrome, Eye, EyeOff, Sparkles, ArrowLeft, Check, AlertCircle } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { localizeAuthApiError } from '../lib/authApiErrors'
-import { isOAuthEnabled } from '../lib/authFeatures'
+import { isForgotPasswordEnabled, isOAuthEnabled } from '../lib/authFeatures'
 import { authService, type User } from '../services/authService'
 
 interface AuthModalProps {
@@ -277,7 +277,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
                 {touched.password && validation.password.valid && (
                   <Check size={14} className="validation-icon valid" />
                 )}
-                {activeTab === 'login' && (
+                {activeTab === 'login' && isForgotPasswordEnabled() && (
                   <span className="auth-forgot-link" onClick={() => switchTab('forgot')}>
                     {t('auth.forgotLink')}
                   </span>
