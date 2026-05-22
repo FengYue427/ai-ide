@@ -8,7 +8,7 @@
 
 | ID | 项 | 状态 | 验证 |
 |----|-----|------|------|
-| P0'-1 | 集成测试 | ✅ | `npm run test:integration:local`（21+ 离线 4） |
+| P0'-1 | 集成测试 | 🔶 | batch 17：注册拆步、`consumeAiUsage`/订阅 upsert 无事务路径、集成测按次 POST 灌满配额；Neon 可达时再跑 `p0:gate` |
 | P0'-2 | 部署冒烟 | 🔶 脚本就绪 | 推送后执行 `APP_URL=https://你的域名 npm run smoke:production`（曾见 API 500，需 Vercel env 对齐） |
 | P0'-3 | E2E CI | ✅ | CI `test:e2e`；本地 `npm run test:e2e:local`（12/12） |
 | P0'-4 | Cookie / APP_URL | 🔶 文档 | [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) §2 |
@@ -20,6 +20,7 @@
 
 ### 工程修复（本轮）
 
+- **Neon HTTP**：`register` 不再嵌套 `workspaces.create`；`consumeAiUsage` 在 Neon URL 下走顺序写入（`prismaSupportsTransactions`）
 - `scripts/load-env-local.mjs`：`run-integration-local` 继承 `.env.local` 的 `DATABASE_URL`
 - `integration-api-offline`：未登录订阅返回 free plan（与 API 一致）
 - `billingMode`：未设置 `NODE_ENV` 时允许 dev payment simulate（本地 dev:api）
@@ -62,5 +63,7 @@
 ## 相关文档
 
 - [LAUNCH_READINESS.md](./LAUNCH_READINESS.md) — D2/D3 档位
+- [NEXT_EXECUTION.md](./NEXT_EXECUTION.md) — 当前 sprint（P0' → P4）
 - [PLAN_NEXT_2026.md](./PLAN_NEXT_2026.md) — P4 产品深度
+- [I18N_STATUS.md](./I18N_STATUS.md) — 国际化已收尾
 - [AUTH_BILLING_QA.md](./AUTH_BILLING_QA.md) — 手工 QA

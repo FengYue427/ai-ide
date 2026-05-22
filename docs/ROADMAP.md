@@ -42,7 +42,7 @@
 
 ## 二、当前阶段
 
-**Phase 4 — 公测体验**（2026-05）：P2/P3 ✅；**P0'/P1** 代码门禁 ✅（见 [P0_P1_STATUS.md](./P0_P1_STATUS.md)）。下一步：**P4** 或生产 `deploy:check` + 法务审阅。
+**Phase 4 — 公测体验**（2026-05）：P2/P3 ✅；**i18n Phase 1** ✅（batch 16）；**P0'/P1** 代码门禁 🔶（Neon 注册事务已修，待 `p0:gate` 复验）。**当前执行**：[NEXT_EXECUTION.md](./NEXT_EXECUTION.md)（P0' 生产冒烟 → 法务 → P4-1）。
 
 **Phase 4 交付清单**：
 
@@ -51,8 +51,9 @@
 | E2E UI | `vite preview` + `e2e/helpers` 预填工作区 | ✅ |
 | 路径 A 计费 UX | 未接支付时公测横幅 +「查看套餐」+ 按钮「公测免费」 | ✅ |
 | 会话过期 | `apiFetch` 401 → 清会话 + 登录弹窗 | ✅ |
-| P0' 集成测试 + 安全基线 | `npm run p0:gate` | ✅ |
+| P0' 集成测试 + 安全基线 | `npm run p0:gate` | 🔶 Neon HTTP 无事务修复后复验 |
 | P0 生产冒烟 | [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) | 🔶 `APP_URL` + deploy:check |
+| i18n Phase 1 | [I18N_STATUS.md](./I18N_STATUS.md) + [I18N_SMOKE_CHECKLIST.md](./I18N_SMOKE_CHECKLIST.md) | ✅ |
 | P1 路径 A 公测计费 | `billingPath` + 公测文案 | ✅ |
 | P1 路径 B 骨架 | checkout / notify / dev simulate | ✅ 代码 |
 | P2 样式债（Settings/Chat） | `settings.css` + `QuotaIndicator` + `chat.css` 扩展 | ✅ |
@@ -133,6 +134,8 @@
 - [LAUNCH_READINESS.md](./LAUNCH_READINESS.md)
 - [COMPETITIVE_BENCHMARK_2026.md](./COMPETITIVE_BENCHMARK_2026.md)
 - [P0_P1_STATUS.md](./P0_P1_STATUS.md)
+- [NEXT_EXECUTION.md](./NEXT_EXECUTION.md)
+- [I18N_STATUS.md](./I18N_STATUS.md)
 - [OPTIMIZATION_PLAN.md](./OPTIMIZATION_PLAN.md)
 
 ### 其它

@@ -58,7 +58,11 @@ for (const check of checks) {
       failed++
     }
   } catch (error) {
-    console.error(`❌ ${check.name} — ${error instanceof Error ? error.message : error}`)
+    const hint =
+      error instanceof Error && error.cause instanceof Error
+        ? ` (${error.cause.message})`
+        : ''
+    console.error(`❌ ${check.name} — ${error instanceof Error ? error.message : error}${hint}`)
     failed++
   }
 }

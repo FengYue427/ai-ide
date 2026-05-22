@@ -1,4 +1,5 @@
 import { prisma } from '../../src/lib/prisma'
+import { prismaSupportsTransactions } from '../../src/lib/prismaTransactions'
 import { BILLING_PLANS } from './plans'
 import { mapStripeSubscriptionStatus } from './stripeStatus'
 
@@ -44,27 +45,35 @@ export async function upsertUserSubscription(userId: string, planName: string, s
   const periodEnd = new Date(now)
   periodEnd.setDate(periodEnd.getDate() + 30)
 
+  const payload = {
+    planId: plan.id,
+    status: 'active' as const,
+    currentPeriodStart: now,
+    currentPeriodEnd: periodEnd,
+    cancelAtPeriodEnd: false,
+    stripeCustomerId: stripeIds?.customerId,
+    stripeSubscriptionId: stripeIds?.subscriptionId,
+  }
+
+  if (!prismaSupportsTransactions()) {
+    const existing = await prisma.subscription.findUnique({ where: { userId } })
+    if (existing) {
+      return prisma.subscription.update({
+        where: { userId },
+        data: payload,
+        include: { plan: true },
+      })
+    }
+    return prisma.subscription.create({
+      data: { userId, ...payload },
+      include: { plan: true },
+    })
+  }
+
   return prisma.subscription.upsert({
     where: { userId },
-    create: {
-      userId,
-      planId: plan.id,
-      status: 'active',
-      currentPeriodStart: now,
-      currentPeriodEnd: periodEnd,
-      cancelAtPeriodEnd: false,
-      stripeCustomerId: stripeIds?.customerId,
-      stripeSubscriptionId: stripeIds?.subscriptionId,
-    },
-    update: {
-      planId: plan.id,
-      status: 'active',
-      currentPeriodStart: now,
-      currentPeriodEnd: periodEnd,
-      cancelAtPeriodEnd: false,
-      stripeCustomerId: stripeIds?.customerId,
-      stripeSubscriptionId: stripeIds?.subscriptionId,
-    },
+    create: { userId, ...payload },
+    update: payload,
     include: { plan: true },
   })
 }

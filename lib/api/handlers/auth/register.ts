@@ -46,20 +46,22 @@ export async function POST(req: Request) {
         email: email.toLowerCase(),
         password: hashedPassword,
         name: name || email.split('@')[0],
-        workspaces: {
-          create: {
-            name: 'default',
-            files: '[]',
-            settings: '{}',
-            isDefault: true,
-          },
-        },
       },
       select: {
         id: true,
         email: true,
         name: true,
         image: true,
+      },
+    })
+
+    await prisma.userWorkspace.create({
+      data: {
+        userId: user.id,
+        name: 'default',
+        files: '[]',
+        settings: '{}',
+        isDefault: true,
       },
     })
 

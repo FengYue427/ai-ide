@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../src/lib/prisma'
+import { prismaSupportsTransactions } from '../../src/lib/prismaTransactions'
 import { findPlanByName, type PlanDefinition } from './plans'
 
 export const AI_USAGE_TYPE = 'ai_request'
@@ -57,11 +58,15 @@ export async function incrementAiUsage(userId: string, amount = 1): Promise<numb
 
 export type QuotaSnapshot = ReturnType<typeof buildQuotaSnapshot>
 
-/** Record usage only when within daily plan limit (transactional read-check-write). */
+/** Record usage only when within daily plan limit (transactional read-check-write when supported). */
 export async function consumeAiUsage(
   userId: string,
   amount = 1,
 ): Promise<{ ok: true; quota: QuotaSnapshot } | { ok: false; quota: QuotaSnapshot }> {
+  if (!prismaSupportsTransactions()) {
+    return consumeAiUsageSequential(userId, amount)
+  }
+
   return prisma.$transaction(async (tx) => {
     const plan = await resolveUserPlanNameTx(userId, tx)
     const used = await getAiUsageCountTodayTx(userId, tx)
@@ -82,6 +87,23 @@ export async function consumeAiUsage(
     const newUsed = await getAiUsageCountTodayTx(userId, tx)
     return { ok: true as const, quota: buildQuotaSnapshot(plan, newUsed) }
   })
+}
+
+/** Neon HTTP: no `$transaction`; small race window on concurrent quota checks is acceptable for RC. */
+async function consumeAiUsageSequential(
+  userId: string,
+  amount: number,
+): Promise<{ ok: true; quota: QuotaSnapshot } | { ok: false; quota: QuotaSnapshot }> {
+  const plan = await resolveUserPlanName(userId)
+  const used = await getAiUsageCountToday(userId)
+  const limit = getAiDailyLimit(plan)
+
+  if (limit !== -1 && used + amount > limit) {
+    return { ok: false as const, quota: buildQuotaSnapshot(plan, used) }
+  }
+
+  const newUsed = await incrementAiUsage(userId, amount)
+  return { ok: true as const, quota: buildQuotaSnapshot(plan, newUsed) }
 }
 
 export function buildQuotaSnapshot(planName: string, used: number) {
