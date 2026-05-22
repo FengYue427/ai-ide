@@ -1,12 +1,10 @@
 import { Auth } from '@auth/core'
+import { authJsonError } from '../api/localizedError'
 import { getOAuthConfig, isAnyOAuthConfigured } from './oauthConfig'
 
 export async function handleOAuthRequest(request: Request): Promise<Response> {
   if (!isAnyOAuthConfigured()) {
-    return new Response(JSON.stringify({ error: 'OAuth 未配置' }), {
-      status: 501,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return authJsonError(request, 'api.auth.oauthNotConfigured', 501)
   }
 
   try {

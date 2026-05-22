@@ -16,6 +16,7 @@ const AUTH_API_ERROR_MAP: Record<string, TranslationKey> = {
   'OAuth 会话无效，请重新登录': 'auth.api.oauthSessionInvalid',
   '未找到 OAuth 用户，请重试': 'auth.api.oauthUserMissing',
   'OAuth 同步失败': 'auth.api.oauthSyncFailed',
+  '暂未接入真实邮件服务；请使用注册邮箱直接登录，或联系管理员重置密码。': 'auth.forgot.demoMessage',
 }
 
 export function localizeAuthApiError(message: string | undefined, t: TranslateFn): string | undefined {

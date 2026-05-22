@@ -1,7 +1,10 @@
 /**
  * Subscription checkout — 支付宝 / 微信（优先），Stripe 可选，开发 mock 兜底
  */
-import { jsonResponse, errorResponse } from '../../http'
+import { apiMessage } from '../../../i18n/apiMessages'
+import { resolveRequestLocale } from '../../../i18n/resolveLocale'
+import { jsonResponse } from '../../http'
+import { localizedErrorResponse } from '../../localizedError'
 import { requireAuth } from '../../requireAuth'
 import { isDevBillingAllowed } from '../../../billing/billingMode'
 import { createCnCheckout, isAlipayConfigured, isCnPaymentConfigured, isWechatPayConfigured } from '../../../billing/cnPayment'
@@ -21,33 +24,33 @@ export async function POST(request: Request) {
     const channel = body.channel
 
     if (!planId) {
-      return errorResponse('缺少 planId', 400)
+      return localizedErrorResponse(request, 'api.checkout.missingPlanId', 400)
     }
 
     if (planId === 'free') {
-      return errorResponse('免费计划无需结账', 400)
+      return localizedErrorResponse(request, 'api.checkout.freeNoCheckout', 400)
     }
 
     if (!getBillablePlanNames().includes(planId)) {
-      return errorResponse('无效的计划', 400)
+      return localizedErrorResponse(request, 'api.checkout.invalidPlan', 400)
     }
 
     const plan = findPlanByName(planId)
     if (!plan) {
-      return errorResponse('无效的计划', 400)
+      return localizedErrorResponse(request, 'api.checkout.invalidPlan', 400)
     }
 
     if (channel === 'alipay' || channel === 'wechat') {
       if (channel === 'alipay' && !isAlipayConfigured()) {
-        return errorResponse('支付宝未配置，请稍后在服务端配置商户参数', 503)
+        return localizedErrorResponse(request, 'api.checkout.alipayNotConfigured', 503)
       }
       if (channel === 'wechat' && !isWechatPayConfigured()) {
-        return errorResponse('微信支付未配置，请稍后在服务端配置商户参数', 503)
+        return localizedErrorResponse(request, 'api.checkout.wechatNotConfigured', 503)
       }
 
       const amountCents = getPlanAmountCents(plan.name)
       if (amountCents <= 0) {
-        return errorResponse('该计划无需支付', 400)
+        return localizedErrorResponse(request, 'api.checkout.noPaymentNeeded', 400)
       }
 
       const result = await createCnCheckout({
@@ -66,7 +69,7 @@ export async function POST(request: Request) {
     }
 
     if (isCnPaymentConfigured()) {
-      return errorResponse('请选择支付方式：alipay 或 wechat', 400)
+      return localizedErrorResponse(request, 'api.checkout.channelRequired', 400)
     }
 
     if (isStripeConfigured()) {
@@ -88,14 +91,15 @@ export async function POST(request: Request) {
     }
 
     if (!isDevBillingAllowed()) {
-      return errorResponse('支付功能尚未配置，请联系管理员', 503)
+      return localizedErrorResponse(request, 'api.checkout.notConfigured', 503)
     }
 
     const record = await upsertUserSubscription(auth.user.id, plan.name)
+    const locale = resolveRequestLocale(request)
     return jsonResponse({
       mode: 'dev_mock',
       plan: record.plan.name,
-      message: `开发模式：已升级为 ${record.plan.displayName}`,
+      message: apiMessage('api.checkout.devUpgraded', locale, { plan: record.plan.displayName }),
       subscription: {
         plan: record.plan.name,
         status: record.status,
@@ -105,7 +109,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('[Checkout] error:', error)
-    const message = error instanceof Error ? error.message : '创建支付会话失败'
-    return errorResponse(message, 500)
+    return localizedErrorResponse(request, 'api.checkout.sessionFailed', 500)
   }
 }

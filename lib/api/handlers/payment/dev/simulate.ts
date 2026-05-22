@@ -2,7 +2,8 @@
  * Dev-only: create a pending order and fulfill it (tests CN payment DB path without real Alipay/WeChat).
  * Never available in production.
  */
-import { errorResponse, jsonResponse } from '../../../http'
+import { jsonResponse } from '../../../http'
+import { localizedErrorResponse } from '../../../localizedError'
 import { requireAuth } from '../../../requireAuth'
 import { isDevPaymentSimulateAllowed } from '../../../../billing/billingMode'
 import { fulfillPaymentOrder } from '../../../../billing/fulfillOrder'
@@ -11,7 +12,7 @@ import { findPlanByName, getBillablePlanNames, getPlanAmountCents } from '../../
 
 export async function POST(request: Request) {
   if (!isDevPaymentSimulateAllowed()) {
-    return errorResponse('仅开发环境可用', 403)
+    return localizedErrorResponse(request, 'api.payment.devOnly', 403)
   }
 
   try {
@@ -23,14 +24,14 @@ export async function POST(request: Request) {
     const channel = body.channel === 'wechat' ? 'wechat' : 'alipay'
 
     if (!getBillablePlanNames().includes(planId)) {
-      return errorResponse('无效的计划', 400)
+      return localizedErrorResponse(request, 'api.checkout.invalidPlan', 400)
     }
 
     const plan = findPlanByName(planId)
-    if (!plan) return errorResponse('无效的计划', 400)
+    if (!plan) return localizedErrorResponse(request, 'api.checkout.invalidPlan', 400)
 
     const amountCents = getPlanAmountCents(planId)
-    if (amountCents <= 0) return errorResponse('该计划无需支付', 400)
+    if (amountCents <= 0) return localizedErrorResponse(request, 'api.checkout.noPaymentNeeded', 400)
 
     const order = await createPaymentOrder({
       userId: auth.user.id,
@@ -57,6 +58,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('[Payment dev simulate] error:', error)
-    return errorResponse(error instanceof Error ? error.message : '模拟支付失败', 500)
+    return localizedErrorResponse(request, 'api.payment.simulateFailed', 500)
   }
 }

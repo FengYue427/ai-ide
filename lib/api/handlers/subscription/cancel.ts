@@ -1,7 +1,10 @@
 /**
  * Cancel subscription — Stripe or dev mock.
  */
-import { jsonResponse, errorResponse } from '../../http'
+import { apiMessage } from '../../../i18n/apiMessages'
+import { resolveRequestLocale } from '../../../i18n/resolveLocale'
+import { jsonResponse } from '../../http'
+import { localizedErrorResponse } from '../../localizedError'
 import { requireAuth } from '../../requireAuth'
 import {
   downgradeUserToFree,
@@ -24,7 +27,7 @@ export async function POST(request: Request) {
 
     const record = await getUserSubscription(auth.user.id)
     if (!record || record.plan.name === 'free') {
-      return errorResponse('当前为免费计划，无需取消', 400)
+      return localizedErrorResponse(request, 'api.subscription.freeNoCancel', 400)
     }
 
     if (record.stripeSubscriptionId && isStripeConfigured()) {
@@ -41,6 +44,7 @@ export async function POST(request: Request) {
       await scheduleSubscriptionCancel(auth.user.id)
     }
 
+    const locale = resolveRequestLocale(request)
     const updated = await getUserSubscription(auth.user.id)
     if (!updated) {
       return jsonResponse({
@@ -50,7 +54,9 @@ export async function POST(request: Request) {
           currentPeriodEnd: null,
           cancelAtPeriodEnd: false,
         },
-        message: immediate ? '已降级为免费版' : '订阅已取消',
+        message: immediate
+          ? apiMessage('api.subscription.cancelImmediate', locale)
+          : apiMessage('api.subscription.cancelScheduled', locale),
       })
     }
 
@@ -62,11 +68,11 @@ export async function POST(request: Request) {
         cancelAtPeriodEnd: updated.cancelAtPeriodEnd,
       },
       message: immediate
-        ? '已立即降级为免费版'
-        : '已安排在周期结束后降级，到期前仍可使用当前计划',
+        ? apiMessage('api.subscription.cancelDoneNow', locale)
+        : apiMessage('api.subscription.cancelEndOfPeriod', locale),
     })
   } catch (error) {
     console.error('[Subscription cancel] error:', error)
-    return errorResponse(error instanceof Error ? error.message : '取消订阅失败', 500)
+    return localizedErrorResponse(request, 'api.subscription.cancelFailed', 500)
   }
 }

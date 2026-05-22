@@ -8,7 +8,7 @@ import {
 } from '../services/pluginCatalogService'
 import { pluginManager, type Plugin } from '../services/pluginService'
 import { loadInstalledPluginPackages, saveInstalledPluginPackages } from '../services/pluginStorage'
-import { useI18n } from '../i18n'
+import { useI18n, type TranslationKey } from '../i18n'
 import { ModalShell } from './ui/ModalShell'
 
 interface PluginManagerProps {
@@ -16,6 +16,18 @@ interface PluginManagerProps {
 }
 
 type PluginTab = 'installed' | 'market' | 'manual'
+
+function catalogText(id: string, field: 'name' | 'desc', fallback: string, t: (key: TranslationKey) => string) {
+  const key = `plugin.catalog.${id}.${field}` as TranslationKey
+  const translated = t(key)
+  return translated === key ? fallback : translated
+}
+
+function catalogTagLabel(tag: string, t: (key: TranslationKey) => string): string {
+  const key = `plugin.catalog.tag.${tag}` as TranslationKey
+  const translated = t(key)
+  return translated === key ? tag : translated
+}
 
 const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
   const { t } = useI18n()
@@ -238,16 +250,20 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                 <div className="plugins-row">
                   <div>
                     <div className="plugins-card-head">
-                      <span className="plugins-card-title">{entry.name}</span>
+                      <span className="plugins-card-title">
+                        {catalogText(entry.id, 'name', entry.name, t)}
+                      </span>
                       <span className="plugins-market-badge">{t('plugin.official')}</span>
                       <span className="status-pill">v{entry.version}</span>
                     </div>
-                    <p className="plugins-card-desc">{entry.description}</p>
+                    <p className="plugins-card-desc">
+                      {catalogText(entry.id, 'desc', entry.description, t)}
+                    </p>
                     <div className="plugins-card-meta">{t('plugin.author', { name: entry.author })}</div>
                     <div className="plugins-tags">
                       {entry.tags.map((tag) => (
                         <span key={tag} className="plugins-tag">
-                          {tag}
+                          {catalogTagLabel(tag, t)}
                         </span>
                       ))}
                     </div>

@@ -1,4 +1,4 @@
-import { errorResponse } from './http'
+import { localizedErrorResponse } from './localizedError'
 
 export type ReadJsonResult<T> =
   | { ok: true; value: T }
@@ -20,20 +20,16 @@ export async function readRequestBodyWithLimit(req: Request, maxBytes: number): 
   return buf
 }
 
-export async function readJsonWithLimit<T>(
-  req: Request,
-  maxBytes: number,
-  errorMessage = '请求体过大',
-): Promise<ReadJsonResult<T>> {
+export async function readJsonWithLimit<T>(req: Request, maxBytes: number): Promise<ReadJsonResult<T>> {
   const buf = await readRequestBodyWithLimit(req, maxBytes)
   if (!buf) {
-    return { ok: false, response: errorResponse(errorMessage, 413) }
+    return { ok: false, response: localizedErrorResponse(req, 'api.body.tooLarge', 413) }
   }
   try {
     const text = new TextDecoder().decode(buf)
     return { ok: true, value: JSON.parse(text) as T }
   } catch {
-    return { ok: false, response: errorResponse('请求体不是有效 JSON', 400) }
+    return { ok: false, response: localizedErrorResponse(req, 'api.body.invalidJson', 400) }
   }
 }
 

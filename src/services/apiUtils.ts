@@ -1,3 +1,5 @@
+import { getApiLanguage } from '../lib/apiLanguage'
+
 export function createClientRequestId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -44,6 +46,9 @@ export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   const headers = new Headers(init?.headers)
   if (!headers.has('X-Request-Id')) {
     headers.set('X-Request-Id', createClientRequestId())
+  }
+  if (!headers.has('X-App-Language')) {
+    headers.set('X-App-Language', getApiLanguage())
   }
   return fetch(input, { ...init, headers }).then((response) => {
     if (response.status === 401 && shouldNotifyUnauthorized(input)) {

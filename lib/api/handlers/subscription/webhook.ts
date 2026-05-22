@@ -2,7 +2,8 @@
  * Stripe webhook — sync Subscription rows with Stripe lifecycle events.
  */
 import type Stripe from 'stripe'
-import { errorResponse, jsonResponse } from '../../http'
+import { jsonResponse } from '../../http'
+import { localizedErrorResponse } from '../../localizedError'
 import {
   downgradeUserToFree,
   markSubscriptionPastDueByStripeSubscriptionId,
@@ -51,7 +52,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
 
 export async function POST(request: Request) {
   if (!isStripeConfigured()) {
-    return errorResponse('Stripe 未配置', 501)
+    return localizedErrorResponse(request, 'api.subscription.stripeNotConfigured', 501)
   }
 
   const signature = request.headers.get('stripe-signature')
@@ -80,6 +81,6 @@ export async function POST(request: Request) {
     return jsonResponse({ received: true })
   } catch (error) {
     console.error('[Stripe webhook] error:', error)
-    return errorResponse('Webhook 校验失败', 400)
+    return localizedErrorResponse(request, 'api.subscription.webhookFailed', 400)
   }
 }

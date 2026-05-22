@@ -3,8 +3,6 @@
  * Handlers are loaded on demand so heavy deps (alipay-sdk, stripe, etc.) do not
  * run on every cold start (e.g. GET /api/health).
  */
-import { jsonResponse } from './http'
-
 export type ApiRouteHandler = (
   req: Request,
   ctx?: { params: Record<string, string> },
@@ -180,13 +178,15 @@ export async function dispatchApiRequest(request: Request): Promise<Response> {
 
   const route = routes.find((r) => r.method === method && r.match(pathname))
   if (!route) {
-    return jsonResponse({ error: 'Not found' }, 404)
+    const { localizedErrorResponse } = await import('./localizedError')
+    return localizedErrorResponse(request, 'api.notFound', 404)
   }
 
   const mod = await route.load()
   const handler = mod[route.export]
   if (!handler) {
-    return jsonResponse({ error: 'Handler not found' }, 500)
+    const { localizedErrorResponse } = await import('./localizedError')
+    return localizedErrorResponse(request, 'api.handlerNotFound', 500)
   }
 
   const params = route.match(pathname) ?? {}

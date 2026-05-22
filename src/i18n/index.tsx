@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { normalizeLanguage } from '../lib/language'
+import { readStoredApiLanguage, setApiLanguage } from '../lib/apiLanguage'
 import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
 import {
   interpolate,
@@ -22,16 +23,19 @@ const I18nContext = createContext<I18nContextType | null>(null)
 const LANGUAGE_KEY = 'language'
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('zh-CN')
+  const [language, setLanguageState] = useState<Language>(() => readStoredApiLanguage())
 
   useEffect(() => {
     unifiedStorage.get<string>(LANGUAGE_KEY, 'zh-CN').then((stored) => {
-      setLanguageState(normalizeLanguage(stored))
+      const lang = normalizeLanguage(stored)
+      setLanguageState(lang)
+      setApiLanguage(lang)
     })
   }, [])
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang)
+    setApiLanguage(lang)
     unifiedStorage.set(LANGUAGE_KEY, lang, { layer: StorageLayer.LOCAL })
   }, [])
 

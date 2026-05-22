@@ -1,9 +1,5 @@
 /**
  * 登录 API - 邮箱+密码认证
- * 
- * - 验证邮箱和密码
- * - bcryptjs 比对密码哈希
- * - 创建 JWT 会话
  */
 import { prisma } from '../../../../../src/lib/prisma'
 import bcrypt from 'bcryptjs'
@@ -13,73 +9,61 @@ import { checkRateLimitDistributed } from '../../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../../rateLimitResponse'
 import { buildAuthSetCookie } from '../../../authCookie'
 import { trackServerEvent } from '../../../logger'
+import { authJsonError } from '../../../localizedError'
 
 export async function POST(req: Request) {
   try {
     const rate = await checkRateLimitDistributed(req, resolveRateLimitOptions('auth:login'))
-    if (!rate.allowed) return rateLimitErrorResponse(rate)
+    if (!rate.allowed) return rateLimitErrorResponse(req, rate)
 
     const { email, password } = await req.json()
 
-    // 验证输入
     if (!email || !password) {
-      return new Response(JSON.stringify({ error: "邮箱和密码必填" }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return authJsonError(req, 'api.auth.required', 400)
     }
 
-    // 查找用户
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() }
+      where: { email: email.toLowerCase() },
     })
 
     if (!user || !user.password) {
-      return new Response(JSON.stringify({ error: "邮箱或密码错误" }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return authJsonError(req, 'api.auth.invalidCredentials', 401)
     }
 
-    // 验证密码
     const isValid = await bcrypt.compare(password, user.password)
     if (!isValid) {
-      return new Response(JSON.stringify({ error: "邮箱或密码错误" }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return authJsonError(req, 'api.auth.invalidCredentials', 401)
     }
 
-    // 创建 JWT Token
     const token = createJWT({
       id: user.id,
       email: user.email,
-      name: user.name
+      name: user.name,
     })
 
-    console.log("[Auth] User logged in:", user.email)
+    console.log('[Auth] User logged in:', user.email)
     trackServerEvent(req, 'auth.login.success', { userId: user.id })
 
-    return new Response(JSON.stringify({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        image: user.image
+    return new Response(
+      JSON.stringify({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        },
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': buildAuthSetCookie(token),
+        },
       },
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Set-Cookie': buildAuthSetCookie(token),
-      }
-    })
+    )
   } catch (error) {
     console.error('[Auth] Login error:', error)
-    return new Response(JSON.stringify({ error: "登录失败，请稍后重试" }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return authJsonError(req, 'api.auth.loginFailed', 500)
   }
 }

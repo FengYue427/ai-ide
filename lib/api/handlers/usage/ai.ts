@@ -1,7 +1,10 @@
 /**
  * AI usage quota — server-backed daily counts (authenticated users).
  */
-import { jsonResponse, errorResponse } from '../../http'
+import { apiMessage } from '../../../i18n/apiMessages'
+import { resolveRequestLocale } from '../../../i18n/resolveLocale'
+import { jsonResponse } from '../../http'
+import { localizedErrorResponse } from '../../localizedError'
 import { resolveRateLimitOptions } from '../../rateLimit'
 import { checkRateLimitDistributed } from '../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../rateLimitResponse'
@@ -29,7 +32,7 @@ export async function GET(req: Request) {
     })
   } catch (error) {
     console.error('[Usage AI GET] error:', error)
-    return errorResponse('无法读取用量', 500)
+    return localizedErrorResponse(req, 'api.usage.readFailed', 500)
   }
 }
 
@@ -42,7 +45,7 @@ export async function POST(req: Request) {
       ...resolveRateLimitOptions('usage:ai'),
       suffix: auth.user.id,
     })
-    if (!rate.allowed) return rateLimitErrorResponse(rate)
+    if (!rate.allowed) return rateLimitErrorResponse(req, rate)
 
     // Server-authoritative: one successful AI request consumes exactly one unit.
     void (await req.json().catch(() => ({})))
@@ -56,9 +59,11 @@ export async function POST(req: Request) {
         used: result.quota.used,
         limit: result.quota.limit,
       })
+      const locale = resolveRequestLocale(req)
       return jsonResponse(
         {
-          error: '今日 AI 配额已用完',
+          error: apiMessage('api.usage.quotaExceeded', locale),
+          errorKey: 'api.usage.quotaExceeded',
           source: 'server',
           quota: result.quota,
         },
@@ -72,6 +77,6 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     console.error('[Usage AI POST] error:', error)
-    return errorResponse('无法记录用量', 500)
+    return localizedErrorResponse(req, 'api.usage.writeFailed', 500)
   }
 }

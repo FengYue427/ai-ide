@@ -1,7 +1,10 @@
 /**
  * Resume subscription — undo cancel_at_period_end (Stripe or dev).
  */
-import { jsonResponse, errorResponse } from '../../http'
+import { apiMessage } from '../../../i18n/apiMessages'
+import { resolveRequestLocale } from '../../../i18n/resolveLocale'
+import { jsonResponse } from '../../http'
+import { localizedErrorResponse } from '../../localizedError'
 import { requireAuth } from '../../requireAuth'
 import {
   clearSubscriptionCancelFlag,
@@ -16,9 +19,10 @@ export async function POST(request: Request) {
 
     const record = await getUserSubscription(auth.user.id)
     if (!record || record.plan.name === 'free') {
-      return errorResponse('当前没有可恢复的付费订阅', 400)
+      return localizedErrorResponse(request, 'api.subscription.noResume', 400)
     }
 
+    const locale = resolveRequestLocale(request)
     if (!record.cancelAtPeriodEnd) {
       return jsonResponse({
         subscription: {
@@ -27,7 +31,7 @@ export async function POST(request: Request) {
           currentPeriodEnd: record.currentPeriodEnd.toISOString(),
           cancelAtPeriodEnd: false,
         },
-        message: '订阅仍在生效中，无需恢复',
+        message: apiMessage('api.subscription.resumeActive', locale),
       })
     }
 
@@ -44,10 +48,10 @@ export async function POST(request: Request) {
         currentPeriodEnd: updated.currentPeriodEnd.toISOString(),
         cancelAtPeriodEnd: updated.cancelAtPeriodEnd,
       },
-      message: '已恢复订阅，下个周期将正常续费',
+      message: apiMessage('api.subscription.resumeOk', locale),
     })
   } catch (error) {
     console.error('[Subscription resume] error:', error)
-    return errorResponse(error instanceof Error ? error.message : '恢复订阅失败', 500)
+    return localizedErrorResponse(request, 'api.subscription.resumeFailed', 500)
   }
 }

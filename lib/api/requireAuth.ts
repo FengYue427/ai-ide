@@ -1,6 +1,6 @@
 import { getTokenFromRequest, verifyJWT } from '../../src/lib/jwt'
 import { prisma } from '../../src/lib/prisma'
-import { errorResponse } from './http'
+import { localizedErrorResponse } from './localizedError'
 
 export interface AuthUser {
   id: string
@@ -17,12 +17,12 @@ export type AuthResult =
 export async function requireAuth(req: Request): Promise<AuthResult> {
   const token = getTokenFromRequest(req)
   if (!token) {
-    return { ok: false, response: errorResponse('未登录', 401) }
+    return { ok: false, response: localizedErrorResponse(req, 'api.auth.unauthorized', 401) }
   }
 
   const payload = verifyJWT(token)
   if (!payload?.userId) {
-    return { ok: false, response: errorResponse('会话无效或已过期', 401) }
+    return { ok: false, response: localizedErrorResponse(req, 'api.auth.sessionExpired', 401) }
   }
 
   const user = await prisma.user.findUnique({
@@ -31,7 +31,7 @@ export async function requireAuth(req: Request): Promise<AuthResult> {
   })
 
   if (!user) {
-    return { ok: false, response: errorResponse('用户不存在', 401) }
+    return { ok: false, response: localizedErrorResponse(req, 'api.auth.userNotFound', 401) }
   }
 
   return { ok: true, user }

@@ -2,7 +2,8 @@
  * After OAuth redirect, exchange Auth.js session for app JWT (auth-token cookie).
  */
 import { Auth } from '@auth/core'
-import { jsonResponse, errorResponse } from '../../../http'
+import { jsonResponse } from '../../../http'
+import { localizedErrorResponse } from '../../../localizedError'
 import { buildAuthSetCookie } from '../../../authCookie'
 import { getOAuthConfig, isAnyOAuthConfigured, OAUTH_BASE_PATH } from '../../../../auth/oauthConfig'
 import { createJWT } from '../../../../../src/lib/jwt'
@@ -10,7 +11,7 @@ import { prisma } from '../../../../../src/lib/prisma'
 
 export async function POST(request: Request) {
   if (!isAnyOAuthConfigured()) {
-    return errorResponse('OAuth 未配置', 501)
+    return localizedErrorResponse(request, 'api.auth.oauthNotConfigured', 501)
   }
 
   try {
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
 
     const email = sessionBody?.user?.email?.trim().toLowerCase()
     if (!email) {
-      return errorResponse('OAuth 会话无效，请重新登录', 401)
+      return localizedErrorResponse(request, 'api.auth.oauthSessionInvalid', 401)
     }
 
     let user = await prisma.user.findUnique({
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     if (!user) {
-      return errorResponse('未找到 OAuth 用户，请重试', 401)
+      return localizedErrorResponse(request, 'api.auth.oauthUserNotFound', 401)
     }
 
     const token = createJWT(user)
@@ -55,6 +56,6 @@ export async function POST(request: Request) {
     )
   } catch (error) {
     console.error('[OAuth sync] error:', error)
-    return errorResponse('OAuth 同步失败', 500)
+    return localizedErrorResponse(request, 'api.auth.oauthSyncFailed', 500)
   }
 }

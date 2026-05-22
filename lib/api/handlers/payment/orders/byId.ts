@@ -1,7 +1,8 @@
 /**
  * 查询支付订单状态（微信扫码轮询）
  */
-import { errorResponse, jsonResponse } from '../../../http'
+import { jsonResponse } from '../../../http'
+import { localizedErrorResponse } from '../../../localizedError'
 import { requireAuth } from '../../../requireAuth'
 import { getPaymentOrderById } from '../../../../billing/paymentOrders'
 
@@ -13,11 +14,11 @@ export async function GET(
   if (!auth.ok) return auth.response
 
   const id = ctx?.params?.id
-  if (!id) return errorResponse('缺少订单 ID', 400)
+  if (!id) return localizedErrorResponse(request, 'api.payment.orderIdRequired', 400)
 
   const order = await getPaymentOrderById(id)
   if (!order || order.userId !== auth.user.id) {
-    return errorResponse('订单不存在', 404)
+    return localizedErrorResponse(request, 'api.payment.orderNotFound', 404)
   }
 
   return jsonResponse({
