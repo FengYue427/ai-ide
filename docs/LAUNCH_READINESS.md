@@ -16,7 +16,11 @@
 | **D3 可收款 GA** | D2 + 真实订阅与发票/退款流程 | ⬜ 差 P1 路径 B+ 商户 |
 | **D4 企业级** | SSO、审计、专用部署、SLA | ⬜ 未规划 |
 
-**结论（2026-05）**：产品处于 **D0～D1 之间**；对外可称 **RC / 公测**，不宜称 **正式 GA 或商业订阅上线**。
+**结论（2026-05-22，见 [LAUNCH_ASSESSMENT_2026-05.md](./LAUNCH_ASSESSMENT_2026-05.md)）**：
+
+- **代码**：P0'/P1/i18n/P4-1 首包已交付；本地 `p0:gate` 曾全绿（170 单测）。
+- **生产**：`ai-ide-flame.vercel.app` → `health: degraded`, `database: unavailable` → 实际 **D0～D0.5**（云 API 不可用）。
+- **对外**：可 **RC/公测公告（BYOK）**；**不可** D2 MLP 或 D3 可收款 GA，直至 Phase 2（[NEXT_EXECUTION.md](./NEXT_EXECUTION.md)）完成。
 
 ---
 
