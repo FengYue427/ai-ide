@@ -13,7 +13,7 @@ describe('projectRulesService', () => {
     ])
     expect(rules).toContain('strict')
     const prompt = appendProjectRules('Base prompt', rules)
-    expect(prompt).toContain('项目规则')
+    expect(prompt).toContain('项目规则（.aide/rules）')
     expect(prompt).toContain('strict')
   })
 })

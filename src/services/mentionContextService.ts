@@ -2,6 +2,8 @@
  * Resolve @mentions in Chat input into extra system-prompt context.
  */
 
+import type { Language } from '../i18n'
+import { serviceText } from '../lib/serviceI18n'
 import { summarizeFileContent } from './workspacePromptUtils'
 import type { IndexedSymbol, ProjectIndex } from './projectIndexService'
 import { workspaceContextService } from './workspaceContextService'
@@ -119,6 +121,7 @@ export function buildMentionContextSection(
   userText: string,
   editorFiles: { name: string; content: string }[],
   index: ProjectIndex,
+  locale: Language = 'zh-CN',
 ): string {
   const tokens = extractMentionTokens(userText).slice(0, MAX_MENTIONS)
   if (tokens.length === 0) return ''
@@ -132,8 +135,12 @@ export function buildMentionContextSection(
 
     const lang = resolved.path.split('.').pop() ?? 'text'
     const header = resolved.symbol
-      ? `### @${token} → \`${resolved.path}\` 符号 \`${resolved.symbol.name}\`（约第 ${resolved.symbol.line} 行）`
-      : `### @${token} → \`${resolved.path}\``
+      ? serviceText(
+          'mention.header.symbol',
+          { token, path: resolved.path, symbol: resolved.symbol.name, line: resolved.symbol.line },
+          locale,
+        )
+      : serviceText('mention.header.file', { token, path: resolved.path }, locale)
 
     let body = resolved.content
     if (body.length > MAX_FILE_CHARS) {
@@ -142,7 +149,7 @@ export function buildMentionContextSection(
 
     const block = `${header}\n\`\`\`${lang}\n${body}\n\`\`\``
     if (totalChars + block.length > MAX_SECTION_CHARS) {
-      blocks.push('（更多 @ 提及因长度限制未展开，请缩小提及范围或关闭部分工作区文件。）')
+      blocks.push(serviceText('mention.section.truncated', undefined, locale))
       break
     }
     blocks.push(block)
@@ -151,5 +158,5 @@ export function buildMentionContextSection(
 
   if (blocks.length === 0) return ''
 
-  return `## 用户 @ 提及的代码上下文\n\n用户在消息中用 @ 引用了以下文件/符号，请优先结合这些内容回答：\n\n${blocks.join('\n\n')}`
+  return `## ${serviceText('mention.section.title', undefined, locale)}\n\n${serviceText('mention.section.intro', undefined, locale)}\n\n${blocks.join('\n\n')}`
 }

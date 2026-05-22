@@ -1,3 +1,5 @@
+import { serviceText } from '../lib/serviceI18n'
+
 export type TerminalRunner = (command: string, args?: string[]) => Promise<number | undefined>
 
 let runner: TerminalRunner | null = null
@@ -24,7 +26,7 @@ function tokenizeCommand(commandLine: string): string[] {
 
 export async function runTerminalCommand(commandLine: string): Promise<string> {
   if (!runner) {
-    throw new Error('终端尚未就绪')
+    throw new Error(serviceText('plugin.context.terminalNotReady'))
   }
 
   const tokens = tokenizeCommand(commandLine)

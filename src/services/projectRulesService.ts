@@ -2,12 +2,15 @@
  * Project rules injected into AI system prompts (Cursor-style .cursorrules compat).
  */
 
-export const DEFAULT_PROJECT_RULES_TEMPLATE = `# 项目规则 (.aide/rules.md)
+import type { Language } from '../i18n'
+import { serviceText } from '../lib/serviceI18n'
 
-- 使用 TypeScript strict 模式
-- 优先小步提交、保持测试通过
-- 回复用户时使用简洁中文
-`
+export function getDefaultProjectRulesTemplate(locale: Language = 'zh-CN'): string {
+  return serviceText('projectRules.template', undefined, locale)
+}
+
+/** @deprecated Use getDefaultProjectRulesTemplate() */
+export const DEFAULT_PROJECT_RULES_TEMPLATE = getDefaultProjectRulesTemplate('zh-CN')
 
 export const PROJECT_RULES_PATH = '.aide/rules.md'
 
@@ -35,9 +38,14 @@ export function extractProjectRules(sources: { path: string; content: string }[]
   return parts.join('\n\n---\n\n')
 }
 
-export function appendProjectRules(basePrompt: string, rules: string | null): string {
+export function appendProjectRules(
+  basePrompt: string,
+  rules: string | null,
+  locale: Language = 'zh-CN',
+): string {
   if (!rules?.trim()) return basePrompt
-  return `${basePrompt}\n\n## 项目规则（.aide/rules）\n\n${rules.trim()}\n`
+  const title = serviceText('projectRules.sectionTitle', undefined, locale)
+  return `${basePrompt}\n\n## ${title}\n\n${rules.trim()}\n`
 }
 
 export function collectRulesSources(

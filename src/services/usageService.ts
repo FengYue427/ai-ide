@@ -1,4 +1,5 @@
 import { planLimitsByName } from '../../lib/billing/plans'
+import { serviceText } from '../lib/serviceI18n'
 import type { QuotaCheck } from './aiService'
 import { readJsonResponse, apiFetch } from './apiUtils'
 import { trackEvent } from '../lib/observability'
@@ -20,14 +21,14 @@ export class QuotaExceededError extends Error {
   readonly quota: QuotaCheck
 
   constructor(quota: QuotaCheck) {
-    super(`今天的 AI 请求额度已用完（${quota.used}/${quota.limit}）`)
+    super(serviceText('usage.quota.exceeded', { used: quota.used, limit: quota.limit }))
     this.name = 'QuotaExceededError'
     this.quota = quota
   }
 }
 
 export class QuotaSyncError extends Error {
-  constructor(message = '无法同步 AI 配额到服务器，请检查网络后重试') {
+  constructor(message = serviceText('usage.quota.syncFailed')) {
     super(message)
     this.name = 'QuotaSyncError'
   }

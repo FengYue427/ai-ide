@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest'
+import { serviceText } from '../lib/serviceI18n'
 
 export interface GitHubRepo {
   owner: string
@@ -66,7 +67,7 @@ export async function fetchRepoContents(
   } catch (error: any) {
     return { 
       files: [], 
-      error: error.status === 404 ? '仓库不存在或私有' : error.message 
+      error: error.status === 404 ? serviceText('github.error.repoNotFound') : error.message 
     }
   }
 }

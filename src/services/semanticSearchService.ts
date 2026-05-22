@@ -2,6 +2,8 @@
  * Optional BYOK semantic retrieval: chunk workspace files and rank by embedding similarity.
  */
 
+import type { Language } from '../i18n'
+import { serviceText } from '../lib/serviceI18n'
 import type { AIConfig } from './aiService'
 import { canUseEmbeddings, cosineSimilarity, createEmbedding } from './embeddingService'
 
@@ -99,25 +101,37 @@ export async function findRelevantChunks(
   return hits.sort((a, b) => b.score - a.score).slice(0, topK)
 }
 
-export function formatSemanticContextSection(hits: SemanticChunkHit[]): string {
+export function formatSemanticContextSection(
+  hits: SemanticChunkHit[],
+  locale: Language = 'zh-CN',
+): string {
   if (hits.length === 0) return ''
 
-  const lines = hits.map(
-    (hit, index) =>
-      `${index + 1}. ${hit.path} (相关度 ${(hit.score * 100).toFixed(0)}%)\n\`\`\`\n${hit.text}\n\`\`\``,
+  const lines = hits.map((hit, index) =>
+    serviceText(
+      'semantic.hitLine',
+      {
+        index: index + 1,
+        path: hit.path,
+        score: (hit.score * 100).toFixed(0),
+        text: hit.text,
+      },
+      locale,
+    ),
   )
 
-  return `\n\n## 语义检索相关片段（BYOK Embedding）\n${lines.join('\n\n')}`
+  return `\n\n## ${serviceText('semantic.section.title', undefined, locale)}\n${lines.join('\n\n')}`
 }
 
 export async function buildSemanticContextSection(
   query: string,
   files: { path: string; content: string }[],
   config: AIConfig,
+  locale: Language = 'zh-CN',
 ): Promise<string> {
   try {
     const hits = await findRelevantChunks(query, files, config)
-    return formatSemanticContextSection(hits)
+    return formatSemanticContextSection(hits, locale)
   } catch (error) {
     console.warn('[semanticSearch]', error)
     return ''

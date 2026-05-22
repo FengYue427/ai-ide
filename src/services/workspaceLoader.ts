@@ -1,3 +1,4 @@
+import { serviceText } from '../lib/serviceI18n'
 import { cloudSyncService } from './cloudSyncService'
 import { listWorkspaceEntries, loadWorkspaceEntry } from './workspaceCatalogService'
 import { authService } from './authService'
@@ -54,7 +55,7 @@ export async function loadWorkspaceSnapshot(id: string): Promise<LoadedWorkspace
       return {
         files: normalizeFiles(autosave),
         settings: { theme, autoSave: appSettings.autosave, language: normalizeLanguage(storedLang) },
-        name: '自动保存',
+        name: serviceText('workspace.autosave.name'),
       }
     }
   }

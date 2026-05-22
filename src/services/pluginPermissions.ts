@@ -1,3 +1,5 @@
+import { serviceText } from '../lib/serviceI18n'
+
 /** Expanded permission tokens (backward compatible with legacy broad scopes). */
 export const ALL_PLUGIN_PERMISSIONS = [
   'editor',
@@ -64,14 +66,14 @@ export function hasUi(perms: Set<ExtendedPluginPermission>): boolean {
 
 export function validateExtendedPermissions(permissions: readonly string[]): string | null {
   if (!Array.isArray(permissions) || permissions.length === 0) {
-    return '至少声明一项权限'
+    return serviceText('plugin.perm.required')
   }
   if (permissions.includes('terminal')) {
-    return '不再支持 terminal 全权权限，请改用 terminal:safe'
+    return serviceText('plugin.perm.terminalDeprecated')
   }
   for (const perm of permissions) {
     if (!ALL_PLUGIN_PERMISSIONS.includes(perm as ExtendedPluginPermission)) {
-      return `未知权限: ${perm}`
+      return serviceText('plugin.perm.unknown', { perm })
     }
   }
   return null

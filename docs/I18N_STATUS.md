@@ -2,7 +2,8 @@
 
 ## 架构
 
-- 词条：`src/i18n/translations.ts`（`zh-CN` / `en-US`，~900 keys）
+- 词条：`src/i18n/translations.ts`（`zh-CN` / `en-US`，~950 keys）
+- 服务层：`src/lib/serviceI18n.ts` → `serviceText(key)`（跟随 `getApiLanguage()`）
 - 运行时：`I18nProvider` + `useI18n().t(key, params?)`
 - 非 React：`createTranslator(locale)`、`workspaceError()`、`pluginError()`、`localizeAuthApiError()`
 - 服务端：`lib/i18n/apiMessages.ts` + `resolveRequestLocale(req)`（`X-App-Language` / `Accept-Language`）
@@ -19,16 +20,16 @@
 | 9 | 服务端 API 错误本地化、插件市场目录文案、`X-App-Language` 请求头 |
 | 10 | 插件沙箱/上下文错误、`formatFetchError`、默认 `index.js` 注释、示例插件 `context.locale` |
 | 11 | 模板生成文件注释、`ai.provider.*` 名称/描述、AI 限流/取消错误、`applyTemplate(locale)` |
+| 12 | 配额/工作区/MCP/审查/语义检索/提及上下文/插件权限/终端/Git 导入等服务层文案 |
 
-组件/服务：`pluginContext`、`pluginSandbox`、`aiService`（`modelProviderTranslationKey`）、`templates/applyTemplate`、`SettingsCenter` / `AISettingsModal`
-
-示例：`examples/hello.plugin.json`、`examples/plugins/workspace-hints.plugin.json` 按 `context.locale` 双语
+组件/服务：`usageService`、`remoteWorkspaceService`、`cloudSyncService`、`mentionContextService`、`semanticSearchService`、`codeReviewService`、`mcpClientService`、`pluginPermissions`、`projectRulesService`
 
 ## 待接入
 
 - 第三方插件作者自备 i18n（仅官方示例与内置插件覆盖）
 - 服务端成功 `message` 字段全量本地化（可选）
+- `formatService` / `aiService` API 状态英文错误（低优先级，多为技术信息）
 
 ## 验收
 
-设置 → **English** 后：AI 设置提供商为英文名称与描述；从模板新建 Vanilla/Node 时生成文件首行注释为英文；安装 hello-sandbox / workspace-hints 后通知为英文；默认 `index.js` 首行为 `// Welcome to AI IDE`。
+设置 → **English** 后：AI 配额用尽、工作区删除未登录、MCP 检测、代码审查快速检查、Chat @ 提及系统提示均为英文；新建 `.aide/rules.md` 模板为英文。

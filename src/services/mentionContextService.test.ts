@@ -53,7 +53,7 @@ describe('mentionContextService', () => {
       [{ name: 'src/App.tsx', content: 'function App() { return 1 }' }],
       sampleIndex,
     )
-    expect(section).toContain('用户 @ 提及')
+    expect(section).toContain('用户 @ 提及的代码上下文')
     expect(section).toContain('src/App.tsx')
     expect(section).toContain('function App')
   })

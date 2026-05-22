@@ -1,4 +1,7 @@
 // 代码格式化服务 - 使用 Prettier
+
+import type { Language } from '../i18n'
+import { serviceText } from '../lib/serviceI18n'
 import { unifiedStorage } from './unifiedStorage'
 
 interface FormatOptions {
@@ -88,7 +91,7 @@ export const formatService = {
   },
 
   // 检查代码是否有语法错误（简单检查）
-  checkSyntax(code: string, _language: string): { valid: boolean; errors: string[] } {
+  checkSyntax(code: string, _language: string, locale: Language = 'zh-CN'): { valid: boolean; errors: string[] } {
     const errors: string[] = []
     
     // 括号匹配检查
@@ -107,7 +110,9 @@ export const formatService = {
       } else if (Object.values(brackets).includes(char)) {
         const expected = stack.pop()
         if (expected !== char) {
-          errors.push(`位置 ${i}: 括号不匹配，期望 ${expected} 但得到 ${char}`)
+          errors.push(
+            serviceText('format.error.bracketMismatch', { pos: i, expected: expected ?? '', actual: char }, locale),
+          )
         }
       }
       
@@ -115,7 +120,7 @@ export const formatService = {
       if (char === '"' || char === "'") {
         const nextQuote = code.indexOf(char, i + 1)
         if (nextQuote === -1) {
-          errors.push(`位置 ${i}: 字符串引号未闭合`)
+          errors.push(serviceText('format.error.stringUnclosed', { pos: i }, locale))
           break
         }
         i = nextQuote
@@ -123,7 +128,7 @@ export const formatService = {
     }
     
     if (stack.length > 0) {
-      errors.push(`有未闭合的括号: ${stack.join(', ')}`)
+      errors.push(serviceText('format.error.unclosedBrackets', { stack: stack.join(', ') }, locale))
     }
 
     return {

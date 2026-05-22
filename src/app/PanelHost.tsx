@@ -29,7 +29,7 @@ import type { FileItem } from '../types/file'
 import type { AIConfigState } from '../store/ideStore'
 import {
   collectRulesSources,
-  DEFAULT_PROJECT_RULES_TEMPLATE,
+  getDefaultProjectRulesTemplate,
   extractProjectRules,
   PROJECT_RULES_PATH,
 } from '../services/projectRulesService'
@@ -358,7 +358,7 @@ export function PanelHost({
                 ...files,
                 {
                   name: PROJECT_RULES_PATH,
-                  content: DEFAULT_PROJECT_RULES_TEMPLATE,
+                  content: getDefaultProjectRulesTemplate(language),
                   language: 'markdown',
                 },
               ])

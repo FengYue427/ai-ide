@@ -1,4 +1,5 @@
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../lib/language'
+import { serviceText } from '../lib/serviceI18n'
 import { authService } from './authService'
 import type { WorkspaceBackup } from './cloudSyncService'
 
@@ -117,7 +118,7 @@ export const remoteWorkspaceService = {
 
   async remove(name: string): Promise<{ ok: boolean; error?: string }> {
     if (!authService.getCurrentUser()) {
-      return { ok: false, error: '未登录' }
+      return { ok: false, error: serviceText('auth.error.notLoggedIn') }
     }
 
     try {
@@ -136,7 +137,7 @@ export const remoteWorkspaceService = {
 
       return { ok: true }
     } catch {
-      return { ok: false, error: '网络错误' }
+      return { ok: false, error: serviceText('auth.error.network') }
     }
   },
 }

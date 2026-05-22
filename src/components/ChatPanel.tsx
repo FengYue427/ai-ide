@@ -121,8 +121,8 @@ ${t('ai.chat.prompt')}`
   }, [indexVersion])
 
   const applyProjectRules = useCallback(
-    (prompt: string) => appendProjectRules(prompt, projectRules),
-    [projectRules],
+    (prompt: string) => appendProjectRules(prompt, projectRules, language),
+    [projectRules, language],
   )
 
   const augmentWithSemanticContext = useCallback(
@@ -138,10 +138,10 @@ ${t('ai.chat.prompt')}`
         workspaceFiles,
       ).map((file) => ({ path: file.name, content: file.content }))
 
-      const section = await buildSemanticContextSection(query, searchable, aiConfig)
+      const section = await buildSemanticContextSection(query, searchable, aiConfig, language)
       return section ? `${basePrompt}${section}` : basePrompt
     },
-    [aiConfig, editorFiles, useWorkspaceContext],
+    [aiConfig, editorFiles, language, useWorkspaceContext],
   )
 
   const refreshQuota = useCallback(() => {
@@ -293,6 +293,7 @@ ${t('ai.chat.prompt')}`
           textToSend,
           editorFiles,
           projectIndexManager.getIndex(),
+          language,
         )
         if (mentionSection) {
           agentSystemPrompt = `${agentSystemPrompt}\n\n${mentionSection}`
@@ -321,6 +322,7 @@ ${t('ai.chat.prompt')}`
           textToSend,
           editorFiles,
           projectIndexManager.getIndex(),
+          language,
         )
         if (mentionSection) {
           systemPrompt = `${systemPrompt}\n\n${mentionSection}`

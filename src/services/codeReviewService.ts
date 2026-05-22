@@ -1,3 +1,5 @@
+import type { Language } from '../i18n'
+import { serviceText } from '../lib/serviceI18n'
 import { sendMessage } from './aiService'
 import type { AIModel } from './aiService'
 
@@ -30,7 +32,8 @@ export const codeReviewService = {
     code: string,
     language: string,
     filename: string,
-    config: CodeReviewConfig
+    config: CodeReviewConfig,
+    locale: Language = 'zh-CN',
   ): Promise<CodeReviewResult> {
     const prompt = `Perform a comprehensive code review for the following ${language} code.
 
@@ -91,7 +94,7 @@ Format the response as JSON with this structure:
         const result = JSON.parse(jsonMatch[0])
         return {
           score: result.score || 0,
-          summary: result.summary || '审查完成',
+          summary: result.summary || serviceText('review.summary.done', undefined, locale),
           issues: result.issues || [],
           improvements: result.improvements || [],
           security: result.security || [],
@@ -102,7 +105,7 @@ Format the response as JSON with this structure:
       // Fallback if JSON parsing fails
       return {
         score: 70,
-        summary: '代码审查完成（解析结果不完整）',
+        summary: serviceText('review.summary.partial', undefined, locale),
         issues: this.parseIssuesFromText(response),
         improvements: [],
         security: [],
@@ -112,7 +115,12 @@ Format the response as JSON with this structure:
       console.error('Code review error:', error)
       return {
         score: 0,
-        summary: '审查失败: ' + (error instanceof Error ? error.message : '未知错误'),
+        summary: serviceText('review.summary.failed', {
+          message:
+            error instanceof Error
+              ? error.message
+              : serviceText('review.summary.failedUnknown', undefined, locale),
+        }, locale),
         issues: [],
         improvements: [],
         security: [],
@@ -147,7 +155,7 @@ Format the response as JSON with this structure:
   },
 
   // 快速检查（本地规则）
-  quickCheck(code: string, language: string): CodeIssue[] {
+  quickCheck(code: string, language: string, locale: Language = 'zh-CN'): CodeIssue[] {
     const issues: CodeIssue[] = []
     const lines = code.split('\n')
 
@@ -158,9 +166,9 @@ Format the response as JSON with this structure:
         issues.push({
           type: 'suggestion',
           line: index + 1,
-          message: '发现调试输出语句，建议生产环境移除',
+          message: serviceText('review.issue.debugLog', undefined, locale),
           code: line.trim(),
-          suggestion: '使用日志库替代或移除调试代码'
+          suggestion: serviceText('review.issue.debugSuggestion', undefined, locale),
         })
       }
 
@@ -169,7 +177,7 @@ Format the response as JSON with this structure:
         issues.push({
           type: 'warning',
           line: index + 1,
-          message: '有待办事项（TODO）未处理',
+          message: serviceText('review.issue.todo', undefined, locale),
           code: line.trim()
         })
       }
@@ -179,8 +187,8 @@ Format the response as JSON with this structure:
         issues.push({
           type: 'style',
           line: index + 1,
-          message: '行长度超过100字符',
-          suggestion: '建议换行以提高可读性'
+          message: serviceText('review.issue.lineLength', undefined, locale),
+          suggestion: serviceText('review.issue.lineLengthSuggestion', undefined, locale),
         })
       }
     })
@@ -193,9 +201,9 @@ Format the response as JSON with this structure:
           issues.push({
             type: 'warning',
             line: index + 1,
-            message: '使用了 == 而非 ===',
+            message: serviceText('review.issue.looseEqual', undefined, locale),
             code: line.trim(),
-            suggestion: '建议使用 === 进行严格相等比较'
+            suggestion: serviceText('review.issue.looseEqualSuggestion', undefined, locale),
           })
         }
       })

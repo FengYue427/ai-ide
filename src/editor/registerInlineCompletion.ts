@@ -1,4 +1,6 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import { getApiLanguage } from '../lib/apiLanguage'
+import { serviceText } from '../lib/serviceI18n'
 import type { AIConfig } from '../services/aiService'
 import { inlineCompletionService } from '../services/inlineCompletionService'
 
@@ -62,7 +64,7 @@ export function registerInlineCompletionProvider(
       return {
         suggestions: [
           {
-            label: 'AI 补全',
+            label: serviceText('editor.inlineCompletion.label', undefined, getApiLanguage()),
             kind: monaco.languages.CompletionItemKind.Snippet,
             insertText: completion,
             range,

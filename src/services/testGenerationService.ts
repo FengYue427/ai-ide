@@ -1,3 +1,4 @@
+import { serviceText } from '../lib/serviceI18n'
 import { sendMessage, type AIConfig } from './aiService'
 
 export const testGenerationService = {
@@ -8,7 +9,7 @@ export const testGenerationService = {
     config: AIConfig,
   ): Promise<string> {
     if (!config.apiKey?.trim()) {
-      throw new Error('请先在 AI 设置中配置 API Key')
+      throw new Error(serviceText('testGen.apiKeyRequired'))
     }
 
     const prompt = `Generate unit tests for the following ${language} code file "${filename}".

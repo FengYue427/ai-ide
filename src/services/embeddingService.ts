@@ -1,3 +1,4 @@
+import { serviceText } from '../lib/serviceI18n'
 import type { AIConfig } from './aiService'
 
 const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small'
@@ -26,7 +27,7 @@ function resolveEmbeddingsUrl(config: AIConfig): string {
 
 export async function createEmbedding(text: string, config: AIConfig): Promise<number[]> {
   if (!canUseEmbeddings(config)) {
-    throw new Error('需要配置 API Key 才能使用语义检索')
+    throw new Error(serviceText('embedding.apiKeyRequired'))
   }
 
   const response = await fetch(resolveEmbeddingsUrl(config), {
@@ -52,7 +53,7 @@ export async function createEmbedding(text: string, config: AIConfig): Promise<n
 
   const vector = payload.data?.[0]?.embedding
   if (!vector?.length) {
-    throw new Error('Embedding API 返回为空')
+    throw new Error(serviceText('embedding.emptyResponse'))
   }
 
   return vector

@@ -1,3 +1,4 @@
+import { serviceText } from '../lib/serviceI18n'
 import type { McpJsonRpcResponse, McpServerConfig, McpToolDefinition } from './mcpTypes'
 
 const PROXY_PATH = '/api/mcp/proxy'
@@ -47,7 +48,7 @@ async function mcpRpc<T>(
 
 export async function pingMcpServer(server: McpServerConfig): Promise<{ ok: boolean; detail?: string }> {
   if (!server.url.trim()) {
-    return { ok: false, detail: 'URL 为空' }
+    return { ok: false, detail: serviceText('mcp.ping.emptyUrl') }
   }
 
   try {
@@ -56,13 +57,13 @@ export async function pingMcpServer(server: McpServerConfig): Promise<{ ok: bool
       capabilities: {},
       clientInfo: { name: 'ai-ide', version: '1.0.0-rc.1' },
     })
-    return { ok: true, detail: '已连接' }
+    return { ok: true, detail: serviceText('mcp.ping.ok') }
   } catch (error) {
     try {
       const tools = await listMcpTools(server)
-      return { ok: true, detail: `可列出 ${tools.length} 个工具` }
+      return { ok: true, detail: serviceText('mcp.ping.toolsListed', { count: tools.length }) }
     } catch (inner) {
-      const message = inner instanceof Error ? inner.message : '连接失败'
+      const message = inner instanceof Error ? inner.message : serviceText('mcp.ping.fail')
       return { ok: false, detail: message }
     }
   }

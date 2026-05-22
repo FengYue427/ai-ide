@@ -1,4 +1,5 @@
 import { DEFAULT_LANGUAGE } from '../lib/language'
+import { serviceText } from '../lib/serviceI18n'
 import { StorageLayer, unifiedStorage } from './unifiedStorage'
 
 export interface WorkspaceBackup {
@@ -93,12 +94,12 @@ export const cloudSyncService = {
     try {
       const data = JSON.parse(json)
       if (!data.name || !Array.isArray(data.files)) {
-        throw new Error('无效的工作区数据')
+        throw new Error(serviceText('workspace.invalidData'))
       }
 
       const workspace: WorkspaceBackup = {
         id: createId(),
-        name: `${data.name}（导入）`,
+        name: `${data.name}${serviceText('workspace.importSuffix')}`,
         description: data.description,
         files: data.files,
         settings: data.settings || {
@@ -123,8 +124,8 @@ export const cloudSyncService = {
   async autoBackup(files: WorkspaceBackup['files'], settings: WorkspaceBackup['settings']): Promise<void> {
     const backup: WorkspaceBackup = {
       id: 'auto-backup',
-      name: '自动备份',
-      description: '系统自动创建的恢复快照',
+      name: serviceText('workspace.autoBackup.name'),
+      description: serviceText('workspace.autoBackup.desc'),
       files,
       settings,
       createdAt: Date.now(),

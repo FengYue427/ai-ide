@@ -27,7 +27,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
   onClose,
   onTestsGenerated,
 }) => {
-  const { t } = useI18n()
+  const { t, language: uiLocale } = useI18n()
   const [result, setResult] = useState<CodeReviewResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [generatingTests, setGeneratingTests] = useState(false)
@@ -42,7 +42,8 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
         code,
         language,
         filename,
-        aiConfig
+        aiConfig,
+        uiLocale,
       )
       setResult(reviewResult)
       setShowQuickCheck(false)
@@ -72,7 +73,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
   }
 
   const runQuickCheck = () => {
-    const quickIssues = codeReviewService.quickCheck(code, language)
+    const quickIssues = codeReviewService.quickCheck(code, language, uiLocale)
     setResult({
       score: quickIssues.length === 0 ? 90 : Math.max(50, 90 - quickIssues.length * 5),
       summary:
