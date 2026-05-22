@@ -1,3 +1,4 @@
+import { createTranslator } from '../i18n'
 import { getApiLanguage } from '../lib/apiLanguage'
 
 export function createClientRequestId(): string {
@@ -34,12 +35,14 @@ function shouldNotifyUnauthorized(input: RequestInfo | URL): boolean {
 }
 
 /** User-facing message for fetch failures (offline, DNS, CORS). */
-export function formatFetchError(error: unknown, fallback = '网络异常，请稍后重试'): string {
+export function formatFetchError(error: unknown, fallback?: string): string {
+  const t = createTranslator(getApiLanguage())
+  const generic = fallback ?? t('network.error.generic')
   if (error instanceof TypeError && /fetch|network|Failed/i.test(error.message)) {
-    return '无法连接服务器，请检查网络后重试'
+    return t('network.error.offline')
   }
   if (error instanceof Error && error.message.trim()) return error.message
-  return fallback
+  return generic
 }
 
 export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {

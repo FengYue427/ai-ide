@@ -1,4 +1,5 @@
 import type { PluginContext, PluginManifest } from './pluginTypes'
+import { pluginError } from './pluginErrors'
 import {
   hasAi,
   hasEditorRead,
@@ -42,19 +43,19 @@ const BLOCKED_PATTERNS: RegExp[] = [
 
 export function validateManifest(manifest: PluginManifest): string | null {
   if (!manifest.id || !/^[a-z][a-z0-9-]{1,48}$/.test(manifest.id)) {
-    return '插件 id 须为小写字母/数字/连字符，且以字母开头'
+    return pluginError('plugin.sandbox.invalidId')
   }
-  if (!manifest.name?.trim()) return '插件名称不能为空'
-  if (!manifest.version?.trim()) return '插件版本不能为空'
+  if (!manifest.name?.trim()) return pluginError('plugin.sandbox.nameRequired')
+  if (!manifest.version?.trim()) return pluginError('plugin.sandbox.versionRequired')
   return validateExtendedPermissions(manifest.permissions)
 }
 
 export function validatePluginSource(source: string): string | null {
-  if (!source.trim()) return '插件代码不能为空'
-  if (source.length > 32_000) return '插件代码超过 32KB 限制'
+  if (!source.trim()) return pluginError('plugin.sandbox.codeEmpty')
+  if (source.length > 32_000) return pluginError('plugin.sandbox.codeTooLarge')
   for (const pattern of BLOCKED_PATTERNS) {
     if (pattern.test(source)) {
-      return `插件代码包含不允许的模式: ${pattern.source}`
+      return pluginError('plugin.sandbox.blockedPattern', { pattern: pattern.source })
     }
   }
   return null
@@ -62,7 +63,7 @@ export function validatePluginSource(source: string): string | null {
 
 function deny<T extends string>(name: T): () => never {
   return () => {
-    throw new Error(`插件无权访问 ${name}`)
+    throw new Error(pluginError('plugin.sandbox.denied', { name }))
   }
 }
 
@@ -73,6 +74,7 @@ export function createSandboxedContext(
   const perms = new Set(normalizePluginPermissions(permissions))
 
   return {
+    locale: base.locale,
     editor: {
       getValue: hasEditorRead(perms) ? base.editor.getValue : deny('editor.getValue'),
       getSelectedText: hasEditorRead(perms) ? base.editor.getSelectedText : deny('editor.getSelectedText'),
@@ -92,7 +94,7 @@ export function createSandboxedContext(
             const mode =
               !import.meta.env.PROD && hasTerminalFull(perms) ? 'full' : 'safe'
             if (!isTerminalCommandAllowed(command, mode)) {
-              throw new Error('插件无权执行该终端命令（仅允许安全命令白名单）')
+              throw new Error(pluginError('plugin.sandbox.terminalCommandDenied'))
             }
             return base.terminal.execute(command)
           }
@@ -112,7 +114,7 @@ export function createSandboxedContext(
 /** @deprecated Third-party plugins should use runPluginActivateInSandbox (Worker). */
 export function runPluginActivate(source: string, context: PluginContext): void {
   if (import.meta.env.PROD) {
-    throw new Error('生产环境禁止在主线程执行插件代码，请使用 Worker 沙箱')
+    throw new Error(pluginError('plugin.sandbox.prodMainThread'))
   }
   const error = validatePluginSource(source)
   if (error) throw new Error(error)
@@ -124,7 +126,7 @@ ${source}
 if (typeof activate === "function") {
   activate(context);
 } else {
-  throw new Error("插件须定义 activate(context) 函数");
+  throw new Error(pluginError('plugin.sandbox.activateRequired'));
 }`,
   ) as (context: PluginContext) => void
 

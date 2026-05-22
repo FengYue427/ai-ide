@@ -2,6 +2,8 @@ import { sendMessage, type AIConfig } from './aiService'
 import type { PluginContext } from './pluginService'
 import type { FileItem } from '../types/file'
 import { getLanguageFromExt } from '../app/getLanguageFromExt'
+import { getApiLanguage } from '../lib/apiLanguage'
+import { pluginError } from './pluginErrors'
 
 export interface PluginHostDeps {
   getFiles: () => FileItem[]
@@ -27,6 +29,7 @@ export function createPluginContext(deps: PluginHostDeps): PluginContext {
   }
 
   return {
+    locale: getApiLanguage(),
     editor: {
       getValue: () => readActive()?.content ?? '',
       setValue: (value) => {
@@ -69,7 +72,7 @@ export function createPluginContext(deps: PluginHostDeps): PluginContext {
     terminal: {
       execute: async (command) => {
         if (!deps.runTerminal) {
-          throw new Error('终端尚未就绪')
+          throw new Error(pluginError('plugin.context.terminalNotReady'))
         }
         return deps.runTerminal(command)
       },
@@ -79,7 +82,7 @@ export function createPluginContext(deps: PluginHostDeps): PluginContext {
       complete: async (prompt) => {
         const config = deps.getAiConfig()
         if (!config.apiKey?.trim() && config.provider !== 'ollama') {
-          throw new Error('请先在 AI 设置中配置 API Key')
+          throw new Error(pluginError('plugin.context.apiKeyRequired'))
         }
         return sendMessage(config, [{ role: 'user', content: prompt }])
       },
@@ -92,7 +95,7 @@ export function createPluginContext(deps: PluginHostDeps): PluginContext {
       },
       addToolbarButton: (config, pluginId) => {
         if (!pluginId) {
-          throw new Error('插件工具栏按钮未绑定 pluginId')
+          throw new Error(pluginError('plugin.context.toolbarNoPluginId'))
         }
         deps.addToolbarButton(pluginId, config)
       },

@@ -8,5 +8,5 @@
     "entry": "main.js",
     "permissions": ["ui"]
   },
-  "source": "function activate(context) {\n  var count = context.files.getAll().length;\n  context.ui.addToolbarButton({\n    icon: 'folder',\n    label: '文件 ' + count,\n    onClick: function () {\n      context.ui.showModal('工作区', '当前编辑器中共有 ' + count + ' 个文件。');\n    },\n  });\n}"
+  "source": "function activate(context) {\n  var en = context.locale === 'en-US';\n  var count = context.files.getAll().length;\n  context.ui.addToolbarButton({\n    icon: 'folder',\n    label: en ? ('Files ' + count) : ('文件 ' + count),\n    onClick: function () {\n      context.ui.showModal(\n        en ? 'Workspace' : '工作区',\n        en\n          ? ('There are ' + count + ' files in the editor.')\n          : ('当前编辑器中共有 ' + count + ' 个文件。')\n      );\n    },\n  });\n}"
 }

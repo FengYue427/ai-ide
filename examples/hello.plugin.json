@@ -7,5 +7,5 @@
     "entry": "main.js",
     "permissions": ["ui"]
   },
-  "source": "function activate(context) {\n  context.ui.addToolbarButton({\n    icon: 'sparkles',\n    label: 'Hello',\n    onClick: function () {\n      context.ui.showNotification('插件沙箱运行正常', 'success');\n    },\n  });\n}"
+  "source": "function activate(context) {\n  var en = context.locale === 'en-US';\n  context.ui.addToolbarButton({\n    icon: 'sparkles',\n    label: 'Hello',\n    onClick: function () {\n      context.ui.showNotification(\n        en ? 'Plugin sandbox is working' : '插件沙箱运行正常',\n        'success'\n      );\n    },\n  });\n}"
 }

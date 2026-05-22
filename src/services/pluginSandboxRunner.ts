@@ -8,7 +8,10 @@ import {
   hasUi,
   normalizePluginPermissions,
 } from './pluginPermissions'
+import { createTranslator, type Language } from '../i18n'
+import { getApiLanguage } from '../lib/apiLanguage'
 import type { PluginContext } from './pluginTypes'
+import { pluginError } from './pluginErrors'
 import { validatePluginSource } from './pluginSandbox'
 
 const DEFAULT_ACTIVATE_TIMEOUT_MS = 5_000
@@ -30,14 +33,28 @@ type WorkerInbound =
   | { type: 'buttonClick'; buttonId: string }
   | { type: 'apiResult'; callId: string; ok: boolean; result?: unknown; error?: string }
 
-function createWorkerScript(): string {
+function createWorkerScript(locale: Language): string {
+  const t = createTranslator(locale)
+  const msg = {
+    apiTimeoutTpl: t('plugin.sandbox.apiTimeout', { path: '{path}' }),
+    apiFailed: t('plugin.sandbox.apiFailed'),
+    activateRequired: t('plugin.sandbox.activateRequired'),
+  }
+  const msgJson = JSON.stringify(msg)
   return `
 "use strict";
 const buttonHandlers = new Map();
 let requestId = "";
 
+const MSGS = ${msgJson};
+
 function post(msg) {
   self.postMessage(msg);
+}
+
+function formatTimeout(path) {
+  const tpl = MSGS.apiTimeoutTpl;
+  return tpl.indexOf("{path}") >= 0 ? tpl.replace("{path}", path) : tpl + path;
 }
 
 function apiCall(path, args) {
@@ -45,7 +62,7 @@ function apiCall(path, args) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       self.removeEventListener("message", onResult);
-      reject(new Error("插件 API 调用超时: " + path));
+      reject(new Error(formatTimeout(path)));
     }, ${DEFAULT_API_TIMEOUT_MS});
 
     function onResult(event) {
@@ -54,7 +71,7 @@ function apiCall(path, args) {
       clearTimeout(timer);
       self.removeEventListener("message", onResult);
       if (msg.ok) resolve(msg.result);
-      else reject(new Error(msg.error || "插件 API 调用失败"));
+      else reject(new Error(msg.error || MSGS.apiFailed));
     }
 
     self.addEventListener("message", onResult);
@@ -64,6 +81,7 @@ function apiCall(path, args) {
 
 function createContext() {
   return {
+    locale: "${locale}",
     editor: {
       getValue: () => apiCall("editor.getValue", []),
       setValue: (value) => apiCall("editor.setValue", [value]),
@@ -118,7 +136,7 @@ self.onmessage = async (event) => {
       const runner = new Function(
         "context",
         '"use strict";\\n' + msg.source + '\\n' +
-        'if (typeof activate !== "function") { throw new Error("插件须定义 activate(context) 函数"); }\\n' +
+        'if (typeof activate !== "function") { throw new Error(MSGS.activateRequired); }\\n' +
         'return activate(context);'
       );
       const outcome = runner(context);
@@ -187,7 +205,7 @@ function dispatchContextCall(
   permissions: readonly string[],
 ): unknown {
   if (!isApiPathAllowed(path, permissions)) {
-    throw new Error(`插件无权访问 ${path}`)
+    throw new Error(pluginError('plugin.sandbox.denied', { path }))
   }
   const [scope, method] = path.split('.')
   switch (scope) {
@@ -212,7 +230,7 @@ function dispatchContextCall(
       return api[method]?.(...args)
     }
     default:
-      throw new Error(`未知插件 API: ${path}`)
+      throw new Error(pluginError('plugin.sandbox.unknownApi', { path }))
   }
 }
 
@@ -230,12 +248,13 @@ export async function runPluginActivateInSandbox(
   if (validationError) throw new Error(validationError)
 
   if (typeof Worker === 'undefined') {
-    throw new Error('当前环境不支持 Web Worker 插件沙箱')
+    throw new Error(pluginError('plugin.sandbox.workerUnsupported'))
   }
 
+  const locale = context.locale ?? getApiLanguage()
   const timeoutMs = options?.timeoutMs ?? DEFAULT_ACTIVATE_TIMEOUT_MS
   const requestId = `${pluginId}-${Date.now()}`
-  const blob = new Blob([createWorkerScript()], { type: 'application/javascript' })
+  const blob = new Blob([createWorkerScript(locale)], { type: 'application/javascript' })
   const workerUrl = URL.createObjectURL(blob)
   const worker = new Worker(workerUrl)
 
@@ -251,7 +270,7 @@ export async function runPluginActivateInSandbox(
         if (settled) return
         settled = true
         dispose()
-        reject(new Error(`插件激活超时（${timeoutMs}ms）`))
+        reject(new Error(pluginError('plugin.sandbox.activateTimeout', { ms: timeoutMs }, locale)))
       }, timeoutMs)
 
       worker.onmessage = (event: MessageEvent<WorkerOutbound>) => {
@@ -270,7 +289,7 @@ export async function runPluginActivateInSandbox(
           if (settled) return
           settled = true
           window.clearTimeout(timer)
-          reject(new Error(msg.message || '插件激活失败'))
+          reject(new Error(msg.message || pluginError('plugin.sandbox.activateFailed', undefined, locale)))
           return
         }
 
@@ -312,7 +331,7 @@ export async function runPluginActivateInSandbox(
         if (settled) return
         settled = true
         window.clearTimeout(timer)
-        reject(new Error(event.message || '插件 Worker 运行错误'))
+        reject(new Error(event.message || pluginError('plugin.sandbox.workerError', undefined, locale)))
       }
 
       worker.postMessage({ type: 'activate', requestId, source } satisfies WorkerInbound)

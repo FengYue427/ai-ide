@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { createTranslator } from '../i18n'
+import { readStoredApiLanguage } from '../lib/apiLanguage'
 import { modelOptions, type AIModel } from '../services/aiService'
 import type { User as AuthUser } from '../services/authService'
 import type { RecentProject } from '../services/recentFilesService'
@@ -44,9 +46,18 @@ export interface PluginModalState {
   body: string
 }
 
-const defaultFiles: FileItem[] = [
-  { name: 'index.js', content: '// 欢迎使用 AI IDE\nconsole.log("Hello World!");', language: 'javascript' },
-]
+function buildDefaultFiles(): FileItem[] {
+  const t = createTranslator(readStoredApiLanguage())
+  return [
+    {
+      name: 'index.js',
+      content: `${t('editor.defaultFileComment')}\nconsole.log("Hello World!");`,
+      language: 'javascript',
+    },
+  ]
+}
+
+const defaultFiles: FileItem[] = buildDefaultFiles()
 
 const defaultAiConfig: AIConfigState = {
   provider: 'openai',

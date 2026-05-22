@@ -3,6 +3,7 @@ import { createSandboxedContext, validateManifest, validatePluginSource } from '
 import type { PluginContext } from './pluginTypes'
 
 const fullContext: PluginContext = {
+  locale: 'zh-CN',
   editor: {
     getValue: () => '',
     setValue: () => {},

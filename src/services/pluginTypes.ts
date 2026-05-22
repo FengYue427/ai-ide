@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { Language } from '../i18n'
 
 export type { ExtendedPluginPermission as PluginPermission } from './pluginPermissions'
 export { ALL_PLUGIN_PERMISSIONS } from './pluginPermissions'
@@ -15,6 +16,8 @@ export interface PluginManifest {
 }
 
 export interface PluginContext {
+  /** BCP-47 app language for bundled plugin scripts (e.g. hello-sandbox). */
+  locale: Language
   editor: {
     getValue: () => string
     setValue: (value: string) => void
