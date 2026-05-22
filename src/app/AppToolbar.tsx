@@ -16,6 +16,7 @@ import {
   User,
   Zap,
 } from 'lucide-react'
+import { useI18n } from '../i18n'
 import { authService } from '../services/authService'
 import { useIDEStore } from '../store/ideStore'
 import type { ConfirmRequest, ToastKind } from '../components/FeedbackCenter'
@@ -61,6 +62,7 @@ export function AppToolbar({
   requestConfirm,
   notify,
 }: AppToolbarProps) {
+  const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
   const currentUser = useIDEStore((s) => s.currentUser)
   const currentPlan = useIDEStore((s) => s.currentPlan)
@@ -80,42 +82,47 @@ export function AppToolbar({
           <img src="/logo-ai-ide.png" alt="" width={36} height={36} decoding="async" />
         </div>
         <div className="toolbar-brand-text">
-          <span className="toolbar-title">AI IDE</span>
-          <span className="toolbar-subtitle">浏览器内开发、运行与 AI 协作</span>
+          <span className="toolbar-title">{t('app.name')}</span>
+          <span className="toolbar-subtitle">{t('app.tagline')}</span>
         </div>
       </div>
 
       <div className="toolbar-actions">
         <button onClick={onOpenNewFile}>
           <FileText size={14} />
-          <span>文件</span>
+          <span>{t('toolbar.files')}</span>
         </button>
         <button onClick={onOpenSearch}>
           <Search size={14} />
-          <span>搜索</span>
+          <span>{t('toolbar.search')}</span>
         </button>
         <button onClick={onOpenChat}>
           <Bot size={14} />
-          <span>AI</span>
+          <span>{t('toolbar.ai')}</span>
         </button>
         <button onClick={onOpenWorkspace}>
           <FolderOpen size={14} />
-          <span>工作区管理</span>
+          <span>{t('toolbar.workspace')}</span>
         </button>
         <button onClick={onToggleGit}>
           <GitBranch size={14} />
-          <span>Git</span>
+          <span>{t('toolbar.git')}</span>
         </button>
         <button onClick={onRunCode} disabled={isRunning || !isReady} className="toolbar-primary-button">
           <Play size={14} />
-          <span>{isRunning ? '正在运行…' : '运行'}</span>
+          <span>{isRunning ? t('toolbar.running') : t('toolbar.run')}</span>
         </button>
         <button onClick={onOpenPreview}>
           <Eye size={14} />
-          <span>预览</span>
+          <span>{t('toolbar.preview')}</span>
         </button>
         {pluginToolbarButtons.map((button) => (
-          <button key={button.id} type="button" onClick={button.onClick} title={`插件：${button.label}`}>
+          <button
+            key={button.id}
+            type="button"
+            onClick={button.onClick}
+            title={t('toolbar.plugin', { label: button.label })}
+          >
             {renderPluginIcon(button.icon)}
             <span>{button.label}</span>
           </button>
@@ -132,7 +139,7 @@ export function AppToolbar({
         <div className="toolbar-chip">
           <Save size={14} />
           <span>
-            文件数 <strong>{files.length}</strong>
+            {t('toolbar.fileCount')} <strong>{files.length}</strong>
           </span>
         </div>
       </div>
@@ -142,14 +149,14 @@ export function AppToolbar({
           type="button"
           onClick={async () => {
             const confirmed = await requestConfirm({
-              title: '退出登录',
-              message: `当前用户：${currentUser.email}。退出后仍可继续使用本地工作区。`,
-              confirmText: '退出',
+              title: t('toolbar.logoutTitle'),
+              message: t('toolbar.logoutMessage', { email: currentUser.email }),
+              confirmText: t('toolbar.logoutConfirm'),
             })
             if (confirmed) {
               await authService.logout()
               setCurrentUser(null)
-              notify('success', '已退出登录')
+              notify('success', t('toolbar.loggedOut'))
             }
           }}
           title={currentUser.email}
@@ -184,7 +191,7 @@ export function AppToolbar({
           }}
         >
           <User size={14} />
-          <span>登录</span>
+          <span>{t('toolbar.login')}</span>
         </button>
       )}
 
@@ -193,25 +200,25 @@ export function AppToolbar({
           <Zap size={14} />
           <span>
             {!currentUser
-              ? '查看套餐'
+              ? t('toolbar.plans.guest')
               : currentPlan === 'free'
-                ? '升级套餐 ¥19起'
-                : '升级团队版'}
+                ? t('toolbar.plans.upgrade')
+                : t('toolbar.plans.team')}
           </span>
         </button>
       )}
 
       <button type="button" onClick={onOpenCommandPalette}>
         <Command size={14} />
-        <span>命令面板</span>
+        <span>{t('toolbar.commandPalette')}</span>
         <kbd className="toolbar-kbd">Ctrl+Shift+P</kbd>
       </button>
 
-      <button type="button" onClick={onOpenWelcome} className="toolbar-ghost-icon" title="返回欢迎页">
+      <button type="button" onClick={onOpenWelcome} className="toolbar-ghost-icon" title={t('toolbar.welcome')}>
         <Home size={18} />
       </button>
 
-      <button type="button" onClick={onOpenSettings} className="toolbar-ghost-icon" title="设置">
+      <button type="button" onClick={onOpenSettings} className="toolbar-ghost-icon" title={t('toolbar.settings')}>
         <SettingsIcon size={18} />
       </button>
 

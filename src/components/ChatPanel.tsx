@@ -25,6 +25,7 @@ import type { IndexSearchHit } from '../services/projectIndexService'
 import { canUseEmbeddings } from '../services/embeddingService'
 import { buildSemanticContextSection } from '../services/semanticSearchService'
 import { collectSearchableFiles } from '../services/searchService'
+import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 
 interface Message {
@@ -38,26 +39,37 @@ interface ChatPanelProps {
   onGenerateFiles?: (files: { name: string; content: string; language: string }[]) => void
 }
 
-const createWelcomeMessage = (aiConfig: AIConfig) =>
-  `你好，我是你的 AI 编程助手。当前正在使用 ${aiConfig.provider}${aiConfig.model ? ` (${aiConfig.model})` : ''}。
-
-我可以帮你：
-- 解释当前代码
-- 重构和优化实现
-- 生成新功能骨架
-- 帮你定位和修复问题
-
-直接输入你的需求，或者先点下面的快捷动作开始。`
-
-const quickActionLabels = {
-  explain: '解释',
-  refactor: '重构',
-  fix: '优化',
-  generate: '生成',
-} as const
-
 const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerateFiles }) => {
+  const { t } = useI18n()
   const currentPlan = useIDEStore((s) => s.currentPlan)
+
+  const createWelcomeMessage = useCallback(
+    (config: AIConfig) => {
+      const modelSuffix = config.model ? t('ai.chat.welcomeModel', { model: config.model }) : ''
+      const intro = t('ai.chat.welcome', { provider: config.provider, modelSuffix })
+      return `${intro}
+
+${t('ai.chat.helpIntro')}
+- ${t('ai.chat.bullet.explain')}
+- ${t('ai.chat.bullet.refactor')}
+- ${t('ai.chat.bullet.generate')}
+- ${t('ai.chat.bullet.fix')}
+
+${t('ai.chat.prompt')}`
+    },
+    [t],
+  )
+
+  const quickActionLabels = useMemo(
+    () =>
+      ({
+        explain: t('ai.chat.quick.explain'),
+        refactor: t('ai.chat.quick.refactor'),
+        fix: t('ai.chat.quick.fix'),
+        generate: t('ai.chat.quick.generate'),
+      }) as const,
+    [t],
+  )
   const currentUser = useIDEStore((s) => s.currentUser)
   const editorFiles = useIDEStore((s) => s.files)
   const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)

@@ -9,7 +9,7 @@ export interface AIConfig {
 
 // ==================== 用量限制管理 ====================
 
-import { checkAIQuotaLocal, recordAIUsageEvent } from './usageService'
+import { checkAIQuotaLocal } from './usageService'
 
 export interface QuotaCheck {
   allowed: boolean
@@ -24,17 +24,14 @@ export function checkAIQuota(currentPlan: string = 'free'): QuotaCheck {
   return checkAIQuotaLocal(currentPlan)
 }
 
-function trackSuccessfulAIUsage(): void {
-  void import('../store/ideStore').then(({ useIDEStore }) => {
-    const state = useIDEStore.getState()
-    void recordAIUsageEvent(!!state.currentUser, state.currentPlan)
-  })
-}
-
-async function assertQuotaBeforeRequest(skipQuotaCheck?: boolean): Promise<void> {
+/** Check quota and reserve one unit before the upstream AI call (prevents parallel overuse). */
+async function reserveQuotaBeforeRequest(skipQuotaCheck?: boolean): Promise<void> {
   if (skipQuotaCheck) return
-  const { ensureAIQuotaFromStore } = await import('./usageService')
+  const { ensureAIQuotaFromStore, recordAIUsageEvent } = await import('./usageService')
+  const { useIDEStore } = await import('../store/ideStore')
   await ensureAIQuotaFromStore()
+  const state = useIDEStore.getState()
+  await recordAIUsageEvent(!!state.currentUser, state.currentPlan)
 }
 
 // ==================== 模型配置 ====================
@@ -114,7 +111,7 @@ export async function sendMessage(
   onStream?: (chunk: string) => void,
   options?: { skipQuotaCheck?: boolean },
 ): Promise<string> {
-  await assertQuotaBeforeRequest(options?.skipQuotaCheck)
+  await reserveQuotaBeforeRequest(options?.skipQuotaCheck)
 
   const endpoint = config.endpoint || defaultEndpoints[config.provider]
   const model = config.model || modelOptions[config.provider].models[0]
@@ -142,7 +139,6 @@ export async function sendMessage(
       throw new Error(`Unsupported provider: ${config.provider}`)
   }
 
-  trackSuccessfulAIUsage()
   return result
 }
 
@@ -202,7 +198,7 @@ export async function sendMessageWithDebounce(
     skipQuotaCheck?: boolean
   }
 ): Promise<string> {
-  await assertQuotaBeforeRequest(options?.skipQuotaCheck)
+  await reserveQuotaBeforeRequest(options?.skipQuotaCheck)
 
   const requestKey = generateRequestKey(config, messages)
   const debounceMs = options?.debounceMs || DEBOUNCE_MS
@@ -247,10 +243,7 @@ export async function sendMessageWithDebounce(
   // 记录到限流历史
   requestHistory.push(Date.now())
 
-  return promise.then((result) => {
-    trackSuccessfulAIUsage()
-    return result
-  })
+  return promise
 }
 
 /**

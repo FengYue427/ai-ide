@@ -1,4 +1,4 @@
-import React, { type CSSProperties } from 'react'
+import React, { useMemo, type CSSProperties } from 'react'
 import {
   ArrowRight,
   Bot,
@@ -14,6 +14,8 @@ import {
   Sparkles,
   Terminal,
 } from 'lucide-react'
+import { useI18n } from '../i18n'
+import type { TranslationKey } from '../i18n'
 
 interface RecentProject {
   id: string
@@ -37,60 +39,6 @@ interface WelcomeScreenProps {
   shortcuts?: { key: string; action: string }[]
 }
 
-const defaultShortcuts = [
-  { key: 'Ctrl+N', action: '新建文件' },
-  { key: 'Ctrl+O', action: '打开项目' },
-  { key: 'Ctrl+S', action: '立即保存' },
-  { key: 'Ctrl+Enter', action: '运行代码' },
-  { key: 'Ctrl+Shift+P', action: '打开命令面板' },
-  { key: 'Ctrl+Shift+F', action: '全局搜索' },
-]
-
-const featureCards: Array<{
-  icon: typeof Bot
-  title: string
-  desc: string
-  color: string
-  action: WelcomeFeatureAction
-}> = [
-  { icon: Bot, title: 'AI 结对编程', desc: '对话生成、重构和解释代码', color: '#8b5cf6', action: 'ai' },
-  { icon: Play, title: '浏览器内运行', desc: '基于 WebContainer 的即时执行', color: '#2563eb', action: 'run' },
-  { icon: Terminal, title: '集成终端', desc: '边写边跑，少切换上下文', color: '#059669', action: 'terminal' },
-  { icon: GitBranch, title: 'Git 工作流', desc: '在 IDE 内追踪和提交变更', color: '#ec4899', action: 'git' },
-  { icon: Palette, title: '主题与设置', desc: '快速切换工作习惯与界面风格', color: '#f59e0b', action: 'settings' },
-  { icon: Globe, title: '协作扩展', desc: '实验性房间与在线用户', color: '#06b6d4', action: 'collab' },
-]
-
-const quickActions = [
-  {
-    title: '从模板新建项目',
-    description: '选择 React、Node 等 starter 模板开始编码。',
-    icon: Plus,
-    accent: '#10b981',
-    actionKey: 'new',
-  },
-  {
-    title: '打开工作区管理',
-    description: '加载云端/本地快照，或导入文件夹。',
-    icon: FolderOpen,
-    accent: '#3b82f6',
-    actionKey: 'open',
-  },
-  {
-    title: '先和 AI 讨论方案',
-    description: '从需求、调试或重构建议开始。',
-    icon: Bot,
-    accent: '#8b5cf6',
-    actionKey: 'ai',
-  },
-] as const
-
-const actionMap = {
-  new: '模板',
-  open: '管理',
-  ai: 'AI',
-}
-
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   recentProjects = [],
   onNewProject,
@@ -101,8 +49,102 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onOpenTerminal,
   onOpenGit,
   onOpenCollaboration,
-  shortcuts = defaultShortcuts,
+  shortcuts: shortcutsProp,
 }) => {
+  const { t, locale } = useI18n()
+
+  const shortcuts = useMemo(() => {
+    if (shortcutsProp) return shortcutsProp
+    return [
+      { key: 'Ctrl+N', action: t('welcome.shortcut.newFile') },
+      { key: 'Ctrl+O', action: t('welcome.shortcut.openProject') },
+      { key: 'Ctrl+S', action: t('welcome.shortcut.save') },
+      { key: 'Ctrl+Enter', action: t('welcome.shortcut.run') },
+      { key: 'Ctrl+Shift+P', action: t('welcome.shortcut.commandPalette') },
+      { key: 'Ctrl+Shift+F', action: t('welcome.shortcut.search') },
+    ]
+  }, [shortcutsProp, t])
+
+  const quickActions = useMemo(
+    () =>
+      [
+        {
+          title: t('welcome.quick.new.title'),
+          description: t('welcome.quick.new.desc'),
+          icon: Plus,
+          accent: '#10b981',
+          actionKey: 'new' as const,
+          cta: t('welcome.cta.template'),
+        },
+        {
+          title: t('welcome.quick.open.title'),
+          description: t('welcome.quick.open.desc'),
+          icon: FolderOpen,
+          accent: '#3b82f6',
+          actionKey: 'open' as const,
+          cta: t('welcome.cta.manage'),
+        },
+        {
+          title: t('welcome.quick.ai.title'),
+          description: t('welcome.quick.ai.desc'),
+          icon: Bot,
+          accent: '#8b5cf6',
+          actionKey: 'ai' as const,
+          cta: t('welcome.cta.ai'),
+        },
+      ] as const,
+    [t],
+  )
+
+  const featureCards = useMemo(
+    () =>
+      [
+        {
+          icon: Bot,
+          titleKey: 'welcome.feature.ai.title' as TranslationKey,
+          descKey: 'welcome.feature.ai.desc' as TranslationKey,
+          color: '#8b5cf6',
+          action: 'ai' as WelcomeFeatureAction,
+        },
+        {
+          icon: Play,
+          titleKey: 'welcome.feature.run.title' as TranslationKey,
+          descKey: 'welcome.feature.run.desc' as TranslationKey,
+          color: '#2563eb',
+          action: 'run' as WelcomeFeatureAction,
+        },
+        {
+          icon: Terminal,
+          titleKey: 'welcome.feature.terminal.title' as TranslationKey,
+          descKey: 'welcome.feature.terminal.desc' as TranslationKey,
+          color: '#059669',
+          action: 'terminal' as WelcomeFeatureAction,
+        },
+        {
+          icon: GitBranch,
+          titleKey: 'welcome.feature.git.title' as TranslationKey,
+          descKey: 'welcome.feature.git.desc' as TranslationKey,
+          color: '#ec4899',
+          action: 'git' as WelcomeFeatureAction,
+        },
+        {
+          icon: Palette,
+          titleKey: 'welcome.feature.settings.title' as TranslationKey,
+          descKey: 'welcome.feature.settings.desc' as TranslationKey,
+          color: '#f59e0b',
+          action: 'settings' as WelcomeFeatureAction,
+        },
+        {
+          icon: Globe,
+          titleKey: 'welcome.feature.collab.title' as TranslationKey,
+          descKey: 'welcome.feature.collab.desc' as TranslationKey,
+          color: '#06b6d4',
+          action: 'collab' as WelcomeFeatureAction,
+        },
+      ] as const,
+    [],
+  )
+
   const handleFeatureAction = (action: WelcomeFeatureAction) => {
     switch (action) {
       case 'ai':
@@ -138,20 +180,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <div>
                 <div className="welcome-badge">
                   <Sparkles size={14} />
-                  AI 原生浏览器 IDE
+                  {t('welcome.badge')}
                 </div>
-                <h1 className="welcome-title">更快进入思路，更少消耗在环境上</h1>
+                <h1 className="welcome-title">{t('welcome.title')}</h1>
               </div>
             </div>
-            <p className="welcome-lead">
-              打开文件、与 AI 协作、运行代码、管理工作区，全部在一个轻量界面里完成。
-              从下面的入口直接开始工作，不用先穿过一层说明页。
-            </p>
+            <p className="welcome-lead">{t('welcome.lead')}</p>
           </div>
 
           <button type="button" className="welcome-settings-btn" onClick={onOpenSettings}>
             <Settings size={16} />
-            设置中心
+            {t('welcome.settings')}
           </button>
         </header>
 
@@ -159,7 +198,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <section className="welcome-panel">
             <div className="welcome-section-label">
               <Play size={16} color="var(--accent-color)" />
-              <span>快速开始</span>
+              <span>{t('welcome.quickStart')}</span>
             </div>
 
             <div className="welcome-quick-list">
@@ -170,7 +209,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
                 return (
                   <button
-                    key={item.title}
+                    key={item.actionKey}
                     type="button"
                     className="welcome-quick-card"
                     style={{ '--quick-accent': item.accent } as CSSProperties}
@@ -184,7 +223,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                       <div className="welcome-quick-desc">{item.description}</div>
                     </div>
                     <div className="welcome-quick-cta">
-                      {actionMap[item.actionKey]}
+                      {item.cta}
                       <ArrowRight size={16} />
                     </div>
                   </button>
@@ -195,7 +234,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="welcome-recent-block">
               <div className="welcome-section-label">
                 <Folder size={16} />
-                <span>最近项目</span>
+                <span>{t('welcome.recent')}</span>
               </div>
 
               {recentProjects.length > 0 ? (
@@ -211,11 +250,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     </div>
                     <div>
                       <div className="welcome-recent-name">{project.name}</div>
-                      <div className="welcome-recent-meta">{project.fileCount} 个文件</div>
+                      <div className="welcome-recent-meta">
+                        {t('welcome.recentFiles', { count: project.fileCount })}
+                      </div>
                     </div>
                     <div className="welcome-recent-date">
                       <Clock3 size={14} />
-                      {new Date(project.lastOpened).toLocaleDateString('zh-CN', {
+                      {new Date(project.lastOpened).toLocaleDateString(locale, {
                         month: 'short',
                         day: 'numeric',
                       })}
@@ -223,9 +264,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   </button>
                 ))
               ) : (
-                <div className="welcome-empty-recent">
-                  还没有最近项目。新建一个工作区后，这里会保留你的最近入口。
-                </div>
+                <div className="welcome-empty-recent">{t('welcome.recentEmpty')}</div>
               )}
             </div>
           </section>
@@ -234,7 +273,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="welcome-panel welcome-panel--muted">
               <div className="welcome-section-label">
                 <Sparkles size={16} color="var(--accent-color)" />
-                <span>核心能力</span>
+                <span>{t('welcome.features')}</span>
               </div>
 
               <div className="welcome-feature-grid">
@@ -243,7 +282,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   return (
                     <button
                       type="button"
-                      key={feature.title}
+                      key={feature.titleKey}
                       className="welcome-feature-card"
                       style={{ '--feature-color': feature.color } as CSSProperties}
                       onClick={() => handleFeatureAction(feature.action)}
@@ -251,8 +290,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                       <div className="welcome-feature-icon">
                         <Icon size={20} />
                       </div>
-                      <div className="welcome-feature-title">{feature.title}</div>
-                      <div className="welcome-feature-desc">{feature.desc}</div>
+                      <div className="welcome-feature-title">{t(feature.titleKey)}</div>
+                      <div className="welcome-feature-desc">{t(feature.descKey)}</div>
                     </button>
                   )
                 })}
@@ -262,7 +301,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="welcome-panel welcome-panel--muted">
               <div className="welcome-section-label">
                 <Terminal size={16} color="var(--accent-color)" />
-                <span>常用快捷键</span>
+                <span>{t('welcome.shortcuts')}</span>
               </div>
 
               <div className="welcome-shortcut-list">
@@ -279,15 +318,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
         <footer className="welcome-footer">
           <a href="/legal/privacy.html" target="_blank" rel="noreferrer">
-            隐私政策
+            {t('welcome.footer.privacy')}
           </a>
           <a href="/legal/terms.html" target="_blank" rel="noreferrer">
-            服务条款
+            {t('welcome.footer.terms')}
           </a>
           <a href="/help/browser-limits.html" target="_blank" rel="noreferrer">
-            浏览器能力说明
+            {t('welcome.footer.browser')}
           </a>
-          <span>AI 对话与 API Key 由您选择的模型服务商直接处理。</span>
+          <span>{t('welcome.footer.aiNote')}</span>
         </footer>
       </div>
     </div>

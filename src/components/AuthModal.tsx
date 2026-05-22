@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { X, Mail, Lock, Github, Chrome, Eye, EyeOff, Sparkles, ArrowLeft, Check, AlertCircle } from 'lucide-react'
+import { useI18n } from '../i18n'
 import { isOAuthEnabled } from '../lib/authFeatures'
 import { authService, type User } from '../services/authService'
 
@@ -17,6 +18,7 @@ interface ValidationState {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<AuthTab>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -27,50 +29,52 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
   const [message, setMessage] = useState('')
   const [focusedField, setFocusedField] = useState<string | null>(null)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
-  
+
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
   const confirmPasswordRef = useRef<HTMLInputElement>(null)
 
-  // 实时验证
   const validateEmail = (value: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return emailRegex.test(value)
   }
-  
+
   const validatePassword = (value: string): boolean => {
     return value.length >= 8
   }
-  
+
   const validateConfirmPassword = (value: string): boolean => {
     return value === password && value.length >= 8
   }
-  
+
   const getValidation = (): ValidationState => ({
-    email: { 
-      valid: validateEmail(email), 
-      message: touched.email && !validateEmail(email) ? '请输入有效的邮箱地址' : '' 
+    email: {
+      valid: validateEmail(email),
+      message: touched.email && !validateEmail(email) ? t('auth.error.invalidEmail') : '',
     },
-    password: { 
-      valid: validatePassword(password), 
-      message: touched.password && !validatePassword(password) ? '密码至少需要 8 位字符' : '' 
+    password: {
+      valid: validatePassword(password),
+      message: touched.password && !validatePassword(password) ? t('auth.error.passwordLength') : '',
     },
-    confirmPassword: { 
-      valid: validateConfirmPassword(confirmPassword), 
-      message: touched.confirmPassword && !validateConfirmPassword(confirmPassword) ? '两次输入的密码不一致' : '' 
-    }
+    confirmPassword: {
+      valid: validateConfirmPassword(confirmPassword),
+      message:
+        touched.confirmPassword && !validateConfirmPassword(confirmPassword)
+          ? t('auth.error.passwordMismatch')
+          : '',
+    },
   })
-  
+
   const validation = getValidation()
-  
+
   const isFormValid = () => {
     if (activeTab === 'login') return validateEmail(email) && password.length > 0
-    if (activeTab === 'register') return validateEmail(email) && validatePassword(password) && validateConfirmPassword(confirmPassword)
+    if (activeTab === 'register')
+      return validateEmail(email) && validatePassword(password) && validateConfirmPassword(confirmPassword)
     if (activeTab === 'forgot') return validateEmail(email)
     return false
   }
 
-  // 键盘导航
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -83,7 +87,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [loading, email, password, confirmPassword, activeTab])
+  }, [loading, email, password, confirmPassword, activeTab, onClose])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,7 +103,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
       onAuthenticated?.(result.user)
       onClose()
     } else {
-      setError(result.error || '邮箱或密码错误')
+      setError(result.error || t('auth.error.loginFailed'))
     }
     setLoading(false)
   }
@@ -118,7 +122,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
       onAuthenticated?.(result.user)
       onClose()
     } else {
-      setError(result.error || '注册失败，请稍后重试')
+      setError(result.error || t('auth.error.registerFailed'))
     }
     setLoading(false)
   }
@@ -132,9 +136,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
 
     const result = await authService.requestPasswordReset(email)
     if (result.success) {
-      setMessage(result.message || '重置密码邮件已发送，请检查邮箱')
+      setMessage(result.message || t('auth.success.resetSent'))
     } else {
-      setError(result.error || '发送失败，请稍后重试')
+      setError(result.error || t('auth.error.resetFailed'))
     }
     setLoading(false)
   }
@@ -153,24 +157,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
 
   const getTitle = () => {
     switch (activeTab) {
-      case 'login': return '欢迎回来'
-      case 'register': return '创建账号'
-      case 'forgot': return '找回密码'
+      case 'login':
+        return t('auth.title.login')
+      case 'register':
+        return t('auth.title.register')
+      case 'forgot':
+        return t('auth.title.forgot')
     }
   }
 
   const getSubtitle = () => {
     switch (activeTab) {
-      case 'login': return '登录以同步您的工作区数据'
-      case 'register': return '注册后即可开始使用云同步功能'
-      case 'forgot': return '输入您的邮箱以重置密码'
+      case 'login':
+        return t('auth.subtitle.login')
+      case 'register':
+        return t('auth.subtitle.register')
+      case 'forgot':
+        return t('auth.subtitle.forgot')
     }
   }
 
   return (
     <div className="auth-modal-overlay" onClick={onClose}>
-      <div className="auth-modal" onClick={e => e.stopPropagation()}>
-        {/* 头部 */}
+      <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
         <div className="auth-modal-header">
           {activeTab !== 'login' && (
             <button className="auth-back-btn" onClick={() => switchTab('login')}>
@@ -182,7 +191,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
           </button>
         </div>
 
-        {/* Logo 区域 */}
         <div className="auth-logo-section">
           <div className="auth-logo">
             <Sparkles size={28} />
@@ -191,14 +199,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
           <p className="auth-subtitle">{getSubtitle()}</p>
         </div>
 
-        {/* 消息提示 */}
         {error && (
           <div className="auth-alert auth-alert-error">
             <span className="auth-alert-icon">!</span>
             {error}
           </div>
         )}
-        
+
         {message && (
           <div className="auth-alert auth-alert-success">
             <span className="auth-alert-icon">✓</span>
@@ -206,41 +213,50 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
           </div>
         )}
 
-        {/* 登录时的 OAuth 选项 */}
         {activeTab === 'login' && isOAuthEnabled() && (
           <div className="auth-oauth-section">
             <button className="auth-oauth-btn auth-oauth-github" onClick={() => handleOAuthLogin('github')}>
               <Github size={18} />
-              <span>使用 GitHub 登录</span>
+              <span>{t('auth.oauth.github')}</span>
             </button>
             <button className="auth-oauth-btn auth-oauth-google" onClick={() => handleOAuthLogin('google')}>
               <Chrome size={18} />
-              <span>使用 Google 登录</span>
+              <span>{t('auth.oauth.google')}</span>
             </button>
-            
+
             <div className="auth-divider">
-              <span>或使用邮箱登录</span>
+              <span>{t('auth.oauth.divider')}</span>
             </div>
           </div>
         )}
 
-        {/* 表单 */}
-        <form className="auth-form" onSubmit={activeTab === 'login' ? handleEmailLogin : activeTab === 'register' ? handleRegister : handleForgotPassword}>
+        <form
+          className="auth-form"
+          onSubmit={
+            activeTab === 'login'
+              ? handleEmailLogin
+              : activeTab === 'register'
+                ? handleRegister
+                : handleForgotPassword
+          }
+        >
           <div className="auth-input-group">
             <label className="auth-input-label">
               <Mail size={14} />
-              邮箱地址
+              {t('auth.email')}
               {touched.email && validation.email.valid && <Check size={14} className="validation-icon valid" />}
             </label>
-            <div className={`auth-input-wrapper ${focusedField === 'email' ? 'focused' : ''} ${validation.email.message ? 'error' : ''}`}>
+            <div
+              className={`auth-input-wrapper ${focusedField === 'email' ? 'focused' : ''} ${validation.email.message ? 'error' : ''}`}
+            >
               <input
                 ref={emailRef}
                 type="email"
                 className="auth-input"
                 value={email}
-                onChange={e => {
+                onChange={(e) => {
                   setEmail(e.target.value)
-                  if (!touched.email) setTouched(prev => ({ ...prev, email: true }))
+                  if (!touched.email) setTouched((prev) => ({ ...prev, email: true }))
                 }}
                 onFocus={() => setFocusedField('email')}
                 onBlur={() => setFocusedField(null)}
@@ -256,27 +272,35 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
             <div className="auth-input-group">
               <label className="auth-input-label">
                 <Lock size={14} />
-                密码
-                {touched.password && validation.password.valid && <Check size={14} className="validation-icon valid" />}
+                {t('auth.password')}
+                {touched.password && validation.password.valid && (
+                  <Check size={14} className="validation-icon valid" />
+                )}
                 {activeTab === 'login' && (
                   <span className="auth-forgot-link" onClick={() => switchTab('forgot')}>
-                    忘记密码？
+                    {t('auth.forgotLink')}
                   </span>
                 )}
               </label>
-              <div className={`auth-input-wrapper ${focusedField === 'password' ? 'focused' : ''} ${validation.password.message ? 'error' : ''}`}>
+              <div
+                className={`auth-input-wrapper ${focusedField === 'password' ? 'focused' : ''} ${validation.password.message ? 'error' : ''}`}
+              >
                 <input
                   ref={passwordRef}
                   type={showPassword ? 'text' : 'password'}
                   className="auth-input"
                   value={password}
-                  onChange={e => {
+                  onChange={(e) => {
                     setPassword(e.target.value)
-                    if (!touched.password) setTouched(prev => ({ ...prev, password: true }))
+                    if (!touched.password) setTouched((prev) => ({ ...prev, password: true }))
                   }}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
-                  placeholder={activeTab === 'register' ? '至少 8 位字符' : '输入密码'}
+                  placeholder={
+                    activeTab === 'register'
+                      ? t('auth.placeholder.passwordRegister')
+                      : t('auth.placeholder.password')
+                  }
                   required
                   minLength={8}
                 />
@@ -297,71 +321,75 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
             <div className="auth-input-group">
               <label className="auth-input-label">
                 <Lock size={14} />
-                确认密码
-                {touched.confirmPassword && validation.confirmPassword.valid && <Check size={14} className="validation-icon valid" />}
+                {t('auth.confirmPassword')}
+                {touched.confirmPassword && validation.confirmPassword.valid && (
+                  <Check size={14} className="validation-icon valid" />
+                )}
               </label>
-              <div className={`auth-input-wrapper ${focusedField === 'confirmPassword' ? 'focused' : ''} ${validation.confirmPassword.message ? 'error' : ''}`}>
+              <div
+                className={`auth-input-wrapper ${focusedField === 'confirmPassword' ? 'focused' : ''} ${validation.confirmPassword.message ? 'error' : ''}`}
+              >
                 <input
                   ref={confirmPasswordRef}
                   type={showPassword ? 'text' : 'password'}
                   className="auth-input"
                   value={confirmPassword}
-                  onChange={e => {
+                  onChange={(e) => {
                     setConfirmPassword(e.target.value)
-                    if (!touched.confirmPassword) setTouched(prev => ({ ...prev, confirmPassword: true }))
+                    if (!touched.confirmPassword) setTouched((prev) => ({ ...prev, confirmPassword: true }))
                   }}
                   onFocus={() => setFocusedField('confirmPassword')}
                   onBlur={() => setFocusedField(null)}
-                  placeholder="再次输入密码"
+                  placeholder={t('auth.placeholder.confirm')}
                   required
                 />
                 {validation.confirmPassword.message && <AlertCircle size={16} className="input-error-icon" />}
               </div>
-              {validation.confirmPassword.message && <span className="field-error">{validation.confirmPassword.message}</span>}
+              {validation.confirmPassword.message && (
+                <span className="field-error">{validation.confirmPassword.message}</span>
+              )}
             </div>
           )}
 
-          <button
-            type="submit"
-            className="auth-submit-btn"
-            disabled={loading}
-          >
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
             {loading ? (
               <span className="auth-loading">
                 <span className="auth-loading-dot" />
                 <span className="auth-loading-dot" />
                 <span className="auth-loading-dot" />
               </span>
+            ) : activeTab === 'login' ? (
+              t('auth.submit.login')
+            ) : activeTab === 'register' ? (
+              t('auth.submit.register')
             ) : (
-              activeTab === 'login' ? '登录' : activeTab === 'register' ? '创建账号' : '发送重置邮件'
+              t('auth.submit.forgot')
             )}
           </button>
         </form>
 
-        {/* 底部切换 */}
         <div className="auth-footer">
           {activeTab === 'login' ? (
             <>
-              还没有账号？
+              {t('auth.footer.noAccount')}
               <span className="auth-switch-link" onClick={() => switchTab('register')}>
-                立即注册
+                {t('auth.footer.register')}
               </span>
             </>
           ) : activeTab === 'register' ? (
             <>
-              已有账号？
+              {t('auth.footer.hasAccount')}
               <span className="auth-switch-link" onClick={() => switchTab('login')}>
-                直接登录
+                {t('auth.footer.login')}
               </span>
             </>
           ) : (
             <span className="auth-switch-link" onClick={() => switchTab('login')}>
-              ← 返回登录
+              {t('auth.footer.backLogin')}
             </span>
           )}
         </div>
       </div>
-
     </div>
   )
 }
