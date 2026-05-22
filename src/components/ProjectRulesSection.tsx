@@ -1,4 +1,5 @@
 import { FileText } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 const cardStyle: React.CSSProperties = {
   padding: '18px',
@@ -13,15 +14,15 @@ interface ProjectRulesSectionProps {
 }
 
 export function ProjectRulesSection({ rulesPreview, onEditRules }: ProjectRulesSectionProps) {
+  const { t } = useI18n()
+
   return (
     <div style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
         <FileText size={18} style={{ marginTop: '2px', flexShrink: 0 }} />
         <div>
-          <div style={{ fontWeight: 700, marginBottom: '4px' }}>项目规则</div>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-            编辑 <code>.aide/rules.md</code> 或 <code>.cursorrules</code>，内容会自动注入 Chat / Agent 的 system prompt。
-          </div>
+          <div style={{ fontWeight: 700, marginBottom: '4px' }}>{t('rules.title')}</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>{t('rules.desc')}</div>
         </div>
       </div>
 
@@ -44,13 +45,11 @@ export function ProjectRulesSection({ rulesPreview, onEditRules }: ProjectRulesS
           {rulesPreview.length > 600 ? '\n…' : ''}
         </pre>
       ) : (
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-          尚未检测到规则文件。点击下方按钮在编辑器中创建模板。
-        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>{t('rules.empty')}</div>
       )}
 
       <button type="button" className="btn btn-secondary" onClick={onEditRules}>
-        {rulesPreview ? '在编辑器中打开规则' : '创建 .aide/rules.md'}
+        {rulesPreview ? t('rules.open') : t('rules.create')}
       </button>
     </div>
   )

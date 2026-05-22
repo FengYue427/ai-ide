@@ -1,4 +1,5 @@
 import { formatQuotaLabel, isUnlimitedQuota, quotaBarColor, quotaBarPercent } from '../../lib/quotaDisplay'
+import { useI18n } from '../../i18n'
 import type { QuotaCheck } from '../../services/aiService'
 
 export interface QuotaIndicatorProps {
@@ -11,11 +12,13 @@ export interface QuotaIndicatorProps {
 
 export function QuotaIndicator({
   quota,
-  label = '今日 AI 用量',
+  label,
   compact = false,
   showPlan = false,
   className = '',
 }: QuotaIndicatorProps) {
+  const { t } = useI18n()
+  const displayLabel = label ?? t('quota.today')
   const percent = quotaBarPercent(quota.used, quota.limit)
   const barColor = quotaBarColor(quota.used, quota.limit)
   const exhausted = !quota.allowed
@@ -24,31 +27,28 @@ export function QuotaIndicator({
     <div
       className={`quota-indicator ${compact ? 'quota-indicator--compact' : ''} ${exhausted ? 'quota-indicator--exhausted' : ''} ${className}`.trim()}
       role="status"
-      aria-label={`${label} ${formatQuotaLabel(quota.used, quota.limit)}`}
+      aria-label={`${displayLabel} ${formatQuotaLabel(quota.used, quota.limit)}`}
     >
       <div className="quota-indicator__head">
-        <span className="quota-indicator__label">{label}</span>
+        <span className="quota-indicator__label">{displayLabel}</span>
         <span className="quota-indicator__value">{formatQuotaLabel(quota.used, quota.limit)}</span>
       </div>
       <div className="quota-indicator__track" aria-hidden>
-        <div
-          className="quota-indicator__fill"
-          style={{ width: `${percent}%`, background: barColor }}
-        />
+        <div className="quota-indicator__fill" style={{ width: `${percent}%`, background: barColor }} />
       </div>
       {!compact && (
         <p className="quota-indicator__hint">
           {exhausted ? (
-            <>今日额度已用完，请明天再试或升级套餐。</>
+            <>{t('quota.exhausted')}</>
           ) : isUnlimitedQuota(quota.limit) ? (
-            <>当前计划配额不限。</>
+            <>{t('quota.unlimitedPlan')}</>
           ) : (
             <>
-              剩余约 <strong>{Math.max(0, quota.remaining)}</strong> 次
+              {t('quota.remaining', { count: Math.max(0, quota.remaining) })}
               {showPlan && quota.plan ? (
                 <>
                   {' '}
-                  · 计划 <strong>{quota.plan}</strong>
+                  · {t('quota.plan')} <strong>{quota.plan}</strong>
                 </>
               ) : null}
             </>

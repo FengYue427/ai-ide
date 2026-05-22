@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 export type ToastKind = 'success' | 'error' | 'info'
 
@@ -36,6 +37,8 @@ export function FeedbackCenter({
   onDismissToast,
   onResolveConfirm,
 }: FeedbackCenterProps) {
+  const { t } = useI18n()
+
   return (
     <>
       <div className="toast-stack" aria-live="polite">
@@ -46,7 +49,7 @@ export function FeedbackCenter({
               <div className="toast-title">{toast.title}</div>
               {toast.detail && <div className="toast-detail">{toast.detail}</div>}
             </div>
-            <button className="toast-close" onClick={() => onDismissToast(toast.id)} aria-label="关闭提示">
+            <button className="toast-close" onClick={() => onDismissToast(toast.id)} aria-label={t('feedback.closeToast')}>
               <X size={14} />
             </button>
           </div>
@@ -65,13 +68,13 @@ export function FeedbackCenter({
             </div>
             <div className="confirm-actions">
               <button className="btn btn-secondary" onClick={() => onResolveConfirm(false)}>
-                {confirmRequest.cancelText || '取消'}
+                {confirmRequest.cancelText || t('common.cancel')}
               </button>
               <button
                 className={confirmRequest.tone === 'danger' ? 'btn btn-danger' : 'btn btn-primary'}
                 onClick={() => onResolveConfirm(true)}
               >
-                {confirmRequest.confirmText || '确认'}
+                {confirmRequest.confirmText || t('common.confirm')}
               </button>
             </div>
           </div>

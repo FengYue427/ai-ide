@@ -1,7 +1,9 @@
 import { X } from 'lucide-react'
+import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 
 export function PluginModal() {
+  const { t } = useI18n()
   const pluginModal = useIDEStore((s) => s.pluginModal)
   const setPluginModal = useIDEStore((s) => s.setPluginModal)
 
@@ -16,7 +18,7 @@ export function PluginModal() {
       >
         <div className="modal-header">
           <span className="modal-title">{pluginModal.title}</span>
-          <button type="button" className="modal-close" onClick={() => setPluginModal(null)} aria-label="关闭">
+          <button type="button" className="modal-close" onClick={() => setPluginModal(null)} aria-label={t('plugin.close')}>
             <X size={18} />
           </button>
         </div>
@@ -25,7 +27,7 @@ export function PluginModal() {
         </div>
         <div className="modal-footer">
           <button type="button" className="btn btn-primary" onClick={() => setPluginModal(null)}>
-            确定
+            {t('plugin.ok')}
           </button>
         </div>
       </div>

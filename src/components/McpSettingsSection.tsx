@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Plus, Server, Trash2, Zap } from 'lucide-react'
+import { useI18n } from '../i18n'
 import {
   createMcpServerDraft,
   loadMcpServers,
@@ -34,6 +35,7 @@ interface McpSettingsSectionProps {
 }
 
 export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProps) {
+  const { t } = useI18n()
   const [servers, setServers] = useState<McpServerConfig[]>([])
   const [settings, setSettings] = useState<McpSettings>({ autoFollowUp: true, maxFollowUpRounds: 2 })
   const [pingStatus, setPingStatus] = useState<Record<string, string>>({})
@@ -66,18 +68,18 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
   }
 
   const handlePing = async (server: McpServerConfig) => {
-    setPingStatus((prev) => ({ ...prev, [server.id]: '检测中…' }))
+    setPingStatus((prev) => ({ ...prev, [server.id]: t('mcp.ping.checking') }))
     const result = await pingMcpServer(server)
     setPingStatus((prev) => ({
       ...prev,
-      [server.id]: result.ok ? result.detail ?? '已连接' : result.detail ?? '连接失败',
+      [server.id]: result.ok ? result.detail ?? t('mcp.ping.ok') : result.detail ?? t('mcp.ping.fail'),
     }))
   }
 
   if (loading) {
     return (
       <div style={cardStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>正在加载 MCP 配置…</div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{t('mcp.loading')}</div>
       </div>
     )
   }
@@ -88,17 +90,13 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
           <Server size={18} />
           <div>
-            <div style={{ fontWeight: 700 }}>MCP 服务器</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              通过 <code>/api/mcp/proxy</code> 连接 Streamable HTTP MCP。本地 URL 需 dev:stack 且允许 localhost。
-            </div>
+            <div style={{ fontWeight: 700 }}>{t('mcp.title')}</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t('mcp.desc')}</div>
           </div>
         </div>
 
         {servers.length === 0 ? (
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-            尚未配置 MCP 服务器。添加后 Agent 可在回复中使用 <code>&lt;&lt;&lt;mcp-tool&gt;&gt;&gt;</code> 块调用工具。
-          </div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>{t('mcp.empty')}</div>
         ) : null}
 
         <div style={{ display: 'grid', gap: '12px' }}>
@@ -119,7 +117,7 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
                   style={{ ...inputStyle, flex: 1 }}
                   value={server.name}
                   onChange={(event) => updateServer(server.id, { name: event.target.value })}
-                  placeholder="显示名称"
+                  placeholder={t('mcp.displayName')}
                 />
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', whiteSpace: 'nowrap' }}>
                   <input
@@ -127,10 +125,10 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
                     checked={server.enabled}
                     onChange={(event) => updateServer(server.id, { enabled: event.target.checked })}
                   />
-                  启用
+                  {t('mcp.enabled')}
                 </label>
                 <button type="button" className="btn btn-secondary" style={{ padding: '6px 10px' }} onClick={() => void handlePing(server)}>
-                  测试
+                  {t('mcp.test')}
                 </button>
                 <button type="button" className="btn btn-secondary" style={{ padding: '6px 10px' }} onClick={() => removeServer(server.id)}>
                   <Trash2 size={14} />
@@ -156,14 +154,14 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
           onClick={() => setServers((prev) => [...prev, createMcpServerDraft()])}
         >
           <Plus size={14} style={{ marginRight: '6px' }} />
-          添加 MCP 服务器
+          {t('mcp.add')}
         </button>
       </div>
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
           <Zap size={18} />
-          <div style={{ fontWeight: 700 }}>Agent 自动跟进</div>
+          <div style={{ fontWeight: 700 }}>{t('mcp.followUp.title')}</div>
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', marginBottom: '10px' }}>
           <input
@@ -171,10 +169,10 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
             checked={settings.autoFollowUp}
             onChange={(event) => setSettings((prev) => ({ ...prev, autoFollowUp: event.target.checked }))}
           />
-          工具调用后自动发起跟进轮次（将结果反馈给模型）
+          {t('mcp.followUp.checkbox')}
         </label>
         <label style={{ display: 'grid', gap: '6px', fontSize: '13px' }}>
-          <span style={{ color: 'var(--text-secondary)' }}>最大跟进轮次</span>
+          <span style={{ color: 'var(--text-secondary)' }}>{t('mcp.followUp.maxRounds')}</span>
           <input
             type="number"
             min={0}

@@ -29,7 +29,7 @@ import { loadWorkspaceByRef } from '../services/workspaceLoader'
 import type { EditorTheme } from '../store/ideStore'
 
 export function AppShell() {
-  const { language } = useI18n()
+  const { language, t } = useI18n()
   const theme = useIDEStore((s) => s.theme)
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
@@ -58,14 +58,14 @@ export function AppShell() {
     setShowWelcome(false)
     const loaded = await loadWorkspaceByRef(workspaceId)
     if (!loaded || loaded.files.length === 0) {
-      notify('error', '无法打开项目', '未找到该工作区，请从工作区管理重新保存或加载')
+      notify('error', t('notify.projectOpenFailed'), t('notify.projectOpenFailedDetail'))
       return
     }
     setFiles(loaded.files)
     setActiveFile(0)
     if (loaded.settings?.theme) setTheme(loaded.settings.theme as EditorTheme)
     if (loaded.settings?.autoSave !== undefined) setAutoSaveEnabled(loaded.settings.autoSave)
-    notify('success', '项目已打开', loaded.name || `${loaded.files.length} 个文件`)
+    notify('success', t('notify.projectOpened'), loaded.name || `${loaded.files.length}`)
   }
 
   const handleTestsGenerated = (fileName: string, content: string) => {
@@ -74,7 +74,7 @@ export function AppShell() {
       setActiveFile(next.length - 1)
       return next
     })
-    notify('success', '测试文件已添加', fileName)
+    notify('success', t('notify.testFileAdded'), fileName)
   }
 
   const {

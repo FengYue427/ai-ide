@@ -8,6 +8,7 @@ import {
 } from '../services/pluginCatalogService'
 import { pluginManager, type Plugin } from '../services/pluginService'
 import { loadInstalledPluginPackages, saveInstalledPluginPackages } from '../services/pluginStorage'
+import { useI18n } from '../i18n'
 import { ModalShell } from './ui/ModalShell'
 
 interface PluginManagerProps {
@@ -17,6 +18,7 @@ interface PluginManagerProps {
 type PluginTab = 'installed' | 'market' | 'manual'
 
 const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
+  const { t } = useI18n()
   const [tab, setTab] = useState<PluginTab>('installed')
   const [plugins, setPlugins] = useState<Plugin[]>([])
   const [activeIds, setActiveIds] = useState<Set<string>>(new Set())
@@ -47,11 +49,11 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
 
     if (activeIds.has(pluginId)) {
       pluginManager.deactivate(pluginId)
-      flash('success', '插件已停用。')
+      flash('success', t('plugin.disabled'))
     } else {
       const activated = await pluginManager.activate(pluginId)
-      flash('success', activated ? '插件已启用。' : '')
-      if (!activated) flash('error', '插件启用失败，请检查权限与兼容性。')
+      flash('success', activated ? t('plugin.enabled') : '')
+      if (!activated) flash('error', t('plugin.enableFailed'))
     }
     refreshState()
   }
@@ -62,7 +64,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     setSuccess(null)
     const result = await pluginManager.loadPlugin(newPluginJson)
     if (!result.ok) {
-      flash('error', result.error || '插件加载失败')
+      flash('error', result.error || t('plugin.loadFailed'))
       return
     }
 
@@ -73,12 +75,12 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       without.push(JSON.parse(newPluginJson.trim()))
       await saveInstalledPluginPackages(without)
     } catch {
-      flash('error', '插件已加载但未能写入本地存储')
+      flash('error', t('plugin.storageFailed'))
       return
     }
 
     refreshState()
-    flash('success', '插件已安装并通过沙箱校验。')
+    flash('success', t('plugin.installed'))
     setNewPluginJson('')
     setTab('installed')
   }
@@ -88,11 +90,11 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     setSuccess(null)
     const result = await installCatalogEntry(entryId)
     if (!result.ok) {
-      flash('error', result.error || '安装失败')
+      flash('error', result.error || t('plugin.installFailed'))
       return
     }
     refreshState()
-    flash('success', '已从插件市场安装，可在「已安装」中启用。')
+    flash('success', t('plugin.flash.marketInstalled'))
     setTab('installed')
   }
 
@@ -101,7 +103,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     const packages = await loadInstalledPluginPackages()
     await saveInstalledPluginPackages(packages.filter((item) => item.manifest.id !== pluginId))
     refreshState()
-    flash('success', '插件已移除。')
+    flash('success', t('plugin.removed'))
   }
 
   const renderPluginCard = (plugin: Plugin) => {
@@ -113,14 +115,20 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
             <div className="plugins-card-head">
               <span className="plugins-card-title">{plugin.name}</span>
               <span className="status-pill">v{plugin.version}</span>
-              {plugin.builtin && <span className="status-pill">内置</span>}
-              {isActive && <span className="status-pill" style={{ color: 'var(--success-color)' }}>运行中</span>}
+              {plugin.builtin && <span className="status-pill">{t('plugin.builtin')}</span>}
+              {isActive && (
+                <span className="status-pill" style={{ color: 'var(--success-color)' }}>
+                  {t('plugin.running')}
+                </span>
+              )}
             </div>
             <p className="plugins-card-desc">{plugin.description}</p>
-            {plugin.author && <div className="plugins-card-meta">作者：{plugin.author}</div>}
+            {plugin.author && (
+              <div className="plugins-card-meta">{t('plugin.author', { name: plugin.author })}</div>
+            )}
             {plugin.manifest && (
               <div className="plugins-card-meta" style={{ marginTop: 6 }}>
-                权限：{plugin.manifest.permissions.join(' · ')}
+                {t('plugin.permissions', { perms: plugin.manifest.permissions.join(' · ') })}
               </div>
             )}
           </div>
@@ -130,7 +138,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
               className={isActive ? 'btn btn-secondary' : 'btn btn-primary'}
               onClick={() => void togglePlugin(plugin.id)}
             >
-              {isActive ? '停用' : '启用'}
+              {isActive ? t('plugin.disable') : t('plugin.enable')}
             </button>
             {!plugin.builtin && (
               <button type="button" className="btn btn-secondary" onClick={() => void removePlugin(plugin.id)}>
@@ -147,17 +155,17 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     <ModalShell
       className="modal--plugins"
       bodyClassName="modal-body--stack"
-      ariaLabel="插件管理"
+      ariaLabel={t('plugin.title')}
       title={
         <span className="modal-title-row">
           <Puzzle size={18} />
-          插件管理
+          {t('plugin.title')}
         </span>
       }
       onClose={onClose}
       footer={
         <>
-          <span className="plugins-footer-note">插件系统 v1.1 · 沙箱 + 官方目录</span>
+          <span className="plugins-footer-note">{t('plugin.footer')}</span>
           <a
             href="https://github.com/FengYue427/ai-ide"
             target="_blank"
@@ -165,21 +173,19 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
             className="plugins-footer-note"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent-color)', textDecoration: 'none' }}
           >
-            仓库说明
+            {t('plugin.repo')}
             <ExternalLink size={13} />
           </a>
         </>
       }
     >
       <div className="plugins-hero">
-        <div className="plugins-hero__title">把 IDE 拼成更贴合你工作方式的工具</div>
-        <p className="plugins-hero__desc">
-          内置插件、官方市场目录与手动 JSON 安装。第三方插件在 Worker 沙箱中运行，并受权限令牌约束。
-        </p>
+        <div className="plugins-hero__title">{t('plugin.hero.title')}</div>
+        <p className="plugins-hero__desc">{t('plugin.hero.desc')}</p>
         <div className="plugins-hero__meta">
-          <span className="status-pill">{plugins.length} 个已安装</span>
-          <span className="status-pill">{activeCount} 个运行中</span>
-          <span className="status-pill">{PLUGIN_CATALOG.length} 个市场条目</span>
+          <span className="status-pill">{t('plugin.count.installed', { count: plugins.length })}</span>
+          <span className="status-pill">{t('plugin.count.running', { count: activeCount })}</span>
+          <span className="status-pill">{t('plugin.count.market', { count: PLUGIN_CATALOG.length })}</span>
         </div>
       </div>
 
@@ -192,9 +198,9 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
 
       <div className="plugins-tabs">
         {[
-          { id: 'installed' as const, label: '已安装' },
-          { id: 'market' as const, label: '插件市场' },
-          { id: 'manual' as const, label: '手动安装' },
+          { id: 'installed' as const, label: t('plugin.tab.installed') },
+          { id: 'market' as const, label: t('plugin.tab.market') },
+          { id: 'manual' as const, label: t('plugin.tab.manual') },
         ].map((item) => (
           <button
             key={item.id}
@@ -215,7 +221,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
         <div className="plugins-grid">
           {plugins.length === 0 ? (
             <div className="plugins-panel plugins-card-desc" style={{ textAlign: 'center' }}>
-              还没有插件。打开「插件市场」安装官方示例。
+              {t('plugin.empty')}
             </div>
           ) : (
             plugins.map(renderPluginCard)
@@ -233,11 +239,11 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                   <div>
                     <div className="plugins-card-head">
                       <span className="plugins-card-title">{entry.name}</span>
-                      <span className="plugins-market-badge">官方</span>
+                      <span className="plugins-market-badge">{t('plugin.official')}</span>
                       <span className="status-pill">v{entry.version}</span>
                     </div>
                     <p className="plugins-card-desc">{entry.description}</p>
-                    <div className="plugins-card-meta">作者：{entry.author}</div>
+                    <div className="plugins-card-meta">{t('plugin.author', { name: entry.author })}</div>
                     <div className="plugins-tags">
                       {entry.tags.map((tag) => (
                         <span key={tag} className="plugins-tag">
@@ -246,13 +252,13 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                       ))}
                     </div>
                     <div className="plugins-card-meta" style={{ marginTop: 8 }}>
-                      权限：{entry.permissions.join(' · ')}
+                      {t('plugin.permissions', { perms: entry.permissions.join(' · ') })}
                     </div>
                   </div>
                   <div className="plugins-card-actions">
                     {installed ? (
                       <span className="status-pill" style={{ color: 'var(--success-color)' }}>
-                        已安装
+                        {t('plugin.badge.installed')}
                       </span>
                     ) : (
                       <button
@@ -261,7 +267,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                         onClick={() => void handleInstallCatalog(entry.id)}
                       >
                         <Download size={14} className="btn-icon-gap" />
-                        安装
+                        {t('plugin.install')}
                       </button>
                     )}
                   </div>
@@ -275,7 +281,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       {tab === 'manual' && (
         <div className="plugins-panel">
           <p className="plugins-card-desc" style={{ marginBottom: 12 }}>
-            粘贴插件 JSON（manifest + source）。开发环境可安装任意通过校验的包；生产环境默认禁用手动第三方 JSON。
+            {t('plugin.manual.desc')}
           </p>
           <textarea
             className="plugins-code"
@@ -287,14 +293,14 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
           <div className="plugins-actions-row">
             <button type="button" className="btn btn-primary" onClick={() => void handleAddPlugin()}>
               <Plus size={14} className="btn-icon-gap" />
-              安装插件
+              {t('plugin.manual.install')}
             </button>
             <button
               type="button"
               className="btn btn-secondary"
               onClick={() => setNewPluginJson(JSON.stringify(helloPluginExample, null, 2))}
             >
-              加载示例 JSON
+              {t('plugin.manual.sample')}
             </button>
           </div>
         </div>

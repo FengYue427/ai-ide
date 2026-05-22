@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FileText, Folder, Plus, Trash2 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import { SymbolOutline } from '../components/SymbolOutline'
+import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 
 interface FileSidebarProps {
@@ -11,6 +12,7 @@ interface FileSidebarProps {
 }
 
 export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: FileSidebarProps) {
+  const { t } = useI18n()
   const [outlineCollapsed, setOutlineCollapsed] = useState(false)
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
@@ -25,7 +27,7 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
       <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Folder size={14} style={{ marginRight: 6 }} />
-          文件
+          {t('sidebar.files')}
         </div>
         <button
           type="button"
@@ -51,7 +53,7 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && onCreateFile()}
-              placeholder="输入文件名，例如 index.ts"
+              placeholder={t('sidebar.filenamePlaceholder')}
               className="sidebar-input"
               autoFocus
             />
@@ -68,7 +70,7 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
                 cursor: 'pointer',
               }}
             >
-              创建
+              {t('sidebar.create')}
             </button>
           </div>
         )}
@@ -102,7 +104,7 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
                     display: files.length > 1 ? 'flex' : 'none',
                     alignItems: 'center',
                   }}
-                  title="删除文件"
+                  title={t('sidebar.deleteFile')}
                 >
                   <Trash2 size={12} />
                 </button>

@@ -171,7 +171,7 @@ ${t('ai.chat.prompt')}`
       setMessages([
         {
           role: 'assistant',
-          content: '请先配置 AI API Key，或者切换到本地 Ollama，再开始对话。',
+          content: t('chat.needKey'),
         },
       ])
       return
@@ -183,7 +183,7 @@ ${t('ai.chat.prompt')}`
       }
       return prev
     })
-  }, [aiConfig, isConfigured])
+  }, [aiConfig, isConfigured, createWelcomeMessage, t])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -250,14 +250,14 @@ ${t('ai.chat.prompt')}`
     setQuota(currentQuota)
 
     if (!currentQuota.allowed) {
-      appendError(`今天的 AI 请求额度已用完（${currentQuota.used}/${currentQuota.limit}）。
-
-免费用户按天限额使用。稍后再试，或者升级套餐以获得更高额度。`)
+      appendError(
+        t('chat.quotaExceeded', { used: currentQuota.used, limit: currentQuota.limit }),
+      )
       return
     }
 
     if (!isConfigured) {
-      appendError('请先完成 AI 配置，再开始发消息。')
+      appendError(t('chat.needConfig'))
       return
     }
 
@@ -277,9 +277,9 @@ ${t('ai.chat.prompt')}`
         const workspaceSummary =
           useWorkspaceContext && workspaceStats.selectedFiles > 0
             ? workspaceContextService.generateSystemPrompt(
-                action ? `用户请求：${quickActionLabels[action]}` : '',
+                action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : '',
               )
-            : `当前编辑器文件:\n\`\`\`\n${currentCode}\n\`\`\``
+            : t('chat.prompt.editorFile', { code: currentCode })
 
         const mcpSection = await buildMcpToolsPromptSection()
         let agentSystemPrompt = await augmentWithSemanticContext(
@@ -303,18 +303,14 @@ ${t('ai.chat.prompt')}`
         let systemPrompt: string
 
         if (useWorkspaceContext && workspaceStats.selectedFiles > 0) {
-          const additionalContext = action ? `用户请求：${quickActionLabels[action]}` : ''
+          const additionalContext = action
+            ? t('chat.prompt.userRequest', { action: quickActionLabels[action] })
+            : ''
           systemPrompt = workspaceContextService.generateSystemPrompt(additionalContext)
         } else {
           systemPrompt = action
             ? generateCodePrompt(action, currentCode)
-            : `你是一名专业的编程助手。当前代码如下：
-
-\`\`\`
-${currentCode}
-\`\`\`
-
-请根据用户的问题给出清晰可执行的帮助。如果需要返回代码，请尽量标注文件名，并输出完整代码块。`
+            : t('chat.system.default', { code: currentCode })
         }
 
         systemPrompt = await augmentWithSemanticContext(applyProjectRules(systemPrompt), textToSend)
@@ -363,7 +359,7 @@ ${currentCode}
               { role: 'assistant' as const, content: assistantSoFar },
               {
                 role: 'user' as const,
-                content: `MCP 工具已执行，结果如下。请继续完成任务；若还需调用工具，可再输出 <<<mcp-tool>>> 块。\n\n${toolLog.join('\n')}`,
+                content: t('chat.mcp.followUp', { log: toolLog.join('\n') }),
               },
             ]
             await sendMessage(aiConfig, followUpMessages, (chunk) => {
@@ -382,7 +378,7 @@ ${currentCode}
         })
         assistantContent = mcpTurn.content
         if (mcpTurn.toolLog.length > 0) {
-          assistantContent = `${assistantContent}\n\n**MCP 工具结果**\n${mcpTurn.toolLog.join('\n')}`
+          assistantContent = `${assistantContent}\n\n${t('chat.mcp.results')}\n${mcpTurn.toolLog.join('\n')}`
         }
         setMessages((prev) => {
           const next = [...prev]
@@ -401,12 +397,11 @@ ${currentCode}
       }
       refreshQuota()
     } catch (error: any) {
-      appendError(`请求失败：${error.message || '未知错误'}
-
-你可以检查：
-- API Key 是否正确
-- 网络是否正常
-- 如果使用 Ollama，本地服务是否已启动`)
+      appendError(
+        t('chat.requestFailed', {
+          message: error.message || t('chat.unknownError'),
+        }),
+      )
     } finally {
       setLoading(false)
     }
@@ -414,12 +409,12 @@ ${currentCode}
 
   const quickActions = useMemo(
     () => [
-      { icon: Code2, label: '解释', action: () => handleSend('请解释这段代码。', 'explain') },
-      { icon: Wand2, label: '重构', action: () => handleSend('请重构这段代码。', 'refactor') },
-      { icon: Sparkles, label: '优化', action: () => handleSend('请优化这段代码的实现和性能。', 'fix') },
-      { icon: FilePlus, label: '生成', action: () => handleSend('基于当前代码，生成一个相关的新功能。', 'generate') },
+      { icon: Code2, label: t('ai.chat.quick.explain'), action: () => handleSend(t('chat.send.explain'), 'explain') },
+      { icon: Wand2, label: t('ai.chat.quick.refactor'), action: () => handleSend(t('chat.send.refactor'), 'refactor') },
+      { icon: Sparkles, label: t('ai.chat.quick.fix'), action: () => handleSend(t('chat.send.fix'), 'fix') },
+      { icon: FilePlus, label: t('ai.chat.quick.generate'), action: () => handleSend(t('chat.send.generate'), 'generate') },
     ],
-    [currentCode, messages, useWorkspaceContext, workspaceStats.selectedFiles],
+    [t],
   )
 
   const pickMention = (hit: IndexSearchHit) => {
@@ -479,28 +474,31 @@ ${currentCode}
         <div className="chat-session-card">
           <div className="chat-session-card__title">
             <Bot size={16} color="var(--accent-color)" />
-            <strong>当前 AI 会话</strong>
+            <strong>{t('chat.sessionTitle')}</strong>
           </div>
           <div className="chat-chips">
             <span className="chat-chip">{aiConfig.provider}</span>
-            <span className="chat-chip">{aiConfig.model || '未指定模型'}</span>
+            <span className="chat-chip">{aiConfig.model || t('chat.noModel')}</span>
             <span className={`chat-chip ${isConfigured ? 'chat-chip--success' : 'chat-chip--warning'}`}>
-              {isConfigured ? '已配置' : '待配置'}
+              {isConfigured ? t('chat.configured') : t('chat.pendingConfig')}
             </span>
           </div>
         </div>
 
         <div className="chat-toolbar-row">
-          <QuotaIndicator quota={quota} label="今日用量" compact showPlan />
+          <QuotaIndicator quota={quota} label={t('chat.quotaToday')} compact showPlan />
 
           <button
             type="button"
             onClick={() => setAgentMode((value) => !value)}
             className={`chat-mode-btn ${agentMode ? 'chat-mode-btn--active' : ''}`}
-            title="Agent 模式：自动解析多文件改动并写入编辑器"
+            title={t('chat.agentModeTitle')}
           >
             <Zap size={14} color={agentMode ? 'var(--accent-color)' : 'var(--text-secondary)'} />
-            <span>Agent{agentMode ? ' 开' : ''}</span>
+            <span>
+              {t('chat.agent')}
+              {agentMode ? ` ${t('chat.agentOn')}` : ''}
+            </span>
           </button>
 
           <button
@@ -510,13 +508,16 @@ ${currentCode}
             className={`chat-mode-btn ${useWorkspaceContext ? 'chat-mode-btn--active' : ''}`}
             title={
               workspaceStats.selectedFiles === 0
-                ? '先在工作区中导入文件，才能启用完整上下文。'
-                : `已选择 ${workspaceStats.selectedFiles} 个工作区文件`
+                ? t('chat.workspaceEmpty')
+                : t('chat.workspaceSelected', { count: workspaceStats.selectedFiles })
             }
           >
             <FolderOpen size={14} />
             <CheckSquare size={14} color={useWorkspaceContext ? 'var(--accent-color)' : 'var(--text-secondary)'} />
-            <span>工作区上下文{workspaceStats.selectedFiles > 0 ? ` (${workspaceStats.selectedFiles})` : ''}</span>
+            <span>
+              {t('chat.workspaceCtx')}
+              {workspaceStats.selectedFiles > 0 ? ` (${workspaceStats.selectedFiles})` : ''}
+            </span>
           </button>
         </div>
       </div>
@@ -554,7 +555,7 @@ ${currentCode}
             </div>
             <div className="chat-loading-bubble">
               <div className="chat-loading-bubble__inner">
-                <span>思考中</span>
+                <span>{t('chat.thinking')}</span>
                 <span className="typing-dots">
                   <span className="dot" />
                   <span className="dot" />
@@ -571,12 +572,14 @@ ${currentCode}
       {pendingAgentChanges && pendingAgentChanges.length > 0 && onGenerateFiles ? (
         <div className="chat-agent-bar">
           <span className="chat-agent-bar__text">
-            Agent 建议修改 {pendingAgentChanges.length} 个文件：
-            {pendingAgentChanges.map((c) => c.path).join('、')}
+            {t('chat.agentChanges', {
+              count: pendingAgentChanges.length,
+              paths: pendingAgentChanges.map((c) => c.path).join('、'),
+            })}
           </span>
           <div className="chat-agent-bar__actions">
             <button type="button" className="chat-btn-ghost" onClick={() => setPendingAgentChanges(null)}>
-              忽略
+              {t('chat.ignore')}
             </button>
             <button
               type="button"
@@ -594,7 +597,7 @@ ${currentCode}
                 setPendingAgentChanges(null)
               }}
             >
-              预览变更
+              {t('chat.preview')}
             </button>
             <button
               type="button"
@@ -610,7 +613,7 @@ ${currentCode}
                 setPendingAgentChanges(null)
               }}
             >
-              直接应用
+              {t('chat.apply')}
             </button>
           </div>
         </div>
@@ -658,9 +661,7 @@ ${currentCode}
             ref={inputRef}
             className="chat-input chat-input--composer"
             placeholder={
-              isConfigured
-                ? '输入消息；@ 文件或符号（会注入上下文）；Enter 发送'
-                : '请先配置 API Key 或本地 Ollama'
+              isConfigured ? t('chat.inputPlaceholder') : t('chat.inputPlaceholderNoConfig')
             }
             value={input}
             onChange={handleInputChange}

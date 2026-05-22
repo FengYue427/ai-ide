@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { FileSearch, FolderOpen, GitBranch, Plus, TerminalSquare, Upload, type LucideIcon } from 'lucide-react'
+import { useI18n, type TranslationKey } from '../i18n'
 
 interface EmptyStateProps {
   type: 'files' | 'search' | 'terminal' | 'git' | 'workspace'
@@ -21,44 +22,52 @@ interface EmptyStateConfig {
   tips: string[]
 }
 
-const configs: Record<EmptyStateProps['type'], EmptyStateConfig> = {
-  files: {
-    icon: FolderOpen,
-    title: '这里还没有文件',
-    description: '新建一个文件开始编码，或者把现有项目导入进来。',
-    primaryAction: { label: '新建文件', icon: Plus },
-    secondaryAction: { label: '导入文件', icon: Upload },
-    tips: ['支持拖拽导入', '支持模板快速开始', '快捷键 Ctrl+N 新建文件'],
-  },
-  search: {
-    icon: FileSearch,
-    title: '开始搜索项目内容',
-    description: '输入关键词，在当前项目中查找文件名或代码片段。',
-    tips: ['支持全局搜索', '支持替换', '快捷键 Ctrl+Shift+F 打开'],
-  },
-  terminal: {
-    icon: TerminalSquare,
-    title: '终端已准备好',
-    description: '可以直接运行 Node.js 命令，或在这里观察项目输出。',
-    tips: ['尝试 npm install', '尝试 npm run dev', '支持常用 shell 命令'],
-  },
-  git: {
-    icon: GitBranch,
-    title: 'Git 面板等待项目接入',
-    description: '打开仓库后，这里会显示变更、提交和版本操作。',
-    tips: ['适合查看当前变更', '后续可扩展协作流程', '与工作区上下文联动'],
-  },
-  workspace: {
-    icon: FolderOpen,
-    title: '工作区还是空的',
-    description: '上传项目文件夹，让 AI 和编辑器一起理解完整上下文。',
-    primaryAction: { label: '上传文件夹', icon: Upload },
-    tips: ['支持拖拽上传', '适合导入多文件项目', '导入后可直接搜索和运行'],
-  },
-} as const
+function buildConfig(type: EmptyStateProps['type'], t: (key: TranslationKey) => string): EmptyStateConfig {
+  switch (type) {
+    case 'files':
+      return {
+        icon: FolderOpen,
+        title: t('empty.files.title'),
+        description: t('empty.files.desc'),
+        primaryAction: { label: t('empty.files.new'), icon: Plus },
+        secondaryAction: { label: t('empty.files.import'), icon: Upload },
+        tips: [t('empty.files.tip1'), t('empty.files.tip2'), t('empty.files.tip3')],
+      }
+    case 'search':
+      return {
+        icon: FileSearch,
+        title: t('empty.search.title'),
+        description: t('empty.search.desc'),
+        tips: [t('empty.search.tip1'), t('empty.search.tip2'), t('empty.search.tip3')],
+      }
+    case 'terminal':
+      return {
+        icon: TerminalSquare,
+        title: t('empty.terminal.title'),
+        description: t('empty.terminal.desc'),
+        tips: [],
+      }
+    case 'git':
+      return {
+        icon: GitBranch,
+        title: t('empty.git.title'),
+        description: t('empty.git.desc'),
+        tips: [],
+      }
+    case 'workspace':
+      return {
+        icon: FolderOpen,
+        title: t('empty.workspace.title'),
+        description: t('empty.workspace.desc'),
+        primaryAction: { label: t('empty.workspace.upload'), icon: Upload },
+        tips: [],
+      }
+  }
+}
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ type, onAction, onSecondaryAction }) => {
-  const config = configs[type]
+  const { t } = useI18n()
+  const config = useMemo(() => buildConfig(type, t), [type, t])
   const Icon = config.icon
 
   return (
@@ -78,89 +87,53 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ type, onAction, onSecond
         style={{
           width: '64px',
           height: '64px',
-          borderRadius: '18px',
+          borderRadius: '20px',
+          background: 'color-mix(in srgb, var(--accent-color) 14%, transparent)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 20%, transparent), transparent)',
-          border: '1px solid color-mix(in srgb, var(--accent-color) 30%, var(--border-color))',
-          color: 'var(--accent-color)',
         }}
       >
-        <Icon size={28} />
+        <Icon size={28} color="var(--accent-color)" />
       </div>
-
       <div>
-        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>
-          {config.title}
-        </h3>
-        <p
-          style={{
-            maxWidth: '280px',
-            fontSize: '13px',
-            lineHeight: 1.6,
-            color: 'var(--text-secondary)',
-          }}
-        >
+        <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>{config.title}</div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '280px' }}>
           {config.description}
-        </p>
+        </div>
       </div>
-
       {(config.primaryAction || config.secondaryAction) && (
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
           {config.primaryAction && onAction && (
-            <button
-              onClick={onAction}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                border: 'none',
-                background: 'var(--accent-color)',
-                color: 'var(--bg-primary)',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              <config.primaryAction.icon size={14} />
+            <button type="button" className="btn btn-primary" onClick={onAction}>
+              <config.primaryAction.icon size={14} style={{ marginRight: '6px' }} />
               {config.primaryAction.label}
             </button>
           )}
-
           {config.secondaryAction && onSecondaryAction && (
-            <button
-              onClick={onSecondaryAction}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-tertiary)',
-                color: 'var(--text-primary)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              <config.secondaryAction.icon size={14} />
+            <button type="button" className="btn btn-secondary" onClick={onSecondaryAction}>
+              <config.secondaryAction.icon size={14} style={{ marginRight: '6px' }} />
               {config.secondaryAction.label}
             </button>
           )}
         </div>
       )}
-
-      <div style={{ display: 'grid', gap: '6px' }}>
-        {config.tips.map((tip) => (
-          <div key={tip} style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {tip}
-          </div>
-        ))}
-      </div>
+      {config.tips.length > 0 && (
+        <ul
+          style={{
+            margin: 0,
+            padding: 0,
+            listStyle: 'none',
+            fontSize: '12px',
+            color: 'var(--text-secondary)',
+            lineHeight: 1.8,
+          }}
+        >
+          {config.tips.map((tip) => (
+            <li key={tip}>· {tip}</li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

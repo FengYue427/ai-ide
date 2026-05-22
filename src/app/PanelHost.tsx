@@ -119,7 +119,7 @@ export function PanelHost({
   gitBranch,
   gitModified = 0,
 }: PanelHostProps) {
-  const { language, setLanguage } = useI18n()
+  const { language, setLanguage, t } = useI18n()
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
   const theme = useIDEStore((s) => s.theme)
@@ -201,7 +201,7 @@ export function PanelHost({
           onAuthenticated={(user) => {
             setCurrentUser(user)
             setShowAuthModal(false)
-            notify('success', `已登录：${user.email}`)
+            notify('success', t('notify.signedIn', { email: user.email }))
           }}
           onClose={() => setShowAuthModal(false)}
         />
@@ -313,25 +313,25 @@ export function PanelHost({
           }}
           onClearLocalData={async () => {
             const ok = await requestConfirm({
-              title: '清理本地数据',
-              message: '将清除浏览器中的项目缓存、设置与 IndexedDB。云端账号数据不受影响。',
-              confirmText: '清理',
+              title: t('confirm.clearData.title'),
+              message: t('confirm.clearData.message'),
+              confirmText: t('confirm.clearData.confirm'),
               tone: 'danger',
             })
             if (!ok) return
             try {
               localStorage.clear()
               indexedDB.deleteDatabase('aide-unified-storage')
-              notify('success', '本地数据已清理', '建议刷新页面后重新登录。')
+              notify('success', t('notify.localCleared'), t('notify.localClearedDetail'))
             } catch {
-              notify('error', '清理失败', '请尝试在浏览器设置中手动清除站点数据。')
+              notify('error', t('notify.clearFailed'), t('notify.clearFailedDetail'))
             }
           }}
           onResetDefaults={async () => {
             const ok = await requestConfirm({
-              title: '重置默认设置',
-              message: '将恢复主题、自动保存与 AI 配置为默认值（不删除工作区文件列表）。',
-              confirmText: '重置',
+              title: t('confirm.reset.title'),
+              message: t('confirm.reset.message'),
+              confirmText: t('confirm.reset.confirm'),
             })
             if (!ok) return
             setTheme('vs-dark')
@@ -346,7 +346,7 @@ export function PanelHost({
             await unifiedStorage.set('ai-config', defaultAi)
             await unifiedStorage.set('theme', 'vs-dark', { layer: StorageLayer.LOCAL })
             await unifiedStorage.set('settings', { autosave: true }, { layer: StorageLayer.LOCAL })
-            notify('success', '已恢复默认设置')
+            notify('success', t('notify.defaultsRestored'))
           }}
           projectRulesPreview={projectRulesPreview}
           onEditProjectRules={() => {
@@ -386,7 +386,7 @@ export function PanelHost({
             setActiveFile(0)
             if (settings.theme) setTheme(settings.theme as EditorTheme)
             if (settings.autoSave !== undefined) setAutoSaveEnabled(settings.autoSave)
-            notify('success', '工作区已加载', `共 ${loadedFiles.length} 个文件。`)
+            notify('success', t('notify.workspaceLoaded'), t('notify.workspaceLoadedDetail', { count: loadedFiles.length }))
           }}
           notify={notify}
           requestConfirm={requestConfirm}
@@ -436,7 +436,7 @@ export function PanelHost({
         onToggleAutoSave={() => {
           const nextValue = !autoSaveEnabled
           setAutoSaveEnabled(nextValue)
-          notify('success', nextValue ? '自动保存已开启' : '自动保存已关闭')
+          notify('success', nextValue ? t('notify.autosaveOn') : t('notify.autosaveOff'))
         }}
         gitBranch={gitBranch}
         gitModified={gitModified}
