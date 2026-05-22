@@ -2,9 +2,17 @@ export function isUnlimitedQuota(limit: number): boolean {
   return limit < 0 || !Number.isFinite(limit)
 }
 
-export function formatQuotaLabel(used: number, limit: number): string {
-  if (isUnlimitedQuota(limit)) return `${used} / 不限`
-  return `${used}/${limit}`
+type QuotaFormatKey = 'quota.formatUnlimited' | 'quota.formatLimited'
+
+export function formatQuotaLabel(
+  used: number,
+  limit: number,
+  t?: (key: QuotaFormatKey, params?: Record<string, string | number>) => string,
+): string {
+  if (isUnlimitedQuota(limit)) {
+    return t ? t('quota.formatUnlimited', { used }) : `${used} / 不限`
+  }
+  return t ? t('quota.formatLimited', { used, limit }) : `${used}/${limit}`
 }
 
 export function quotaBarPercent(used: number, limit: number): number {

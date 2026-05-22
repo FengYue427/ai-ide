@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { X, Check, Moon, Sun, Palette, Monitor } from 'lucide-react'
+import { useI18n, type TranslationKey } from '../i18n'
 
 interface Theme {
   id: string
@@ -15,13 +16,13 @@ interface Theme {
 const themes: Theme[] = [
   {
     id: 'vs-dark',
-    name: '深色主题',
+    name: 'vs-dark',
     type: 'dark',
     colors: { primary: '#1e1e1e', accent: '#0e639c', bg: '#252526' }
   },
   {
     id: 'light',
-    name: '浅色主题',
+    name: 'light',
     type: 'light',
     colors: { primary: '#ffffff', accent: '#007acc', bg: '#f3f3f3' }
   },
@@ -75,11 +76,22 @@ interface ThemeSelectorProps {
   onClose: () => void
 }
 
+const THEME_NAME_KEYS: Partial<Record<string, TranslationKey>> = {
+  'vs-dark': 'theme.vs-dark.name',
+  light: 'theme.light.name',
+}
+
+function themeLabel(theme: Theme, t: (key: TranslationKey) => string): string {
+  const key = THEME_NAME_KEYS[theme.id]
+  return key ? t(key) : theme.name
+}
+
 const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   currentTheme,
   onChangeTheme,
   onClose
 }) => {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'all' | 'dark' | 'light'>('all')
 
   const filteredThemes = themes.filter(theme => {
@@ -129,7 +141,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Palette size={24} style={{ color: 'var(--accent-color)' }} />
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>选择主题</h3>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{t('theme.title')}</h3>
           </div>
           <button onClick={onClose} style={{ padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
             <X size={20} />
@@ -139,9 +151,9 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)' }}>
           {[
-            { id: 'all', label: '全部', icon: <Monitor size={16} /> },
-            { id: 'dark', label: '深色', icon: <Moon size={16} /> },
-            { id: 'light', label: '浅色', icon: <Sun size={16} /> }
+            { id: 'all', label: t('theme.filter.all'), icon: <Monitor size={16} /> },
+            { id: 'dark', label: t('theme.filter.dark'), icon: <Moon size={16} /> },
+            { id: 'light', label: t('theme.filter.light'), icon: <Sun size={16} /> }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -221,7 +233,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                 </div>
 
                 <div style={{ fontWeight: 500, fontSize: '14px', marginBottom: '4px' }}>
-                  {theme.name}
+                  {themeLabel(theme, t)}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
                   {theme.type}

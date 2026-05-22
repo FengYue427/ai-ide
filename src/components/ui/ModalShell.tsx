@@ -1,5 +1,6 @@
 import React from 'react'
 import { X } from 'lucide-react'
+import { useI18n } from '../../i18n'
 
 interface ModalShellProps {
   title: React.ReactNode
@@ -20,6 +21,7 @@ export function ModalShell({
   footer,
   ariaLabel,
 }: ModalShellProps) {
+  const { t } = useI18n()
   const labelText = typeof title === 'string' ? title : ariaLabel
 
   return (
@@ -29,11 +31,11 @@ export function ModalShell({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={ariaLabel || labelText || '对话框'}
+        aria-label={ariaLabel || labelText || t('modal.dialog')}
       >
         <div className="modal-header">
           <span className="modal-title">{title}</span>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="关闭">
+          <button type="button" className="modal-close" onClick={onClose} aria-label={t('common.close')}>
             <X size={18} />
           </button>
         </div>

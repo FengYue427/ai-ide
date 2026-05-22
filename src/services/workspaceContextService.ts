@@ -5,6 +5,7 @@
 
 import { createTranslator } from '../i18n'
 import { unifiedStorage, StorageLayer } from './unifiedStorage'
+import { workspaceError } from './workspaceErrors'
 import {
   buildWorkspaceFileCatalog,
   summarizeFileContent,
@@ -110,7 +111,7 @@ class WorkspaceContextService {
   // 添加文件到工作区
   async addFile(file: Omit<WorkspaceFile, 'size' | 'lastModified'>): Promise<boolean> {
     if (!this.context) {
-      await this.createContext('未命名工作区')
+      await this.createContext(workspaceError('workspace.error.unnamed'))
     }
 
     const content = file.content
@@ -118,18 +119,18 @@ class WorkspaceContextService {
 
     // 检查文件大小
     if (size > MAX_FILE_SIZE) {
-      throw new Error(`文件 ${file.name} 超过 1MB 限制`)
+      throw new Error(workspaceError('workspace.error.fileTooLarge', { name: file.name }))
     }
 
     // 检查总大小
     const currentSize = this.getTotalSize()
     if (currentSize + size > MAX_TOTAL_SIZE) {
-      throw new Error('工作区总大小超过 10MB 限制')
+      throw new Error(workspaceError('workspace.error.totalTooLarge'))
     }
 
     // 检查文件数
     if (this.context!.files.length >= MAX_FILES) {
-      throw new Error('工作区文件数超过 100 个限制')
+      throw new Error(workspaceError('workspace.error.fileCountTooLarge'))
     }
 
     // 检查是否已存在
@@ -157,7 +158,7 @@ class WorkspaceContextService {
     const content = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = (e) => resolve(e.target?.result as string)
-      reader.onerror = () => reject(new Error(`读取文件 ${file.name} 失败`))
+      reader.onerror = () => reject(new Error(workspaceError('workspace.error.readFailed', { name: file.name })))
       reader.readAsText(file)
     })
     
@@ -182,7 +183,7 @@ class WorkspaceContextService {
         result.success++
       } catch (e) {
         result.failed++
-        result.errors.push(`${file.name}: ${e instanceof Error ? e.message : '未知错误'}`)
+        result.errors.push(`${file.name}: ${e instanceof Error ? e.message : workspaceError('workspace.error.unknown')}`)
       }
     }
     
@@ -224,7 +225,7 @@ class WorkspaceContextService {
           result.success++
         } catch (e) {
           result.failed++
-          result.errors.push(`${itemPath}: ${e instanceof Error ? e.message : '未知错误'}`)
+          result.errors.push(`${itemPath}: ${e instanceof Error ? e.message : workspaceError('workspace.error.unknown')}`)
         }
       } else if (item.isDirectory) {
         // 递归处理子目录
@@ -239,7 +240,10 @@ class WorkspaceContextService {
   }
 
   // 从现有文件数组创建工作区（用于从App.tsx导入）
-  async createFromFiles(files: { name: string; content: string; language: string }[], name: string = '导入的项目') {
+  async createFromFiles(
+    files: { name: string; content: string; language: string }[],
+    name: string = workspaceError('workspace.default.importProject'),
+  ) {
     this.context = {
       name,
       files: files.map(f => ({

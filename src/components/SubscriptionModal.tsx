@@ -232,7 +232,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
         if (response.ok && data?.mode === 'dev_mock' && data.plan) {
           subscriptionService.subscribeToPlan(data.plan)
           setCurrentPlan(data.plan)
-          setSuccess(data.message || `已升级为 ${data.plan}`)
+          setSuccess(data.message || t('subscription.upgraded', { plan: data.plan }))
           window.setTimeout(() => onClose(), 1200)
         } else {
           setError(data?.error || t('subscription.devUpgradeFailed'))

@@ -11,6 +11,7 @@ import {
 import { registerCrossFileReferenceProvider } from '../editor/registerCrossFileReferences'
 import { syncMonacoTypeScriptProject } from '../editor/syncTypeScriptProject'
 import type { AIConfig } from '../services/aiService'
+import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import { SkeletonLoader } from './SkeletonLoader'
 
@@ -47,6 +48,7 @@ const Editor: React.FC<EditorProps> = ({
   onChange,
   onDiagnosticsChange,
 }) => {
+  const { t } = useI18n()
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const editorRef = useRef<MonacoEditorInstance | null>(null)
@@ -101,12 +103,12 @@ const Editor: React.FC<EditorProps> = ({
     if (!isLoading) return
 
     const timeoutId = window.setTimeout(() => {
-      setLoadError('Monaco 编辑器加载超时，请检查本地构建资源是否可访问。')
+      setLoadError(t('editor.loadTimeout'))
       setIsLoading(false)
     }, 12000)
 
     return () => window.clearTimeout(timeoutId)
-  }, [isLoading])
+  }, [isLoading, t])
 
   useEffect(() => {
     if (!inlineCompletionEnabled || !aiConfig) return
@@ -144,7 +146,7 @@ const Editor: React.FC<EditorProps> = ({
 
       {loadError && (
         <div className="editor-load-error">
-          <strong>编辑器加载失败</strong>
+          <strong>{t('editor.loadFailed')}</strong>
           <span>{loadError}</span>
           <button
             onClick={() => {
@@ -153,7 +155,7 @@ const Editor: React.FC<EditorProps> = ({
               window.location.reload()
             }}
           >
-            重新加载
+            {t('editor.reload')}
           </button>
         </div>
       )}

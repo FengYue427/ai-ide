@@ -1,6 +1,6 @@
 import React from 'react'
 import { FileCode2 } from 'lucide-react'
-import { useI18n } from '../i18n'
+import { useI18n, type TranslationKey } from '../i18n'
 import { templates, applyTemplate } from '../templates'
 import { ModalShell } from './ui/ModalShell'
 
@@ -42,7 +42,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({ onSelect, onClose }) => {
           >
             <span className="template-card__icon">{template.icon}</span>
             <span className="template-card__name">{template.name}</span>
-            <span className="template-card__desc">{template.description}</span>
+            <span className="template-card__desc">
+              {t(`template.${template.id}.desc` as TranslationKey)}
+            </span>
             <span className="template-card__meta">
               {t('template.fileCount', { count: Object.keys(template.files).length })}
             </span>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Radio, Share2, Users } from 'lucide-react'
+import { useI18n } from '../i18n'
 import { collaborationService } from '../services/collaborationService'
 import { StorageLayer, unifiedStorage } from '../services/unifiedStorage'
 import { useIDEStore } from '../store/ideStore'
@@ -12,8 +13,9 @@ interface CollaborationPanelProps {
 const COLLAB_USERNAME_KEY = 'collab-username'
 
 const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
+  const { t } = useI18n()
   const [roomId, setRoomId] = useState('')
-  const [userName, setUserName] = useState(`用户${Math.floor(Math.random() * 1000)}`)
+  const [userName, setUserName] = useState('')
   const [joined, setJoined] = useState(false)
   const [users, setUsers] = useState<{ user?: { name?: string; color?: string } }[]>([])
   const [copied, setCopied] = useState(false)
@@ -21,12 +23,14 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
 
   useEffect(() => {
     unifiedStorage.get<string>(COLLAB_USERNAME_KEY, '').then((saved) => {
-      if (saved) setUserName(saved)
+      setUserName(
+        saved || t('collab.defaultUser', { n: Math.floor(Math.random() * 1000) }),
+      )
     })
 
     const roomFromUrl = new URLSearchParams(window.location.search).get('room')
     if (roomFromUrl) setRoomId(roomFromUrl)
-  }, [])
+  }, [t])
 
   useEffect(() => {
     if (joined) {
@@ -87,26 +91,22 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     <ModalShell
       className="modal--collab"
       bodyClassName="modal-body--stack"
-      ariaLabel="实时协作 Beta"
+      ariaLabel={t('collab.aria')}
       title={
         <span className="modal-title-row">
           <Users size={18} />
-          实时协作
+          {t('collab.title')}
         </span>
       }
       onClose={onClose}
     >
       <div className="collab-hero">
         <div className="collab-hero__head">
-          <div className="collab-hero__title">和别人一起盯着同一个工作区</div>
+          <div className="collab-hero__title">{t('collab.hero.title')}</div>
           <span className="collab-beta-badge">Beta</span>
         </div>
-        <p className="collab-hero__desc">
-          创建房间或加入已有房间。加入后当前工作区文件会通过 Yjs + WebRTC 同步。
-        </p>
-        <div className="collab-limits">
-          Beta 说明：无独立信令服务器时依赖公共 WebRTC 信令；多人同时编辑可能出现冲突，编辑器光标不同步。适合演示与小团队试用，不建议作为生产级协作方案。
-        </div>
+        <p className="collab-hero__desc">{t('collab.hero.desc')}</p>
+        <div className="collab-limits">{t('collab.limits')}</div>
       </div>
 
       {!joined ? (
@@ -114,7 +114,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
           <div className="collab-panel">
             <div className="collab-stack">
               <div className="form-group">
-                <label className="form-label">你的名字</label>
+                <label className="form-label">{t('collab.yourName')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -124,33 +124,33 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">房间 ID</label>
+                <label className="form-label">{t('collab.roomId')}</label>
                 <div className="collab-form-row">
                   <input
                     type="text"
                     className="form-input"
                     value={roomId}
                     onChange={(event) => setRoomId(event.target.value)}
-                    placeholder="留空则自动创建一个新房间"
+                    placeholder={t('collab.roomPlaceholder')}
                   />
                   <button type="button" className="btn btn-secondary" onClick={generateNewRoom}>
-                    生成
+                    {t('collab.generate')}
                   </button>
                 </div>
-                <p className="collab-hint">输入已有房间 ID 加入，或者留空后直接创建新房间。</p>
+                <p className="collab-hint">{t('collab.hint')}</p>
               </div>
             </div>
           </div>
 
           <button type="button" onClick={handleJoin} className="btn btn-primary" disabled={!userName.trim()}>
             <Share2 size={14} className="btn-icon-gap" />
-            {roomId ? '加入房间' : '创建房间'}
+            {roomId ? t('collab.joinRoom') : t('collab.createRoom')}
           </button>
         </div>
       ) : (
         <div className="collab-stack">
           <div className="collab-panel">
-            <div className="collab-members-title">房间链接</div>
+            <div className="collab-members-title">{t('collab.roomLink')}</div>
             <div className="collab-copy-row">
               <input
                 className="form-input"
@@ -159,16 +159,16 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
               />
               <button type="button" className="btn btn-primary" onClick={copyRoomLink}>
                 {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span className="btn-icon-gap">{copied ? '已复制' : '复制链接'}</span>
+                <span className="btn-icon-gap">{copied ? t('collab.copied') : t('collab.copyLink')}</span>
               </button>
             </div>
             <p className="collab-room-id">
-              房间 ID：<strong>{roomId}</strong>
+              {t('collab.roomIdLabel')}<strong>{roomId}</strong>
             </p>
           </div>
 
           <div className="collab-panel">
-            <div className="collab-members-title">在线成员（{users.length}）</div>
+            <div className="collab-members-title">{t('collab.members', { count: users.length })}</div>
             <div className="collab-members">
               {users.map((user, index) => (
                 <div key={index} className="collab-member">
@@ -177,8 +177,8 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
                     style={{ background: user.user?.color || '#58a6ff' }}
                   />
                   <span className="collab-member-name">
-                    {user.user?.name || '未知用户'}
-                    {user.user?.name === userName ? '（你）' : ''}
+                    {user.user?.name || t('collab.unknownUser')}
+                    {user.user?.name === userName ? t('collab.you') : ''}
                   </span>
                   <Radio size={14} color="#33c58e" />
                 </div>
@@ -187,7 +187,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
           </div>
 
           <button type="button" onClick={handleLeave} className="btn btn-secondary collab-leave-btn">
-            离开房间
+            {t('collab.leave')}
           </button>
         </div>
       )}

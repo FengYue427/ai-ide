@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { useI18n } from '../i18n'
 
 interface SkeletonLoaderProps {
   theme?: 'dark' | 'light'
@@ -24,6 +25,7 @@ const codeLines = [
 ]
 
 export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ theme = 'dark' }) => {
+  const { t } = useI18n()
   const isDark = theme === 'dark'
   const lines = useMemo(() => codeLines, [])
 
@@ -46,7 +48,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ theme = 'dark' }
 
       <div className="editor-loading-badge">
         <span className="editor-loading-spinner" />
-        <span>正在加载 Monaco 编辑器</span>
+        <span>{t('editor.loadingMonaco')}</span>
       </div>
     </div>
   )

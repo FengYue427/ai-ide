@@ -27,11 +27,11 @@ export function QuotaIndicator({
     <div
       className={`quota-indicator ${compact ? 'quota-indicator--compact' : ''} ${exhausted ? 'quota-indicator--exhausted' : ''} ${className}`.trim()}
       role="status"
-      aria-label={`${displayLabel} ${formatQuotaLabel(quota.used, quota.limit)}`}
+      aria-label={`${displayLabel} ${formatQuotaLabel(quota.used, quota.limit, t)}`}
     >
       <div className="quota-indicator__head">
         <span className="quota-indicator__label">{displayLabel}</span>
-        <span className="quota-indicator__value">{formatQuotaLabel(quota.used, quota.limit)}</span>
+        <span className="quota-indicator__value">{formatQuotaLabel(quota.used, quota.limit, t)}</span>
       </div>
       <div className="quota-indicator__track" aria-hidden>
         <div className="quota-indicator__fill" style={{ width: `${percent}%`, background: barColor }} />

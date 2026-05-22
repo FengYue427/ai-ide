@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Loader2, Smartphone } from 'lucide-react'
+import { useI18n } from '../i18n'
 import { readJsonResponse } from '../services/apiUtils'
 import { subscriptionService } from '../services/subscriptionService'
 import { useIDEStore } from '../store/ideStore'
@@ -19,8 +20,8 @@ interface CnPayModalProps {
   onSuccess?: () => void
 }
 
-function formatPrice(plan: CnPayPlan): string {
-  if (plan.price === 0) return '免费'
+function formatPrice(plan: CnPayPlan, freeLabel: string): string {
+  if (plan.price === 0) return freeLabel
   if (plan.currency === 'CNY') return `¥${plan.price}`
   return `$${plan.price}`
 }
@@ -28,6 +29,7 @@ function formatPrice(plan: CnPayPlan): string {
 type PayChannel = 'alipay' | 'wechat'
 
 const CnPayModal: React.FC<CnPayModalProps> = ({ plan, onClose, onSuccess }) => {
+  const { t } = useI18n()
   const setCurrentPlan = useIDEStore((s) => s.setCurrentPlan)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState<PayChannel | null>(null)
@@ -86,7 +88,7 @@ const CnPayModal: React.FC<CnPayModalProps> = ({ plan, onClose, onSuccess }) => 
       }>(res)
 
       if (!res.ok) {
-        setError(data?.error || '创建支付失败')
+        setError(data?.error || t('pay.createFailed'))
         return
       }
 
@@ -101,9 +103,9 @@ const CnPayModal: React.FC<CnPayModalProps> = ({ plan, onClose, onSuccess }) => 
         return
       }
 
-      setError(data?.error || '支付渠道未返回有效数据')
+      setError(data?.error || t('pay.channelInvalid'))
     } catch {
-      setError('网络错误，请稍后重试')
+      setError(t('pay.networkError'))
     } finally {
       setLoading(null)
     }
@@ -115,24 +117,24 @@ const CnPayModal: React.FC<CnPayModalProps> = ({ plan, onClose, onSuccess }) => 
 
   return (
     <ModalShell
-      title={`支付 — ${plan.displayName}`}
+      title={t('pay.title', { plan: plan.displayName })}
       onClose={onClose}
       className="modal--compact"
       bodyClassName="modal-body--grid"
-      ariaLabel="国内支付"
+      ariaLabel={t('pay.aria')}
     >
       <div className="pay-amount">
-        {formatPrice(plan)}
-        <span className="pay-amount-unit"> / 月</span>
+        {formatPrice(plan, t('pay.free'))}
+        <span className="pay-amount-unit">{t('pay.perMonth')}</span>
       </div>
 
       {error && <AlertBanner variant="warning">{error}</AlertBanner>}
 
       {wechatQr ? (
         <div className="pay-qr-wrap">
-          <p>请使用微信扫一扫完成支付</p>
-          {qrImageUrl && <img src={qrImageUrl} alt="微信支付二维码" width={220} height={220} />}
-          <p className="pay-qr-hint">支付成功后将自动升级，请勿关闭此窗口</p>
+          <p>{t('pay.wechatScan')}</p>
+          {qrImageUrl && <img src={qrImageUrl} alt={t('pay.wechatQrAlt')} width={220} height={220} />}
+          <p className="pay-qr-hint">{t('pay.wechatHint')}</p>
         </div>
       ) : (
         <div className="modal-body--grid">
@@ -143,7 +145,7 @@ const CnPayModal: React.FC<CnPayModalProps> = ({ plan, onClose, onSuccess }) => 
             onClick={() => void checkout('alipay')}
           >
             {loading === 'alipay' ? <Loader2 size={16} className="spin" /> : null}
-            支付宝支付
+            {t('pay.alipay')}
           </button>
           <button
             type="button"
@@ -152,7 +154,7 @@ const CnPayModal: React.FC<CnPayModalProps> = ({ plan, onClose, onSuccess }) => 
             onClick={() => void checkout('wechat')}
           >
             {loading === 'wechat' ? <Loader2 size={16} className="spin" /> : <Smartphone size={16} />}
-            微信支付
+            {t('pay.wechat')}
           </button>
         </div>
       )}
