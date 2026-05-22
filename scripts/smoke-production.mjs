@@ -51,6 +51,15 @@ for (const check of checks) {
       ok = res.ok && json?.subscription?.plan === 'free'
     }
 
+    if (check.name === 'health' && json) {
+      const dbOk = json.database === 'connected'
+      const statusOk = json.status === 'ok'
+      ok = res.ok && dbOk && statusOk
+      if (!dbOk) {
+        detail += ' — set DATABASE_URL on Vercel (Neon pooler, sslmode=require)'
+      }
+    }
+
     if (ok) {
       console.log(`✅ ${check.name} — ${detail}`)
     } else {

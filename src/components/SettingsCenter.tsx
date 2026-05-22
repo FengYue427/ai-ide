@@ -19,6 +19,7 @@ import {
 import { modelOptions, modelProviderTranslationKey, type AIModel, type QuotaCheck } from '../services/aiService'
 import { fetchAIQuota } from '../services/usageService'
 import { useI18n, type Language } from '../i18n'
+import { isSemanticSearchEnabled, setSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
 
 interface SettingsCenterProps {
@@ -70,6 +71,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
     plan: currentPlan,
   })
   const persistMcpRef = useRef<(() => Promise<void>) | null>(null)
+  const [semanticSearchEnabled, setSemanticSearchEnabledState] = useState(isSemanticSearchEnabled)
 
   const tabs = useMemo(
     () =>
@@ -160,6 +162,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
       if (localTheme !== theme) onToggleTheme()
       if (localLanguage !== language) onChangeLanguage(localLanguage)
       await persistMcpRef.current?.()
+      setSemanticSearchEnabled(semanticSearchEnabled)
       onClose()
     })()
   }
@@ -373,6 +376,17 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 <div className="settings-card settings-card--grid">
                   <div className="settings-row-title">{t('settings.features.noticeTitle')}</div>
                   <div className="settings-row-desc">{t('settings.features.noticeDesc')}</div>
+                </div>
+                <div className="settings-card settings-card--row">
+                  <div>
+                    <div className="settings-row-title">{t('settings.feature.semantic.title')}</div>
+                    <div className="settings-row-desc">{t('settings.feature.semantic.desc')}</div>
+                  </div>
+                  <Toggle
+                    checked={semanticSearchEnabled}
+                    onChange={() => setSemanticSearchEnabledState((value) => !value)}
+                    aria-label={t('settings.feature.semantic.title')}
+                  />
                 </div>
                 {featureList.map((feature) => (
                   <div key={feature.name} className="settings-card settings-card--row">

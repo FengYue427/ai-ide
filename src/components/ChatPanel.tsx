@@ -23,6 +23,7 @@ import {
 import { projectIndexManager } from '../services/projectIndexManager'
 import type { IndexSearchHit } from '../services/projectIndexService'
 import { canUseEmbeddings } from '../services/embeddingService'
+import { isSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { buildSemanticContextSection } from '../services/semanticSearchService'
 import { collectSearchableFiles } from '../services/searchService'
 import { useI18n } from '../i18n'
@@ -127,7 +128,9 @@ ${t('ai.chat.prompt')}`
 
   const augmentWithSemanticContext = useCallback(
     async (basePrompt: string, query: string) => {
-      if (!useWorkspaceContext || !canUseEmbeddings(aiConfig)) return basePrompt
+      if (!useWorkspaceContext || !isSemanticSearchEnabled() || !canUseEmbeddings(aiConfig)) {
+        return basePrompt
+      }
 
       const workspaceFiles = workspaceContextService.getAllFiles().map((file) => ({
         path: file.path,

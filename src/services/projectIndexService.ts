@@ -4,11 +4,11 @@
  */
 
 import {
-  findGitignoreContent,
+  gitignoreRulesFromSources,
   isPathIgnoredByGitignore,
-  parseGitignore,
   type GitignoreRule,
 } from './gitignoreService'
+import { capIndexSources } from './indexLimits'
 
 export type SymbolKind =
   | 'function'
@@ -104,6 +104,10 @@ const DEFAULT_IGNORE_SEGMENTS = new Set([
   'coverage',
   '.turbo',
   '.vercel',
+  '__pycache__',
+  '.cache',
+  'vendor',
+  'target',
 ])
 
 /** Skip dependency/build dirs when indexing browser workspaces. */
@@ -120,10 +124,10 @@ export function shouldIndexPath(path: string, gitignoreRules: GitignoreRule[] = 
 export function buildProjectIndex(
   sources: { path: string; content: string; language?: string }[],
 ): ProjectIndex {
-  const gitignoreRules = parseGitignore(findGitignoreContent(sources) ?? '')
-  const files: IndexedFile[] = sources
-    .filter((source) => shouldIndexPath(source.path, gitignoreRules))
-    .map((source) => ({
+  const gitignoreRules = gitignoreRulesFromSources(sources)
+  const files: IndexedFile[] = capIndexSources(
+    sources.filter((source) => shouldIndexPath(source.path, gitignoreRules)),
+  ).map((source) => ({
       path: source.path,
       language: source.language ?? detectLanguageFromPath(source.path),
       symbols: extractSymbolsFromContent(source.path, source.content),
@@ -220,6 +224,6 @@ export function collectIndexSources(
   }
 
   const merged = [...byPath.values()]
-  const gitignoreRules = parseGitignore(findGitignoreContent(merged) ?? '')
-  return merged.filter((file) => shouldIndexPath(file.path, gitignoreRules))
+  const gitignoreRules = gitignoreRulesFromSources(merged)
+  return capIndexSources(merged.filter((file) => shouldIndexPath(file.path, gitignoreRules)))
 }

@@ -3,9 +3,11 @@
  */
 
 import type { Language } from '../i18n'
+import { isSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { serviceText } from '../lib/serviceI18n'
 import type { AIConfig } from './aiService'
 import { canUseEmbeddings, cosineSimilarity, createEmbedding } from './embeddingService'
+import { collectIndexSources } from './projectIndexService'
 
 export interface SemanticChunkHit {
   path: string
@@ -81,9 +83,12 @@ export async function findRelevantChunks(
   const maxFiles = options?.maxFiles ?? MAX_FILES
   const queryVector = await createEmbedding(query, config)
 
-  const candidates = files
+  const candidates = collectIndexSources(
+    files.map((file) => ({ name: file.path, content: file.content })),
+  )
     .filter((file) => file.content.trim().length > 0)
     .slice(0, maxFiles)
+    .map((file) => ({ path: file.path, content: file.content }))
 
   const hits: SemanticChunkHit[] = []
 
@@ -129,11 +134,15 @@ export async function buildSemanticContextSection(
   config: AIConfig,
   locale: Language = 'zh-CN',
 ): Promise<string> {
+  if (!isSemanticSearchEnabled()) return ''
+
   try {
     const hits = await findRelevantChunks(query, files, config)
     return formatSemanticContextSection(hits, locale)
   } catch (error) {
-    console.warn('[semanticSearch]', error)
+    const message =
+      error instanceof Error ? error.message : serviceText('semantic.error.generic', undefined, locale)
+    console.warn('[semanticSearch]', message)
     return ''
   }
 }

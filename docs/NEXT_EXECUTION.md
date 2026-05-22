@@ -59,6 +59,8 @@ $env:APP_URL='https://ai-ide-flame.vercel.app'; npm run smoke:production
 
 **P4-1 开工前检查**：`p0:gate` 绿 + 生产 health 200。
 
+**P4-1 首包（batch 19）**：见 [P4-1_INDEXING.md](./P4-1_INDEXING.md) — 索引上限、gitignore 合并、语义检索开关。
+
 ---
 
 ## 档位目标

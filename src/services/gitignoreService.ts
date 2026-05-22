@@ -103,14 +103,27 @@ export function isPathIgnoredByGitignore(path: string, rules: GitignoreRule[]): 
   return ignored
 }
 
+function isGitignorePath(path: string): boolean {
+  const normalized = path.replace(/\\/g, '/').replace(/^\.\//, '')
+  return normalized === '.gitignore' || normalized.endsWith('/.gitignore')
+}
+
 export function findGitignoreContent(
   sources: { path: string; content: string }[],
 ): string | null {
-  const match = sources.find(
-    (source) =>
-      source.path === '.gitignore' ||
-      source.path.endsWith('/.gitignore') ||
-      source.path === '/.gitignore',
-  )
-  return match?.content ?? null
+  const merged = mergeGitignoreContents(sources)
+  return merged || null
+}
+
+/** Concatenate all workspace `.gitignore` files (root + nested) for indexing. */
+export function mergeGitignoreContents(sources: { path: string; content: string }[]): string {
+  return sources
+    .filter((source) => isGitignorePath(source.path))
+    .map((source) => source.content.trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
+export function gitignoreRulesFromSources(sources: { path: string; content: string }[]): GitignoreRule[] {
+  return parseGitignore(mergeGitignoreContents(sources))
 }
