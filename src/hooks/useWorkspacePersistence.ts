@@ -9,6 +9,7 @@ interface UseWorkspacePersistenceOptions {
   autoSaveEnabled: boolean
   currentUser: AuthUser | null
   files: FileItem[]
+  language: string
   theme: 'vs-dark' | 'light'
 }
 
@@ -16,6 +17,7 @@ export function useWorkspacePersistence({
   autoSaveEnabled,
   currentUser,
   files,
+  language,
   theme,
 }: UseWorkspacePersistenceOptions) {
   useEffect(() => {
@@ -34,7 +36,7 @@ export function useWorkspacePersistence({
 
       await cloudSyncService.autoBackup(
         ideFiles.map(({ name, content, language }) => ({ name, content, language })),
-        { theme, autoSave: autoSaveEnabled, language: 'zh' },
+        { theme, autoSave: autoSaveEnabled, language },
       )
 
       const projectName =

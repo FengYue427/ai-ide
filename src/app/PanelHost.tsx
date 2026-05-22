@@ -34,6 +34,7 @@ import {
   PROJECT_RULES_PATH,
 } from '../services/projectRulesService'
 import { workspaceContextService } from '../services/workspaceContextService'
+import { useI18n } from '../i18n'
 
 interface PanelHostProps {
   notify: (kind: ToastKind, title: string, detail?: string) => void
@@ -118,6 +119,7 @@ export function PanelHost({
   gitBranch,
   gitModified = 0,
 }: PanelHostProps) {
+  const { language, setLanguage } = useI18n()
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
   const theme = useIDEStore((s) => s.theme)
@@ -295,7 +297,7 @@ export function PanelHost({
           aiConfig={aiConfig}
           theme={theme}
           autoSaveEnabled={autoSaveEnabled}
-          language="zh"
+          language={language}
           onSaveAIConfig={async (config) => {
             setAiConfig(config)
             await unifiedStorage.set('ai-config', config)
@@ -306,9 +308,8 @@ export function PanelHost({
             setAutoSaveEnabled(newValue)
             await unifiedStorage.set('settings', { autosave: newValue }, { layer: StorageLayer.LOCAL })
           }}
-          onChangeLanguage={async (lang) => {
-            await unifiedStorage.set('language', lang, { layer: StorageLayer.LOCAL })
-            window.location.reload()
+          onChangeLanguage={(lang) => {
+            setLanguage(lang)
           }}
           onClearLocalData={async () => {
             const ok = await requestConfirm({
@@ -335,12 +336,14 @@ export function PanelHost({
             if (!ok) return
             setTheme('vs-dark')
             setAutoSaveEnabled(true)
-            setAiConfig({
-              provider: 'openai',
+            const defaultAi = {
+              provider: 'openai' as const,
               apiKey: '',
               model: modelOptions.openai.models[0],
               endpoint: '',
-            })
+            }
+            setAiConfig(defaultAi)
+            await unifiedStorage.set('ai-config', defaultAi)
             await unifiedStorage.set('theme', 'vs-dark', { layer: StorageLayer.LOCAL })
             await unifiedStorage.set('settings', { autosave: true }, { layer: StorageLayer.LOCAL })
             notify('success', '已恢复默认设置')
@@ -374,7 +377,7 @@ export function PanelHost({
           currentSettings={{
             theme,
             autoSave: autoSaveEnabled,
-            language: 'zh',
+            language,
             aiProvider: aiConfig.provider,
             aiModel: aiConfig.model,
           }}
@@ -427,7 +430,7 @@ export function PanelHost({
         aiProvider={aiConfig.provider}
         isAIConnected={!!aiConfig.apiKey}
         autoSaveEnabled={autoSaveEnabled}
-        language="zh"
+        language={language}
         onOpenSettings={openSettingsPanel}
         onOpenAISettings={() => setShowAISettings(true)}
         onToggleAutoSave={() => {

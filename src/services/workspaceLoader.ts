@@ -1,6 +1,7 @@
 import { cloudSyncService } from './cloudSyncService'
 import { listWorkspaceEntries, loadWorkspaceEntry } from './workspaceCatalogService'
 import { authService } from './authService'
+import { normalizeLanguage } from '../lib/language'
 import { unifiedStorage } from './unifiedStorage'
 import type { FileItem } from '../types/file'
 
@@ -49,9 +50,10 @@ export async function loadWorkspaceSnapshot(id: string): Promise<LoadedWorkspace
     if (autosave && autosave.length > 0) {
       const appSettings = await unifiedStorage.get<{ autosave?: boolean }>('settings', { autosave: true })
       const theme = await unifiedStorage.get<'vs-dark' | 'light'>('theme', 'vs-dark')
+      const storedLang = await unifiedStorage.get<string>('language', 'zh-CN')
       return {
         files: normalizeFiles(autosave),
-        settings: { theme, autoSave: appSettings.autosave, language: 'zh' },
+        settings: { theme, autoSave: appSettings.autosave, language: normalizeLanguage(storedLang) },
         name: '自动保存',
       }
     }

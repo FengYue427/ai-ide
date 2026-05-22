@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE } from '../lib/language'
 import { StorageLayer, unifiedStorage } from './unifiedStorage'
 
 export interface WorkspaceBackup {
@@ -103,7 +104,7 @@ export const cloudSyncService = {
         settings: data.settings || {
           theme: 'vs-dark',
           autoSave: true,
-          language: 'zh',
+          language: DEFAULT_LANGUAGE,
         },
         createdAt: Date.now(),
         updatedAt: Date.now(),

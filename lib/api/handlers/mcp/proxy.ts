@@ -2,9 +2,13 @@
  * POST /api/mcp/proxy — forward JSON-RPC to a remote Streamable HTTP MCP server (CORS bypass).
  */
 import { errorResponse, jsonResponse } from '../../http'
-import { validateMcpProxyUrl } from '../../mcpProxy'
+import { requireAuth } from '../../requireAuth'
+import { sanitizeMcpProxyHeaders, validateMcpProxyUrl } from '../../mcpProxy'
 
 export async function POST(request: Request) {
+  const auth = await requireAuth(request)
+  if (!auth.ok) return auth.response
+
   let body: {
     url?: string
     headers?: Record<string, string>
@@ -33,7 +37,7 @@ export async function POST(request: Request) {
     'Content-Type': 'application/json',
     Accept: 'application/json, text/event-stream',
     'MCP-Protocol-Version': '2024-11-05',
-    ...(body.headers ?? {}),
+    ...sanitizeMcpProxyHeaders(body.headers),
   }
 
   try {

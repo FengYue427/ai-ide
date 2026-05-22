@@ -59,12 +59,15 @@ async function handle(request: Request): Promise<Response> {
       durationMs: Date.now() - started,
       error: error instanceof Error ? error.message : String(error),
     })
+    const exposeDetail = process.env.NODE_ENV !== 'production'
     return attachRequestId(
       new Response(
         JSON.stringify({
           error: 'Internal server error',
           requestId,
-          detail: error instanceof Error ? error.message : String(error),
+          ...(exposeDetail
+            ? { detail: error instanceof Error ? error.message : String(error) }
+            : {}),
         }),
         { status: 500, headers: { 'Content-Type': 'application/json' } },
       ),

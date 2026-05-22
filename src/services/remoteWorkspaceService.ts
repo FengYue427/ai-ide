@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE, normalizeLanguage } from '../lib/language'
 import { authService } from './authService'
 import type { WorkspaceBackup } from './cloudSyncService'
 
@@ -17,19 +18,19 @@ interface RemoteWorkspaceMeta {
 
 function parseSettings(raw: string | null | undefined): WorkspaceBackup['settings'] {
   if (!raw) {
-    return { theme: 'vs-dark', autoSave: true, language: 'zh' }
+    return { theme: 'vs-dark', autoSave: true, language: DEFAULT_LANGUAGE }
   }
   try {
     const parsed = JSON.parse(raw) as Partial<WorkspaceBackup['settings']>
     return {
       theme: parsed.theme ?? 'vs-dark',
       autoSave: parsed.autoSave ?? true,
-      language: parsed.language ?? 'zh',
+      language: normalizeLanguage(parsed.language),
       aiProvider: parsed.aiProvider,
       aiModel: parsed.aiModel,
     }
   } catch {
-    return { theme: 'vs-dark', autoSave: true, language: 'zh' }
+    return { theme: 'vs-dark', autoSave: true, language: DEFAULT_LANGUAGE }
   }
 }
 
@@ -39,7 +40,7 @@ function metaToEntry(meta: RemoteWorkspaceMeta): WorkspaceEntry {
     id: meta.id,
     name: meta.name,
     files: [],
-    settings: { theme: 'vs-dark', autoSave: true, language: 'zh' },
+    settings: { theme: 'vs-dark', autoSave: true, language: DEFAULT_LANGUAGE },
     createdAt: updatedAt,
     updatedAt,
     source: 'cloud',

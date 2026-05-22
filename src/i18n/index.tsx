@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import { normalizeLanguage } from '../lib/language'
 import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
 
 // 支持的语言
@@ -52,7 +53,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   // 初始化时从 unifiedStorage 加载
   useEffect(() => {
-    unifiedStorage.get<Language>(LANGUAGE_KEY, 'zh-CN').then(setLanguageState)
+    unifiedStorage.get<string>(LANGUAGE_KEY, 'zh-CN').then((stored) => {
+      setLanguageState(normalizeLanguage(stored))
+    })
   }, [])
 
   const setLanguage = useCallback((lang: Language) => {

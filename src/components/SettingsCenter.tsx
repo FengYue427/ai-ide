@@ -18,17 +18,18 @@ import {
 } from 'lucide-react'
 import { modelOptions, type AIModel, type QuotaCheck } from '../services/aiService'
 import { fetchAIQuota } from '../services/usageService'
+import type { Language } from '../i18n'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
 
 interface SettingsCenterProps {
   aiConfig: AIConfigState
   theme: 'vs-dark' | 'light'
   autoSaveEnabled: boolean
-  language: string
+  language: Language
   onSaveAIConfig: (config: AIConfigState) => void
   onToggleTheme: () => void
   onToggleAutoSave: () => void
-  onChangeLanguage: (lang: string) => void
+  onChangeLanguage: (lang: Language) => void
   onClearLocalData?: () => void
   onResetDefaults?: () => void
   onEditProjectRules?: () => void
@@ -90,6 +91,13 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   useEffect(() => {
     void fetchAIQuota(currentPlan, !!currentUser).then(setQuota)
   }, [currentPlan, currentUser])
+
+  useEffect(() => {
+    setLocalAIConfig(aiConfig)
+    setLocalAutoSave(autoSaveEnabled)
+    setLocalTheme(theme)
+    setLocalLanguage(language)
+  }, [aiConfig, autoSaveEnabled, theme, language])
 
   const handleSave = () => {
     void (async () => {
@@ -257,8 +265,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   <div className="settings-label">界面语言</div>
                   <div className="settings-grid-2">
                     {[
-                      { value: 'zh', label: '简体中文' },
-                      { value: 'en', label: 'English' },
+                      { value: 'zh-CN' as const, label: '简体中文' },
+                      { value: 'en-US' as const, label: 'English' },
                     ].map((option) => (
                       <button
                         key={option.value}

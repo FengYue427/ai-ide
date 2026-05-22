@@ -15,6 +15,7 @@ import { useMcpBootstrap } from '../hooks/useMcpBootstrap'
 import { useProjectIndexSync } from '../hooks/useProjectIndexSync'
 import { useSessionGuard } from '../hooks/useSessionGuard'
 import { useWorkspacePersistence } from '../hooks/useWorkspacePersistence'
+import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import { AppToolbar } from './AppToolbar'
 import { EditorLayout } from './EditorLayout'
@@ -28,6 +29,7 @@ import { loadWorkspaceByRef } from '../services/workspaceLoader'
 import type { EditorTheme } from '../store/ideStore'
 
 export function AppShell() {
+  const { language } = useI18n()
   const theme = useIDEStore((s) => s.theme)
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
@@ -101,6 +103,7 @@ export function AppShell() {
     autoSaveEnabled,
     currentUser,
     files,
+    language,
     theme,
   })
 

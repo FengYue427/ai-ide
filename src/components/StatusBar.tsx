@@ -156,7 +156,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
         <div style={pillStyle}>
           <Globe size={12} />
-          <span>{language === 'zh' ? '中文' : 'English'}</span>
+          <span>{language === 'en' || language === 'en-US' ? 'English' : '中文'}</span>
         </div>
 
         <button onClick={onOpenSettings} style={actionButtonStyle} title="打开设置">
