@@ -7,6 +7,7 @@ import {
   validatePluginSource,
 } from './pluginSandbox'
 import { runPluginActivateInSandbox, type PluginSandboxHandle } from './pluginSandboxRunner'
+import { createPluginTranslator } from './pluginI18n'
 import type { PluginContext, PluginManifest } from './pluginTypes'
 
 export type { PluginContext, PluginManifest } from './pluginTypes'
@@ -79,6 +80,7 @@ class PluginManager {
           context,
           pkg.manifest.permissions,
           {
+            i18n: pkg.manifest.i18n,
             onRegisterButton: ({ icon, label, onClick }) => {
               context.ui.addToolbarButton({ icon, label, onClick }, pkg.manifest.id)
             },
@@ -106,9 +108,11 @@ class PluginManager {
 
     const sandboxed = createSandboxedContext(this.context, permissions)
     const pluginId = plugin.id
+    const t = createPluginTranslator(plugin.manifest?.i18n, sandboxed.locale)
 
     return {
       ...sandboxed,
+      t,
       ui: {
         ...sandboxed.ui,
         addToolbarButton: (config) => {

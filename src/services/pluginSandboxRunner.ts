@@ -10,8 +10,9 @@ import {
 } from './pluginPermissions'
 import { createTranslator, type Language } from '../i18n'
 import { getApiLanguage } from '../lib/apiLanguage'
-import type { PluginContext } from './pluginTypes'
+import type { PluginContext, PluginI18nTable } from './pluginTypes'
 import { pluginError } from './pluginErrors'
+import { normalizePluginI18n } from './pluginI18n'
 import { validatePluginSource } from './pluginSandbox'
 
 const DEFAULT_ACTIVATE_TIMEOUT_MS = 5_000
@@ -33,7 +34,7 @@ type WorkerInbound =
   | { type: 'buttonClick'; buttonId: string }
   | { type: 'apiResult'; callId: string; ok: boolean; result?: unknown; error?: string }
 
-function createWorkerScript(locale: Language): string {
+function createWorkerScript(locale: Language, pluginI18n?: PluginI18nTable): string {
   const t = createTranslator(locale)
   const msg = {
     apiTimeoutTpl: t('plugin.sandbox.apiTimeout', { path: '{path}' }),
@@ -41,12 +42,26 @@ function createWorkerScript(locale: Language): string {
     activateRequired: t('plugin.sandbox.activateRequired'),
   }
   const msgJson = JSON.stringify(msg)
+  const i18nJson = JSON.stringify(normalizePluginI18n(pluginI18n))
   return `
 "use strict";
 const buttonHandlers = new Map();
 let requestId = "";
 
 const MSGS = ${msgJson};
+const PLUGIN_I18N = ${i18nJson};
+
+function pluginT(key, params) {
+  const table = PLUGIN_I18N["${locale}"] || PLUGIN_I18N["zh-CN"] || {};
+  let raw = table[key] || key;
+  if (params && typeof params === "object") {
+    for (const k of Object.keys(params)) {
+      const v = params[k];
+      raw = raw.replace(new RegExp("\\\\{" + k + "\\\\}", "g"), String(v));
+    }
+  }
+  return raw;
+}
 
 function post(msg) {
   self.postMessage(msg);
@@ -82,6 +97,7 @@ function apiCall(path, args) {
 function createContext() {
   return {
     locale: "${locale}",
+    t: pluginT,
     editor: {
       getValue: () => apiCall("editor.getValue", []),
       setValue: (value) => apiCall("editor.setValue", [value]),
@@ -240,6 +256,7 @@ export async function runPluginActivateInSandbox(
   context: PluginContext,
   permissions: readonly string[],
   options?: {
+    i18n?: PluginI18nTable
     timeoutMs?: number
     onRegisterButton?: (button: { buttonId: string; icon: string; label: string; onClick: () => void }) => void
   },
@@ -254,7 +271,7 @@ export async function runPluginActivateInSandbox(
   const locale = context.locale ?? getApiLanguage()
   const timeoutMs = options?.timeoutMs ?? DEFAULT_ACTIVATE_TIMEOUT_MS
   const requestId = `${pluginId}-${Date.now()}`
-  const blob = new Blob([createWorkerScript(locale)], { type: 'application/javascript' })
+  const blob = new Blob([createWorkerScript(locale, options?.i18n)], { type: 'application/javascript' })
   const workerUrl = URL.createObjectURL(blob)
   const worker = new Worker(workerUrl)
 

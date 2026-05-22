@@ -4,6 +4,7 @@ import type { PluginContext } from './pluginTypes'
 
 const fullContext: PluginContext = {
   locale: 'zh-CN',
+  t: (key) => key,
   editor: {
     getValue: () => '',
     setValue: () => {},

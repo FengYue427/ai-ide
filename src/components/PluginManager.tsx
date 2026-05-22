@@ -299,6 +299,9 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
           <p className="plugins-card-desc" style={{ marginBottom: 12 }}>
             {t('plugin.manual.desc')}
           </p>
+          <p className="plugins-card-desc" style={{ marginBottom: 12, fontSize: 12, opacity: 0.85 }}>
+            {t('plugin.manual.i18nHint')}
+          </p>
           <textarea
             className="plugins-code"
             value={newPluginJson}

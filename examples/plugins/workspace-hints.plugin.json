@@ -6,7 +6,19 @@
     "description": "在工具栏显示当前打开文件数量（仅 UI 权限）",
     "author": "AI IDE",
     "entry": "main.js",
-    "permissions": ["ui"]
+    "permissions": ["ui"],
+    "i18n": {
+      "zh-CN": {
+        "toolbar.label": "文件 {count}",
+        "modal.title": "工作区",
+        "modal.body": "当前编辑器中共有 {count} 个文件。"
+      },
+      "en-US": {
+        "toolbar.label": "Files {count}",
+        "modal.title": "Workspace",
+        "modal.body": "There are {count} files in the editor."
+      }
+    }
   },
-  "source": "function activate(context) {\n  var en = context.locale === 'en-US';\n  var count = context.files.getAll().length;\n  context.ui.addToolbarButton({\n    icon: 'folder',\n    label: en ? ('Files ' + count) : ('文件 ' + count),\n    onClick: function () {\n      context.ui.showModal(\n        en ? 'Workspace' : '工作区',\n        en\n          ? ('There are ' + count + ' files in the editor.')\n          : ('当前编辑器中共有 ' + count + ' 个文件。')\n      );\n    },\n  });\n}"
+  "source": "function activate(context) {\n  var count = context.files.getAll().length;\n  context.ui.addToolbarButton({\n    icon: 'folder',\n    label: context.t('toolbar.label', { count: count }),\n    onClick: function () {\n      context.ui.showModal(\n        context.t('modal.title'),\n        context.t('modal.body', { count: count })\n      );\n    },\n  });\n}"
 }

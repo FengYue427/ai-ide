@@ -4,6 +4,9 @@ import type { Language } from '../i18n'
 export type { ExtendedPluginPermission as PluginPermission } from './pluginPermissions'
 export { ALL_PLUGIN_PERMISSIONS } from './pluginPermissions'
 
+/** Author-provided UI strings per app locale (keys are plugin-defined, e.g. `toolbar.label`). */
+export type PluginI18nTable = Partial<Record<Language, Record<string, string>>>
+
 export interface PluginManifest {
   id: string
   name: string
@@ -13,11 +16,18 @@ export interface PluginManifest {
   icon?: string
   entry: string
   permissions: string[]
+  /** Optional localized strings resolved via `context.t(key)` in plugin source. */
+  i18n?: PluginI18nTable
 }
 
 export interface PluginContext {
-  /** BCP-47 app language for bundled plugin scripts (e.g. hello-sandbox). */
+  /** App UI language (zh-CN | en-US). */
   locale: Language
+  /**
+   * Resolve a string from `manifest.i18n` for the current locale, then zh-CN, else return `key`.
+   * Supports `{param}` placeholders in manifest values.
+   */
+  t: (key: string, params?: Record<string, string | number>) => string
   editor: {
     getValue: () => string
     setValue: (value: string) => void

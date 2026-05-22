@@ -1,5 +1,6 @@
 import type { PluginContext, PluginManifest } from './pluginTypes'
 import { pluginError } from './pluginErrors'
+import { validatePluginI18n } from './pluginI18n'
 import {
   hasAi,
   hasEditorRead,
@@ -47,7 +48,9 @@ export function validateManifest(manifest: PluginManifest): string | null {
   }
   if (!manifest.name?.trim()) return pluginError('plugin.sandbox.nameRequired')
   if (!manifest.version?.trim()) return pluginError('plugin.sandbox.versionRequired')
-  return validateExtendedPermissions(manifest.permissions)
+  const permError = validateExtendedPermissions(manifest.permissions)
+  if (permError) return permError
+  return validatePluginI18n(manifest.i18n)
 }
 
 export function validatePluginSource(source: string): string | null {
@@ -75,6 +78,7 @@ export function createSandboxedContext(
 
   return {
     locale: base.locale,
+    t: base.t,
     editor: {
       getValue: hasEditorRead(perms) ? base.editor.getValue : deny('editor.getValue'),
       getSelectedText: hasEditorRead(perms) ? base.editor.getSelectedText : deny('editor.getSelectedText'),

@@ -30,6 +30,7 @@ export function createPluginContext(deps: PluginHostDeps): PluginContext {
 
   return {
     locale: getApiLanguage(),
+    t: (key) => key,
     editor: {
       getValue: () => readActive()?.content ?? '',
       setValue: (value) => {
