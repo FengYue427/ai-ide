@@ -44,7 +44,12 @@ export async function createEmbedding(text: string, config: AIConfig): Promise<n
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '')
-    throw new Error(`Embedding API ${response.status}: ${detail.slice(0, 200)}`)
+    throw new Error(
+      serviceText('embedding.httpError', {
+        status: response.status,
+        detail: detail.slice(0, 200),
+      }),
+    )
   }
 
   const payload = (await response.json()) as {

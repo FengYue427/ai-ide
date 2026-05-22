@@ -43,7 +43,7 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
   requestConfirm,
   onClose,
 }) => {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const [snippets, setSnippets] = useState<CodeSnippet[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState<string>(currentLanguage || 'all')
@@ -58,14 +58,14 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
   const [formTags, setFormTags] = useState('')
 
   const loadSnippets = async () => {
-    const builtin = snippetService.getBuiltinSnippets()
+    const builtin = snippetService.getBuiltinSnippets(language)
     const custom = await snippetService.getAllSnippets()
     setSnippets([...builtin, ...custom])
   }
 
   useEffect(() => {
-    loadSnippets()
-  }, [])
+    void loadSnippets()
+  }, [language])
 
   const languages = useMemo(() => Array.from(new Set(snippets.map((snippet) => snippet.language))), [snippets])
 

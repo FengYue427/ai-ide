@@ -31,7 +31,7 @@ async function mcpRpc<T>(
         ? payload.error
         : payload.error && typeof payload.error === 'object' && payload.error.message
           ? payload.error.message
-          : `MCP request failed (${response.status})`
+          : serviceText('mcp.error.requestFailed', { status: response.status })
     throw new Error(httpError)
   }
 
@@ -40,7 +40,7 @@ async function mcpRpc<T>(
   }
 
   if (payload.result === undefined) {
-    throw new Error('MCP response missing result')
+    throw new Error(serviceText('mcp.error.missingResult'))
   }
 
   return payload.result

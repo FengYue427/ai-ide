@@ -1,3 +1,4 @@
+import { serviceText } from '../lib/serviceI18n'
 import { cloudSyncService, type WorkspaceBackup } from './cloudSyncService'
 import { remoteWorkspaceService, type WorkspaceEntry, type WorkspaceSource } from './remoteWorkspaceService'
 
@@ -48,12 +49,12 @@ export async function saveWorkspaceEntry(
   isLoggedIn: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
   const trimmed = name.trim()
-  if (!trimmed) return { ok: false, error: '名称不能为空' }
+  if (!trimmed) return { ok: false, error: serviceText('workspace.nameRequired') }
 
   if (isLoggedIn) {
     const cloudOk = await remoteWorkspaceService.save(trimmed, files, settings, description)
     if (cloudOk) return { ok: true }
-    return { ok: false, error: '云端保存失败，请检查网络或稍后重试' }
+    return { ok: false, error: serviceText('workspace.cloudSaveFailed') }
   }
 
   await cloudSyncService.saveWorkspace(trimmed, files, settings, description)

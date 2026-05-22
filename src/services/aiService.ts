@@ -87,11 +87,10 @@ export function modelProviderTranslationKey(
 }
 
 function aiServiceError(
-  key: 'ai.error.rateLimit' | 'ai.error.aborted',
+  key: TranslationKey,
   params?: Record<string, string | number>,
 ): Error {
-  const t = createTranslator(getApiLanguage())
-  return new Error(t(key, params))
+  return new Error(createTranslator(getApiLanguage())(key, params))
 }
 
 export const defaultEndpoints: Record<AIModel, string> = {
@@ -137,7 +136,7 @@ export async function sendMessage(
       result = await sendOllama(endpoint, model, messages, onStream)
       break
     default:
-      throw new Error(`Unsupported provider: ${config.provider}`)
+      throw aiServiceError('ai.error.unsupportedProvider', { provider: config.provider })
   }
 
   return result
@@ -286,7 +285,7 @@ async function sendMessageInternal(
     case 'ollama':
       return sendOllama(endpoint, model, messages, wrappedOnStream, abortController?.signal)
     default:
-      throw new Error(`Unsupported provider: ${config.provider}`)
+      throw aiServiceError('ai.error.unsupportedProvider', { provider: config.provider })
   }
 }
 
@@ -348,7 +347,7 @@ async function sendOpenAICompatible(
   })
   
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`)
+    throw aiServiceError('ai.error.httpStatus', { status: response.status })
   }
   
   if (onStream && response.body) {
@@ -421,7 +420,7 @@ async function sendClaude(
   })
   
   if (!response.ok) {
-    throw new Error(`Claude API error: ${response.status}`)
+    throw aiServiceError('ai.error.claudeStatus', { status: response.status })
   }
   
   if (onStream && response.body) {
@@ -491,13 +490,13 @@ async function sendGoogleGemini(
   })
   
   if (!response.ok) {
-    throw new Error(`Gemini API error: ${response.status}`)
+    throw aiServiceError('ai.error.geminiStatus', { status: response.status })
   }
   
   const data = await response.json()
   
   if (data.error) {
-    throw new Error(`Gemini API error: ${data.error.message}`)
+    throw aiServiceError('ai.error.geminiMessage', { message: data.error.message })
   }
   
   return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
@@ -524,7 +523,7 @@ async function sendOllama(
   })
   
   if (!response.ok) {
-    throw new Error('Ollama is not running. Start it with: ollama serve')
+    throw aiServiceError('ai.error.ollamaNotRunning')
   }
   
   if (onStream && response.body) {

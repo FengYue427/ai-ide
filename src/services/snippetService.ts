@@ -1,3 +1,5 @@
+import type { Language } from '../i18n'
+import { serviceText } from '../lib/serviceI18n'
 import { unifiedStorage, StorageLayer } from './unifiedStorage'
 
 export interface CodeSnippet {
@@ -110,12 +112,12 @@ export const snippetService = {
   },
 
   // 获取内置代码片段
-  getBuiltinSnippets(): CodeSnippet[] {
+  getBuiltinSnippets(locale: Language = 'zh-CN'): CodeSnippet[] {
     return [
       {
         id: 'builtin-1',
         name: 'React Functional Component',
-        description: 'React 函数组件模板',
+        description: serviceText('snippet.builtin.reactComponent.desc', undefined, locale),
         language: 'typescript',
         code: `import React from 'react'
 
@@ -137,7 +139,7 @@ export const Component: React.FC<Props> = () => {
       {
         id: 'builtin-2',
         name: 'UseEffect Hook',
-        description: 'React useEffect 模板',
+        description: serviceText('snippet.builtin.useEffect.desc', undefined, locale),
         language: 'typescript',
         code: `useEffect(() => {
   // Effect logic
@@ -153,7 +155,7 @@ export const Component: React.FC<Props> = () => {
       {
         id: 'builtin-3',
         name: 'Async Function',
-        description: '异步函数模板',
+        description: serviceText('snippet.builtin.asyncFn.desc', undefined, locale),
         language: 'javascript',
         code: `async function functionName() {
   try {
@@ -169,7 +171,7 @@ export const Component: React.FC<Props> = () => {
       {
         id: 'builtin-4',
         name: 'Python Class',
-        description: 'Python 类定义模板',
+        description: serviceText('snippet.builtin.pythonClass.desc', undefined, locale),
         language: 'python',
         code: `class ClassName:
     def __init__(self):
@@ -184,7 +186,7 @@ export const Component: React.FC<Props> = () => {
       {
         id: 'builtin-5',
         name: 'Fetch API',
-        description: 'Fetch API 请求模板',
+        description: serviceText('snippet.builtin.fetchApi.desc', undefined, locale),
         language: 'javascript',
         code: `fetch('https://api.example.com/data')
   .then(response => {

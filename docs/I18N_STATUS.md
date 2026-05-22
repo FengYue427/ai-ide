@@ -21,6 +21,7 @@
 | 10 | 插件沙箱/上下文错误、`formatFetchError`、默认 `index.js` 注释、示例插件 `context.locale` |
 | 11 | 模板生成文件注释、`ai.provider.*` 名称/描述、AI 限流/取消错误、`applyTemplate(locale)` |
 | 12 | 配额/工作区/MCP/审查/语义检索/提及上下文/插件权限/终端/Git 导入等服务层文案 |
+| 13 | `aiService` API 错误、工作区保存、Embedding/MCP、内置片段描述、Auth providers API |
 
 组件/服务：`usageService`、`remoteWorkspaceService`、`cloudSyncService`、`mentionContextService`、`semanticSearchService`、`codeReviewService`、`mcpClientService`、`pluginPermissions`、`projectRulesService`
 
@@ -28,8 +29,9 @@
 
 - 第三方插件作者自备 i18n（仅官方示例与内置插件覆盖）
 - 服务端成功 `message` 字段全量本地化（可选）
-- `formatService` / `aiService` API 状态英文错误（低优先级，多为技术信息）
+- `formatService` 仅注释/控制台（用户可见语法检查已本地化）
+- 微信支付回调 `message: 成功`（第三方协议字段，非 UI）
 
 ## 验收
 
-设置 → **English** 后：AI 配额用尽、工作区删除未登录、MCP 检测、代码审查快速检查、Chat @ 提及系统提示均为英文；新建 `.aide/rules.md` 模板为英文。
+设置 → **English** 后：AI 调用失败（如 Ollama 未启动）、工作区空名称保存、内置代码片段描述、Chat/API 错误均为英文。
