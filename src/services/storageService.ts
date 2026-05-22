@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb'
-import { serviceText } from '../lib/serviceI18n'
+import { getAutosaveProjectName } from './storageLabels'
 
 interface IDEFile {
   name: string
@@ -84,7 +84,7 @@ export const storageService = {
   async autoSave(files: IDEFile[], projectId: string = 'default'): Promise<void> {
     await this.saveProject({
       id: projectId,
-      name: serviceText('workspace.autosave.project'),
+      name: getAutosaveProjectName(),
       files
     })
   },
