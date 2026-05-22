@@ -30,6 +30,14 @@ export const API_MESSAGES = {
     'api.auth.oauthSyncFailed': 'OAuth 同步失败',
     'api.auth.oauthHandlerFailed': 'OAuth 处理失败',
     'api.auth.credentialsProvider': '邮箱密码',
+    'api.auth.loginOk': '登录成功',
+    'api.auth.registerOk': '注册成功',
+    'api.auth.signoutOk': '已退出登录',
+    'api.auth.oauthSyncOk': 'OAuth 登录成功',
+    'api.workspace.created': '工作区已创建',
+    'api.workspace.saved': '工作区已保存',
+    'api.workspace.deleted': '工作区已删除',
+    'api.payment.simulateOk': '模拟支付成功，订阅已更新',
     'api.rateLimit.exceeded': '请求过于频繁，请稍后再试',
     'api.body.tooLarge': '请求体过大',
     'api.body.invalidJson': '请求体不是有效 JSON',
@@ -106,6 +114,14 @@ export const API_MESSAGES = {
     'api.auth.oauthSyncFailed': 'OAuth sync failed',
     'api.auth.oauthHandlerFailed': 'OAuth handler failed',
     'api.auth.credentialsProvider': 'Email & password',
+    'api.auth.loginOk': 'Signed in successfully',
+    'api.auth.registerOk': 'Registration successful',
+    'api.auth.signoutOk': 'Signed out',
+    'api.auth.oauthSyncOk': 'OAuth sign-in successful',
+    'api.workspace.created': 'Workspace created',
+    'api.workspace.saved': 'Workspace saved',
+    'api.workspace.deleted': 'Workspace deleted',
+    'api.payment.simulateOk': 'Payment simulated; subscription updated',
     'api.rateLimit.exceeded': 'Too many requests. Try again later.',
     'api.body.tooLarge': 'Request body is too large',
     'api.body.invalidJson': 'Request body is not valid JSON',
@@ -165,10 +181,12 @@ export const API_MESSAGES = {
   },
 } as const
 
-export type ApiErrorKey = keyof (typeof API_MESSAGES)['zh-CN']
+export type ApiMessageKey = keyof (typeof API_MESSAGES)['zh-CN']
+/** @deprecated Use ApiMessageKey — kept for existing error handlers */
+export type ApiErrorKey = ApiMessageKey
 
 export function apiMessage(
-  key: ApiErrorKey,
+  key: ApiMessageKey,
   locale: ApiLocale,
   params?: Record<string, string | number>,
 ): string {

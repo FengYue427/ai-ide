@@ -1,10 +1,8 @@
 /**
  * Subscription checkout — 支付宝 / 微信（优先），Stripe 可选，开发 mock 兜底
  */
-import { apiMessage } from '../../../i18n/apiMessages'
-import { resolveRequestLocale } from '../../../i18n/resolveLocale'
 import { jsonResponse } from '../../http'
-import { localizedErrorResponse } from '../../localizedError'
+import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
 import { requireAuth } from '../../requireAuth'
 import { isDevBillingAllowed } from '../../../billing/billingMode'
 import { createCnCheckout, isAlipayConfigured, isCnPaymentConfigured, isWechatPayConfigured } from '../../../billing/cnPayment'
@@ -95,18 +93,23 @@ export async function POST(request: Request) {
     }
 
     const record = await upsertUserSubscription(auth.user.id, plan.name)
-    const locale = resolveRequestLocale(request)
-    return jsonResponse({
-      mode: 'dev_mock',
-      plan: record.plan.name,
-      message: apiMessage('api.checkout.devUpgraded', locale, { plan: record.plan.displayName }),
-      subscription: {
-        plan: record.plan.name,
-        status: record.status,
-        currentPeriodEnd: record.currentPeriodEnd.toISOString(),
-        cancelAtPeriodEnd: record.cancelAtPeriodEnd,
-      },
-    })
+    return jsonResponse(
+      appendApiMessage(
+        request,
+        'api.checkout.devUpgraded',
+        {
+          mode: 'dev_mock',
+          plan: record.plan.name,
+          subscription: {
+            plan: record.plan.name,
+            status: record.status,
+            currentPeriodEnd: record.currentPeriodEnd.toISOString(),
+            cancelAtPeriodEnd: record.cancelAtPeriodEnd,
+          },
+        },
+        { plan: record.plan.displayName },
+      ),
+    )
   } catch (error) {
     console.error('[Checkout] error:', error)
     return localizedErrorResponse(request, 'api.checkout.sessionFailed', 500)

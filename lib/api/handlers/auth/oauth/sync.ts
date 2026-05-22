@@ -2,8 +2,7 @@
  * After OAuth redirect, exchange Auth.js session for app JWT (auth-token cookie).
  */
 import { Auth } from '@auth/core'
-import { jsonResponse } from '../../../http'
-import { localizedErrorResponse } from '../../../localizedError'
+import { localizedErrorResponse, localizedSuccessResponse } from '../../../localizedError'
 import { buildAuthSetCookie } from '../../../authCookie'
 import { getOAuthConfig, isAnyOAuthConfigured, OAUTH_BASE_PATH } from '../../../../auth/oauthConfig'
 import { createJWT } from '../../../../../src/lib/jwt'
@@ -49,9 +48,12 @@ export async function POST(request: Request) {
 
     const token = createJWT(user)
 
-    return jsonResponse(
+    return localizedSuccessResponse(
+      request,
+      'api.auth.oauthSyncOk',
       { success: true, user },
       200,
+      undefined,
       { 'Set-Cookie': buildAuthSetCookie(token) },
     )
   } catch (error) {

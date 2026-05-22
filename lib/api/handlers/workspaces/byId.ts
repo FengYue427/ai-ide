@@ -4,7 +4,7 @@
 import { jsonResponse } from '../../http'
 import { requireAuth } from '../../requireAuth'
 import { readJsonWithLimit } from '../../body'
-import { localizedErrorResponse } from '../../localizedError'
+import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
 import { validateWorkspacePayload } from '../../workspacePayload'
 import {
   deleteWorkspaceByName,
@@ -87,10 +87,12 @@ export async function PUT(req: Request, ctx?: { params: Record<string, string> }
       settingsPayload,
     )
 
-    return jsonResponse({
-      success: true,
-      workspace: serializeWorkspace(workspace),
-    })
+    return jsonResponse(
+      appendApiMessage(req, 'api.workspace.saved', {
+        success: true,
+        workspace: serializeWorkspace(workspace),
+      }),
+    )
   } catch (error) {
     console.error('[Workspaces] Save error:', error)
     return localizedErrorResponse(req, 'api.workspace.saveFailed', 500)
@@ -108,7 +110,7 @@ export async function DELETE(req: Request, ctx?: { params: Record<string, string
     const name = decodeURIComponent(id)
 
     await deleteWorkspaceByName(auth.user.id, name)
-    return jsonResponse({ success: true })
+    return jsonResponse(appendApiMessage(req, 'api.workspace.deleted', { success: true }))
   } catch (error) {
     if (error instanceof Error && error.message === 'DEFAULT_WORKSPACE_PROTECTED') {
       return localizedErrorResponse(req, 'api.workspace.defaultCannotDelete', 400)

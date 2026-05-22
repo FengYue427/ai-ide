@@ -2,6 +2,7 @@ import { createTranslator } from '../i18n'
 import { unifiedStorage, StorageLayer } from './unifiedStorage'
 import { readJsonResponse, apiFetch } from './apiUtils'
 import { trackEvent } from '../lib/observability'
+import { pickApiResponseMessage } from '../lib/apiUserMessage'
 import { getWorkspaceLocale } from './workspaceErrors'
 
 function at() {
@@ -236,11 +237,19 @@ class AuthService {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       })
 
-      const data = await readJsonResponse<{ success?: boolean; error?: string; message?: string; demo?: boolean }>(
-        res,
-      )
+      const data = await readJsonResponse<{
+        success?: boolean
+        error?: string
+        message?: string
+        messageKey?: string
+        demo?: boolean
+      }>(res)
       if (res.ok && data?.success) {
-        return { success: true, message: data.message, demo: data.demo }
+        return {
+          success: true,
+          message: pickApiResponseMessage(data, at()),
+          demo: data.demo,
+        }
       }
       return { success: false, error: data?.error || at()('auth.error.resetFailed') }
     } catch {

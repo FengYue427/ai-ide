@@ -4,7 +4,7 @@
 import { jsonResponse } from '../../http'
 import { requireAuth } from '../../requireAuth'
 import { readJsonWithLimit } from '../../body'
-import { localizedErrorResponse } from '../../localizedError'
+import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
 import { validateWorkspacePayload } from '../../workspacePayload'
 import {
   countUserWorkspaces,
@@ -87,15 +87,17 @@ export async function POST(req: Request) {
       typeof settings === 'string' ? settings : JSON.stringify(settings ?? {}),
     )
 
-    return jsonResponse({
-      success: true,
-      workspace: {
-        id: workspace.name,
-        name: workspace.name,
-        isDefault: workspace.isDefault,
-        updatedAt: workspace.updatedAt.toISOString(),
-      },
-    })
+    return jsonResponse(
+      appendApiMessage(req, 'api.workspace.created', {
+        success: true,
+        workspace: {
+          id: workspace.name,
+          name: workspace.name,
+          isDefault: workspace.isDefault,
+          updatedAt: workspace.updatedAt.toISOString(),
+        },
+      }),
+    )
   } catch (error) {
     console.error('[Workspaces] Create error:', error)
     return localizedErrorResponse(req, 'api.workspace.createFailed', 500)

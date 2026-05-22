@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Building2, Check, Crown, Loader2, Zap } from 'lucide-react'
 import { hasCheckoutPayment } from '../../lib/billing/checkout'
 import { localizePlans } from '../lib/localizePlan'
+import { pickApiResponseMessage } from '../lib/apiUserMessage'
 import { buildSubscriptionPricingNote } from '../lib/subscriptionPricingNote'
 import { readJsonResponse } from '../services/apiUtils'
 import { authService } from '../services/authService'
@@ -235,13 +236,19 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
           credentials: 'include',
           body: JSON.stringify({ planId: planName }),
         })
-        const data = await readJsonResponse<{ mode?: string; plan?: string; message?: string; error?: string }>(
-          response,
-        )
+        const data = await readJsonResponse<{
+          mode?: string
+          plan?: string
+          message?: string
+          messageKey?: string
+          error?: string
+        }>(response)
         if (response.ok && data?.mode === 'dev_mock' && data.plan) {
           subscriptionService.subscribeToPlan(data.plan)
           setCurrentPlan(data.plan)
-          setSuccess(data.message || t('subscription.upgraded', { plan: data.plan }))
+          setSuccess(
+            pickApiResponseMessage(data, t) || t('subscription.upgraded', { plan: data.plan }),
+          )
           window.setTimeout(() => onClose(), 1200)
         } else {
           setError(data?.error || t('subscription.devUpgradeFailed'))
@@ -279,6 +286,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
       const data = await readJsonResponse<{
         subscription?: SubscriptionStatus
         message?: string
+        messageKey?: string
         error?: string
       }>(response)
       if (!response.ok) {
@@ -290,7 +298,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
         setCurrentPlan(data.subscription.plan)
         subscriptionService.subscribeToPlan(data.subscription.plan)
       }
-      setSuccess(data?.message || t('subscription.updated'))
+      setSuccess(pickApiResponseMessage(data, t) || t('subscription.updated'))
     } catch {
       setError(t('subscription.cancelFailedRetry'))
     } finally {
@@ -310,6 +318,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
       const data = await readJsonResponse<{
         subscription?: SubscriptionStatus
         message?: string
+        messageKey?: string
         error?: string
       }>(response)
       if (!response.ok) {
@@ -321,7 +330,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
         setCurrentPlan(data.subscription.plan)
         subscriptionService.subscribeToPlan(data.subscription.plan)
       }
-      setSuccess(data?.message || t('subscription.resumed'))
+      setSuccess(pickApiResponseMessage(data, t) || t('subscription.resumed'))
     } catch {
       setError(t('subscription.resumeFailedRetry'))
     } finally {

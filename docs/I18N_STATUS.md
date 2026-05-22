@@ -6,8 +6,9 @@
 - 服务层：`src/lib/serviceI18n.ts` → `serviceText(key)`（跟随 `getApiLanguage()`）
 - 运行时：`I18nProvider` + `useI18n().t(key, params?)`
 - 非 React：`createTranslator(locale)`、`workspaceError()`、`pluginError()`、`localizeAuthApiError()`
-- 服务端：`lib/i18n/apiMessages.ts` + `resolveRequestLocale(req)`（`X-App-Language` / `Accept-Language`）
-- 客户端 API：`apiFetch` 自动附带 `X-App-Language`（`src/lib/apiLanguage.ts`）
+- 服务端：`lib/i18n/apiMessages.ts` + `appendApiMessage` / `localizedSuccessResponse`（`lib/api/localizedError.ts`）
+- 服务端：`resolveRequestLocale(req)`（`X-App-Language` / `Accept-Language`）
+- 客户端 API：`apiFetch` 自动附带 `X-App-Language`；成功文案 `pickApiResponseMessage`（`src/lib/apiUserMessage.ts`）
 
 ## 已接入
 
@@ -23,14 +24,15 @@
 | 12 | 配额/工作区/MCP/审查/语义检索/提及上下文/插件权限/终端/Git 导入等服务层文案 |
 | 13 | `aiService` API 错误、工作区保存、Embedding/MCP、内置片段描述、Auth providers API |
 | 14 | 第三方插件 `manifest.i18n` + `context.t()`（Worker 沙箱、校验、官方示例、PLUGIN_I18N.md） |
+| 15 | API 成功 `message` + `messageKey`（`appendApiMessage`）、客户端 `pickApiResponseMessage`、`workspace.autosave.project` |
 
 组件/服务：`usageService`、`remoteWorkspaceService`、`cloudSyncService`、`mentionContextService`、`semanticSearchService`、`codeReviewService`、`mcpClientService`、`pluginPermissions`、`projectRulesService`
 
 ## 待接入
 
-- 服务端成功 `message` 字段全量本地化（可选）
-- `formatService` 仅注释/控制台（用户可见语法检查已本地化）
+- `formatService` 仅注释/控制台（非用户可见）
 - 微信支付回调 `message: 成功`（第三方协议字段，非 UI）
+- 部分 API 仍仅返回 `{ success: true }`（如 signout 已带 message；列表类 GET 无 message）
 
 ## 验收
 

@@ -9,7 +9,7 @@ import { checkRateLimitDistributed } from '../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../rateLimitResponse'
 import { buildAuthSetCookie } from '../../authCookie'
 import { trackServerEvent } from '../../logger'
-import { authJsonError } from '../../localizedError'
+import { appendApiMessage, authJsonError } from '../../localizedError'
 
 export async function POST(req: Request) {
   try {
@@ -69,10 +69,7 @@ export async function POST(req: Request) {
     trackServerEvent(req, 'auth.register.success', { userId: user.id })
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        user,
-      }),
+      JSON.stringify(appendApiMessage(req, 'api.auth.registerOk', { success: true, user })),
       {
         status: 200,
         headers: {

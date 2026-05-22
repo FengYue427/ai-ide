@@ -1,10 +1,8 @@
 /**
  * Cancel subscription — Stripe or dev mock.
  */
-import { apiMessage } from '../../../i18n/apiMessages'
-import { resolveRequestLocale } from '../../../i18n/resolveLocale'
 import { jsonResponse } from '../../http'
-import { localizedErrorResponse } from '../../localizedError'
+import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
 import { requireAuth } from '../../requireAuth'
 import {
   downgradeUserToFree,
@@ -44,33 +42,32 @@ export async function POST(request: Request) {
       await scheduleSubscriptionCancel(auth.user.id)
     }
 
-    const locale = resolveRequestLocale(request)
     const updated = await getUserSubscription(auth.user.id)
     if (!updated) {
-      return jsonResponse({
-        subscription: {
-          plan: 'free',
-          status: 'active',
-          currentPeriodEnd: null,
-          cancelAtPeriodEnd: false,
-        },
-        message: immediate
-          ? apiMessage('api.subscription.cancelImmediate', locale)
-          : apiMessage('api.subscription.cancelScheduled', locale),
-      })
+      const key = immediate ? 'api.subscription.cancelImmediate' : 'api.subscription.cancelScheduled'
+      return jsonResponse(
+        appendApiMessage(request, key, {
+          subscription: {
+            plan: 'free',
+            status: 'active',
+            currentPeriodEnd: null,
+            cancelAtPeriodEnd: false,
+          },
+        }),
+      )
     }
 
-    return jsonResponse({
-      subscription: {
-        plan: updated.plan.name,
-        status: updated.status,
-        currentPeriodEnd: updated.currentPeriodEnd.toISOString(),
-        cancelAtPeriodEnd: updated.cancelAtPeriodEnd,
-      },
-      message: immediate
-        ? apiMessage('api.subscription.cancelDoneNow', locale)
-        : apiMessage('api.subscription.cancelEndOfPeriod', locale),
-    })
+    const key = immediate ? 'api.subscription.cancelDoneNow' : 'api.subscription.cancelEndOfPeriod'
+    return jsonResponse(
+      appendApiMessage(request, key, {
+        subscription: {
+          plan: updated.plan.name,
+          status: updated.status,
+          currentPeriodEnd: updated.currentPeriodEnd.toISOString(),
+          cancelAtPeriodEnd: updated.cancelAtPeriodEnd,
+        },
+      }),
+    )
   } catch (error) {
     console.error('[Subscription cancel] error:', error)
     return localizedErrorResponse(request, 'api.subscription.cancelFailed', 500)

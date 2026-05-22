@@ -1,10 +1,8 @@
 /**
  * Resume subscription — undo cancel_at_period_end (Stripe or dev).
  */
-import { apiMessage } from '../../../i18n/apiMessages'
-import { resolveRequestLocale } from '../../../i18n/resolveLocale'
 import { jsonResponse } from '../../http'
-import { localizedErrorResponse } from '../../localizedError'
+import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
 import { requireAuth } from '../../requireAuth'
 import {
   clearSubscriptionCancelFlag,
@@ -22,17 +20,17 @@ export async function POST(request: Request) {
       return localizedErrorResponse(request, 'api.subscription.noResume', 400)
     }
 
-    const locale = resolveRequestLocale(request)
     if (!record.cancelAtPeriodEnd) {
-      return jsonResponse({
-        subscription: {
-          plan: record.plan.name,
-          status: record.status,
-          currentPeriodEnd: record.currentPeriodEnd.toISOString(),
-          cancelAtPeriodEnd: false,
-        },
-        message: apiMessage('api.subscription.resumeActive', locale),
-      })
+      return jsonResponse(
+        appendApiMessage(request, 'api.subscription.resumeActive', {
+          subscription: {
+            plan: record.plan.name,
+            status: record.status,
+            currentPeriodEnd: record.currentPeriodEnd.toISOString(),
+            cancelAtPeriodEnd: false,
+          },
+        }),
+      )
     }
 
     if (record.stripeSubscriptionId && isStripeConfigured()) {
@@ -41,15 +39,16 @@ export async function POST(request: Request) {
 
     const updated = await clearSubscriptionCancelFlag(auth.user.id)
 
-    return jsonResponse({
-      subscription: {
-        plan: updated.plan.name,
-        status: updated.status,
-        currentPeriodEnd: updated.currentPeriodEnd.toISOString(),
-        cancelAtPeriodEnd: updated.cancelAtPeriodEnd,
-      },
-      message: apiMessage('api.subscription.resumeOk', locale),
-    })
+    return jsonResponse(
+      appendApiMessage(request, 'api.subscription.resumeOk', {
+        subscription: {
+          plan: updated.plan.name,
+          status: updated.status,
+          currentPeriodEnd: updated.currentPeriodEnd.toISOString(),
+          cancelAtPeriodEnd: updated.cancelAtPeriodEnd,
+        },
+      }),
+    )
   } catch (error) {
     console.error('[Subscription resume] error:', error)
     return localizedErrorResponse(request, 'api.subscription.resumeFailed', 500)

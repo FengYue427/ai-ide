@@ -1,9 +1,7 @@
-import { apiMessage } from '../../../i18n/apiMessages'
-import { resolveRequestLocale } from '../../../i18n/resolveLocale'
 import { resolveRateLimitOptions } from '../../rateLimit'
 import { checkRateLimitDistributed } from '../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../rateLimitResponse'
-import { authJsonError } from '../../localizedError'
+import { appendApiMessage, authJsonError } from '../../localizedError'
 
 export async function POST(req: Request) {
   try {
@@ -18,13 +16,10 @@ export async function POST(req: Request) {
 
     console.log('Forgot password for:', email)
 
-    const locale = resolveRequestLocale(req)
     return new Response(
-      JSON.stringify({
-        success: true,
-        demo: true,
-        message: apiMessage('api.auth.forgotDemoMessage', locale),
-      }),
+      JSON.stringify(
+        appendApiMessage(req, 'api.auth.forgotDemoMessage', { success: true, demo: true }),
+      ),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     )
   } catch {

@@ -19,4 +19,9 @@ describe('apiMessages', () => {
   it('interpolates workspace limit params', () => {
     expect(apiMessage('api.workspace.limitReached', 'en-US', { limit: 10 })).toContain('10')
   })
+
+  it('returns localized success messages', () => {
+    expect(apiMessage('api.auth.loginOk', 'en-US')).toBe('Signed in successfully')
+    expect(apiMessage('api.workspace.deleted', 'zh-CN')).toBe('工作区已删除')
+  })
 })

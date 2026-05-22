@@ -3,7 +3,7 @@
  * Never available in production.
  */
 import { jsonResponse } from '../../../http'
-import { localizedErrorResponse } from '../../../localizedError'
+import { appendApiMessage, localizedErrorResponse } from '../../../localizedError'
 import { requireAuth } from '../../../requireAuth'
 import { isDevPaymentSimulateAllowed } from '../../../../billing/billingMode'
 import { fulfillPaymentOrder } from '../../../../billing/fulfillOrder'
@@ -42,20 +42,22 @@ export async function POST(request: Request) {
 
     const { subscription, alreadyPaid } = await fulfillPaymentOrder(order.outTradeNo, 'dev-simulate')
 
-    return jsonResponse({
-      ok: true,
-      simulated: true,
-      alreadyPaid,
-      orderId: order.id,
-      outTradeNo: order.outTradeNo,
-      plan: subscription.plan.name,
-      subscription: {
+    return jsonResponse(
+      appendApiMessage(request, 'api.payment.simulateOk', {
+        ok: true,
+        simulated: true,
+        alreadyPaid,
+        orderId: order.id,
+        outTradeNo: order.outTradeNo,
         plan: subscription.plan.name,
-        status: subscription.status,
-        currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
-        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-      },
-    })
+        subscription: {
+          plan: subscription.plan.name,
+          status: subscription.status,
+          currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+          cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        },
+      }),
+    )
   } catch (error) {
     console.error('[Payment dev simulate] error:', error)
     return localizedErrorResponse(request, 'api.payment.simulateFailed', 500)
