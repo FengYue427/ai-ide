@@ -135,7 +135,11 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
           processedFiles += result.success
           setImportProgress({ current: processedFiles, total: totalFiles })
           if (result.errors.length > 0) {
-            console.warn('部分文件导入失败:', result.errors)
+            notify(
+              'info',
+              t('wp.notify.partialImport'),
+              t('wp.notify.partialImportDetail', { errors: result.errors.join('; ') }),
+            )
           }
         }
       }
@@ -148,7 +152,7 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
       setIsImporting(false)
       setImportProgress({ current: 0, total: 0 })
     }
-  }, [notify, refreshFiles])
+  }, [notify, refreshFiles, t])
 
   const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files
@@ -159,8 +163,12 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
 
     try {
       const result = await workspaceContextService.addFilesFromLocal(Array.from(selectedFiles))
-      if (result.failed > 0) {
-        console.warn('部分文件导入失败:', result.errors)
+      if (result.failed > 0 && result.errors.length > 0) {
+        notify(
+          'info',
+          t('wp.notify.partialImport'),
+          t('wp.notify.partialImportDetail', { errors: result.errors.join('; ') }),
+        )
       }
       refreshFiles()
       notify(
@@ -174,7 +182,7 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
       setIsImporting(false)
       event.target.value = ''
     }
-  }, [notify, refreshFiles])
+  }, [notify, refreshFiles, t])
 
   const handleRemoveFile = useCallback((path: string) => {
     workspaceContextService.removeFile(path)

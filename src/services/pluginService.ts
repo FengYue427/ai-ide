@@ -1,3 +1,5 @@
+import { createTranslator } from '../i18n'
+import { getWorkspaceLocale } from './workspaceErrors'
 import { ALL_PLUGIN_PERMISSIONS, hasUi, normalizePluginPermissions } from './pluginPermissions'
 import {
   createSandboxedContext,
@@ -8,6 +10,10 @@ import { runPluginActivateInSandbox, type PluginSandboxHandle } from './pluginSa
 import type { PluginContext, PluginManifest } from './pluginTypes'
 
 export type { PluginContext, PluginManifest } from './pluginTypes'
+
+function pt() {
+  return createTranslator(getWorkspaceLocale())
+}
 
 export interface Plugin {
   id: string
@@ -107,7 +113,7 @@ class PluginManager {
         ...sandboxed.ui,
         addToolbarButton: (config) => {
           if (!hasUi(new Set(normalizePluginPermissions(permissions)))) {
-            throw new Error('插件无权访问 ui.addToolbarButton')
+            throw new Error(pt()('plugin.error.noToolbar'))
           }
           this.context!.ui.addToolbarButton(config, pluginId)
         },
@@ -176,26 +182,27 @@ class PluginManager {
 
   async loadPlugin(input: string): Promise<{ ok: boolean; error?: string }> {
     const trimmed = input.trim()
-    if (!trimmed) return { ok: false, error: '请输入插件包 JSON' }
+    const t = pt()
+    if (!trimmed) return { ok: false, error: t('plugin.error.emptyJson') }
 
     if (import.meta.env.PROD) {
-      return { ok: false, error: '生产环境默认禁用第三方插件（仅允许内置插件）' }
+      return { ok: false, error: t('plugin.error.prodDisabled') }
     }
 
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('npm:')) {
-      return { ok: false, error: '远程插件加载尚未开放，请粘贴插件 JSON 包' }
+      return { ok: false, error: t('plugin.error.remoteDisabled') }
     }
 
     try {
       const pkg = JSON.parse(trimmed) as PluginPackage
       if (!pkg.manifest || !pkg.source) {
-        return { ok: false, error: 'JSON 须包含 manifest 与 source 字段' }
+        return { ok: false, error: t('plugin.error.invalidShape') }
       }
       const result = this.registerPackage(pkg)
       if (!result.ok) return { ok: false, error: result.error }
       return { ok: true }
     } catch {
-      return { ok: false, error: '无法解析插件 JSON' }
+      return { ok: false, error: t('plugin.error.parseFailed') }
     }
   }
 
@@ -207,50 +214,58 @@ class PluginManager {
 
 export const pluginManager = new PluginManager()
 
-export const createBuiltinPlugins = (): Plugin[] => [
-  {
-    id: 'format-code',
-    name: '代码格式化',
-    version: '1.0.0',
-    description: '格式化当前文件代码',
-    builtin: true,
-    activate(context) {
-      context.ui.addToolbarButton({
-        icon: 'sparkles',
-        label: '格式化',
-        onClick: () => {
-          const content = context.editor.getValue()
-          const formatted = content.replace(/\s+$/gm, '').replace(/\n{3,}/g, '\n\n')
-          context.editor.setValue(formatted)
-          context.ui.showNotification('代码已格式化', 'success')
-        },
-      })
+export const createBuiltinPlugins = (locale = getWorkspaceLocale()): Plugin[] => {
+  const t = createTranslator(locale)
+  return [
+    {
+      id: 'format-code',
+      name: t('plugin.builtin.format.name'),
+      version: '1.0.0',
+      description: t('plugin.builtin.format.desc'),
+      builtin: true,
+      activate(context) {
+        context.ui.addToolbarButton({
+          icon: 'sparkles',
+          label: t('plugin.builtin.format.label'),
+          onClick: () => {
+            const content = context.editor.getValue()
+            const formatted = content.replace(/\s+$/gm, '').replace(/\n{3,}/g, '\n\n')
+            context.editor.setValue(formatted)
+            context.ui.showNotification(createTranslator(getWorkspaceLocale())('plugin.builtin.format.done'), 'success')
+          },
+        })
+      },
     },
-  },
-  {
-    id: 'line-count',
-    name: '代码统计',
-    version: '1.0.0',
-    description: '统计代码行数',
-    builtin: true,
-    activate(context) {
-      context.ui.addToolbarButton({
-        icon: 'bar-chart',
-        label: '统计',
-        onClick: () => {
-          const files = context.files.getAll()
-          let totalLines = 0
-          let totalChars = 0
-          files.forEach((file) => {
-            totalLines += file.content.split('\n').length
-            totalChars += file.content.length
-          })
-          context.ui.showModal(
-            '代码统计',
-            `文件数: ${files.length}\n总行数: ${totalLines}\n总字符: ${totalChars}`,
-          )
-        },
-      })
+    {
+      id: 'line-count',
+      name: t('plugin.builtin.stats.name'),
+      version: '1.0.0',
+      description: t('plugin.builtin.stats.desc'),
+      builtin: true,
+      activate(context) {
+        context.ui.addToolbarButton({
+          icon: 'bar-chart',
+          label: t('plugin.builtin.stats.label'),
+          onClick: () => {
+            const files = context.files.getAll()
+            let totalLines = 0
+            let totalChars = 0
+            files.forEach((file) => {
+              totalLines += file.content.split('\n').length
+              totalChars += file.content.length
+            })
+            const tr = createTranslator(getWorkspaceLocale())
+            context.ui.showModal(
+              tr('plugin.builtin.stats.title'),
+              tr('plugin.builtin.stats.body', {
+                files: files.length,
+                lines: totalLines,
+                chars: totalChars,
+              }),
+            )
+          },
+        })
+      },
     },
-  },
-]
+  ]
+}

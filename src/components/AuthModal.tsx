@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { X, Mail, Lock, Github, Chrome, Eye, EyeOff, Sparkles, ArrowLeft, Check, AlertCircle } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { localizeAuthApiError } from '../lib/authApiErrors'
 import { isOAuthEnabled } from '../lib/authFeatures'
 import { authService, type User } from '../services/authService'
 
@@ -103,7 +104,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
       onAuthenticated?.(result.user)
       onClose()
     } else {
-      setError(result.error || t('auth.error.loginFailed'))
+      setError(localizeAuthApiError(result.error, t) || t('auth.error.loginFailed'))
     }
     setLoading(false)
   }
@@ -122,7 +123,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
       onAuthenticated?.(result.user)
       onClose()
     } else {
-      setError(result.error || t('auth.error.registerFailed'))
+      setError(localizeAuthApiError(result.error, t) || t('auth.error.registerFailed'))
     }
     setLoading(false)
   }
@@ -138,7 +139,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
     if (result.success) {
       setMessage(result.message || t('auth.success.resetSent'))
     } else {
-      setError(result.error || t('auth.error.resetFailed'))
+      setError(localizeAuthApiError(result.error, t) || t('auth.error.resetFailed'))
     }
     setLoading(false)
   }

@@ -2,6 +2,7 @@ import helloPluginExample from '../../examples/hello.plugin.json'
 import workspaceHintsPlugin from '../../examples/plugins/workspace-hints.plugin.json'
 import type { PluginPackage } from './pluginService'
 import { pluginManager } from './pluginService'
+import { workspaceError } from './workspaceErrors'
 import { loadInstalledPluginPackages, saveInstalledPluginPackages } from './pluginStorage'
 
 export interface PluginCatalogEntry {
@@ -51,7 +52,7 @@ export async function installCatalogEntry(
   entryId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const entry = getCatalogEntry(entryId)
-  if (!entry) return { ok: false, error: '插件不在官方目录中' }
+  if (!entry) return { ok: false, error: workspaceError('plugin.catalog.notFound') }
 
   const result = pluginManager.registerPackage(entry.package)
   if (!result.ok) return { ok: false, error: result.error }
@@ -62,7 +63,7 @@ export async function installCatalogEntry(
     without.push(entry.package)
     await saveInstalledPluginPackages(without)
   } catch {
-    return { ok: false, error: '插件已注册但未能写入本地存储' }
+    return { ok: false, error: workspaceError('plugin.catalog.storageFailed') }
   }
 
   return { ok: true }

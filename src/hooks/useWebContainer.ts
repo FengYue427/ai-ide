@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { WebContainer } from '@webcontainer/api'
+import { createTranslator } from '../i18n'
 import { registerTerminalBridge } from '../services/terminalBridge'
+import { getWorkspaceLocale } from '../services/workspaceErrors'
 
 let webcontainerInstance: WebContainer | null = null
 let initPromise: Promise<WebContainer> | null = null
@@ -55,7 +57,8 @@ export function useWebContainer(): UseWebContainerReturn {
         }
       } catch (err) {
         if (mountedRef.current) {
-          const errorMessage = err instanceof Error ? err.message : 'WebContainer 启动失败'
+          const t = createTranslator(getWorkspaceLocale())
+          const errorMessage = err instanceof Error ? err.message : t('runtime.webcontainer.bootFailed')
           setError(new Error(errorMessage))
           console.error('[useWebContainer] Initialization failed:', err)
           initPromise = null
@@ -85,7 +88,7 @@ export function useWebContainer(): UseWebContainerReturn {
 
   const ensureReady = () => {
     if (!webcontainerInstance) {
-      throw new Error('WebContainer 还未就绪')
+      throw new Error(createTranslator(getWorkspaceLocale())('runtime.webcontainer.notReady'))
     }
     return webcontainerInstance
   }
@@ -113,7 +116,7 @@ export function useWebContainer(): UseWebContainerReturn {
   const runCommand = useCallback(async (command: string, args: string[] = []) => {
     const instance = ensureReady()
     if (isRunning) {
-      throw new Error('已有命令正在运行')
+      throw new Error(createTranslator(getWorkspaceLocale())('runtime.webcontainer.busy'))
     }
 
     setIsRunning(true)

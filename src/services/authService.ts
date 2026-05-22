@@ -1,6 +1,12 @@
+import { createTranslator } from '../i18n'
 import { unifiedStorage, StorageLayer } from './unifiedStorage'
 import { readJsonResponse, apiFetch } from './apiUtils'
 import { trackEvent } from '../lib/observability'
+import { getWorkspaceLocale } from './workspaceErrors'
+
+function at() {
+  return createTranslator(getWorkspaceLocale())
+}
 
 export interface User {
   id: string
@@ -144,25 +150,25 @@ class AuthService {
         }
       } else if (res.status !== 404) {
         const data = await readJsonResponse<{ error?: string }>(res)
-        return { success: false, error: data?.error || '邮箱或密码错误' }
+        return { success: false, error: data?.error || at()('auth.error.loginFailed') }
       }
     } catch {
       if (!allowOfflineAuthFallback()) {
-        return { success: false, error: '无法连接服务器，请检查网络后重试' }
+        return { success: false, error: at()('auth.error.network') }
       }
     }
 
     if (!allowOfflineAuthFallback()) {
-      return { success: false, error: '邮箱或密码错误' }
+      return { success: false, error: at()('auth.error.loginFailed') }
     }
 
     const users = this.getLocalUsers()
     const user = users.find((item) => item.email === normalizedEmail)
-    if (!user) return { success: false, error: '账号不存在，请先注册' }
+    if (!user) return { success: false, error: at()('auth.error.accountNotFound') }
 
     const passwordHash = await this.hashPassword(password)
     if (user.passwordHash !== passwordHash) {
-      return { success: false, error: '邮箱或密码错误' }
+      return { success: false, error: at()('auth.error.loginFailed') }
     }
 
     const { passwordHash: _passwordHash, ...publicUser } = user
@@ -191,21 +197,21 @@ class AuthService {
         }
       } else if (res.status !== 404) {
         const data = await readJsonResponse<{ error?: string }>(res)
-        return { success: false, error: data?.error || '注册失败' }
+        return { success: false, error: data?.error || at()('auth.error.registerFailed') }
       }
     } catch {
       if (!allowOfflineAuthFallback()) {
-        return { success: false, error: '无法连接服务器，请检查网络后重试' }
+        return { success: false, error: at()('auth.error.network') }
       }
     }
 
     if (!allowOfflineAuthFallback()) {
-      return { success: false, error: '注册失败，请稍后重试' }
+      return { success: false, error: at()('auth.error.registerFailed') }
     }
 
     const users = this.getLocalUsers()
     if (users.some((user) => user.email === normalizedEmail)) {
-      return { success: false, error: '邮箱已注册，请直接登录' }
+      return { success: false, error: at()('auth.error.emailRegistered') }
     }
 
     const user: User & { passwordHash: string } = {
@@ -236,9 +242,9 @@ class AuthService {
       if (res.ok && data?.success) {
         return { success: true, message: data.message, demo: data.demo }
       }
-      return { success: false, error: data?.error || '发送失败，请稍后重试' }
+      return { success: false, error: data?.error || at()('auth.error.resetFailed') }
     } catch {
-      return { success: false, error: '无法连接服务器，请稍后重试' }
+      return { success: false, error: at()('auth.error.network') }
     }
   }
 
@@ -254,9 +260,9 @@ class AuthService {
         await this.persistSession(data.user)
         return { success: true, user: data.user }
       }
-      return { success: false, error: data?.error || 'OAuth 登录同步失败' }
+      return { success: false, error: data?.error || at()('auth.api.oauthSyncFailed') }
     } catch {
-      return { success: false, error: '无法连接服务器，请稍后重试' }
+      return { success: false, error: at()('auth.error.network') }
     }
   }
 

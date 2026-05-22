@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Building2, Check, Crown, Loader2, Zap } from 'lucide-react'
-import { BETA_BILLING_NOTE, hasCheckoutPayment } from '../../lib/billing/checkout'
+import { hasCheckoutPayment } from '../../lib/billing/checkout'
+import { localizePlans } from '../lib/localizePlan'
+import { buildSubscriptionPricingNote } from '../lib/subscriptionPricingNote'
 import { readJsonResponse } from '../services/apiUtils'
 import { authService } from '../services/authService'
 import { subscriptionService } from '../services/subscriptionService'
-import { useI18n } from '../i18n'
-import type { TranslationKey } from '../i18n'
+import { useI18n, type TranslationKey } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import CnPayModal from './CnPayModal'
 import { AlertBanner } from './ui/AlertBanner'
@@ -104,7 +105,7 @@ const planVisuals: Record<string, { gradient: string; border: string; icon: Reac
 }
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentPlan = 'free' }) => {
-  const { t, locale } = useI18n()
+  const { t, language } = useI18n()
   const setCurrentPlan = useIDEStore((s) => s.setCurrentPlan)
   const fallbackPlans = useMemo(() => buildFallbackPlans(t), [t])
   const [plans, setPlans] = useState<Plan[]>([])
@@ -122,7 +123,14 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     stripe: false,
     devMock: false,
   })
-  const [pricingNote, setPricingNote] = useState('')
+  const displayPlans = useMemo(
+    () => localizePlans(plans.length > 0 ? plans : fallbackPlans, t),
+    [plans, fallbackPlans, t],
+  )
+  const localizedPricingNote = useMemo(
+    () => buildSubscriptionPricingNote(paymentMethods, t, language),
+    [paymentMethods, t, language],
+  )
 
   const loadSubscription = () => {
     return fetch('/api/subscription', { credentials: 'include' })
@@ -149,7 +157,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
           wechat?: boolean
           stripe?: boolean
           devMock?: boolean
-          pricingNote?: string
         }>(r),
       )
       .then((data) => {
@@ -160,7 +167,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             stripe: Boolean(data.stripe),
             devMock: Boolean(data.devMock),
           })
-          if (data.pricingNote) setPricingNote(data.pricingNote)
         }
       })
       .catch(() => {})
@@ -191,7 +197,10 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     }
   }, [fallbackPlans, setCurrentPlan, t])
 
-  const currentPlanInfo = useMemo(() => plans.find((plan) => plan.name === currentPlan), [plans, currentPlan])
+  const currentPlanInfo = useMemo(
+    () => displayPlans.find((plan) => plan.name === currentPlan),
+    [displayPlans, currentPlan],
+  )
   const checkoutAvailable = hasCheckoutPayment(paymentMethods)
 
   const handleSubscribe = async (planId: string, planName: string) => {
@@ -206,7 +215,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
       return
     }
 
-    const plan = plans.find((p) => p.name === planName)
+    const plan = displayPlans.find((p) => p.name === planName)
     if (!plan) return
 
     setError('')
@@ -246,7 +255,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     }
 
     if (!checkoutAvailable) {
-      setSuccess(BETA_BILLING_NOTE)
+      setSuccess(t('subscription.betaNote'))
       return
     }
 
@@ -344,7 +353,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
   const isPaidPlan = currentPlan !== 'free'
   const periodEndLabel =
     subscription?.currentPeriodEnd &&
-    new Date(subscription.currentPeriodEnd).toLocaleDateString(locale, {
+    new Date(subscription.currentPeriodEnd).toLocaleDateString(language, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -380,13 +389,13 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             </p>
           </div>
 
-          {pricingNote && (
-            <AlertBanner variant="info">{pricingNote}</AlertBanner>
+          {localizedPricingNote && checkoutAvailable && (
+            <AlertBanner variant="info">{localizedPricingNote}</AlertBanner>
           )}
 
           {!checkoutAvailable && !loading && (
             <div className="subscription-beta-banner" role="status">
-              {BETA_BILLING_NOTE}
+              {t('subscription.betaNote')}
             </div>
           )}
 
@@ -459,7 +468,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             </div>
           ) : (
             <div className="subscription-plans-grid">
-              {plans.map((plan) => {
+              {displayPlans.map((plan) => {
                 const visual = planVisuals[plan.name] || planVisuals.free
                 const isCurrent = plan.name === currentPlan
                 const isProcessing = processingPlanId === plan.id

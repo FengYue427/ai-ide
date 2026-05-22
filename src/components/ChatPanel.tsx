@@ -212,6 +212,8 @@ ${t('ai.chat.prompt')}`
           /`([\w\-./]+\.[\w]+)`/,
           /文件名[:\s]+([\w\-./]+\.[\w]+)/i,
           /文件[:\s]+([\w\-./]+\.[\w]+)/i,
+          /filename[:\s]+([\w\-./]+\.[\w]+)/i,
+          /file[:\s]+([\w\-./]+\.[\w]+)/i,
           /([\w\-./]+\.(?:js|ts|jsx|tsx|py|html|css|scss|json|md|vue|java|go|rs|php|rb|swift|kt|sql))/i,
         ]
 
