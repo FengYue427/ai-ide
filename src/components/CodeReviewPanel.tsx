@@ -3,6 +3,7 @@ import { X, AlertCircle, AlertTriangle, Lightbulb, CheckCircle, RefreshCw, Shiel
 import { codeReviewService, type CodeReviewResult, type CodeIssue } from '../services/codeReviewService'
 import { testGenerationService } from '../services/testGenerationService'
 import type { AIModel } from '../services/aiService'
+import { useI18n } from '../i18n'
 
 interface CodeReviewPanelProps {
   code: string
@@ -26,6 +27,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
   onClose,
   onTestsGenerated,
 }) => {
+  const { t } = useI18n()
   const [result, setResult] = useState<CodeReviewResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [generatingTests, setGeneratingTests] = useState(false)
@@ -63,7 +65,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
             : 'test.js'
       onTestsGenerated?.(`${base}.${ext}`, testCode)
     } catch (error) {
-      setTestError(error instanceof Error ? error.message : '生成测试失败')
+      setTestError(error instanceof Error ? error.message : t('review.testGenFailed'))
     } finally {
       setGeneratingTests(false)
     }
@@ -73,7 +75,10 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
     const quickIssues = codeReviewService.quickCheck(code, language)
     setResult({
       score: quickIssues.length === 0 ? 90 : Math.max(50, 90 - quickIssues.length * 5),
-      summary: quickIssues.length === 0 ? '快速检查通过，未发现明显问题' : `发现 ${quickIssues.length} 个问题`,
+      summary:
+        quickIssues.length === 0
+          ? t('review.quickPass')
+          : t('review.quickIssues', { count: quickIssues.length }),
       issues: quickIssues,
       improvements: [],
       security: [],
@@ -140,7 +145,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Shield size={20} style={{ color: 'var(--accent-color)' }} />
-          <span style={{ fontWeight: 600 }}>代码审查</span>
+          <span style={{ fontWeight: 600 }}>{t('review.title')}</span>
         </div>
         <button onClick={onClose} style={{ padding: '4px' }}>
           <X size={20} />
@@ -153,7 +158,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <Shield size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
             <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
-              选择审查方式分析代码质量
+              {t('review.pickMode')}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button
@@ -162,7 +167,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                 style={{ justifyContent: 'center' }}
               >
                 <Zap size={16} style={{ marginRight: '8px' }} />
-                快速检查（本地规则）
+                {t('review.quickCheck')}
               </button>
               <button
                 onClick={runReview}
@@ -175,7 +180,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                 ) : (
                   <Shield size={16} style={{ marginRight: '8px' }} />
                 )}
-                {loading ? '审查中...' : 'AI 深度审查'}
+                {loading ? t('review.reviewing') : t('review.aiReview')}
               </button>
               <button
                 onClick={runGenerateTests}
@@ -188,7 +193,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                 ) : (
                   <Award size={16} style={{ marginRight: '8px' }} />
                 )}
-                {generatingTests ? '生成中...' : 'AI 生成单元测试'}
+                {generatingTests ? t('review.generatingTests') : t('review.generateTests')}
               </button>
             </div>
             {testError && (
@@ -196,7 +201,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
             )}
             {!aiConfig.apiKey && (
               <p style={{ marginTop: '16px', fontSize: '12px', color: '#ef4444' }}>
-                请先配置 AI API Key
+                {t('review.needApiKey')}
               </p>
             )}
           </div>
@@ -242,10 +247,10 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
               }}
             >
               {[
-                { key: 'all', label: '全部', count: result.issues.length },
-                { key: 'errors', label: '错误', count: issueCounts.errors },
-                { key: 'warnings', label: '警告', count: issueCounts.warnings },
-                { key: 'suggestions', label: '建议', count: issueCounts.suggestions }
+                { key: 'all', label: t('review.filter.all'), count: result.issues.length },
+                { key: 'errors', label: t('review.filter.errors'), count: issueCounts.errors },
+                { key: 'warnings', label: t('review.filter.warnings'), count: issueCounts.warnings },
+                { key: 'suggestions', label: t('review.filter.suggestions'), count: issueCounts.suggestions },
               ].map(tab => (
                 <button
                   key={tab.key}
@@ -293,7 +298,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                   }}
                 >
                   <CheckCircle size={32} style={{ marginBottom: '8px', color: '#10b981' }} />
-                  <p>未发现此类问题</p>
+                  <p>{t('review.noIssuesInFilter')}</p>
                 </div>
               ) : (
                 filteredIssues.map((issue, index) => (
@@ -317,7 +322,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                       </span>
                       {issue.line && (
                         <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
-                          第 {issue.line} 行
+                          {t('review.line', { line: issue.line })}
                         </span>
                       )}
                     </div>
@@ -365,7 +370,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                 className="btn btn-secondary"
                 style={{ flex: 1 }}
               >
-                返回选择
+                {t('review.back')}
               </button>
               <button
                 onClick={() => {
@@ -377,7 +382,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                 style={{ flex: 1 }}
               >
                 <RefreshCw size={14} style={{ marginRight: '6px' }} />
-                重新审查
+                {t('review.rerun')}
               </button>
             </div>
           </>

@@ -2,29 +2,27 @@
 
 ## 架构
 
-- 词条：`src/i18n/translations.ts`（`zh-CN` / `en-US`，~580 keys）
+- 词条：`src/i18n/translations.ts`（`zh-CN` / `en-US`，~680 keys）
 - 运行时：`I18nProvider` + `useI18n().t(key, params?)`
-- 非 React：`createTranslator(locale)`（hooks、AI prompt、`generateCodePrompt`）
-- 语言存储：`unifiedStorage` key `language`，归一化见 `src/lib/language.ts`
+- 非 React：`createTranslator(locale)`
+- 语言存储：`unifiedStorage` key `language`
 
 ## 已接入
 
-| 批次 | 区域 | 文件 |
-|------|------|------|
-| 1–4 | 见历史批次 | 欢迎页、设置、Chat、插件、工作区、hooks 等 |
-| 5 | 搜索、Git、AI 设置、模板/导入、状态栏、右侧面板、代码 prompt | `SearchPanel`, `GitPanel`, `AISettingsModal`, `TemplateModal`, `ImportModal`, `StatusBar`, `RightPanel`, `aiService.generateCodePrompt` |
+| 批次 | 区域 |
+|------|------|
+| 1–5 | 欢迎/设置/Chat/插件/工作区/hooks/搜索/Git/导入等（见历史提交） |
+| 6 | 审查/性能/终端/Agent 预览/Diff/拖放导入/内联 AI/预览/大纲/错误边界 |
+
+组件：`CodeReviewPanel`, `PerformancePanel`, `Terminal`, `AgentApplyModal`, `DiffViewer`, `DropZone`, `InlineAIEdit`, `PreviewPanel`, `SymbolOutline`, `ErrorBoundary`
 
 ## 待接入
 
-- `CodeReviewPanel`, `PerformancePanel`, `Terminal`, `DropZone`, `AgentApplyModal`, `CollaborationPanel`
-- `workspaceContextService` 抛出的错误文案（按 locale 映射）
-- 模板/套餐目录中的中文 `name`/`description`（`templates/index.ts`、API `displayName`）
-- 插件内置通知
+- `CollaborationPanel`, `ShareModal`, `CnPayModal`, `Editor` 内联提示
+- `templates/index.ts` 模板名称与描述
+- API 套餐 `displayName`、插件通知文案
+- `workspaceContextService` 错误消息（按 locale）
 
 ## 验收
 
-设置 → 外观 → **English** 后应切换为英文：
-
-- 全局搜索面板（Ctrl+Shift+F）、Git 侧栏、底部状态栏
-- AI 模型设置、项目模板、导入项目弹窗
-- 非 Agent 模式下快捷动作的 AI 系统 prompt（explain/refactor 等）
+设置 → 外观 → **English** 后检查：代码审查侧栏、性能面板、终端、Agent 变更预览、文件拖放导入、编辑器内联 AI、预览面板、符号大纲。

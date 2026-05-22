@@ -3,9 +3,11 @@ import { Check, FileText } from 'lucide-react'
 import { ModalShell } from './ui/ModalShell'
 import { DiffViewer } from './DiffViewer'
 import { applyChangesToFiles, applyChangesToWorkspace } from '../services/fileApplyService'
+import { useI18n } from '../i18n'
 import { useIDEStore, type AgentApplyItem } from '../store/ideStore'
 
 export function AgentApplyModal() {
+  const { t } = useI18n()
   const queue = useIDEStore((s) => s.agentApplyQueue)
   const selectedIndex = useIDEStore((s) => s.agentApplyIndex)
   const setAgentApplyIndex = useIDEStore((s) => s.setAgentApplyIndex)
@@ -70,11 +72,11 @@ export function AgentApplyModal() {
 
   return (
     <ModalShell
-      title="Agent 变更预览"
+      title={t('agentApply.title')}
       onClose={close}
       className="agent-apply-modal"
       bodyClassName="agent-apply-body"
-      ariaLabel="Agent 变更预览"
+      ariaLabel={t('agentApply.title')}
     >
       <div className="agent-apply-layout">
         <aside className="agent-apply-files">
@@ -90,7 +92,7 @@ export function AgentApplyModal() {
               >
                 <FileText size={14} />
                 <span className="agent-apply-file-name">{item.path}</span>
-                <span className="agent-apply-file-badge">{isNew ? '新建' : '修改'}</span>
+                <span className="agent-apply-file-badge">{isNew ? t('agentApply.badge.new') : t('agentApply.badge.modified')}</span>
                 {isApplied ? <Check size={12} className="agent-apply-file-done" /> : null}
               </button>
             )
@@ -103,37 +105,36 @@ export function AgentApplyModal() {
               embedded
               oldContent={selected.oldContent}
               newContent={selected.newContent}
-              oldLabel="当前"
-              newLabel="建议"
+              oldLabel={t('agentApply.oldLabel')}
+              newLabel={t('agentApply.newLabel')}
               onClose={close}
               enablePartialApply={Boolean(selected.oldContent)}
               onApplyPartial={(mergedContent) => {
                 if (!selected) return
                 applyItems([{ ...selected, newContent: mergedContent }])
               }}
-              partialApplyLabel="应用已选块"
               onApply={applyCurrent}
-              applyLabel="应用全部变更"
+              applyLabel={t('diff.apply')}
             />
           ) : (
-            <div className="agent-apply-empty">选择左侧文件查看差异</div>
+            <div className="agent-apply-empty">{t('agentApply.empty')}</div>
           )}
         </div>
       </div>
 
       <div className="agent-apply-footer">
         <span className="agent-apply-footer-meta">
-          共 {queue.length} 个文件 · 待应用 {remainingCount}
+          {t('agentApply.footer', { total: queue.length, remaining: remainingCount })}
         </span>
         <div className="agent-apply-footer-actions">
           <button type="button" className="btn-secondary" onClick={close}>
-            取消
+            {t('common.cancel')}
           </button>
           <button type="button" className="btn-secondary" onClick={applyCurrent} disabled={!selected}>
-            应用当前文件
+            {t('agentApply.applyCurrent')}
           </button>
           <button type="button" className="btn-primary" onClick={applyAll}>
-            应用全部 ({queue.length})
+            {t('agentApply.applyAll', { count: queue.length })}
           </button>
         </div>
       </div>

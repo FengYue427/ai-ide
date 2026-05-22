@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, Activity, Clock, Cpu, MemoryStick, Play, RotateCcw, BarChart3 } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 interface PerformanceMetrics {
   startTime: number
@@ -21,6 +22,7 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
   output,
   onClose
 }) => {
+  const { t } = useI18n()
   const [metrics, setMetrics] = useState<PerformanceMetrics[]>([])
   const [currentRun, setCurrentRun] = useState<PerformanceMetrics | null>(null)
   // Start tracking when running begins
@@ -108,13 +110,13 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Activity size={20} style={{ color: 'var(--accent-color)' }} />
-          <span style={{ fontWeight: 600 }}>性能分析</span>
+          <span style={{ fontWeight: 600 }}>{t('perf.title')}</span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={clearHistory}
             style={{ padding: '6px', background: 'transparent', border: 'none', cursor: 'pointer' }}
-            title="清除历史"
+            title={t('perf.clearHistory')}
           >
             <RotateCcw size={16} />
           </button>
@@ -139,7 +141,7 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <Play size={16} style={{ color: 'var(--accent-color)', animation: 'pulse 1s infinite' }} />
-              <span style={{ fontWeight: 500 }}>运行中...</span>
+              <span style={{ fontWeight: 500 }}>{t('perf.running')}</span>
             </div>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--accent-color)' }}>
               {formatTime(performance.now() - currentRun.startTime)}
@@ -151,34 +153,34 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
         {metrics.length > 0 && (
           <div style={{ marginBottom: '20px' }}>
             <h4 style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              统计概览
+              {t('perf.overview')}
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                   <BarChart3 size={14} style={{ color: 'var(--text-secondary)' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>平均耗时</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('perf.avgTime')}</span>
                 </div>
                 <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{formatTime(averageTime)}</span>
               </div>
               <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                   <Clock size={14} style={{ color: '#10b981' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>最快</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('perf.fastest')}</span>
                 </div>
                 <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#10b981' }}>{formatTime(fastest)}</span>
               </div>
               <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                   <Clock size={14} style={{ color: '#f59e0b' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>最慢</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('perf.slowest')}</span>
                 </div>
                 <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#f59e0b' }}>{formatTime(slowest)}</span>
               </div>
               <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                   <Activity size={14} style={{ color: 'var(--text-secondary)' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>运行次数</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('perf.runCount')}</span>
                 </div>
                 <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{metrics.length}</span>
               </div>
@@ -189,14 +191,14 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
         {/* Run History */}
         <div>
           <h4 style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-            运行历史
+            {t('perf.history')}
           </h4>
           
           {metrics.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
               <Activity size={48} style={{ marginBottom: '12px', opacity: 0.5 }} />
-              <p style={{ fontSize: '13px' }}>暂无运行记录</p>
-              <p style={{ fontSize: '12px', marginTop: '4px' }}>运行代码后将显示性能数据</p>
+              <p style={{ fontSize: '13px' }}>{t('perf.noRuns')}</p>
+              <p style={{ fontSize: '12px', marginTop: '4px' }}>{t('perf.noRunsHint')}</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -211,7 +213,7 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: 500 }}>运行 #{metrics.length - index}</span>
+                    <span style={{ fontWeight: 500 }}>{t('perf.runLabel', { index: metrics.length - index })}</span>
                     <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                       {new Date(metric.endTime || metric.startTime).toLocaleTimeString()}
                     </span>
@@ -221,21 +223,21 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
                     <div>
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
                         <Clock size={10} style={{ display: 'inline', marginRight: '2px' }} />
-                        执行时间
+                        {t('perf.execTime')}
                       </div>
                       <span style={{ fontWeight: 600 }}>{formatTime(metric.executionTime || 0)}</span>
                     </div>
                     <div>
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
                         <MemoryStick size={10} style={{ display: 'inline', marginRight: '2px' }} />
-                        内存估算
+                        {t('perf.memoryEst')}
                       </div>
                       <span style={{ fontWeight: 600 }}>{formatBytes(metric.memoryUsage || 0)}</span>
                     </div>
                     <div>
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
                         <Cpu size={10} style={{ display: 'inline', marginRight: '2px' }} />
-                        输出大小
+                        {t('perf.outputSize')}
                       </div>
                       <span style={{ fontWeight: 600 }}>{formatBytes(metric.outputLength)}</span>
                     </div>

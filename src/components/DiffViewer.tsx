@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { X } from 'lucide-react'
+import { useI18n } from '../i18n'
 import {
   applyPartialDiff,
   computeLineDiff,
@@ -24,16 +25,21 @@ interface DiffViewerProps {
 export const DiffViewer: React.FC<DiffViewerProps> = ({
   oldContent,
   newContent,
-  oldLabel = '旧版本',
-  newLabel = '新版本',
+  oldLabel,
+  newLabel,
   onClose,
   embedded = false,
   onApply,
-  applyLabel = '应用',
+  applyLabel,
   enablePartialApply = false,
   onApplyPartial,
-  partialApplyLabel = '应用已选块',
+  partialApplyLabel,
 }) => {
+  const { t } = useI18n()
+  const resolvedOldLabel = oldLabel ?? t('diff.oldLabel')
+  const resolvedNewLabel = newLabel ?? t('diff.newLabel')
+  const resolvedApplyLabel = applyLabel ?? t('diff.apply')
+  const resolvedPartialApplyLabel = partialApplyLabel ?? t('diff.applyPartial')
   const [showUnchanged, setShowUnchanged] = useState(true)
 
   const diffLines = useMemo(() => computeLineDiff(oldContent, newContent), [oldContent, newContent])
@@ -99,16 +105,16 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
           flexWrap: 'wrap',
         }}
       >
-        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>代码对比</h3>
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>{t('diff.title')}</h3>
         <div style={{ display: 'flex', gap: '12px', fontSize: '12px' }}>
-          <span style={{ color: '#23c55e' }}>+{stats.added} 新增</span>
-          <span style={{ color: '#ef4444' }}>-{stats.removed} 删除</span>
-          <span style={{ color: 'var(--text-secondary)' }}>{stats.unchanged} 未变更</span>
+          <span style={{ color: '#23c55e' }}>{t('diff.added', { count: stats.added })}</span>
+          <span style={{ color: '#ef4444' }}>{t('diff.removed', { count: stats.removed })}</span>
+          <span style={{ color: 'var(--text-secondary)' }}>{t('diff.unchanged', { count: stats.unchanged })}</span>
         </div>
         <div style={{ flex: 1 }} />
         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
           <input type="checkbox" checked={showUnchanged} onChange={(event) => setShowUnchanged(event.target.checked)} />
-          显示未变更
+          {t('diff.showUnchanged')}
         </label>
         {!embedded ? (
           <button onClick={onClose} style={{ padding: '4px' }} type="button">
@@ -131,7 +137,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
           }}
         >
           <span style={{ color: 'var(--text-secondary)' }}>
-            变更块 {acceptedHunks.size}/{hunks.length}：
+            {t('diff.hunks', { accepted: acceptedHunks.size, total: hunks.length })}
           </span>
           {hunks.map((hunk, index) => {
             const added = hunk.filter((line) => line.type === 'added').length
@@ -153,7 +159,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
                 }}
               >
                 <input type="checkbox" checked={acceptedHunks.has(index)} onChange={() => toggleHunk(index)} />
-                块 {index + 1} (+{added}/-{removed})
+                {t('diff.hunk', { index: index + 1, added, removed })}
               </label>
             )
           })}
@@ -163,7 +169,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
             style={{ padding: '4px 8px', fontSize: '11px' }}
             onClick={() => setAcceptedHunks(defaultAcceptedHunks(diffLines))}
           >
-            全选
+            {t('diff.selectAll')}
           </button>
           <button
             type="button"
@@ -171,7 +177,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
             style={{ padding: '4px 8px', fontSize: '11px' }}
             onClick={() => setAcceptedHunks(new Set())}
           >
-            全不选
+            {t('diff.selectNone')}
           </button>
         </div>
       ) : null}
@@ -186,9 +192,9 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
           padding: '8px 0',
         }}
       >
-        <div style={{ textAlign: 'center', borderRight: '1px solid var(--border-color)' }}>{oldLabel}</div>
-        <div style={{ textAlign: 'center', borderRight: '1px solid var(--border-color)' }}>{newLabel}</div>
-        <div style={{ paddingLeft: '12px' }}>内容</div>
+        <div style={{ textAlign: 'center', borderRight: '1px solid var(--border-color)' }}>{resolvedOldLabel}</div>
+        <div style={{ textAlign: 'center', borderRight: '1px solid var(--border-color)' }}>{resolvedNewLabel}</div>
+        <div style={{ paddingLeft: '12px' }}>{t('diff.content')}</div>
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.6' }}>
@@ -229,10 +235,10 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
           flexWrap: 'wrap',
         }}
       >
-        <span>共 {visibleLines.length} 行</span>
+        <span>{t('diff.lineCount', { count: visibleLines.length })}</span>
         {!embedded ? (
           <button onClick={onClose} className="btn btn-secondary" type="button">
-            关闭
+            {t('diff.close')}
           </button>
         ) : (
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -243,12 +249,12 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
                 disabled={acceptedHunks.size === 0}
                 onClick={() => onApplyPartial?.(applyPartialDiff(oldContent, diffLines, acceptedHunks))}
               >
-                {partialApplyLabel}
+                {resolvedPartialApplyLabel}
               </button>
             ) : null}
             {onApply ? (
               <button onClick={onApply} className="btn btn-primary" type="button">
-                {applyLabel}
+                {resolvedApplyLabel}
               </button>
             ) : null}
           </div>

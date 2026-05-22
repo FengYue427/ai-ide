@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { Upload, X, FileCode, FileJson, FileType } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 interface DropZoneProps {
   onFilesDrop: (files: Array<{ name: string; content: string }>) => void
@@ -12,6 +13,7 @@ const DropZone: React.FC<DropZoneProps> = ({
   onClose,
   acceptedTypes = ['.js', '.ts', '.jsx', '.tsx', '.py', '.html', '.css', '.json', '.md', '.txt']
 }) => {
+  const { t } = useI18n()
   const [isDragging, setIsDragging] = useState(false)
   const [droppedFiles, setDroppedFiles] = useState<Array<{ name: string; content: string }>>([])
   const [error, setError] = useState<string | null>(null)
@@ -64,12 +66,12 @@ const DropZone: React.FC<DropZoneProps> = ({
     })
 
     if (validFiles.length === 0) {
-      setError(`不支持的文件类型。请上传: ${acceptedTypes.join(', ')}`)
+      setError(t('dropzone.unsupportedType', { types: acceptedTypes.join(', ') }))
       return
     }
 
     setDroppedFiles(validFiles)
-  }, [acceptedTypes])
+  }, [acceptedTypes, t])
 
   const handleFileInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files
@@ -88,12 +90,12 @@ const DropZone: React.FC<DropZoneProps> = ({
     })
 
     if (validFiles.length === 0) {
-      setError(`不支持的文件类型。请上传: ${acceptedTypes.join(', ')}`)
+      setError(t('dropzone.unsupportedType', { types: acceptedTypes.join(', ') }))
       return
     }
 
     setDroppedFiles(validFiles)
-  }, [acceptedTypes])
+  }, [acceptedTypes, t])
 
   const handleConfirm = () => {
     onFilesDrop(droppedFiles)
@@ -136,7 +138,7 @@ const DropZone: React.FC<DropZoneProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>导入文件</h3>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{t('dropzone.title')}</h3>
           <button onClick={onClose} style={{ padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
             <X size={20} />
           </button>
@@ -160,7 +162,7 @@ const DropZone: React.FC<DropZoneProps> = ({
             >
               <Upload size={48} style={{ marginBottom: '16px', color: 'var(--accent-color)', opacity: 0.8 }} />
               <p style={{ margin: '0 0 8px', fontSize: '14px' }}>
-                拖拽文件到此处，或
+                {t('dropzone.dragOr')}
               </p>
               <label
                 style={{
@@ -170,7 +172,7 @@ const DropZone: React.FC<DropZoneProps> = ({
                   fontWeight: 500
                 }}
               >
-                点击选择文件
+                {t('dropzone.pickFiles')}
                 <input
                   type="file"
                   multiple
@@ -180,7 +182,7 @@ const DropZone: React.FC<DropZoneProps> = ({
                 />
               </label>
               <p style={{ margin: '16px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                支持: {acceptedTypes.join(', ')}
+                {t('dropzone.supported', { types: acceptedTypes.join(', ') })}
               </p>
             </div>
 
@@ -194,7 +196,7 @@ const DropZone: React.FC<DropZoneProps> = ({
           <>
             <div style={{ maxHeight: '300px', overflow: 'auto', marginBottom: '20px' }}>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                即将导入 {droppedFiles.length} 个文件：
+                {t('dropzone.pending', { count: droppedFiles.length })}
               </p>
               {droppedFiles.map((file, index) => (
                 <div
@@ -224,14 +226,14 @@ const DropZone: React.FC<DropZoneProps> = ({
                 className="btn btn-secondary"
                 style={{ padding: '8px 16px', fontSize: '13px' }}
               >
-                重新选择
+                {t('dropzone.repick')}
               </button>
               <button
                 onClick={handleConfirm}
                 className="btn btn-primary"
                 style={{ padding: '8px 16px', fontSize: '13px' }}
               >
-                确认导入
+                {t('dropzone.confirm')}
               </button>
             </div>
           </>

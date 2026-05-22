@@ -1,6 +1,7 @@
 import { ChevronRight, ListTree } from 'lucide-react'
 import { useMemo } from 'react'
 import { extractSymbolsFromContent, type IndexedSymbol, type SymbolKind } from '../services/projectIndexService'
+import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 
 const KIND_LABEL: Record<SymbolKind, string> = {
@@ -20,6 +21,7 @@ interface SymbolOutlineProps {
 }
 
 export function SymbolOutline({ collapsed, onToggleCollapsed }: SymbolOutlineProps) {
+  const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
   const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
@@ -41,7 +43,7 @@ export function SymbolOutline({ collapsed, onToggleCollapsed }: SymbolOutlinePro
         aria-expanded={!collapsed}
       >
         <ListTree size={14} />
-        <span>大纲</span>
+        <span>{t('outline.title')}</span>
         <span className="sidebar-outline-count">{symbols.length}</span>
         <ChevronRight size={14} className={collapsed ? '' : 'sidebar-outline-chevron-open'} />
       </button>
@@ -49,7 +51,7 @@ export function SymbolOutline({ collapsed, onToggleCollapsed }: SymbolOutlinePro
       {!collapsed && (
         <div className="sidebar-outline-list">
           {symbols.length === 0 ? (
-            <div className="sidebar-outline-empty">当前文件未识别到符号</div>
+            <div className="sidebar-outline-empty">{t('outline.empty')}</div>
           ) : (
             symbols.map((symbol) => (
               <OutlineRow

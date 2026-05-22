@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { ExternalLink, RefreshCw, X } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 interface PreviewPanelProps {
   content: string
@@ -9,6 +10,7 @@ interface PreviewPanelProps {
 }
 
 const PreviewPanel: React.FC<PreviewPanelProps> = ({ content, fileName, onClose, onRefresh }) => {
+  const { t } = useI18n()
   const isHtml = fileName.endsWith('.html')
 
   const srcDoc = useMemo(() => {
@@ -71,19 +73,19 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ content, fileName, onClose,
     <div className="preview-shell">
       <div className="preview-toolbar">
         <div className="preview-title-block">
-          <div className="preview-kicker">预览</div>
+          <div className="preview-kicker">{t('preview.kicker')}</div>
           <div className="preview-title">{fileName || 'Untitled'}</div>
         </div>
         <div className="preview-actions">
           <button onClick={onRefresh}>
             <RefreshCw size={14} />
-            <span>刷新</span>
+            <span>{t('preview.refresh')}</span>
           </button>
           <button onClick={openInNewWindow}>
             <ExternalLink size={14} />
-            <span>新窗口</span>
+            <span>{t('preview.newWindow')}</span>
           </button>
-          <button onClick={onClose} className="preview-close" title="关闭预览">
+          <button onClick={onClose} className="preview-close" title={t('preview.closeTitle')}>
             <X size={16} />
           </button>
         </div>

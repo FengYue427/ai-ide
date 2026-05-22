@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Wand2, X, Check, Loader2 } from 'lucide-react'
+import { useI18n } from '../i18n'
 import { sendMessage } from '../services/aiService'
 import type { AIModel } from '../services/aiService'
 
@@ -25,6 +26,7 @@ const InlineAIEdit: React.FC<InlineAIEditProps> = ({
   onClose,
   aiConfig
 }) => {
+  const { t } = useI18n()
   const [instruction, setInstruction] = useState('')
   const [loading, setLoading] = useState(false)
   const [suggestion, setSuggestion] = useState<string | null>(null)
@@ -35,14 +37,17 @@ const InlineAIEdit: React.FC<InlineAIEditProps> = ({
     inputRef.current?.focus()
   }, [])
 
-  const quickActions = [
-    { label: '解释', prompt: '解释这段代码' },
-    { label: '重构', prompt: '重构这段代码，使其更清晰' },
-    { label: '优化', prompt: '优化这段代码的性能' },
-    { label: '修复', prompt: '检查并修复这段代码的问题' },
-    { label: '添加注释', prompt: '为这段代码添加详细注释' },
-    { label: '简化', prompt: '简化这段代码' },
-  ]
+  const quickActions = useMemo(
+    () => [
+      { label: t('inlineAi.quick.explain'), prompt: t('inlineAi.prompt.explain') },
+      { label: t('inlineAi.quick.refactor'), prompt: t('inlineAi.prompt.refactor') },
+      { label: t('inlineAi.quick.optimize'), prompt: t('inlineAi.prompt.optimize') },
+      { label: t('inlineAi.quick.fix'), prompt: t('inlineAi.prompt.fix') },
+      { label: t('inlineAi.quick.comment'), prompt: t('inlineAi.prompt.comment') },
+      { label: t('inlineAi.quick.simplify'), prompt: t('inlineAi.prompt.simplify') },
+    ],
+    [t],
+  )
 
   const handleSubmit = async (customPrompt?: string) => {
     const prompt = customPrompt || instruction
@@ -52,21 +57,7 @@ const InlineAIEdit: React.FC<InlineAIEditProps> = ({
     setError(null)
 
     try {
-      const systemPrompt = `你是一个代码编辑助手。用户选中了一段 ${language} 代码，并给出了修改指令。
-
-请根据指令修改代码，并遵循以下规则：
-1. 只输出修改后的代码，不要包含解释
-2. 保持代码的缩进和格式
-3. 如果是指令无法理解，输出 "ERROR: 无法处理该指令"
-
-选中的代码：
-\`\`\`
-${selectedText}
-\`\`\`
-
-用户指令：${prompt}
-
-输出修改后的代码：`
+      const systemPrompt = `${t('prompt.inline.system', { language })}\n\n${t('prompt.inline.rule1')}\n${t('prompt.inline.rule2')}\n${t('prompt.inline.rule3')}\n\n${t('prompt.inline.selected')}\n\`\`\`\n${selectedText}\n\`\`\`\n\n${t('prompt.inline.instruction', { prompt })}\n\n${t('prompt.inline.output')}`
 
       let result = ''
       
@@ -93,7 +84,7 @@ ${selectedText}
         setSuggestion(result)
       }
     } catch (err: any) {
-      setError(err.message || '请求失败')
+      setError(err.message || t('inlineAi.requestFailed'))
     } finally {
       setLoading(false)
     }
@@ -125,7 +116,7 @@ ${selectedText}
         }}
       >
         <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-          AI 建议的修改
+          {t('inlineAi.suggestion')}
         </div>
         <pre
           style={{
@@ -152,7 +143,7 @@ ${selectedText}
             style={{ padding: '4px 8px', fontSize: '12px' }}
           >
             <X size={12} style={{ marginRight: '4px' }} />
-            重新输入
+            {t('inlineAi.retype')}
           </button>
           <button
             onClick={onReject}
@@ -160,7 +151,7 @@ ${selectedText}
             style={{ padding: '4px 8px', fontSize: '12px' }}
           >
             <X size={12} style={{ marginRight: '4px' }} />
-            拒绝
+            {t('inlineAi.reject')}
           </button>
           <button
             onClick={() => onAccept(suggestion)}
@@ -168,7 +159,7 @@ ${selectedText}
             style={{ padding: '4px 8px', fontSize: '12px' }}
           >
             <Check size={12} style={{ marginRight: '4px' }} />
-            接受
+            {t('inlineAi.accept')}
           </button>
         </div>
       </div>
@@ -190,9 +181,9 @@ ${selectedText}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
         <Wand2 size={14} style={{ color: 'var(--accent-color)' }} />
-        <span style={{ fontSize: '13px', fontWeight: 500 }}>AI 内联编辑</span>
+        <span style={{ fontSize: '13px', fontWeight: 500 }}>{t('inlineAi.title')}</span>
         <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
-          {selectedText.length} 字符已选中
+          {t('inlineAi.charsSelected', { count: selectedText.length })}
         </span>
       </div>
 
@@ -228,7 +219,7 @@ ${selectedText}
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="输入指令，如：简化这段代码"
+          placeholder={t('inlineAi.placeholder')}
           disabled={loading}
           style={{
             width: '100%',
@@ -270,7 +261,7 @@ ${selectedText}
               fontSize: '11px'
             }}
           >
-            生成
+            {t('inlineAi.generate')}
           </button>
         )}
       </div>
@@ -282,7 +273,7 @@ ${selectedText}
       )}
 
       <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-        按 Enter 生成，Esc 关闭
+        {t('inlineAi.hint')}
       </div>
     </div>
   )
