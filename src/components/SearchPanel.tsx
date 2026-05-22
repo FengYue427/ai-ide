@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowRight, FileText, Replace, Search, X } from 'lucide-react'
 import { workspaceContextService } from '../services/workspaceContextService'
+import { useI18n } from '../i18n'
 import {
   buildReplacePreview,
   collectSearchableFiles,
@@ -69,6 +70,7 @@ function ResultSnippet({
 }
 
 const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace, onClose }) => {
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [replaceQuery, setReplaceQuery] = useState('')
   const [showReplace, setShowReplace] = useState(false)
@@ -115,7 +117,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
       setReplacePreview(null)
     } catch (error) {
       setResults([])
-      setSearchError(error instanceof Error ? error.message : '搜索失败')
+      setSearchError(error instanceof Error ? error.message : t('search.failed'))
     } finally {
       setSearching(false)
     }
@@ -212,7 +214,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={scope === 'workspace' ? '搜索整个工作区…' : '搜索已打开文件…'}
+            placeholder={scope === 'workspace' ? t('search.placeholder.workspace') : t('search.placeholder.tabs')}
             autoFocus
             style={{
               flex: 1,
@@ -233,7 +235,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
               color: 'var(--text-secondary)',
               display: 'flex',
             }}
-            title="关闭搜索 (Esc)"
+            title={t('search.closeTitle')}
           >
             <X size={16} />
           </button>
@@ -246,7 +248,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
               type="text"
               value={replaceQuery}
               onChange={(event) => setReplaceQuery(event.target.value)}
-              placeholder="替换为..."
+              placeholder={t('search.replacePlaceholder')}
               style={{
                 flex: 1,
                 padding: '8px 10px',
@@ -263,9 +265,9 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', flexWrap: 'wrap' }}>
             {[
-              { label: '区分大小写', checked: caseSensitive, onChange: setCaseSensitive },
-              { label: '全词匹配', checked: wholeWord, onChange: setWholeWord },
-              { label: '正则', checked: regex, onChange: setRegex },
+              { label: t('search.option.case'), checked: caseSensitive, onChange: setCaseSensitive },
+              { label: t('search.option.wholeWord'), checked: wholeWord, onChange: setWholeWord },
+              { label: t('search.option.regex'), checked: regex, onChange: setRegex },
             ].map((option) => (
               <label
                 key={option.label}
@@ -304,7 +306,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
                       : undefined,
                 }}
               >
-                {value === 'tabs' ? '打开文件' : '工作区'}
+                {value === 'tabs' ? t('search.scope.tabs') : t('search.scope.workspace')}
               </button>
             ))}
           </div>
@@ -321,8 +323,8 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
           }}
         >
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {results.length} 处 · {fileCount} 个文件
-            {scope === 'workspace' ? ` · 共 ${searchableFiles.length} 个可搜文件` : ''}
+            {t('search.summary', { matches: results.length, files: fileCount })}
+            {scope === 'workspace' ? t('search.summary.workspaceFiles', { count: searchableFiles.length }) : ''}
           </span>
           <button
             onClick={() => setShowReplace((value) => !value)}
@@ -330,7 +332,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
             style={{ padding: '5px 9px', fontSize: '12px' }}
           >
             <Replace size={12} style={{ marginRight: '4px' }} />
-            {showReplace ? '隐藏替换' : '显示替换'}
+            {showReplace ? t('search.toggleReplaceHide') : t('search.toggleReplaceShow')}
           </button>
         </div>
 
@@ -344,7 +346,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
             className="btn btn-primary"
             style={{ marginTop: '8px', width: '100%', padding: '7px', fontSize: '12px' }}
           >
-            预览并全部替换（{results.length} 处）
+            {t('search.replaceAllPreview', { count: results.length })}
           </button>
         )}
 
@@ -358,23 +360,25 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
               background: 'var(--bg-secondary)',
             }}
           >
-            <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>替换预览</div>
+            <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>{t('search.replacePreview')}</div>
             <div style={{ maxHeight: '120px', overflow: 'auto', fontSize: '12px', marginBottom: '10px' }}>
               {replacePreview.map((item) => (
                 <div key={item.file} style={{ marginBottom: '4px', color: 'var(--text-secondary)' }}>
                   <span style={{ color: 'var(--accent-color)', fontWeight: 600 }}>{item.file}</span>
                   {' · '}
-                  {item.matchCount} 处
-                  {item.sampleLines.length > 0 ? ` (行 ${item.sampleLines.join(', ')})` : ''}
+                  {t('search.replacePreviewMatches', { count: item.matchCount })}
+                  {item.sampleLines.length > 0
+                    ? t('search.replacePreviewLines', { lines: item.sampleLines.join(', ') })
+                    : ''}
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setReplacePreview(null)}>
-                取消
+                {t('common.cancel')}
               </button>
               <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={handleReplaceAll}>
-                确认替换
+                {t('search.replaceConfirm')}
               </button>
             </div>
           </div>
@@ -396,7 +400,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
               }}
             >
               <FileText size={12} />
-              {file}（{fileResults.length}）
+              {file}{t('search.fileGroup', { count: fileResults.length })}
             </div>
             {fileResults.map((result, index) => {
               const globalIndex = results.indexOf(result)
@@ -446,7 +450,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
                         flexShrink: 0,
                       }}
                     >
-                      替换
+                      {t('search.replaceOne')}
                     </button>
                   )}
                 </div>
@@ -457,7 +461,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
 
         {results.length === 0 && query && (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-            {searching ? '正在搜索...' : '未找到匹配项'}
+            {searching ? t('search.searching') : t('search.noResults')}
           </div>
         )}
       </div>

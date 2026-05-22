@@ -9,6 +9,7 @@ export interface AIConfig {
 
 // ==================== 用量限制管理 ====================
 
+import { createTranslator, type Language } from '../i18n'
 import { checkAIQuotaLocal } from './usageService'
 
 export interface QuotaCheck {
@@ -304,17 +305,20 @@ export function extractCodeBlocks(text: string): { language: string; code: strin
   return blocks
 }
 
-// 生成代码相关的系统提示
-export function generateCodePrompt(action: 'explain' | 'refactor' | 'generate' | 'fix', context: string): string {
-  const basePrompt = `你是一个专业的编程助手。当前代码上下文:\n\n${context}\n\n`
-  
+// 生成代码相关的系统提示（跟随 UI 语言）
+export function generateCodePrompt(
+  action: 'explain' | 'refactor' | 'generate' | 'fix',
+  context: string,
+  locale: Language = 'zh-CN',
+): string {
+  const t = createTranslator(locale)
+  const basePrompt = t('prompt.code.base', { context })
   const prompts: Record<string, string> = {
-    explain: basePrompt + '请详细解释这段代码的功能、原理和潜在问题。用中文回答。',
-    refactor: basePrompt + '请重构这段代码，使其更清晰、高效、可维护。输出完整的重构后代码。',
-    generate: basePrompt + '请根据需求生成代码。如需要多个文件，请用 ```filename.ext 格式标注。',
-    fix: basePrompt + '这段代码有问题，请找出问题并提供修复后的完整代码。'
+    explain: basePrompt + t('prompt.code.explain'),
+    refactor: basePrompt + t('prompt.code.refactor'),
+    generate: basePrompt + t('prompt.code.generate'),
+    fix: basePrompt + t('prompt.code.fix'),
   }
-
   return prompts[action]
 }
 

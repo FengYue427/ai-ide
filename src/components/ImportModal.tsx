@@ -3,6 +3,7 @@ import { FileArchive, FolderOpen, Github, Link2, Upload } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import JSZip from 'jszip'
 import { fetchRepoContents, getRepoBranches, parseGitHubUrl } from '../services/githubService'
+import { useI18n } from '../i18n'
 import { ModalShell } from './ui/ModalShell'
 
 interface ImportModalProps {
@@ -24,6 +25,7 @@ const langMap: Record<string, string> = {
 }
 
 const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'github' | 'upload' | 'zip'>('github')
   const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
@@ -46,7 +48,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
   const handleParseUrl = async () => {
     const info = parseGitHubUrl(url)
     if (!info) {
-      setError('请输入有效的 GitHub 仓库地址。')
+      setError(t('import.error.invalidUrl'))
       return
     }
 
@@ -58,7 +60,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
       setBranches(branchList)
       setSelectedBranch(info.branch || branchList[0] || 'main')
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '读取仓库分支失败。'
+      const message = err instanceof Error ? err.message : t('import.error.branches')
       setError(message)
     } finally {
       setLoading(false)
@@ -75,7 +77,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
       if (result.error) {
         setError(result.error)
       } else if (result.files.length === 0) {
-        setError('没有找到可导入的文本文件。')
+        setError(t('import.error.noTextFiles'))
       } else {
         onImport(
           result.files.map((file) => {
@@ -119,7 +121,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
     const file = event.target.files?.[0]
     if (!file) return
     if (!file.name.endsWith('.zip')) {
-      setError('请选择 ZIP 文件。')
+      setError(t('import.error.selectZip'))
       return
     }
 
@@ -142,14 +144,14 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
 
       await Promise.all(tasks)
       if (files.length === 0) {
-        setError('ZIP 中没有可导入的文件。')
+        setError(t('import.error.zipEmpty'))
       } else {
         onImport(normalizeFiles(files))
         onClose()
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '未知错误'
-      setError(`解析 ZIP 失败：${message}`)
+      const message = err instanceof Error ? err.message : String(err)
+      setError(t('import.error.zipParse', { message }))
     } finally {
       setLoading(false)
     }
@@ -200,32 +202,30 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
     <ModalShell
       className="modal--import"
       bodyClassName="modal-body--stack"
-      ariaLabel="导入项目"
+      ariaLabel={t('import.title')}
       title={
         <span className="modal-title-row">
           <FolderOpen size={18} />
-          导入项目
+          {t('import.title')}
         </span>
       }
       onClose={onClose}
       footer={
         <button type="button" className="btn btn-secondary" onClick={onClose}>
-          取消
+          {t('common.cancel')}
         </button>
       }
     >
       <div className="import-hero">
-        <div className="import-hero__title">把代码带进来，然后马上开工</div>
-        <div className="import-hero__desc">
-          支持 GitHub 仓库、直接上传文件，以及 ZIP 打包导入。导入后会自动识别常见语言类型。
-        </div>
+        <div className="import-hero__title">{t('import.hero.title')}</div>
+        <div className="import-hero__desc">{t('import.hero.desc')}</div>
       </div>
 
       <div className="import-tabs">
         {[
           { id: 'github' as const, icon: Github, label: 'GitHub' },
-          { id: 'upload' as const, icon: Upload, label: '上传文件' },
-          { id: 'zip' as const, icon: FileArchive, label: 'ZIP 导入' },
+          { id: 'upload' as const, icon: Upload, label: t('import.tab.upload') },
+          { id: 'zip' as const, icon: FileArchive, label: t('import.tab.zip') },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -247,7 +247,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
           <div className="import-panel">
             <div className="import-stack">
               <div className="form-group">
-                <label className="form-label">GitHub 仓库地址</label>
+                <label className="form-label">{t('import.githubUrl')}</label>
                 <div className="import-form-row">
                   <input
                     type="text"
@@ -264,7 +264,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
 
               {branches.length > 0 && (
                 <div className="form-group">
-                  <label className="form-label">分支</label>
+                  <label className="form-label">{t('import.branch')}</label>
                   <select
                     className="form-input"
                     value={selectedBranch}
@@ -280,20 +280,20 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
               )}
 
               <div className="form-group">
-                <label className="form-label">GitHub Token（可选）</label>
+                <label className="form-label">{t('import.token')}</label>
                 <input
                   type="password"
                   className="form-input"
                   value={token}
                   onChange={(event) => setToken(event.target.value)}
-                  placeholder="用于私有仓库"
+                  placeholder={t('import.tokenPlaceholder')}
                 />
               </div>
             </div>
           </div>
 
           <button type="button" className="btn btn-primary" onClick={handleImportRepo} disabled={!repoInfo || loading}>
-            {loading ? '导入中...' : '导入仓库'}
+            {loading ? t('import.importing') : t('import.importRepo')}
           </button>
         </div>
       )}
@@ -301,8 +301,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
       {activeTab === 'upload' && (
         <DropZone
           icon={Upload}
-          title="点击或拖拽文件到这里"
-          subtitle="适合少量源码文件、配置文件和文档快速导入。支持多选。"
+          title={t('import.drop.upload.title')}
+          subtitle={t('import.drop.upload.subtitle')}
           inputId="file-upload"
           multiple
           onChange={handleFileUpload}
@@ -317,8 +317,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
       {activeTab === 'zip' && (
         <DropZone
           icon={FileArchive}
-          title="导入 ZIP 打包项目"
-          subtitle="适合把完整项目一次性带进来，也适合恢复之前导出的压缩包。"
+          title={t('import.drop.zip.title')}
+          subtitle={t('import.drop.zip.subtitle')}
           inputId="zip-upload"
           accept=".zip"
           onChange={handleZipUpload}
@@ -326,7 +326,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
             event.preventDefault()
             const files = event.dataTransfer.files
             if (!files[0]?.name.endsWith('.zip')) {
-              setError('请拖入 ZIP 文件。')
+              setError(t('import.error.dropZip'))
               return
             }
             const fakeEvent = { target: { files } } as React.ChangeEvent<HTMLInputElement>

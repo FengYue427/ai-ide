@@ -1,5 +1,7 @@
 import React from 'react'
 import { Activity, AlertCircle, Bot, CheckCircle2, CircleDot, Globe, Save, Settings2, Shield, Sparkles, Zap } from 'lucide-react'
+import { useI18n } from '../i18n'
+import { normalizeLanguage } from '../lib/language'
 
 interface StatusBarProps {
   currentFileName: string
@@ -66,6 +68,8 @@ const StatusBar: React.FC<StatusBarProps> = ({
   onToggleAutoSave,
   onOpenSettings,
 }) => {
+  const { t } = useI18n()
+  const uiLocale = normalizeLanguage(language)
   const getLanguageLabel = () => {
     const map: Record<string, string> = {
       javascript: 'JavaScript',
@@ -106,26 +110,30 @@ const StatusBar: React.FC<StatusBarProps> = ({
         </div>
 
         <div style={pillStyle}>
-          <span>{lineCount} 行</span>
+          <span>{t('editor.meta.lines', { count: lineCount })}</span>
           <span>·</span>
-          <span>{charCount} 字符</span>
+          <span>{t('editor.meta.chars', { count: charCount })}</span>
         </div>
 
         <div style={{ ...pillStyle, color: diagnosticCount > 0 ? 'var(--warning-color)' : 'var(--success-color)' }}>
           <AlertCircle size={12} />
-          <span>{diagnosticCount > 0 ? `${diagnosticCount} 个诊断` : '无诊断'}</span>
+          <span>
+            {diagnosticCount > 0
+              ? t('status.diagnostics.count', { count: diagnosticCount })
+              : t('status.diagnostics.none')}
+          </span>
         </div>
 
         {activeFeatures.codeReview && (
           <div style={{ ...pillStyle, color: '#60a5fa' }}>
             <Shield size={12} />
-            <span>代码审查</span>
+            <span>{t('status.feature.review')}</span>
           </div>
         )}
         {activeFeatures.performance && (
           <div style={{ ...pillStyle, color: 'var(--success-color)' }}>
             <Activity size={12} />
-            <span>性能监测</span>
+            <span>{t('status.feature.performance')}</span>
           </div>
         )}
       </div>
@@ -133,35 +141,35 @@ const StatusBar: React.FC<StatusBarProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
         <div style={{ ...pillStyle, color: isWebContainerReady ? 'var(--success-color)' : 'var(--warning-color)' }}>
           <Zap size={12} />
-          <span>{isWebContainerReady ? '运行环境已就绪' : '运行环境加载中'}</span>
+          <span>{isWebContainerReady ? t('status.runtime.ready') : t('status.runtime.loading')}</span>
         </div>
 
-        <button onClick={onToggleAutoSave} style={{ ...actionButtonStyle, color: autoSaveEnabled ? 'var(--success-color)' : 'var(--text-secondary)' }} title="切换自动保存">
+        <button onClick={onToggleAutoSave} style={{ ...actionButtonStyle, color: autoSaveEnabled ? 'var(--success-color)' : 'var(--text-secondary)' }} title={t('status.autosaveTitle')}>
           <Save size={12} />
-          <span>{autoSaveEnabled ? '自动保存开启' : '手动保存'}</span>
+          <span>{autoSaveEnabled ? t('status.autosave.on') : t('status.autosave.off')}</span>
         </button>
 
         {gitBranch && (
-          <button onClick={onOpenGitPanel} style={{ ...actionButtonStyle, color: gitModified > 0 ? 'var(--warning-color)' : 'var(--text-secondary)' }} title="打开 Git 面板">
+          <button onClick={onOpenGitPanel} style={{ ...actionButtonStyle, color: gitModified > 0 ? 'var(--warning-color)' : 'var(--text-secondary)' }} title={t('status.gitTitle')}>
             <span>{gitBranch}</span>
             {gitModified > 0 && <span>({gitModified})</span>}
           </button>
         )}
 
-        <button onClick={onOpenAISettings} style={{ ...actionButtonStyle, color: isAIConnected ? 'var(--accent-color)' : 'var(--text-secondary)' }} title="配置 AI">
+        <button onClick={onOpenAISettings} style={{ ...actionButtonStyle, color: isAIConnected ? 'var(--accent-color)' : 'var(--text-secondary)' }} title={t('status.aiTitle')}>
           <Bot size={12} />
-          <span>{isAIConnected ? aiProvider ?? 'AI 已连接' : '配置 AI'}</span>
+          <span>{isAIConnected ? aiProvider ?? t('status.ai.connected') : t('status.ai.configure')}</span>
           {isAIConnected ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
         </button>
 
         <div style={pillStyle}>
           <Globe size={12} />
-          <span>{language === 'en' || language === 'en-US' ? 'English' : '中文'}</span>
+          <span>{uiLocale === 'en-US' ? t('status.locale.en') : t('status.locale.zh')}</span>
         </div>
 
-        <button onClick={onOpenSettings} style={actionButtonStyle} title="打开设置">
+        <button onClick={onOpenSettings} style={actionButtonStyle} title={t('status.settingsTitle')}>
           <Settings2 size={12} />
-          <span>设置</span>
+          <span>{t('status.settings')}</span>
         </button>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { Check, GitBranch, History, Plus, RefreshCw, RotateCcw } from 'lucide-re
 import * as gitService from '../services/gitService'
 import type { GitFileSyncUpdate } from '../services/gitService'
 import type { FileItem } from '../types/file'
+import { useI18n } from '../i18n'
 import { workspaceContextService } from '../services/workspaceContextService'
 
 interface GitPanelProps {
@@ -15,6 +16,7 @@ interface GitPanelProps {
 }
 
 const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorSync, onShowDiff, notify }) => {
+  const { t } = useI18n()
   const [status, setStatus] = useState<gitService.GitStatus[]>([])
   const [commits, setCommits] = useState<gitService.GitCommit[]>([])
   const [commitMessage, setCommitMessage] = useState('')
@@ -48,7 +50,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
       setError(null)
     } catch (refreshError) {
       setIsInit(false)
-      setError(refreshError instanceof Error ? refreshError.message : 'Git 状态读取失败')
+      setError(refreshError instanceof Error ? refreshError.message : t('git.statusReadFailed'))
     }
   }, [fs, syncWorkspaceToFs])
 
@@ -64,9 +66,9 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
       await action()
       await refresh()
     } catch (actionError) {
-      const message = actionError instanceof Error ? actionError.message : 'Git 操作失败'
+      const message = actionError instanceof Error ? actionError.message : t('git.actionFailed')
       setError(message)
-      notify?.('error', 'Git 操作失败', message)
+      notify?.('error', t('git.actionFailed'), message)
     } finally {
       setIsBusy(false)
     }
@@ -78,13 +80,13 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
 
   const handleStage = (filepath: string) => runGitAction(async () => {
     await gitService.addFile(fs, '/', filepath)
-    notify?.('success', '已暂存文件', filepath)
+    notify?.('success', t('git.stagedFile'), filepath)
   })
 
   const handleCommit = () => runGitAction(async () => {
     if (!commitMessage.trim()) return
     await gitService.commit(fs, '/', commitMessage.trim())
-    notify?.('success', '提交完成', commitMessage.trim())
+    notify?.('success', t('git.commitDone'), commitMessage.trim())
     setCommitMessage('')
     onFilesChange()
   })
@@ -93,12 +95,12 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
     for (const file of status.filter((item) => !item.staged)) {
       await gitService.addFile(fs, '/', file.filepath)
     }
-    notify?.('success', '已暂存全部改动', `${unstaged.length} 个文件`)
+    notify?.('success', t('git.stagedAll'), t('git.stagedAllDetail', { count: unstaged.length }))
   })
 
   const handleUnstage = (filepath: string) => runGitAction(async () => {
     await gitService.unstageFile(fs, '/', filepath)
-    notify?.('success', '已取消暂存', filepath)
+    notify?.('success', t('git.unstaged'), filepath)
   })
 
   const handleShowDiff = async (filepath: string) => {
@@ -108,22 +110,22 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
       const diff = await gitService.getFileDiff(fs, '/', filepath)
       onShowDiff?.(diff.oldContent, diff.newContent)
     } catch (diffError) {
-      const message = diffError instanceof Error ? diffError.message : '无法读取差异'
+      const message = diffError instanceof Error ? diffError.message : t('git.diffReadFailed')
       setError(message)
-      notify?.('error', '无法查看差异', message)
+      notify?.('error', t('git.diffViewFailed'), message)
     }
   }
 
   const handleDiscard = (item: gitService.GitStatus) => runGitAction(async () => {
     const content = await gitService.discardFileChanges(fs, '/', item.filepath, item.status)
     onEditorSync?.([{ path: item.filepath, content }])
-    notify?.('success', '已放弃改动', item.filepath)
+    notify?.('success', t('git.discarded'), item.filepath)
   })
 
   const handleDiscardAllUnstaged = () => runGitAction(async () => {
     const updates = await gitService.discardAllUnstaged(fs, '/', status)
     onEditorSync?.(updates)
-    notify?.('success', '已放弃全部未暂存改动', `${updates.length} 个文件`)
+    notify?.('success', t('git.discardedAll'), t('git.discardedAllDetail', { count: updates.length }))
   })
 
   const handleCheckoutBranch = (nextBranch: string) => runGitAction(async () => {
@@ -139,7 +141,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
     const updates = await gitService.readWorktreeContents(fs, '/', paths)
     onEditorSync?.(updates)
 
-    notify?.('success', '已切换分支', nextBranch)
+    notify?.('success', t('git.branchSwitched'), nextBranch)
     onFilesChange()
   })
 
@@ -162,7 +164,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
   if (!fs) {
     return (
       <div style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.7 }}>
-        运行环境准备好后，Git 面板会自动连接到当前工作区。
+        {t('git.waitRuntime')}
       </div>
     )
   }
@@ -171,15 +173,13 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
     return (
       <div style={{ padding: '16px', display: 'grid', gap: '14px' }}>
         <div style={{ padding: '18px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'color-mix(in srgb, var(--bg-secondary) 88%, transparent)' }}>
-          <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>这个工作区还没有初始化 Git</div>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            初始化后可以在这里查看改动、暂存文件，并提交版本记录。
-          </div>
+          <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>{t('git.notInit.title')}</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{t('git.notInit.desc')}</div>
           {error && <div style={{ marginTop: '10px', color: 'var(--danger-color)', fontSize: '12px' }}>{error}</div>}
         </div>
         <button className="btn btn-primary" onClick={handleInit} disabled={isBusy}>
           <GitBranch size={14} style={{ marginRight: '6px' }} />
-          {isBusy ? '正在初始化...' : '初始化仓库'}
+          {isBusy ? t('git.initBusy') : t('git.initRepo')}
         </button>
       </div>
     )
@@ -228,17 +228,17 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
           onClick={() => void refresh()}
           disabled={isBusy}
           style={{ padding: '6px 10px', fontSize: '11px' }}
-          title="刷新 Git 状态"
+          title={t('git.refreshTitle')}
         >
           <RefreshCw size={12} style={{ marginRight: '4px' }} />
-          刷新
+          {t('git.refresh')}
         </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px', padding: '12px', borderBottom: '1px solid var(--border-color)' }}>
         {[
-          { id: 'changes' as const, icon: Plus, label: `改动 ${status.length}` },
-          { id: 'history' as const, icon: History, label: `历史 ${commits.length}` },
+          { id: 'changes' as const, icon: Plus, label: t('git.tab.changes', { count: status.length }) },
+          { id: 'history' as const, icon: History, label: t('git.tab.history', { count: commits.length }) },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -276,15 +276,15 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
             <section style={{ padding: '14px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 700 }}>未暂存</div>
-                  <div style={{ fontSize: '16px', fontWeight: 700 }}>{unstaged.length} 个文件</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 700 }}>{t('git.unstagedLabel')}</div>
+                  <div style={{ fontSize: '16px', fontWeight: 700 }}>{t('git.unstagedCount', { count: unstaged.length })}</div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button type="button" className="btn btn-secondary" onClick={handleDiscardAllUnstaged} disabled={isBusy}>
-                    全部放弃
+                    {t('git.discardAll')}
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={handleStageAll} disabled={isBusy}>
-                    全部暂存
+                    {t('git.stageAll')}
                   </button>
                 </div>
               </div>
@@ -319,7 +319,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
                         onClick={() => handleShowDiff(item.filepath)}
                         style={{ padding: '4px 8px', fontSize: '11px' }}
                       >
-                        差异
+                        {t('git.diff')}
                       </button>
                       <button
                         type="button"
@@ -327,7 +327,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
                         disabled={isBusy}
                         onClick={() => handleDiscard(item)}
                         style={{ padding: '4px 8px', fontSize: '11px' }}
-                        title="放弃此文件的未暂存改动"
+                        title={t('git.discardFileTitle')}
                       >
                         <RotateCcw size={12} />
                       </button>
@@ -336,7 +336,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
                         disabled={isBusy}
                         onClick={() => handleStage(item.filepath)}
                         style={{ background: 'none', border: 'none', cursor: isBusy ? 'wait' : 'pointer', padding: 0 }}
-                        title="暂存"
+                        title={t('git.stageTitle')}
                       >
                         <Plus size={14} color="var(--text-secondary)" />
                       </button>
@@ -349,14 +349,14 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
 
           {staged.length > 0 && (
             <section style={{ padding: '14px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '10px' }}>已暂存</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '10px' }}>{t('git.stagedLabel')}</div>
               <div style={{ display: 'grid', gap: '8px', marginBottom: '12px' }}>
                 {staged.map((item) => (
                   <div key={item.filepath} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     <Check size={14} color="#33c58e" />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.filepath}</span>
                     <button className="btn btn-secondary" onClick={() => handleUnstage(item.filepath)} disabled={isBusy} style={{ padding: '4px 8px', fontSize: '11px' }}>
-                      取消暂存
+                      {t('git.unstage')}
                     </button>
                   </div>
                 ))}
@@ -368,11 +368,11 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
                   value={commitMessage}
                   onChange={(event) => setCommitMessage(event.target.value)}
                   onKeyDown={(event) => event.key === 'Enter' && handleCommit()}
-                  placeholder="写一句这次提交做了什么"
+                  placeholder={t('git.commitPlaceholder')}
                   style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
                 />
                 <button className="btn btn-primary" onClick={handleCommit} disabled={!commitMessage.trim() || isBusy}>
-                  {isBusy ? '提交中...' : '提交'}
+                  {isBusy ? t('git.committing') : t('git.commit')}
                 </button>
               </div>
             </section>
@@ -380,7 +380,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
 
           {status.length === 0 && (
             <div style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-              当前没有未提交的改动。
+              {t('git.noChanges')}
             </div>
           )}
         </div>
@@ -400,7 +400,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
 
           {commits.length === 0 && (
             <div style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-              暂无提交记录。
+              {t('git.noCommits')}
             </div>
           )}
         </div>

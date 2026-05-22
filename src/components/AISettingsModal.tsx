@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Bot, Sparkles } from 'lucide-react'
+import { useI18n } from '../i18n'
 import { AIModel, modelOptions, defaultEndpoints } from '../services/aiService'
 import { ModalShell } from './ui/ModalShell'
 
@@ -15,6 +16,7 @@ interface AISettingsModalProps {
 }
 
 const AISettingsModal: React.FC<AISettingsModalProps> = ({ config, onSave, onClose }) => {
+  const { t } = useI18n()
   const [provider, setProvider] = useState<AIModel>(config.provider || 'openai')
   const [apiKey, setApiKey] = useState(config.apiKey || '')
   const [model, setModel] = useState(config.model || modelOptions.openai.models[0])
@@ -39,27 +41,27 @@ const AISettingsModal: React.FC<AISettingsModalProps> = ({ config, onSave, onClo
   return (
     <ModalShell
       className="modal--ai-settings"
-      ariaLabel="AI 模型设置"
+      ariaLabel={t('aiSettings.title')}
       title={
         <span className="modal-title-row">
           <Bot size={18} />
-          AI 模型设置
+          {t('aiSettings.title')}
         </span>
       }
       onClose={onClose}
       footer={
         <>
           <button type="button" className="btn btn-secondary" onClick={onClose}>
-            取消
+            {t('common.cancel')}
           </button>
           <button type="button" className="btn btn-primary" onClick={handleSave}>
-            保存
+            {t('common.save')}
           </button>
         </>
       }
     >
       <div className="form-group">
-        <label className="form-label">AI 提供商</label>
+        <label className="form-label">{t('aiSettings.provider')}</label>
         <div className="ai-provider-grid">
           {(Object.keys(modelOptions) as AIModel[]).map((key) => (
             <button
@@ -75,7 +77,7 @@ const AISettingsModal: React.FC<AISettingsModalProps> = ({ config, onSave, onClo
       </div>
 
       <div className="form-group">
-        <label className="form-label">模型</label>
+        <label className="form-label">{t('aiSettings.model')}</label>
         <select className="form-input" value={model} onChange={(e) => setModel(e.target.value)}>
           {modelOptions[provider].models.map((m) => (
             <option key={m} value={m}>
@@ -97,7 +99,7 @@ const AISettingsModal: React.FC<AISettingsModalProps> = ({ config, onSave, onClo
               provider === 'openai' || provider === 'deepseek' ? 'sk-...' : 'your-api-key'
             }
           />
-          <span className="form-hint">API Key 仅存储在本地浏览器中</span>
+          <span className="form-hint">{t('aiSettings.apiKeyHint')}</span>
         </div>
       )}
 
@@ -107,12 +109,12 @@ const AISettingsModal: React.FC<AISettingsModalProps> = ({ config, onSave, onClo
         onClick={() => setShowAdvanced(!showAdvanced)}
       >
         <Sparkles size={12} />
-        {showAdvanced ? '隐藏高级设置' : '高级设置'}
+        {showAdvanced ? t('aiSettings.advancedHide') : t('aiSettings.advancedShow')}
       </button>
 
       {showAdvanced && (
         <div className="form-group ai-advanced-block">
-          <label className="form-label">自定义 API 端点 (可选)</label>
+          <label className="form-label">{t('aiSettings.endpoint')}</label>
           <input
             type="text"
             className="form-input"
@@ -120,7 +122,7 @@ const AISettingsModal: React.FC<AISettingsModalProps> = ({ config, onSave, onClo
             onChange={(e) => setEndpoint(e.target.value)}
             placeholder={defaultEndpoints[provider]}
           />
-          <span className="form-hint">用于自建 API 代理或兼容 OpenAI 格式的服务</span>
+          <span className="form-hint">{t('aiSettings.endpointHint')}</span>
         </div>
       )}
     </ModalShell>

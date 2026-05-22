@@ -2,33 +2,29 @@
 
 ## 架构
 
-- 词条：`src/i18n/translations.ts`（`zh-CN` / `en-US`，~480 keys）
+- 词条：`src/i18n/translations.ts`（`zh-CN` / `en-US`，~580 keys）
 - 运行时：`I18nProvider` + `useI18n().t(key, params?)`
-- 非 React：`createTranslator(locale)`（hooks、工作区 AI prompt）
+- 非 React：`createTranslator(locale)`（hooks、AI prompt、`generateCodePrompt`）
 - 语言存储：`unifiedStorage` key `language`，归一化见 `src/lib/language.ts`
 
 ## 已接入
 
 | 批次 | 区域 | 文件 |
 |------|------|------|
-| 1 | 欢迎页、顶栏、登录、Chat 欢迎 | `WelcomeScreen`, `AppToolbar`, `AuthModal`, `ChatPanel` |
-| 2 | 设置中心、订阅弹窗、命令面板 | `SettingsCenter`, `SubscriptionModal`, `CommandPalette` |
-| 3 | MCP/规则、配额、侧栏、插件、空状态、反馈、确认/通知、Chat 主体 | `McpSettingsSection`, `ProjectRulesSection`, `QuotaIndicator`, `FileSidebar`, `PluginModal`, `PluginManager`, `EmptyState`, `FeedbackCenter`, `ChatPanel`, `PanelHost`, `AppShell` |
-| 4 | 运行环境、编辑器栏、hooks toast、工作区管理/上下文、片段库、AI 工作区 prompt | `AppShell`, `EditorLayout`, `useEditorActions`, `useFileActions`, `useSessionGuard`, `useBillingReturn`, `WorkspaceManager`, `WorkspacePanel`, `SnippetLibrary`, `workspaceContextService` |
+| 1–4 | 见历史批次 | 欢迎页、设置、Chat、插件、工作区、hooks 等 |
+| 5 | 搜索、Git、AI 设置、模板/导入、状态栏、右侧面板、代码 prompt | `SearchPanel`, `GitPanel`, `AISettingsModal`, `TemplateModal`, `ImportModal`, `StatusBar`, `RightPanel`, `aiService.generateCodePrompt` |
 
-## 待接入（第五批及以后）
+## 待接入
 
-- `SearchPanel`, `GitPanel`, `AISettingsModal`, `TemplateModal`, `ImportModal`, `StatusBar` 等次要面板
-- `generateCodePrompt`、语义搜索/审查等服务层中文
-- API 返回的套餐 `displayName`（服务端多语言或映射表）
-- 插件内置通知文案（第三方插件传入）
+- `CodeReviewPanel`, `PerformancePanel`, `Terminal`, `DropZone`, `AgentApplyModal`, `CollaborationPanel`
+- `workspaceContextService` 抛出的错误文案（按 locale 映射）
+- 模板/套餐目录中的中文 `name`/`description`（`templates/index.ts`、API `displayName`）
+- 插件内置通知
 
 ## 验收
 
 设置 → 外观 → **English** 后应切换为英文：
 
-- 欢迎页、顶栏、登录、Chat（含 Agent 工作区上下文 prompt）
-- 设置中心、命令面板、升级套餐弹窗
-- MCP / 规则、插件、侧栏、配额、空状态、反馈
-- 运行状态、编辑器信息栏、文件/运行/订阅相关 toast
-- 工作区管理、工作区上下文导入、代码片段库
+- 全局搜索面板（Ctrl+Shift+F）、Git 侧栏、底部状态栏
+- AI 模型设置、项目模板、导入项目弹窗
+- 非 Agent 模式下快捷动作的 AI 系统 prompt（explain/refactor 等）

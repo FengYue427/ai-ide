@@ -310,7 +310,7 @@ ${t('ai.chat.prompt')}`
           systemPrompt = workspaceContextService.generateSystemPrompt(additionalContext, language)
         } else {
           systemPrompt = action
-            ? generateCodePrompt(action, currentCode)
+            ? generateCodePrompt(action, currentCode, language)
             : t('chat.system.default', { code: currentCode })
         }
 

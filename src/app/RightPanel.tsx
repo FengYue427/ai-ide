@@ -4,6 +4,7 @@ import { applyChangesToFiles, applyChangesToWorkspace } from '../services/fileAp
 import { applyGitSyncToFiles, applyGitSyncToWorkspace } from './gitEditorSync'
 import { projectIndexManager } from '../services/projectIndexManager'
 import type { GitFileSyncUpdate } from '../services/gitService'
+import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import type { WebContainer } from '@webcontainer/api'
 import type { ToastKind } from '../components/FeedbackCenter'
@@ -16,6 +17,7 @@ interface RightPanelProps {
 }
 
 export function RightPanel({ fs, notify, onCloseGit, onCloseChat }: RightPanelProps) {
+  const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
   const aiConfig = useIDEStore((s) => s.aiConfig)
@@ -47,7 +49,7 @@ export function RightPanel({ fs, notify, onCloseGit, onCloseChat }: RightPanelPr
               <div>
                 <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 700 }}>Git</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'none', letterSpacing: 0 }}>
-                  查看改动与提交历史
+                  {t('panel.git.subtitle')}
                 </div>
               </div>
             </div>
@@ -98,9 +100,9 @@ export function RightPanel({ fs, notify, onCloseGit, onCloseChat }: RightPanelPr
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <MessageSquare size={14} />
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 700 }}>AI 助手</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 700 }}>{t('panel.chat.title')}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'none', letterSpacing: 0 }}>
-                  当前文件与工作区协作
+                  {t('panel.chat.subtitle')}
                 </div>
               </div>
             </div>
