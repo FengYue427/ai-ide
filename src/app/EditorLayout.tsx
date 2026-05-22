@@ -1,4 +1,5 @@
 import { FileText, Shield, Sparkles, TerminalSquare, X } from 'lucide-react'
+import { useI18n } from '../i18n'
 import Editor from '../components/Editor'
 import Terminal from '../components/Terminal'
 import type { ToastKind } from '../components/FeedbackCenter'
@@ -34,6 +35,7 @@ export function EditorLayout({
   onToggleTerminal,
   notify,
 }: EditorLayoutProps) {
+  const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
   const theme = useIDEStore((s) => s.theme)
@@ -52,17 +54,17 @@ export function EditorLayout({
       {runtimeError && (
         <div className="runtime-alert">
           <div>
-            <strong>运行环境启动失败</strong>
+            <strong>{t('editor.runtimeFailed')}</strong>
             <span>{runtimeError.message}</span>
           </div>
           <button
             type="button"
             onClick={() => {
               onRetryRuntime()
-              notify('info', '正在重新启动运行环境')
+              notify('info', t('editor.restarting'))
             }}
           >
-            重试
+            {t('editor.runtimeRetry')}
           </button>
         </div>
       )}
@@ -97,22 +99,22 @@ export function EditorLayout({
           </div>
           <div className="editor-info-meta">
             <span>{currentFile?.language || 'plaintext'}</span>
-            <span>{currentFile?.content.split('\n').length || 0} 行</span>
-            <span>{currentFile?.content.length || 0} 字符</span>
+            <span>{t('editor.meta.lines', { count: currentFile?.content.split('\n').length || 0 })}</span>
+            <span>{t('editor.meta.chars', { count: currentFile?.content.length || 0 })}</span>
           </div>
         </div>
         <div className="editor-info-actions">
-          <button type="button" onClick={onOpenSnippetPanel} title="打开代码片段库">
+          <button type="button" onClick={onOpenSnippetPanel} title={t('editor.action.snippetTitle')}>
             <Sparkles size={14} />
-            <span>片段</span>
+            <span>{t('editor.action.snippet')}</span>
           </button>
-          <button type="button" onClick={onOpenCodeReviewPanel} title="AI 代码审查">
+          <button type="button" onClick={onOpenCodeReviewPanel} title={t('editor.action.reviewTitle')}>
             <Shield size={14} />
-            <span>审查</span>
+            <span>{t('editor.action.review')}</span>
           </button>
-          <button type="button" onClick={onToggleTerminal} title="显示终端">
+          <button type="button" onClick={onToggleTerminal} title={t('editor.action.terminalTitle')}>
             <TerminalSquare size={14} />
-            <span>{showTerminal ? '隐藏终端' : '终端'}</span>
+            <span>{showTerminal ? t('editor.action.hideTerminal') : t('editor.action.terminal')}</span>
           </button>
         </div>
       </div>

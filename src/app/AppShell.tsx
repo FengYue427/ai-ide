@@ -90,12 +90,12 @@ export function AppShell() {
   } = useWebContainer()
 
   useAppBootstrap()
-  useSessionGuard(notify)
+  useSessionGuard(notify, t)
   useMcpBootstrap()
   useProjectIndexSync()
   const gitStatus = useGitStatus(fs, files)
   useCollaborationSync()
-  useBillingReturn(notify)
+  useBillingReturn(notify, t)
 
   usePluginHost({ notify, terminalOutput: output })
 
@@ -103,7 +103,7 @@ export function AppShell() {
     autoSaveEnabled,
     currentUser,
     files,
-    language,
+    uiLocale: language,
     theme,
   })
 
@@ -129,6 +129,7 @@ export function AppShell() {
     setShowDropZone,
     setShowNewFileInput,
     getLanguageFromExt,
+    t,
   })
 
   const { clearTerminal, handleApplyTemplate, handleRunCode, handleRunNpmScript, handleSaveAISettings, toggleTheme } =
@@ -147,6 +148,7 @@ export function AppShell() {
       setTheme,
       theme,
       writeFile,
+      t,
     })
 
   const ui = useUIActions()
@@ -162,14 +164,14 @@ export function AppShell() {
   })
 
   const runStatusText = runtimeError
-    ? '运行环境异常'
+    ? t('runtime.status.error')
     : isRunning
-      ? '运行中'
+      ? t('runtime.status.running')
       : isReady
-        ? '运行环境已就绪'
+        ? t('runtime.status.ready')
         : isRuntimeLoading
-          ? '正在准备运行环境'
-          : '运行环境未就绪'
+          ? t('runtime.status.loading')
+          : t('runtime.status.notReady')
 
   return (
     <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>

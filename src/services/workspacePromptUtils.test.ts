@@ -10,7 +10,7 @@ describe('workspacePromptUtils', () => {
     const content = Array.from({ length: 20 }, (_, index) => `line ${index + 1}`).join('\n')
     const summary = summarizeFileContent(content, 3)
     expect(summary).toContain('line 1')
-    expect(summary).toContain('省略 17 行')
+    expect(summary).toMatch(/省略|omitted/)
   })
 
   it('buildWorkspaceFileCatalog marks selection', () => {

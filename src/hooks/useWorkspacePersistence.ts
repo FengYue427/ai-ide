@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createTranslator, type Language } from '../i18n'
 import { authService, type User as AuthUser } from '../services/authService'
 import { cloudSyncService } from '../services/cloudSyncService'
 import { recentFilesService } from '../services/recentFilesService'
@@ -9,7 +10,7 @@ interface UseWorkspacePersistenceOptions {
   autoSaveEnabled: boolean
   currentUser: AuthUser | null
   files: FileItem[]
-  language: string
+  uiLocale: Language
   theme: 'vs-dark' | 'light'
 }
 
@@ -17,10 +18,11 @@ export function useWorkspacePersistence({
   autoSaveEnabled,
   currentUser,
   files,
-  language,
+  uiLocale,
   theme,
 }: UseWorkspacePersistenceOptions) {
   useEffect(() => {
+    const t = createTranslator(uiLocale)
     if (!autoSaveEnabled) return
 
     const timer = setTimeout(async () => {
@@ -36,11 +38,11 @@ export function useWorkspacePersistence({
 
       await cloudSyncService.autoBackup(
         ideFiles.map(({ name, content, language }) => ({ name, content, language })),
-        { theme, autoSave: autoSaveEnabled, language },
+        { theme, autoSave: autoSaveEnabled, language: uiLocale },
       )
 
       const projectName =
-        files.length === 1 ? files[0].name : `工作区（${files.length} 个文件）`
+        files.length === 1 ? files[0].name : t('notify.autosaveProjectName', { count: files.length })
       await recentFilesService.addRecentProject({
         id: 'autosave-default',
         name: projectName,
@@ -54,5 +56,5 @@ export function useWorkspacePersistence({
     }, 3000)
 
     return () => clearTimeout(timer)
-  }, [autoSaveEnabled, currentUser, files, theme])
+  }, [autoSaveEnabled, currentUser, files, theme, uiLocale])
 }

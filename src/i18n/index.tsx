@@ -61,6 +61,17 @@ export function useI18n() {
   return context
 }
 
+export type TranslateFn = I18nContextType['t']
+
+/** Translate outside React (hooks, services) when UI locale is known. */
+export function createTranslator(language: Language): TranslateFn {
+  return (key: TranslationKey, params?: Record<string, string | number>) => {
+    const table = translations[language]
+    const raw = table[key] ?? translations['zh-CN'][key] ?? key
+    return interpolate(raw, params)
+  }
+}
+
 export function LanguageSelector() {
   const { language, setLanguage } = useI18n()
 

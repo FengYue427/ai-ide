@@ -2,8 +2,12 @@ import { useEffect } from 'react'
 import { subscriptionService } from '../services/subscriptionService'
 import { useIDEStore } from '../store/ideStore'
 import type { ToastKind } from '../components/FeedbackCenter'
+import type { TranslateFn } from '../i18n'
 
-export function useBillingReturn(notify: (kind: ToastKind, title: string, detail?: string) => void) {
+export function useBillingReturn(
+  notify: (kind: ToastKind, title: string, detail?: string) => void,
+  t: TranslateFn,
+) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const status = params.get('subscription')
@@ -31,16 +35,16 @@ export function useBillingReturn(notify: (kind: ToastKind, title: string, detail
         const label = plan || sub.plan
         const detail =
           plan && sub.plan !== plan
-            ? `支付已完成，计划同步中（当前显示：${sub.plan}）。若未更新请刷新页面。`
-            : `当前计划：${label}`
-        notify(sub.plan === 'free' && plan ? 'info' : 'success', '订阅成功', detail)
+            ? t('notify.subscriptionSyncing', { plan: sub.plan })
+            : t('notify.subscriptionCurrentPlan', { plan: label })
+        notify(sub.plan === 'free' && plan ? 'info' : 'success', t('notify.subscriptionSuccess'), detail)
       } else if (status === 'canceled') {
-        notify('info', '结账已取消', '你仍可继续使用当前计划。')
+        notify('info', t('notify.subscriptionCanceled'), t('notify.subscriptionCanceledDetail'))
       } else if (status === 'portal_return') {
         applyPlan(await subscriptionService.refreshAfterCheckout())
-        notify('success', '订阅信息已更新')
+        notify('success', t('notify.subscriptionUpdated'))
       }
       cleanUrl()
     })()
-  }, [notify])
+  }, [notify, t])
 }

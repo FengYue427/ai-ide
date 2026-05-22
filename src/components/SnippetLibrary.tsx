@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Check, Code, Copy, Edit2, Plus, Save, Search, Tag, Trash2, X } from 'lucide-react'
 import { snippetService, type CodeSnippet } from '../services/snippetService'
+import { useI18n } from '../i18n'
 import type { ConfirmRequest, ToastKind } from './FeedbackCenter'
 
 interface SnippetLibraryProps {
@@ -42,6 +43,7 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
   requestConfirm,
   onClose,
 }) => {
+  const { t } = useI18n()
   const [snippets, setSnippets] = useState<CodeSnippet[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState<string>(currentLanguage || 'all')
@@ -103,10 +105,10 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
 
     if (editingSnippet) {
       await snippetService.updateSnippet(editingSnippet.id, payload)
-      notify('success', '代码片段已更新', payload.name)
+      notify('success', t('snippet.notify.updated'), payload.name)
     } else {
       await snippetService.saveSnippet(payload)
-      notify('success', '代码片段已保存', payload.name)
+      notify('success', t('snippet.notify.saved'), payload.name)
     }
 
     resetForm()
@@ -115,26 +117,26 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
 
   const handleDelete = async (snippet: CodeSnippet) => {
     if (snippet.id.startsWith('builtin-')) {
-      notify('info', '内置片段不可删除', '你可以复制后另存为自己的片段。')
+      notify('info', t('snippet.notify.builtinNoDelete'), t('snippet.notify.builtinNoDeleteDetail'))
       return
     }
 
     const confirmed = await requestConfirm({
-      title: '删除代码片段',
-      message: `确定删除“${snippet.name}”吗？`,
-      confirmText: '删除',
+      title: t('snippet.confirm.delete.title'),
+      message: t('snippet.confirm.delete.message', { name: snippet.name }),
+      confirmText: t('wm.confirm.delete.confirm'),
       tone: 'danger',
     })
     if (!confirmed) return
 
     await snippetService.deleteSnippet(snippet.id)
-    notify('success', '代码片段已删除', snippet.name)
+    notify('success', t('snippet.notify.deleted'), snippet.name)
     loadSnippets()
   }
 
   const handleEdit = (snippet: CodeSnippet) => {
     setEditingSnippet(snippet.id.startsWith('builtin-') ? null : snippet)
-    setFormName(snippet.id.startsWith('builtin-') ? `${snippet.name} 副本` : snippet.name)
+    setFormName(snippet.id.startsWith('builtin-') ? `${snippet.name}${t('snippet.copySuffix')}` : snippet.name)
     setFormDescription(snippet.description || '')
     setFormCode(snippet.code)
     setFormLanguage(snippet.language)
@@ -145,13 +147,13 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
   const copyToClipboard = async (snippet: CodeSnippet) => {
     await navigator.clipboard.writeText(snippet.code)
     setCopiedId(snippet.id)
-    notify('success', '已复制代码片段', snippet.name)
+    notify('success', t('snippet.notify.copied'), snippet.name)
     window.setTimeout(() => setCopiedId(null), 1400)
   }
 
   const handleInsert = (snippet: CodeSnippet) => {
     onInsert(snippet.code)
-    notify('success', '代码片段已插入', snippet.name)
+    notify('success', t('snippet.notify.inserted'), snippet.name)
     onClose()
   }
 
@@ -161,7 +163,7 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
         <div className="modal-header">
           <span className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Code size={18} />
-            代码片段库
+            {t('snippet.title')}
           </span>
           <div className="modal-close" onClick={onClose}>
             <X size={18} />
@@ -176,19 +178,19 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="搜索名称、标签或代码"
+                placeholder={t('snippet.searchPlaceholder')}
                 style={{ ...inputStyle, paddingLeft: '38px' }}
               />
             </div>
             <select value={selectedLanguage} onChange={(event) => setSelectedLanguage(event.target.value)} style={inputStyle}>
-              <option value="all">全部语言</option>
+              <option value="all">{t('snippet.allLanguages')}</option>
               {languages.map((language) => (
                 <option key={language} value={language}>{language}</option>
               ))}
             </select>
             <button onClick={() => setShowAddForm(true)} className="btn btn-primary">
               <Plus size={16} style={{ marginRight: '6px' }} />
-              新建
+              {t('snippet.new')}
             </button>
           </div>
         )}
@@ -198,11 +200,11 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
             <div style={{ display: 'grid', gap: '14px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: '12px' }}>
                 <div>
-                  <label className="form-label">名称</label>
-                  <input value={formName} onChange={(event) => setFormName(event.target.value)} placeholder="例如：React useState Hook" style={{ ...inputStyle, marginTop: '6px' }} />
+                  <label className="form-label">{t('snippet.form.name')}</label>
+                  <input value={formName} onChange={(event) => setFormName(event.target.value)} placeholder={t('snippet.form.namePlaceholder')} style={{ ...inputStyle, marginTop: '6px' }} />
                 </div>
                 <div>
-                  <label className="form-label">语言</label>
+                  <label className="form-label">{t('snippet.form.language')}</label>
                   <select value={formLanguage} onChange={(event) => setFormLanguage(event.target.value)} style={{ ...inputStyle, marginTop: '6px' }}>
                     {['javascript', 'typescript', 'python', 'html', 'css', 'json', 'go', 'rust'].map((language) => (
                       <option key={language} value={language}>{language}</option>
@@ -211,36 +213,36 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
                 </div>
               </div>
               <div>
-                <label className="form-label">描述</label>
-                <input value={formDescription} onChange={(event) => setFormDescription(event.target.value)} placeholder="简短描述这个片段的用途" style={{ ...inputStyle, marginTop: '6px' }} />
+                <label className="form-label">{t('snippet.form.description')}</label>
+                <input value={formDescription} onChange={(event) => setFormDescription(event.target.value)} placeholder={t('snippet.form.descriptionPlaceholder')} style={{ ...inputStyle, marginTop: '6px' }} />
               </div>
               <div>
-                <label className="form-label">标签</label>
+                <label className="form-label">{t('snippet.form.tags')}</label>
                 <input value={formTags} onChange={(event) => setFormTags(event.target.value)} placeholder="react, hook, state" style={{ ...inputStyle, marginTop: '6px' }} />
               </div>
               <div>
-                <label className="form-label">代码</label>
+                <label className="form-label">{t('snippet.form.code')}</label>
                 <textarea
                   value={formCode}
                   onChange={(event) => setFormCode(event.target.value)}
-                  placeholder="在这里粘贴或输入代码片段"
+                  placeholder={t('snippet.form.codePlaceholder')}
                   rows={11}
                   style={{ ...inputStyle, marginTop: '6px', fontFamily: 'ui-monospace, SFMono-Regular, monospace', resize: 'vertical' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button onClick={resetForm} className="btn btn-secondary">取消</button>
+                <button onClick={resetForm} className="btn btn-secondary">{t('common.cancel')}</button>
                 <button onClick={handleSave} className="btn btn-primary" disabled={!formName.trim() || !formCode.trim()}>
                   <Save size={16} style={{ marginRight: '6px' }} />
-                  {editingSnippet ? '更新' : '保存'}
+                  {editingSnippet ? t('snippet.form.update') : t('common.save')}
                 </button>
               </div>
             </div>
           ) : filteredSnippets.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '44px 20px', color: 'var(--text-secondary)' }}>
               <Code size={44} style={{ marginBottom: '12px', opacity: 0.45 }} />
-              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>没有找到代码片段</div>
-              <div style={{ fontSize: '13px' }}>换个关键词，或新建一个常用片段。</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>{t('snippet.empty.title')}</div>
+              <div style={{ fontSize: '13px' }}>{t('snippet.empty.desc')}</div>
             </div>
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>
@@ -250,18 +252,18 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>{snippet.name}</h4>
-                        {snippet.id.startsWith('builtin-') && <span className="status-pill">内置</span>}
+                        {snippet.id.startsWith('builtin-') && <span className="status-pill">{t('snippet.badge.builtin')}</span>}
                       </div>
                       {snippet.description && <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>{snippet.description}</p>}
                     </div>
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      <button onClick={() => copyToClipboard(snippet)} style={iconButtonStyle} title="复制">
+                      <button onClick={() => copyToClipboard(snippet)} style={iconButtonStyle} title={t('snippet.copyTitle')}>
                         {copiedId === snippet.id ? <Check size={14} /> : <Copy size={14} />}
                       </button>
-                      <button onClick={() => handleEdit(snippet)} style={iconButtonStyle} title="编辑或另存">
+                      <button onClick={() => handleEdit(snippet)} style={iconButtonStyle} title={t('snippet.editTitle')}>
                         <Edit2 size={14} />
                       </button>
-                      <button onClick={() => handleDelete(snippet)} style={{ ...iconButtonStyle, color: 'var(--danger-color)' }} title="删除">
+                      <button onClick={() => handleDelete(snippet)} style={{ ...iconButtonStyle, color: 'var(--danger-color)' }} title={t('snippet.deleteTitle')}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -281,7 +283,7 @@ const SnippetLibrary: React.FC<SnippetLibraryProps> = ({
                     {snippet.code}
                   </pre>
                   <button onClick={() => handleInsert(snippet)} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                    插入到编辑器
+                    {t('snippet.insert')}
                   </button>
                 </div>
               ))}

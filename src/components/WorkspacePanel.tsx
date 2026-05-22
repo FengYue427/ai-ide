@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react'
 import { workspaceContextService, type WorkspaceFile } from '../services/workspaceContextService'
+import { useI18n } from '../i18n'
 import type { ConfirmRequest, ToastKind } from './FeedbackCenter'
 
 interface WorkspacePanelProps {
@@ -44,6 +45,7 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
   notify,
   requestConfirm,
 }) => {
+  const { t } = useI18n()
   const [files, setFiles] = useState<WorkspaceFile[]>([])
   const [stats, setStats] = useState(workspaceContextService.getStats())
   const [dragActive, setDragActive] = useState(false)
@@ -77,7 +79,7 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
 
     const workspaceFiles = workspaceContextService.getAllFiles()
     if (workspaceFiles.length === 0) {
-      workspaceContextService.createFromFiles(currentFiles, '当前项目')
+      workspaceContextService.createFromFiles(currentFiles, t('wp.defaultProjectName'))
       hasSyncedFiles.current = true
       refreshFiles()
     }
@@ -139,9 +141,9 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
       }
 
       refreshFiles()
-      notify('success', '工作区文件已导入', `${processedFiles} 个文件已加入上下文。`)
+      notify('success', t('wp.notify.imported'), t('wp.notify.importedDetail', { count: processedFiles }))
     } catch (error) {
-      setError(error instanceof Error ? error.message : '导入失败')
+      setError(error instanceof Error ? error.message : t('wp.notify.importFailed'))
     } finally {
       setIsImporting(false)
       setImportProgress({ current: 0, total: 0 })
@@ -161,9 +163,13 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
         console.warn('部分文件导入失败:', result.errors)
       }
       refreshFiles()
-      notify(result.failed > 0 ? 'info' : 'success', '文件导入完成', `成功 ${result.success} 个，失败 ${result.failed} 个。`)
+      notify(
+        result.failed > 0 ? 'info' : 'success',
+        t('wp.notify.importDone'),
+        t('wp.notify.importDoneDetail', { success: result.success, failed: result.failed }),
+      )
     } catch (error) {
-      setError(error instanceof Error ? error.message : '导入失败')
+      setError(error instanceof Error ? error.message : t('wp.notify.importFailed'))
     } finally {
       setIsImporting(false)
       event.target.value = ''
@@ -173,8 +179,8 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
   const handleRemoveFile = useCallback((path: string) => {
     workspaceContextService.removeFile(path)
     refreshFiles()
-    notify('success', '已移出上下文', path)
-  }, [notify, refreshFiles])
+    notify('success', t('wp.notify.removed'), path)
+  }, [notify, refreshFiles, t])
 
   const handleToggleSelect = useCallback((path: string) => {
     workspaceContextService.toggleFileSelection(path)
@@ -184,22 +190,22 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
   const handleSelectAll = useCallback((selected: boolean) => {
     workspaceContextService.selectAllFiles(selected)
     refreshFiles()
-    notify('success', selected ? '已全选工作区文件' : '已取消全部选择')
-  }, [notify, refreshFiles])
+    notify('success', selected ? t('wp.notify.selectAll') : t('wp.notify.deselectAll'))
+  }, [notify, refreshFiles, t])
 
   const handleClear = useCallback(async () => {
     const confirmed = await requestConfirm({
-      title: '清空工作区上下文',
-      message: '确定要清空工作区吗？所有导入的上下文文件都会被移除。',
-      confirmText: '清空',
+      title: t('wp.confirm.clear.title'),
+      message: t('wp.confirm.clear.message'),
+      confirmText: t('wp.confirm.clear.confirm'),
       tone: 'danger',
     })
     if (!confirmed) return
 
     workspaceContextService.clearContext()
     refreshFiles()
-    notify('success', '工作区已清空')
-  }, [notify, refreshFiles, requestConfirm])
+    notify('success', t('wp.notify.cleared'))
+  }, [notify, refreshFiles, requestConfirm, t])
 
   const toggleFolder = useCallback((path: string) => {
     setExpandedFolders((current) => {
@@ -299,13 +305,13 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
           background: file.selected !== false ? 'rgba(124, 156, 255, 0.10)' : 'transparent',
         }}
       >
-        <button onClick={() => handleToggleSelect(file.path)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }} title="切换选择">
+        <button onClick={() => handleToggleSelect(file.path)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }} title={t('wp.toggleSelect')}>
           {file.selected !== false ? <CheckSquare size={16} style={{ color: 'var(--accent-color)' }} /> : <Square size={16} />}
         </button>
         {getFileIcon(file.language)}
         <span style={{ flex: 1, minWidth: 0, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
         <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{formatSize(file.size)}</span>
-        <button onClick={() => handleRemoveFile(file.path)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }} title="移出上下文">
+        <button onClick={() => handleRemoveFile(file.path)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }} title={t('wp.removeFromContext')}>
           <Trash2 size={14} />
         </button>
       </div>
@@ -318,7 +324,7 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
         <div className="modal-header" style={{ flexShrink: 0 }}>
           <span className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FolderOpen size={18} />
-            工作区上下文
+            {t('wp.title')}
           </span>
           <div className="modal-close" onClick={onClose}>
             <X size={18} />
@@ -328,9 +334,9 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
         <div className="modal-body" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px', marginBottom: '14px' }}>
             {[
-              { icon: <HardDrive size={14} />, label: '文件', value: stats.totalFiles },
-              { icon: <CheckSquare size={14} />, label: '选中', value: stats.selectedFiles },
-              { icon: <FileText size={14} />, label: '体积', value: formatSize(stats.totalSize) },
+              { icon: <HardDrive size={14} />, label: t('wp.stat.files'), value: stats.totalFiles },
+              { icon: <CheckSquare size={14} />, label: t('wp.stat.selected'), value: stats.selectedFiles },
+              { icon: <FileText size={14} />, label: t('wp.stat.size'), value: formatSize(stats.totalSize) },
               { icon: <RefreshCw size={14} />, label: 'Tokens', value: `~${stats.estimatedTokens.toLocaleString()}` },
             ].map((item) => (
               <div key={item.label} className="status-pill" style={{ justifyContent: 'center', borderRadius: '12px' }}>
@@ -367,13 +373,15 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
             {isImporting ? (
               <div>
                 <RefreshCw size={32} style={{ color: 'var(--accent-color)' }} />
-                <p style={{ marginTop: '10px', fontSize: '14px', color: 'var(--text-secondary)' }}>正在导入 {importProgress.current} / {importProgress.total}</p>
+                <p style={{ marginTop: '10px', fontSize: '14px', color: 'var(--text-secondary)' }}>
+                  {t('wp.importing', { current: importProgress.current, total: importProgress.total })}
+                </p>
               </div>
             ) : (
               <div>
                 <Upload size={32} style={{ color: dragActive ? 'var(--accent-color)' : 'var(--text-secondary)' }} />
-                <p style={{ marginTop: '10px', fontSize: '14px', color: 'var(--text-primary)' }}>拖放文件或文件夹到这里</p>
-                <p style={{ marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>也可以点击选择多个文件，用于给 AI 提供完整项目上下文。</p>
+                <p style={{ marginTop: '10px', fontSize: '14px', color: 'var(--text-primary)' }}>{t('wp.drop.title')}</p>
+                <p style={{ marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>{t('wp.drop.hint')}</p>
               </div>
             )}
           </div>
@@ -385,16 +393,16 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button className="btn btn-secondary" onClick={() => handleSelectAll(true)}>
                   <CheckSquare size={14} style={{ marginRight: '4px' }} />
-                  全选
+                  {t('wp.selectAll')}
                 </button>
                 <button className="btn btn-secondary" onClick={() => handleSelectAll(false)}>
                   <Square size={14} style={{ marginRight: '4px' }} />
-                  取消全选
+                  {t('wp.deselectAll')}
                 </button>
               </div>
               <button className="btn btn-danger" onClick={handleClear}>
                 <Trash2 size={14} style={{ marginRight: '4px' }} />
-                清空
+                {t('wp.clear')}
               </button>
             </div>
           )}
@@ -403,8 +411,8 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
             {files.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '42px 20px', color: 'var(--text-secondary)' }}>
                 <FolderOpen size={46} style={{ opacity: 0.35, marginBottom: '12px' }} />
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>工作区上下文为空</div>
-                <div style={{ fontSize: '12px' }}>导入文件后，AI 助手可以基于这些内容理解项目。</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>{t('wp.empty.title')}</div>
+                <div style={{ fontSize: '12px' }}>{t('wp.empty.desc')}</div>
               </div>
             ) : (
               fileTree.map((node) => renderTreeNode(node))
@@ -413,7 +421,7 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
         </div>
 
         <div className="modal-footer" style={{ flexShrink: 0 }}>
-          <button className="btn btn-secondary" onClick={onClose}>关闭</button>
+          <button className="btn btn-secondary" onClick={onClose}>{t('wp.close')}</button>
         </div>
       </div>
     </div>

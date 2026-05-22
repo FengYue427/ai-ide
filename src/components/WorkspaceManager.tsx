@@ -9,6 +9,7 @@ import {
   type WorkspaceEntry,
 } from '../services/workspaceCatalogService'
 import { recentFilesService } from '../services/recentFilesService'
+import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import type { ConfirmRequest, ToastKind } from './FeedbackCenter'
 
@@ -35,6 +36,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
   onLoadWorkspace,
   onClose,
 }) => {
+  const { t } = useI18n()
   const currentUser = useIDEStore((s) => s.currentUser)
   const isLoggedIn = !!currentUser
 
@@ -57,7 +59,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     } catch {
       setWorkspaces([])
       setAutoBackup(null)
-      setMessage({ type: 'error', text: '读取工作区列表失败。' })
+      setMessage({ type: 'error', text: t('wm.listLoadFailed') })
     } finally {
       setLoading(false)
     }
@@ -88,8 +90,8 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
       isLoggedIn,
     )
     if (!result.ok) {
-      setMessage({ type: 'error', text: result.error || '保存失败' })
-      notify('error', '保存失败', result.error)
+      setMessage({ type: 'error', text: result.error || t('wm.saveFailed') })
+      notify('error', t('wm.saveFailed'), result.error)
       return
     }
 
@@ -97,10 +99,10 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     setSaveDescription('')
     setShowSaveForm(false)
     const detail = isLoggedIn
-      ? `${currentFiles.length} 个文件已同步到云端。`
-      : `${currentFiles.length} 个文件已写入本地备份。`
-    setMessage({ type: 'success', text: '工作区已保存。' })
-    notify('success', '工作区已保存', detail)
+      ? t('wm.saved.cloud', { count: currentFiles.length })
+      : t('wm.saved.local', { count: currentFiles.length })
+    setMessage({ type: 'success', text: t('wm.saved.flash') })
+    notify('success', t('wm.saved'), detail)
     const list = await listWorkspaceEntries(isLoggedIn)
     const saved = list.find((workspace) => workspace.name === saveName.trim())
     if (saved) {
@@ -117,15 +119,15 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
 
   const handleLoad = async (workspace: WorkspaceEntry) => {
     const confirmed = await requestConfirm({
-      title: '加载工作区',
-      message: `要加载“${workspace.name}”吗？当前未保存的改动可能会丢失。`,
-      confirmText: '加载',
+      title: t('wm.confirm.load.title'),
+      message: t('wm.confirm.load.message', { name: workspace.name }),
+      confirmText: t('wm.confirm.load.confirm'),
     })
     if (!confirmed) return
 
     const payload = await loadWorkspaceEntry(workspace, isLoggedIn)
     if (!payload) {
-      notify('error', '加载失败', '无法读取工作区内容')
+      notify('error', t('wm.loadFailed'), t('wm.loadFailedDetail'))
       return
     }
 
@@ -135,22 +137,22 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
 
   const handleDelete = async (workspace: WorkspaceEntry) => {
     const confirmed = await requestConfirm({
-      title: '删除工作区',
-      message: `确定删除“${workspace.name}”吗？这个备份删除后无法从列表恢复。`,
-      confirmText: '删除',
+      title: t('wm.confirm.delete.title'),
+      message: t('wm.confirm.delete.message', { name: workspace.name }),
+      confirmText: t('wm.confirm.delete.confirm'),
       tone: 'danger',
     })
     if (!confirmed) return
 
     const result = await deleteWorkspaceEntry(workspace, isLoggedIn)
     if (!result.ok) {
-      setMessage({ type: 'error', text: result.error || '删除失败' })
-      notify('error', '删除失败', result.error)
+      setMessage({ type: 'error', text: result.error || t('wm.deleteFailed') })
+      notify('error', t('wm.deleteFailed'), result.error)
       return
     }
 
-    setMessage({ type: 'success', text: '工作区已删除。' })
-    notify('success', '工作区已删除', workspace.name)
+    setMessage({ type: 'success', text: t('wm.deleted.flash') })
+    notify('success', t('wm.deleted'), workspace.name)
     void loadWorkspaces()
   }
 
@@ -159,7 +161,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     if (workspace.source === 'cloud' && workspace.files.length === 0) {
       const full = await loadWorkspaceEntry(workspace, isLoggedIn)
       if (!full) {
-        notify('error', '导出失败', '无法读取云端工作区')
+        notify('error', t('wm.exportFailed'), t('wm.exportFailedDetail'))
         return
       }
       exportable = { ...workspace, files: full.files, settings: full.settings }
@@ -173,7 +175,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     anchor.download = `${workspace.name.replace(/\s+/g, '_')}.json`
     anchor.click()
     URL.revokeObjectURL(url)
-    notify('success', '工作区已导出', workspace.name)
+    notify('success', t('wm.exported'), workspace.name)
   }
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,8 +187,8 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
       const json = (loadEvent.target?.result as string) || ''
       const workspace = await cloudSyncService.importWorkspace(json)
       const nextMessage = workspace
-        ? { type: 'success' as const, text: '工作区导入成功。' }
-        : { type: 'error' as const, text: '导入失败，请检查文件格式。' }
+        ? { type: 'success' as const, text: t('wm.importSuccess') }
+        : { type: 'error' as const, text: t('wm.importFailed') }
       setMessage(nextMessage)
       notify(nextMessage.type, nextMessage.text, workspace?.name)
       loadWorkspaces()
@@ -204,20 +206,20 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     anchor.download = `ide-backup-${new Date().toISOString().slice(0, 10)}.json`
     anchor.click()
     URL.revokeObjectURL(url)
-    notify('success', '全部数据已导出')
+    notify('success', t('wm.exportAll'))
   }
 
   const handleRestoreAutoBackup = async () => {
     const backup = await cloudSyncService.restoreAutoBackup()
     if (!backup) {
-      notify('error', '没有找到自动备份')
+      notify('error', t('wm.noAutoBackup'))
       return
     }
 
     const confirmed = await requestConfirm({
-      title: '恢复自动备份',
-      message: '找到一份自动备份。恢复后会替换当前编辑器中的文件和部分设置。',
-      confirmText: '恢复',
+      title: t('wm.confirm.restore.title'),
+      message: t('wm.confirm.restore.message'),
+      confirmText: t('wm.confirm.restore.confirm'),
     })
     if (!confirmed) return
 
@@ -231,7 +233,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
         <div className="modal-header">
           <span className="modal-title wm-modal-title">
             <Folder size={18} />
-            工作区管理
+            {t('wm.title')}
           </span>
           <div className="modal-close" onClick={onClose}>
             <X size={18} />
@@ -240,12 +242,8 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
 
         <div className="modal-body wm-body">
           <div className="wm-panel wm-panel--hero">
-            <div className="wm-hero-title">保存阶段成果，也给恢复留后路</div>
-            <div className="wm-hero-desc">
-              {isLoggedIn
-                ? '已登录：保存会同步到云端（并保留本地副本）。列表中带「云端」标记的条目来自服务器。'
-                : '这里可以保存当前工作区、导入旧备份、导出全部数据，或从自动备份恢复到之前的状态。'}
-            </div>
+            <div className="wm-hero-title">{t('wm.hero.title')}</div>
+            <div className="wm-hero-desc">{isLoggedIn ? t('wm.hero.loggedIn') : t('wm.hero.guest')}</div>
           </div>
 
           {message && (
@@ -260,12 +258,12 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
               <div className="wm-backup-info">
                 <RotateCcw size={16} color="#3b82f6" />
                 <div>
-                  <div className="wm-backup-title">检测到自动备份</div>
+                  <div className="wm-backup-title">{t('wm.autoBackupDetected')}</div>
                   <div className="wm-backup-time">{new Date(autoBackup.updatedAt).toLocaleString()}</div>
                 </div>
               </div>
               <button type="button" className="btn btn-primary" onClick={handleRestoreAutoBackup}>
-                恢复备份
+                {t('wm.restoreBackup')}
               </button>
             </div>
           )}
@@ -273,16 +271,16 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
           <div className="wm-actions">
             <button type="button" className="btn btn-primary" onClick={() => setShowSaveForm((value) => !value)}>
               <Save size={16} className="wm-btn-icon-gap" />
-              保存当前工作区
+              {t('wm.saveCurrent')}
             </button>
             <label className="btn btn-secondary wm-import-label">
               <Upload size={16} className="wm-btn-icon-gap" />
-              导入备份
+              {t('wm.importBackup')}
               <input type="file" accept=".json" className="wm-file-input-hidden" onChange={handleImport} />
             </label>
             <button type="button" className="btn btn-secondary" onClick={handleExportAll}>
               <Download size={16} className="wm-btn-icon-gap" />
-              导出全部数据
+              {t('wm.exportAllBtn')}
             </button>
           </div>
 
@@ -294,7 +292,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
                   className="wm-input"
                   value={saveName}
                   onChange={(event) => setSaveName(event.target.value)}
-                  placeholder="工作区名称"
+                  placeholder={t('wm.namePlaceholder')}
                   autoFocus
                 />
                 <input
@@ -302,14 +300,14 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
                   className="wm-input"
                   value={saveDescription}
                   onChange={(event) => setSaveDescription(event.target.value)}
-                  placeholder="描述（可选）"
+                  placeholder={t('wm.descPlaceholder')}
                 />
                 <div className="wm-form-actions">
                   <button type="button" className="btn btn-primary" onClick={handleSave} disabled={!saveName.trim()}>
-                    保存
+                    {t('common.save')}
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={() => setShowSaveForm(false)}>
-                    取消
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -323,17 +321,17 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
               className="wm-input wm-search-input"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="搜索工作区"
+              placeholder={t('wm.searchPlaceholder')}
             />
           </div>
 
           {loading ? (
-            <div className="wm-panel wm-state-panel wm-state-panel--loading">正在加载工作区列表…</div>
+            <div className="wm-panel wm-state-panel wm-state-panel--loading">{t('wm.loading')}</div>
           ) : filteredWorkspaces.length === 0 ? (
             <div className="wm-panel wm-state-panel wm-state-panel--empty">
               <Folder size={40} className="wm-empty-icon" />
-              <div className="wm-empty-title">还没有保存过工作区</div>
-              <div className="wm-empty-desc">先把当前进度存下来，之后就能随时回到这里。</div>
+              <div className="wm-empty-title">{t('wm.empty.title')}</div>
+              <div className="wm-empty-desc">{t('wm.empty.desc')}</div>
             </div>
           ) : (
             <div className="wm-list">
@@ -347,7 +345,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
                           className={`wm-badge ${workspace.source === 'cloud' ? 'wm-badge--cloud' : 'wm-badge--local'}`}
                         >
                           {workspace.source === 'cloud' ? <Cloud size={12} /> : <HardDrive size={12} />}
-                          {workspace.source === 'cloud' ? '云端' : '本地'}
+                          {workspace.source === 'cloud' ? t('wm.badge.cloud') : t('wm.badge.local')}
                         </span>
                       </div>
                       {workspace.description && <div className="wm-card-desc">{workspace.description}</div>}
@@ -358,21 +356,21 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
                         </span>
                         <span>
                           {workspace.source === 'cloud' && workspace.files.length === 0
-                            ? '云端（加载时拉取）'
-                            : `${workspace.files.length} 个文件`}
+                            ? t('wm.meta.cloudLazy')
+                            : t('wm.meta.fileCount', { count: workspace.files.length })}
                         </span>
                         <span className="wm-card-meta-theme">{workspace.settings.theme}</span>
                       </div>
                     </div>
                     <div className="wm-card-actions">
                       <button type="button" className="btn btn-primary" onClick={() => handleLoad(workspace)}>
-                        加载
+                        {t('wm.action.load')}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary"
                         onClick={() => handleExport(workspace)}
-                        title="导出工作区"
+                        title={t('wm.action.exportTitle')}
                       >
                         <Download size={14} />
                       </button>
@@ -380,7 +378,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
                         type="button"
                         className="btn btn-secondary"
                         onClick={() => handleDelete(workspace)}
-                        title="删除工作区"
+                        title={t('wm.action.deleteTitle')}
                       >
                         <Trash2 size={14} />
                       </button>

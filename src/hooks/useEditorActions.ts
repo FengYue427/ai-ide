@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { type AIModel } from '../services/aiService'
 import { runTerminalCommand } from '../services/terminalBridge'
 import { StorageLayer, unifiedStorage } from '../services/unifiedStorage'
+import type { TranslateFn } from '../i18n'
 import type { FileItem } from '../types/file'
 
 type Notify = (kind: 'success' | 'error' | 'info', title: string, detail?: string) => void
@@ -20,6 +21,7 @@ interface UseEditorActionsOptions {
   setShowTerminal: React.Dispatch<React.SetStateAction<boolean>>
   setTheme: (theme: 'vs-dark' | 'light') => void
   theme: 'vs-dark' | 'light'
+  t: TranslateFn
   writeFile: (path: string, content: string) => Promise<void>
 }
 
@@ -37,6 +39,7 @@ export function useEditorActions({
   setShowTerminal,
   setTheme,
   theme,
+  t,
   writeFile,
 }: UseEditorActionsOptions) {
   const handleSaveAISettings = useCallback(
@@ -44,9 +47,9 @@ export function useEditorActions({
       setAiConfig(config)
       await unifiedStorage.set('ai-config', config)
       setShowAISettings(false)
-      notify('success', 'AI 设置已保存', `${config.provider} / ${config.model}`)
+      notify('success', t('notify.aiSettingsSaved'), t('notify.aiSettingsSavedDetail', { provider: config.provider, model: config.model }))
     },
-    [notify, setAiConfig, setShowAISettings],
+    [notify, setAiConfig, setShowAISettings, t],
   )
 
   const handleApplyTemplate = useCallback(
@@ -54,21 +57,25 @@ export function useEditorActions({
       setFiles(templateFiles)
       setActiveFile(0)
       setShowTemplateModal(false)
-      notify('success', '模板已应用', `已生成 ${templateFiles.length} 个文件。`)
+      notify('success', t('notify.templateApplied'), t('notify.templateAppliedDetail', { count: templateFiles.length }))
     },
-    [notify, setActiveFile, setFiles, setShowTemplateModal],
+    [notify, setActiveFile, setFiles, setShowTemplateModal, t],
   )
 
   const toggleTheme = useCallback(async () => {
     const newTheme = theme === 'vs-dark' ? 'light' : 'vs-dark'
     setTheme(newTheme)
     await unifiedStorage.set('theme', newTheme, { layer: StorageLayer.LOCAL })
-    notify('success', '主题已切换', newTheme === 'light' ? '浅色模式' : '深色模式')
-  }, [notify, setTheme, theme])
+    notify(
+      'success',
+      t('notify.themeSwitched'),
+      newTheme === 'light' ? t('notify.themeLight') : t('notify.themeDark'),
+    )
+  }, [notify, setTheme, t, theme])
 
   const handleRunCode = useCallback(async () => {
     if (!isReady) {
-      notify('info', '运行环境仍在初始化', 'WebContainer 准备好后即可运行当前文件。')
+      notify('info', t('notify.runtimeInit'), t('notify.runtimeInitFile'))
       return
     }
 
@@ -84,14 +91,14 @@ export function useEditorActions({
 
       const exitCode = await runNode(file.name)
       if (exitCode === 0) {
-        notify('success', '运行完成', file.name)
+        notify('success', t('notify.runComplete'), file.name)
       } else if (typeof exitCode === 'number') {
-        notify('error', '运行失败', `进程退出码：${exitCode}`)
+        notify('error', t('notify.runFailed'), t('notify.runExitCode', { code: exitCode }))
       }
     } catch (error) {
-      notify('error', '运行失败', error instanceof Error ? error.message : '命令执行失败')
+      notify('error', t('notify.runFailed'), error instanceof Error ? error.message : t('notify.commandFailed'))
     }
-  }, [activeFile, files, isReady, notify, runNode, setShowTerminal, writeFile])
+  }, [activeFile, files, isReady, notify, runNode, setShowTerminal, t, writeFile])
 
   const clearTerminal = useCallback(() => {
     setShowTerminal(false)
@@ -101,7 +108,7 @@ export function useEditorActions({
   const handleRunNpmScript = useCallback(
     async (scriptName: string) => {
       if (!isReady) {
-        notify('info', '运行环境仍在初始化', 'WebContainer 准备好后即可运行 npm scripts。')
+        notify('info', t('notify.runtimeInit'), t('notify.runtimeInitNpm'))
         return
       }
 
@@ -114,15 +121,15 @@ export function useEditorActions({
 
         const output = await runTerminalCommand(`npm run ${scriptName}`)
         if (output.includes('(exit') && !output.includes('(exit 0)')) {
-          notify('error', '脚本执行失败', output.slice(0, 200) || `npm run ${scriptName}`)
+          notify('error', t('notify.scriptFailed'), output.slice(0, 200) || t('notify.scriptRanDetail', { script: scriptName }))
         } else {
-          notify('success', '脚本已执行', `npm run ${scriptName}`)
+          notify('success', t('notify.scriptRan'), t('notify.scriptRanDetail', { script: scriptName }))
         }
       } catch (error) {
-        notify('error', '脚本执行失败', error instanceof Error ? error.message : '命令执行失败')
+        notify('error', t('notify.scriptFailed'), error instanceof Error ? error.message : t('notify.commandFailed'))
       }
     },
-    [files, isReady, notify, setShowTerminal, writeFile],
+    [files, isReady, notify, setShowTerminal, t, writeFile],
   )
 
   return {

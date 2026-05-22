@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import JSZip from 'jszip'
+import type { TranslateFn } from '../i18n'
 import type { FileItem } from '../types/file'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { clearSemanticSearchCache } from '../services/semanticSearchService'
@@ -24,6 +25,7 @@ interface UseFileActionsOptions {
   setShowDropZone: (show: boolean) => void
   setShowNewFileInput: (show: boolean) => void
   getLanguageFromExt: (filename: string) => string
+  t: TranslateFn
 }
 
 export function useFileActions({
@@ -38,6 +40,7 @@ export function useFileActions({
   setShowDropZone,
   setShowNewFileInput,
   getLanguageFromExt,
+  t,
 }: UseFileActionsOptions) {
   const handleImportFiles = useCallback(
     (importedFiles: { name: string; content: string }[]) => {
@@ -48,9 +51,9 @@ export function useFileActions({
       setFiles(filesWithLang)
       setActiveFile(0)
       setShowDropZone(false)
-      notify('success', '文件已导入', `共导入 ${filesWithLang.length} 个文件。`)
+      notify('success', t('notify.filesImported'), t('notify.filesImportedDetail', { count: filesWithLang.length }))
     },
-    [getLanguageFromExt, notify, setActiveFile, setFiles, setShowDropZone],
+    [getLanguageFromExt, notify, setActiveFile, setFiles, setShowDropZone, t],
   )
 
   const handleSearchNavigate = useCallback(
@@ -98,7 +101,7 @@ export function useFileActions({
 
     const name = newFileName.trim()
     if (files.some((file) => file.name === name)) {
-      notify('error', '文件已存在', '请换一个文件名后再创建。')
+      notify('error', t('notify.fileExists'), t('notify.fileExistsDetail'))
       return
     }
 
@@ -113,13 +116,13 @@ export function useFileActions({
     setEditorTarget?.({ line: 1, column: 1, nonce: Date.now() })
     setNewFileName('')
     setShowNewFileInput(false)
-    notify('success', '文件已创建', name)
-  }, [files, getLanguageFromExt, newFileName, notify, setActiveFile, setEditorTarget, setFiles, setNewFileName, setShowNewFileInput])
+    notify('success', t('notify.fileCreated'), name)
+  }, [files, getLanguageFromExt, newFileName, notify, setActiveFile, setEditorTarget, setFiles, setNewFileName, setShowNewFileInput, t])
 
   const handleDeleteFile = useCallback(
     (index: number) => {
       if (files.length <= 1) {
-        notify('info', '至少保留一个文件', '当前工作区需要保留一个可编辑文件。')
+        notify('info', t('notify.keepOneFile'), t('notify.keepOneFileDetail'))
         return
       }
 
@@ -129,9 +132,9 @@ export function useFileActions({
       if (activeFile >= index && activeFile > 0) {
         setActiveFile(activeFile - 1)
       }
-      notify('success', '文件已删除', deletedFile?.name)
+      notify('success', t('notify.fileDeleted'), deletedFile?.name)
     },
-    [activeFile, files, notify, setActiveFile, setFiles],
+    [activeFile, files, notify, setActiveFile, setFiles, t],
   )
 
   const handleExportFile = useCallback(() => {
@@ -145,8 +148,8 @@ export function useFileActions({
     link.download = file.name
     link.click()
     URL.revokeObjectURL(url)
-    notify('success', '文件已导出', file.name)
-  }, [activeFile, files, notify])
+    notify('success', t('notify.fileExported'), file.name)
+  }, [activeFile, files, notify, t])
 
   const handleExportZip = useCallback(async () => {
     try {
@@ -176,12 +179,12 @@ export function useFileActions({
       link.download = `project-${Date.now()}.zip`
       link.click()
       URL.revokeObjectURL(url)
-      notify('success', '项目 ZIP 已导出', `${files.length} 个文件已打包。`)
+      notify('success', t('notify.zipExported'), t('notify.zipExportedDetail', { count: files.length }))
     } catch (error) {
-      console.error('导出 ZIP 失败:', error)
-      notify('error', '导出 ZIP 失败', error instanceof Error ? error.message : '打包失败')
+      console.error('ZIP export failed:', error)
+      notify('error', t('notify.zipExportFailed'), error instanceof Error ? error.message : t('notify.zipPackFailed'))
     }
-  }, [files, notify])
+  }, [files, notify, t])
 
   return {
     handleCreateFile,

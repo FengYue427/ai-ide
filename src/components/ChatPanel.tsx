@@ -40,7 +40,7 @@ interface ChatPanelProps {
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerateFiles }) => {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const currentPlan = useIDEStore((s) => s.currentPlan)
 
   const createWelcomeMessage = useCallback(
@@ -278,6 +278,7 @@ ${t('ai.chat.prompt')}`
           useWorkspaceContext && workspaceStats.selectedFiles > 0
             ? workspaceContextService.generateSystemPrompt(
                 action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : '',
+                language,
               )
             : t('chat.prompt.editorFile', { code: currentCode })
 
@@ -306,7 +307,7 @@ ${t('ai.chat.prompt')}`
           const additionalContext = action
             ? t('chat.prompt.userRequest', { action: quickActionLabels[action] })
             : ''
-          systemPrompt = workspaceContextService.generateSystemPrompt(additionalContext)
+          systemPrompt = workspaceContextService.generateSystemPrompt(additionalContext, language)
         } else {
           systemPrompt = action
             ? generateCodePrompt(action, currentCode)

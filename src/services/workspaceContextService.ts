@@ -3,6 +3,7 @@
  * 这是AI IDE的核心优势：让AI理解整个项目结构，而不仅仅是当前文件
  */
 
+import { createTranslator } from '../i18n'
 import { unifiedStorage, StorageLayer } from './unifiedStorage'
 import {
   buildWorkspaceFileCatalog,
@@ -328,20 +329,23 @@ class WorkspaceContextService {
     return Math.ceil(totalChars / 4)
   }
 
-  // 生成AI系统提示 - 包含工作区上下文
-  generateSystemPrompt(additionalContext?: string): string {
+  /** Build AI system prompt with workspace context (locale follows UI language). */
+  generateSystemPrompt(additionalContext?: string, locale: Parameters<typeof createTranslator>[0] = 'zh-CN'): string {
+    const t = createTranslator(locale)
     const allFiles = this.getAllFiles()
     const selectedFiles = this.getSelectedFiles()
     const selectedPaths = new Set(selectedFiles.map((file) => file.path))
 
     if (allFiles.length === 0) {
-      return `你是一个专业的编程助手。${additionalContext || ''}`
+      return additionalContext
+        ? t('prompt.ws.emptyAssistantWith', { context: additionalContext })
+        : t('prompt.ws.emptyAssistant')
     }
 
-    let prompt = `你是一个专业的编程助手。当前工作区共 ${allFiles.length} 个文件。\n\n`
+    let prompt = `${t('prompt.ws.intro', { count: allFiles.length })}\n\n`
 
-    prompt += `## 工作区文件清单\n`
-    prompt += `（✓ = 已选中并附完整内容，○ = 仅摘要）\n\n`
+    prompt += `${t('prompt.ws.catalogTitle')}\n`
+    prompt += `${t('prompt.ws.catalogLegend')}\n\n`
     prompt += `${buildWorkspaceFileCatalog(
       allFiles.map((file) => ({
         path: file.path,
@@ -349,29 +353,30 @@ class WorkspaceContextService {
         size: file.size,
         selected: selectedPaths.has(file.path),
       })),
+      locale,
     )}\n\n`
 
     const unselected = allFiles.filter((file) => !selectedPaths.has(file.path))
     if (unselected.length > 0) {
-      prompt += `## 未选中文件摘要\n\n`
+      prompt += `${t('prompt.ws.unselectedTitle')}\n\n`
       for (const file of unselected) {
-        prompt += `### ${file.path}\n\n\`\`\`${file.language}\n${summarizeFileContent(file.content)}\n\`\`\`\n\n`
+        prompt += `### ${file.path}\n\n\`\`\`${file.language}\n${summarizeFileContent(file.content, 8, locale)}\n\`\`\`\n\n`
       }
     }
 
     if (selectedFiles.length > 0) {
-      prompt += `## 已选中文件（完整内容）\n\n`
+      prompt += `${t('prompt.ws.selectedTitle')}\n\n`
       for (const file of selectedFiles) {
         prompt += `### ${file.path}\n\n\`\`\`${file.language}\n${file.content}\n\`\`\`\n\n`
       }
     }
 
-    prompt += `## 指令\n\n`
-    prompt += `1. 你可以修改工作区清单中的任何文件\n`
-    prompt += `2. 创建新文件时请使用格式: \`\`\`filename.ext\n内容\n\`\`\`\n`
-    prompt += `3. 修改现有文件时请输出完整的新文件内容\n`
-    prompt += `4. 如果删除文件，请明确说明\n`
-    prompt += `5. 如果移动/重命名文件，请说明原路径和新路径\n`
+    prompt += `${t('prompt.ws.instructionsTitle')}\n\n`
+    prompt += `${t('prompt.ws.instruction1')}\n`
+    prompt += `${t('prompt.ws.instruction2')}\n`
+    prompt += `${t('prompt.ws.instruction3')}\n`
+    prompt += `${t('prompt.ws.instruction4')}\n`
+    prompt += `${t('prompt.ws.instruction5')}\n`
 
     if (additionalContext) {
       prompt += `\n${additionalContext}\n`
