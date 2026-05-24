@@ -5,7 +5,13 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 60,
-      "includeFiles": "node_modules/.prisma/**"
+      "includeFiles": [
+        "node_modules/.prisma/**",
+        "node_modules/@prisma/client/**",
+        "node_modules/@prisma/adapter-neon/**",
+        "node_modules/@prisma/driver-adapter-utils/**",
+        "node_modules/@neondatabase/serverless/**"
+      ]
     },
     "api/health.ts": {
       "maxDuration": 15

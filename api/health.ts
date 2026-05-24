@@ -12,6 +12,10 @@ export async function GET() {
           version: '1.0.0-rc.1',
           timestamp: new Date().toISOString(),
           database: 'not_configured',
+          checks: {
+            authSecretConfigured: Boolean(process.env.AUTH_SECRET?.trim()),
+            prismaRouter: 'skipped',
+          },
         },
         { status: 503 },
       )
@@ -34,6 +38,16 @@ export async function GET() {
       }
     }
 
+    let prismaRouter: 'connected' | 'unavailable' | 'skipped' = 'skipped'
+    try {
+      const { prisma } = await import('../src/lib/prisma')
+      await prisma.$queryRaw`SELECT 1`
+      prismaRouter = 'connected'
+    } catch (prismaError) {
+      prismaRouter = 'unavailable'
+      console.error('[api/health] prisma router probe failed:', prismaError)
+    }
+
     return Response.json({
       status: 'ok',
       service: 'ai-ide-api',
@@ -46,6 +60,10 @@ export async function GET() {
         stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
         devMock: false,
       },
+      checks: {
+        authSecretConfigured: Boolean(process.env.AUTH_SECRET?.trim()),
+        prismaRouter,
+      },
     })
   } catch (error) {
     console.error('[api/health]', error)
@@ -56,6 +74,10 @@ export async function GET() {
         timestamp: new Date().toISOString(),
         database: 'unavailable',
         detail: error instanceof Error ? error.message : String(error),
+        checks: {
+          authSecretConfigured: Boolean(process.env.AUTH_SECRET?.trim()),
+          prismaRouter: 'skipped',
+        },
       },
       { status: 503 },
     )

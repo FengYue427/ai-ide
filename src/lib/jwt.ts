@@ -11,7 +11,17 @@ function resolveJwtSecret(): string {
   return FALLBACK_SECRET
 }
 
-const JWT_SECRET = resolveJwtSecret()
+/** Lazy — avoid crashing api/index cold start before handlers run (Vercel smoke). */
+let jwtSecret: string | undefined
+
+function getJwtSecret(): string {
+  if (!jwtSecret) jwtSecret = resolveJwtSecret()
+  return jwtSecret
+}
+
+export function isAuthSecretConfigured(): boolean {
+  return Boolean(process.env.AUTH_SECRET?.trim())
+}
 
 export interface JWTPayload {
   userId: string
@@ -24,14 +34,14 @@ export interface JWTPayload {
 export function createJWT(user: { id: string; email: string; name?: string | null }): string {
   return jwt.sign(
     { userId: user.id, email: user.email, name: user.name },
-    JWT_SECRET,
+    getJwtSecret(),
     { expiresIn: '7d' }
   )
 }
 
 export function verifyJWT(token: string): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    const decoded = jwt.verify(token, getJwtSecret()) as JWTPayload
     return decoded
   } catch {
     return null

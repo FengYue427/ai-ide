@@ -25,6 +25,18 @@
 | `ALLOW_DEV_BILLING` | 未设置或 `false` |
 | `VITE_ALLOW_OFFLINE_AUTH` | 未设置或 `false` |
 
+## 冒烟诊断（health 响应里的 `checks`）
+
+部署后打开 `/api/health`，除 `database: connected` 外还应看到：
+
+| 字段 | 期望 |
+|------|------|
+| `checks.authSecretConfigured` | `true` |
+| `checks.prismaRouter` | `connected` |
+
+若 `authSecretConfigured: false` → Vercel 未读到 `AUTH_SECRET`（键名必须是下划线 `AUTH_SECRET`）。  
+若 `prismaRouter: unavailable` → `api/index` 的 Prisma 依赖未打进包，需 Redeploy 最新代码（`vercel.json` includeFiles）。
+
 ## 验收命令
 
 ```powershell

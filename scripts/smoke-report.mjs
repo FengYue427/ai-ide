@@ -51,6 +51,10 @@ for (const check of checks) {
 
     if (check.kind === 'health') {
       detail = `${json?.status ?? '?'} db=${json?.database ?? '?'}`
+      if (json?.checks) {
+        detail += ` authSecret=${json.checks.authSecretConfigured ? 'yes' : 'no'}`
+        detail += ` prismaRouter=${json.checks.prismaRouter ?? '?'}`
+      }
       ok = res.ok && json?.status === 'ok' && json?.database === 'connected'
       if (json?.hints?.length) detail += ` — ${json.hints[0]}`
     } else if (check.kind === 'status') {
