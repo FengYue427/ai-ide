@@ -35,7 +35,8 @@
 | `checks.prismaRouter` | `connected` |
 
 若 `authSecretConfigured: false` → Vercel 未读到 `AUTH_SECRET`（键名必须是下划线 `AUTH_SECRET`）。  
-若 `prismaRouter: unavailable` → `api/index` 的 Prisma 依赖未打进包，需 Redeploy 最新代码（`vercel.json` includeFiles）。
+若 `prismaRouter: unavailable` → Prisma 依赖未打进包，Redeploy 含 `vercel.json` includeFiles 的提交。  
+若 Vercel 日志 **`Cannot find module '/var/task/lib/api/dispatch'`** → 未跑 `npm run build:api`（`build:deploy` 会自动执行），或 Production 仍是旧提交。
 
 ## 验收命令
 

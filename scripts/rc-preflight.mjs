@@ -25,6 +25,7 @@ function run(label, cmd, args) {
 console.log('=== AI IDE RC preflight ===\n')
 
 run('Typecheck + unit tests', 'npm', ['run', 'test:local'])
+run('API bundle (Vercel)', 'npm', ['run', 'build:api'])
 run('API route skeleton', 'node', ['scripts/check-skeleton.mjs', '--skip-tests'])
 
 if (existsSync(join(root, '.env.local'))) {

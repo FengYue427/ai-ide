@@ -1,15 +1,15 @@
 # Production smoke report
 
 - **URL**: https://ai-ide-flame.vercel.app
-- **Time**: 2026-05-22T09:05:37.602Z
+- **Time**: 2026-05-24T13:14:35.786Z
 
-- [ ] **health** — degraded db=unavailable
+- [x] **health** — ok db=connected
 - [ ] **session** — HTTP 500
 - [ ] **workspaces 401** — HTTP 500
 - [ ] **subscription** — HTTP 500
 - [x] **index** — HTTP 200
 
-**Result**: 1/5 passed
+**Result**: 2/5 passed
 
 ## Next steps
 

@@ -28,7 +28,7 @@ if (schema.includes('model PaymentOrder')) ok('Prisma PaymentOrder model')
 else bad('Missing PaymentOrder in schema — run npm run db:neon')
 
 const requiredApi = [
-  'api/index.ts',
+  'server/vercel-api-index.ts',
   'api/health.ts',
   'lib/api/dispatch.ts',
   'lib/api/handlers/health.ts',

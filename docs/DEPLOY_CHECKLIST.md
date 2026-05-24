@@ -11,7 +11,7 @@
 | 步骤 | 命令 / 动作 | 通过标准 |
 |------|-------------|----------|
 | S0-1 本地门禁 | `npm run p0:gate` 或 `npm run s0:gate` | 单测 + **集成测试全绿** + `security-baseline`（路径 A 不要求商户） |
-| S0-2 部署拓扑 | 仓库已含 `api/health.ts`、`api/index.ts`、`vercel.json` rewrite | 勿再拆成 20+ 个 `api/**/route.ts`（Hobby 12 函数上限） |
+| S0-2 部署拓扑 | `build:deploy` 含 `build:api` → `api/index.js` + `api/health.ts` + rewrite | 勿再拆成 20+ 个 `api/**/route.ts`（Hobby 12 函数上限） |
 | S0-3 部署后冒烟 | `APP_URL=https://你的域名 npm run deploy:check` | `smoke:production` 5/5；`/api/health` 为 JSON 且 `database: connected` |
 | S0-3b 离线登录策略 | 生产构建禁止 `VITE_ALLOW_OFFLINE_AUTH` | 仅 `npm run dev` 可本地假账号；见 `authService.allowOfflineAuthFallback()` |
 | S0-4 路径 B 收款前 | `node scripts/verify-env.mjs --production --require-cn-billing` | 已配置支付宝或微信商户相关变量 |

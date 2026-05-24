@@ -66,7 +66,7 @@ npm run smoke:production -- $env:APP_URL
 1. 打开 `https://ai-ide-flame.vercel.app` → 应看到欢迎页 / IDE，而不是 Vercel 403 页  
 2. 打开 `https://ai-ide-flame.vercel.app/api/health` → 应返回 JSON（`status: ok`，`database: connected`）
 
-若 `/api/health` 异常：确认含 `api/health.ts`（直连）与 `api/index.ts` + rewrite `/api/*` → `/api?__p=`。Neon 需 `DATABASE_URL`（Pooled）。若 **500**：查看 Vercel Functions 日志。
+若 `/api/health` 异常：确认含 `api/health.ts`（直连）与 `api/index.js`（`npm run build:api` 从 `server/vercel-api-index.ts` 打包）+ rewrite `/api/*` → `/api?__p=`。Neon 需 `DATABASE_URL`（Pooled）。若 **500** 且日志为 `Cannot find module .../lib/api/dispatch`：未执行 `build:api` 或部署了旧提交。
 
 ## 当前部署可能过旧
 

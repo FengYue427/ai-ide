@@ -1,6 +1,6 @@
 /**
- * Single Vercel Serverless entry at /api.
- * vercel.json rewrites /api/foo/bar → /api?__p=foo/bar
+ * Vercel Serverless entry source (built to api/index.js via npm run build:api).
+ * Rewrites: /api/foo/bar → /api?__p=foo/bar
  */
 import { dispatchApiRequest } from '../lib/api/dispatch'
 import { logApi } from '../lib/api/logger'

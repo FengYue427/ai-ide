@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 dist/
+api/index.js
+api/index.js.map
 
 # IDE
 .vscode/
