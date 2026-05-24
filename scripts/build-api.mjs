@@ -23,3 +23,4 @@ await esbuild.build({
 })
 
 console.log(`✅ API bundle: ${outfile}`)
+console.log('ℹ️  Commit api/index.js when lib/api handlers change (Vercel validates api/ before build).')
