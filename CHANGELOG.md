@@ -5,13 +5,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Phase 2 (in progress)
+### Phase 3 (started)
 
-- Welcome page cloud health banner (RC honesty when DB is down)
-- Production smoke report script (`npm run smoke:report`)
-- Vercel env checklist: [docs/VERCEL_ENV_PHASE2.md](docs/VERCEL_ENV_PHASE2.md)
+- See [docs/PHASE3_KICKOFF.md](docs/PHASE3_KICKOFF.md) — P4-1 indexing continuation next.
 
-### Added (recent batches)
+## [1.0.0-rc.1] — 2026-05-24 (Phase 2 closure)
+
+### Phase 2 shipped
+
+- Production **smoke 5/5** on `ai-ide-flame.vercel.app`
+- Legal pages RC final (zh/en privacy + terms) — [docs/LEGAL_RC_2026-05.md](docs/LEGAL_RC_2026-05.md)
+- Vercel `api/index.js` esbuild bundle (fixes `lib/api/dispatch` module not found)
+- Welcome cloud health banner; `npm run smoke:report`
+- RC announcement template — [docs/RC_ANNOUNCEMENT_2026-05.md](docs/RC_ANNOUNCEMENT_2026-05.md)
+
+### Added (Phase 1 batches)
 
 - **i18n**: ~980 keys (zh-CN / en-US), API success messages, plugin `manifest.i18n`
 - **P0'**: Neon HTTP-safe Prisma writes, `p0:gate` (22 integration tests + security baseline)
@@ -20,9 +28,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [1.0.0-rc.1] — 2026-05
-
-### Release candidate (公测 / RC)
+### Release candidate (公测 / RC) — original notes
 
 **Positioning**: Open-source, browser-first AI IDE with **BYOK** (bring your own API keys).  
 Cloud accounts and workspace sync require a correctly configured deployment (`DATABASE_URL`, `AUTH_SECRET`, `APP_URL`).

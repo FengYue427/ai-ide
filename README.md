@@ -12,8 +12,8 @@
 | **云账号** | 注册、云工作区同步需部署方配置 `DATABASE_URL` 等 — [VERCEL_ENV_PHASE2.md](docs/VERCEL_ENV_PHASE2.md) |
 | **订阅** | 公测期路径 A：**不收款**，专业功能免费开放（见应用内说明） |
 
-> 维护者：部署后请跑 `APP_URL=https://你的域名 npm run smoke:production`（目标 5/5）。  
-> 上市评估：[docs/LAUNCH_ASSESSMENT_2026-05.md](docs/LAUNCH_ASSESSMENT_2026-05.md) · 执行清单：[docs/NEXT_EXECUTION.md](docs/NEXT_EXECUTION.md)
+> **公测公告**：[docs/RC_ANNOUNCEMENT_2026-05.md](docs/RC_ANNOUNCEMENT_2026-05.md) · 法务记录：[docs/LEGAL_RC_2026-05.md](docs/LEGAL_RC_2026-05.md)  
+> 维护者：`npm run smoke:report`（目标 5/5）· 执行清单：[docs/NEXT_EXECUTION.md](docs/NEXT_EXECUTION.md)（**Phase 3**）
 
 ## ✨ 核心亮点
 
