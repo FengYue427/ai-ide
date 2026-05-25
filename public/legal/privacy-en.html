@@ -10,32 +10,60 @@
     h2 { font-size: 1.1rem; margin-top: 2rem; }
     a { color: #2563eb; }
     .muted { color: #666; font-size: 0.9rem; }
+    .notice { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 14px; margin: 1rem 0; }
   </style>
 </head>
 <body>
   <p class="muted"><a href="/">← Back to AI IDE</a> · <a href="/legal/privacy.html">中文</a></p>
   <h1>Privacy Policy</h1>
-  <p class="muted">Last updated: May 2026 · Open-source product template; have legal counsel review before commercial operation.</p>
+  <p class="muted">Version: v1.0.0-rc.1 · Last updated: 24 May 2026</p>
+  <p class="notice"><strong>RC public beta (Path A)</strong>: No fees are charged during this release. Cloud accounts and workspace sync are optional; you may use BYOK (your own API keys) and local editing without signing up.</p>
 
-  <h2>What we collect</h2>
+  <h2>Scope</h2>
+  <p>This policy applies when you use optional cloud features on our hosted AI IDE site (e.g. <code>https://ai-ide-flame.vercel.app</code>) and related APIs. Self-hosted deployments are operated by their respective hosts.</p>
+
+  <h2>Information we collect</h2>
   <ul>
-    <li><strong>Account</strong>: email and display name when you sign in to cloud features.</li>
-    <li><strong>Workspace data</strong>: project files and settings you choose to store in the cloud.</li>
-    <li><strong>Usage metrics</strong>: AI request counts for quota (not your API keys or chat content).</li>
-    <li><strong>Local data</strong>: API keys and editor preferences stay in the browser unless you enable cloud sync.</li>
+    <li><strong>Account</strong>: email address and display name (optional avatar URL).</li>
+    <li><strong>Cloud workspaces</strong>: project files and settings you choose to store in the cloud.</li>
+    <li><strong>Usage metrics</strong>: AI request counts for public-beta quota display — <strong>not</strong> your API keys, chat content, or code sent to model providers.</li>
+    <li><strong>Session cookie</strong>: <code>auth-token</code> (HttpOnly) to keep you signed in.</li>
+    <li><strong>Technical logs</strong>: IP, timestamps, and errors as recorded by the hosting platform for security and reliability.</li>
   </ul>
 
-  <h2>What we do not collect</h2>
-  <p>API keys and conversations go directly to your chosen AI provider. We do <strong>not</strong> proxy them on our servers unless we announce otherwise.</p>
+  <h2>Information kept on your device by default</h2>
+  <ul>
+    <li>Third-party AI API keys, theme, and language preferences (browser localStorage / IndexedDB).</li>
+    <li>Local workspaces and offline usage counters when you are not signed in or not using cloud sync.</li>
+  </ul>
 
-  <h2>Storage</h2>
-  <p>Cloud data is stored in managed PostgreSQL (e.g. Neon). Local data uses IndexedDB / localStorage.</p>
+  <h2>What we do not process on our servers</h2>
+  <p>API keys and AI conversations are sent <strong>directly to your chosen AI provider</strong>. We do not proxy or store them on our application servers unless we announce a change.</p>
+
+  <h2>Storage and subprocessors</h2>
+  <ul>
+    <li><strong>Cloud database</strong>: managed PostgreSQL (e.g. Neon).</li>
+    <li><strong>Application hosting</strong>: e.g. Vercel (static assets and serverless APIs).</li>
+    <li><strong>Collaboration (Beta)</strong>: WebRTC may transfer edit data peer-to-peer; see Terms of Service.</li>
+  </ul>
+
+  <h2>Purpose</h2>
+  <p>We use this data to provide accounts, cloud sync, quota display, security, and stability. We do not process payments during the public beta.</p>
+
+  <h2>Retention</h2>
+  <p>Data is kept while your account is active. You may request deletion of your account and cloud workspaces; we will remove production data within a reasonable period; backups may persist briefly.</p>
 
   <h2>Your rights</h2>
-  <p>You may request export or deletion of your account and workspaces via the project maintainers (see the repo README).</p>
+  <p>You may request access, correction, export, or deletion of your account and cloud data via the contact channel below.</p>
+
+  <h2>Children</h2>
+  <p>The service is intended for users who can enter a binding agreement under local law. Do not register if you are below the minimum age in your jurisdiction.</p>
+
+  <h2>Changes</h2>
+  <p>We may update this policy; material changes will be announced on the site or repository. Continued use of cloud features means you accept the updated policy.</p>
 
   <h2>Contact</h2>
-  <p>Questions via GitHub Issues on the project repository.</p>
+  <p>Privacy requests and questions: <a href="https://github.com/FengYue427/ai-ide/issues" rel="noopener noreferrer">GitHub Issues</a> (repo: FengYue427/ai-ide).</p>
 
   <p class="muted"><a href="/legal/terms-en.html">Terms of Service</a></p>
 </body>

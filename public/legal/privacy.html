@@ -10,32 +10,60 @@
     h2 { font-size: 1.1rem; margin-top: 2rem; }
     a { color: #2563eb; }
     .muted { color: #666; font-size: 0.9rem; }
+    .notice { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 14px; margin: 1rem 0; }
   </style>
 </head>
 <body>
   <p class="muted"><a href="/">← 返回 AI IDE</a> · <a href="/legal/privacy-en.html">English</a></p>
   <h1>隐私政策</h1>
-  <p class="muted">最后更新：2026 年 5 月 · 本页为开源产品模板，正式运营前请由法务审阅。</p>
+  <p class="muted">版本：v1.0.0-rc.1 · 最后更新：2026 年 5 月 24 日</p>
+  <p class="notice"><strong>公测说明（路径 A）</strong>：当前为 RC 公测，<strong>不收取费用</strong>。云端账号与工作区同步为可选功能；您也可仅使用 BYOK（自带 API Key）与本地编辑，无需注册。</p>
 
-  <h2>我们收集什么</h2>
+  <h2>适用范围</h2>
+  <p>本政策适用于您通过我们部署的 AI IDE 网站（例如 <code>https://ai-ide-flame.vercel.app</code>）及同源 API 使用可选云端服务的情形。自托管实例由相应运营方负责。</p>
+
+  <h2>我们收集的信息</h2>
   <ul>
-    <li><strong>账号信息</strong>：注册时的邮箱、显示名称（若使用云端登录）。</li>
-    <li><strong>工作区数据</strong>：您选择保存到云端的项目文件与设置。</li>
-    <li><strong>用量记录</strong>：用于配额管理的 AI 请求计数（不含您的 API Key 与模型对话正文）。</li>
-    <li><strong>本地数据</strong>：AI 提供商 API Key、编辑器偏好等默认保存在浏览器本地，除非您启用云同步。</li>
+    <li><strong>账号信息</strong>：注册时的电子邮箱、显示名称（可选头像 URL）。</li>
+    <li><strong>云工作区</strong>：您主动保存到云端的项目文件摘要、编辑器设置等（以您提交为准）。</li>
+    <li><strong>用量记录</strong>：用于公测配额展示的 AI 请求计数；<strong>不包含</strong>您的 API Key、模型对话正文或代码内容（对话直连您选择的 AI 服务商）。</li>
+    <li><strong>会话 Cookie</strong>：用于保持登录状态的 <code>auth-token</code>（HttpOnly）。</li>
+    <li><strong>技术日志</strong>：托管平台可能记录 IP、请求时间、错误信息（用于安全与排障）。</li>
   </ul>
 
-  <h2>我们不收集什么</h2>
-  <p>您配置的大模型 API Key 与对话内容直接发往所选 AI 服务商，<strong>不经过我们的服务器代理</strong>（除非未来单独公告）。</p>
+  <h2>默认保存在您设备本地的信息</h2>
+  <ul>
+    <li>第三方 AI 服务商的 API Key、编辑器主题与语言偏好等（浏览器 localStorage / IndexedDB）。</li>
+    <li>未登录时的本地工作区与离线用量计数（若您未启用云同步）。</li>
+  </ul>
 
-  <h2>数据存储</h2>
-  <p>云端数据存储在受托管的 PostgreSQL 数据库（如 Neon / Supabase）。本地数据存储在浏览器 IndexedDB / localStorage。</p>
+  <h2>我们不通过服务器处理的内容</h2>
+  <p>您配置的 API Key 与 AI 对话内容<strong>直接发往所选 AI 服务商</strong>，不经由我们的应用服务器代理或存储（除非未来单独公告变更）。</p>
+
+  <h2>存储与托管</h2>
+  <ul>
+    <li><strong>云端数据库</strong>：PostgreSQL（例如 Neon），区域以服务商为准。</li>
+    <li><strong>应用托管</strong>：例如 Vercel（静态资源与 Serverless API）。</li>
+    <li><strong>实时协作（Beta）</strong>：若启用，可能通过 WebRTC 在对等端之间传输编辑数据；请参阅服务条款。</li>
+  </ul>
+
+  <h2>处理目的与法律依据（摘要）</h2>
+  <p>我们处理上述数据用于：提供账号与工作区同步、配额统计、安全审计、改进稳定性。公测期间不进行付费结算。</p>
+
+  <h2>保留期限</h2>
+  <p>账号存续期间保留相关数据。您可申请删除账号及云工作区；删除后我们将在合理期限内从生产库中清除，备份副本可能短期保留。</p>
 
   <h2>您的权利</h2>
-  <p>您可请求导出或删除账号及关联工作区数据，请联系项目维护者（见仓库 README）。</p>
+  <p>您可请求查阅、更正、导出或删除账号及关联云数据。请通过下方联系方式提交，我们将在合理期限内答复。</p>
+
+  <h2>未成年人</h2>
+  <p>本服务面向具备完全民事行为能力的用户。若您未满当地法定年龄，请勿注册云端账号。</p>
+
+  <h2>政策变更</h2>
+  <p>我们可能更新本政策；重大变更将在站内或仓库公告。继续使用云端服务即视为接受更新后的政策。</p>
 
   <h2>联系</h2>
-  <p>问题与请求请通过 GitHub Issues 提交。</p>
+  <p>隐私相关请求与问题：<a href="https://github.com/FengYue427/ai-ide/issues" rel="noopener noreferrer">GitHub Issues</a>（仓库：FengYue427/ai-ide）。</p>
 
   <p class="muted"><a href="/legal/terms.html">服务条款</a></p>
 </body>

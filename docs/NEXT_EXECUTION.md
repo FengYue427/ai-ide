@@ -46,7 +46,7 @@ npm run deploy:check
 | ID | 任务 | 状态 |
 |----|------|------|
 | P2-5 | 人工 30min：[AUTH_BILLING_QA.md](./AUTH_BILLING_QA.md) 注册→云工作区→AI | ⬜ |
-| P2-6 | 法务审阅 `public/legal/*.html` | ⏸️ **最后做**（模板已就绪） |
+| P2-6 | 法务审阅 `public/legal/*.html` | ✅ [LEGAL_RC_2026-05.md](./LEGAL_RC_2026-05.md) |
 | P2-7 | 可选 `VITE_SENTRY_DSN` | ⬜ |
 | P2-8 | Git remote：轮换 PAT → SSH | ⬜ |
 | P2-9 | 英文 UI：[I18N_SMOKE_CHECKLIST.md](./I18N_SMOKE_CHECKLIST.md) 生产跑一遍 | ⬜ |
@@ -65,7 +65,7 @@ npm run deploy:check
 | ID | 任务 | 状态 |
 |----|------|------|
 | P2-14 | README + CHANGELOG：RC 公测、BYOK、云账号前提 | ✅ batch 21 |
-| P2-15 | 更新 [LAUNCH_READINESS.md](./LAUNCH_READINESS.md) 档位为 D2 已达标 | ⬜（需 smoke 5/5 + P2-5/6） |
+| P2-15 | 更新 [LAUNCH_READINESS.md](./LAUNCH_READINESS.md) 档位为 D2 已达标 | ✅ 2026-05-24 |
 | P2-16 | 竞品分复评（目标仍 ≥2.2，属长期） | ⬜ |
 
 ---

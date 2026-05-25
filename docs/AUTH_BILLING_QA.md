@@ -5,13 +5,14 @@
 ### 生产 30min 记录（P2-5）
 
 ```
-日期：
-APP_URL：
-注册：     OK / FAIL
-云工作区：  OK / FAIL
-AI 对话：   OK / FAIL
-smoke 5/5： OK / FAIL
-备注：
+日期：2026-05-24
+APP_URL：https://ai-ide-flame.vercel.app
+注册：     OK
+云工作区：  OK
+AI 对话/用量： OK
+英文界面：  OK
+smoke 5/5： OK
+备注：维护者生产验收通过
 ```
 
 ---

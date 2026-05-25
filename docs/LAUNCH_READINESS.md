@@ -11,17 +11,17 @@
 | 档位 | 含义 | 当前是否达标 |
 |------|------|:------------:|
 | **D0 演示站** | BYOK、无账号、纯前端 | ✅ 已长期具备 |
-| **D1 技术预览** | 账号 API + 云工作区 + 配额 UI | 🔶 生产需 `deploy:check` 冒烟 |
-| **D2 MLP（最小可上市）** | 稳定注册、云工作区、法务页、观测、公测配额 | 🔶 P0' 代码门禁 ✅；差法务审阅与 Sentry |
+| **D1 技术预览** | 账号 API + 云工作区 + 配额 UI | ✅ 生产 smoke 5/5 |
+| **D2 MLP（最小可上市）** | 稳定注册、云工作区、法务页、观测、公测配额 | ✅ RC 路径 A（2026-05-24）；可选 Sentry 未接 |
 | **D3 可收款 GA** | D2 + 真实订阅与发票/退款流程 | ⬜ 差 P1 路径 B+ 商户 |
 | **D4 企业级** | SSO、审计、专用部署、SLA | ⬜ 未规划 |
 
-**结论（2026-05-22，见 [LAUNCH_ASSESSMENT_2026-05.md](./LAUNCH_ASSESSMENT_2026-05.md)）**：
+**结论（2026-05-24，Phase 2 闭环，见 [LAUNCH_ASSESSMENT_2026-05.md](./LAUNCH_ASSESSMENT_2026-05.md)）**：
 
-- **代码**：P0'/P1/i18n/P4-1 首包已交付；本地 `p0:gate` 曾全绿（170 单测）。
-- **生产**：`ai-ide-flame.vercel.app` → `health: degraded`, `database: unavailable` → 实际 **D0～D0.5**（云 API 不可用）。
-- **对外**：可 **RC/公测公告（BYOK）**；欢迎页会探测 `/api/health` 并提示云端是否可用；**不可** D2 MLP 或 D3 可收款 GA，直至 Phase 2 运维项完成（[PHASE2_STATUS.md](./PHASE2_STATUS.md)、[NEXT_EXECUTION.md](./NEXT_EXECUTION.md)）。
-- **冒烟记录**：`npm run smoke:report` → [PRODUCTION_SMOKE_LAST.md](./PRODUCTION_SMOKE_LAST.md)（当前 **1/5**）。
+- **代码**：P0'/P1/i18n/P4-1 + Vercel `api/index.js` bundle；单测 171 绿。
+- **生产**：`https://ai-ide-flame.vercel.app` → `health: ok`，`database: connected`；**smoke 5/5**（[PRODUCTION_SMOKE_LAST.md](./PRODUCTION_SMOKE_LAST.md)）。
+- **验收**：P2-5 人工 QA、P2-9 英文、P2-6 法务 RC 定稿（[LEGAL_RC_2026-05.md](./LEGAL_RC_2026-05.md)）。
+- **对外**：可发 **D2 MLP / RC 公测公告**（路径 A，**不收款**）；**不可** D3 可收款 GA，直至路径 B 商户与收款上线。
 
 ---
 
@@ -31,8 +31,8 @@
 
 | # | 项 | 状态 | 动作 |
 |---|-----|------|------|
-| L1 | Vercel `DATABASE_URL`、`AUTH_SECRET`、`APP_URL` 正确 | 🔶 用户已配 | 跑 `deploy:check` + 记录结果 |
-| L2 | `/api/health` 返回预期 JSON | 🔶 | 生产冒烟 |
+| L1 | Vercel `DATABASE_URL`、`AUTH_SECRET`、`APP_URL` 正确 | ✅ | 已验收 |
+| L2 | `/api/health` 返回预期 JSON | ✅ | `ok` + `connected` |
 | L3 | `vercel.json` 不吞 `/api/*` | ✅ | 回归每次改路由 |
 | L4 | Prisma migrate 与生产 schema 一致 | 🔶 | 发版前 `prisma migrate deploy` |
 | L5 | 构建 + `npm test` CI 绿 | ✅ | 保持 |
@@ -47,7 +47,7 @@
 | L9 | OAuth（若开启）回调 URL 与生产域一致 | 🔶 | OAUTH_SETUP 勾选 |
 | L10 | API 限流、Cookie `HttpOnly`/`Secure` | ✅ 代码有 | 渗透抽查 |
 | L11 | 无密钥进 Git；`git remote` 无嵌入 PAT | ⚠️ | **轮换 token，改 SSH/凭据管理器** |
-| L12 | 隐私政策 / 服务条款 / 联系入口 | 🔶 模板页 | 法务审阅替换占位文案 |
+| L12 | 隐私政策 / 服务条款 / 联系入口 | ✅ | [LEGAL_RC_2026-05.md](./LEGAL_RC_2026-05.md) 四页 RC 定稿 |
 
 ### 2.3 产品与体验
 
@@ -123,7 +123,7 @@
 | 里程碑 | 前置 | 最早 |
 |--------|------|------|
 | **RC 公测公告** | 当前 + README 更新 | 即时 |
-| **D2 MLP** | P0' 全绿 + L12 法务 | +3～4 周 |
+| **D2 MLP** | Phase 2 闭环（2026-05-24） | **可对外 RC 公测** |
 | **D3 可收款** | P1 路径 B + 商户 | +6～10 周 |
 | **D4 企业** | 单独立项 | 6 月+ |
 

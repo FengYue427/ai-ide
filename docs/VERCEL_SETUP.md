@@ -133,4 +133,4 @@ npm run verify:env -- --url https://ai-ide.vercel.app
 - [ ] CI 全绿（`integration-api`, `e2e-ui`, `e2e-stack`）
 - [ ] `npm run smoke:production` 通过
 - [ ] Stripe Webhook（若收费）
-- [ ] 法务页已审阅（当前为模板）
+- [x] 法务页 RC 定稿（见 [LEGAL_RC_2026-05.md](./LEGAL_RC_2026-05.md)）
