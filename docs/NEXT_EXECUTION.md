@@ -37,12 +37,20 @@ GA **不包含** 4b/5。
 
 ---
 
-## 接下来 4 周（P0）
+## 接下来（P0 · 代码已 push）
+
+| 状态 | 任务 |
+|:----:|------|
+| ✅ | Git `99b8c46` → `origin/main`（v1.1.0-rc.2） |
+| ⬜ | Vercel 部署完成（Git 连动或 `vercel login` + `vercel --prod`） |
+| ⬜ | Production env：[VERCEL_PRODUCTION_ENV_GA.md](./VERCEL_PRODUCTION_ENV_GA.md) |
+| ⬜ | 生产 `payment-methods` → `billingPath: B` + 真付 ¥19 |
+| ⬜ | GA 公告 + 可选 `v1.0.0` tag |
 
 | 周 | 任务 |
 |----|------|
-| **W1** | 提交支付宝**生产**商户；Vercel Production env（见 [DEPLOY_D3_GA.md](./DEPLOY_D3_GA.md)） |
-| **W2** | `check:release:d3` 对 Production 绿；Sentry 测试事件 |
+| **W1** | 支付宝**生产**商户 + Vercel env |
+| **W2** | `check:release:d3`；Sentry 测试事件 |
 | **W3** | 法务填 `payment.html` 主体；[D3_GA_ACCEPTANCE.md](./D3_GA_ACCEPTANCE.md) 生产段 |
 | **W4** | GA 公告草稿；定是否 **支付宝-only**；4b 可选 1 天 Electron POC |
 

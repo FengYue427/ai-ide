@@ -20,6 +20,8 @@
 
 ## 第 1 步：Vercel Production 环境变量
 
+逐项勾选：[VERCEL_PRODUCTION_ENV_GA.md](./VERCEL_PRODUCTION_ENV_GA.md)
+
 在 Vercel → Project → Settings → Environment Variables → **Production**：
 
 ```env
