@@ -15,6 +15,25 @@ smoke 5/5： OK
 备注：维护者生产验收通过
 ```
 
+### 国内支付沙箱（Phase 4，配置商户后）
+
+| 步骤 | 操作 | 期望 |
+|------|------|------|
+| 1 | `npm run billing:preflight` | 支付宝或微信至少一项 ✅ |
+| 2 | 登录 → 订阅 → 专业版 → **支付宝** | 沙箱收银台 → 回跳 success |
+| 3 | 刷新订阅/配额 | Pro；今日用量上限提升 |
+| 4 | **微信** Native | 扫码 → 订单 paid → 升级 |
+| 5 | `GET /api/payment/orders/:id` | status=paid |
+
+记录：
+
+```
+支付沙箱日期：
+支付宝 E2E： OK / FAIL
+微信 E2E：   OK / FAIL
+notify 升级： OK / FAIL
+```
+
 ---
 
 ## 一、登录 / 注册（邮箱密码）

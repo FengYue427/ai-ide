@@ -5,7 +5,9 @@
 > - **正式上市（GA）**：仅以 **[LAUNCH_READINESS.md](./LAUNCH_READINESS.md) 档位 D3** 为准——真实订阅、支付回调、对账与付费法务。  
 > - **D2 MLP**：视为上市前里程碑，**已完成**（2026-05-24），不对外称「正式商业上架」。
 
-**关联**：[PLAN_NEXT_2026.md](./PLAN_NEXT_2026.md) · [CN_PAYMENT_SETUP.md](./CN_PAYMENT_SETUP.md) · [STRIPE_SETUP.md](./STRIPE_SETUP.md) · [LAUNCH_ASSESSMENT_2026-05.md](./LAUNCH_ASSESSMENT_2026-05.md)
+**支付决策（已定）**：[PAYMENT_DECISION_CN_2026-05.md](./PAYMENT_DECISION_CN_2026-05.md) · 周计划 [PHASE4_CN_PAYMENT.md](./PHASE4_CN_PAYMENT.md)
+
+**关联**：[PLAN_NEXT_2026.md](./PLAN_NEXT_2026.md) · [CN_PAYMENT_SETUP.md](./CN_PAYMENT_SETUP.md) · [LAUNCH_ASSESSMENT_2026-05.md](./LAUNCH_ASSESSMENT_2026-05.md)
 
 ---
 
@@ -14,7 +16,7 @@
 | 阶段 | 对内档位 | 对外话术 | 收款 |
 |------|----------|----------|------|
 | **当前** | D2 RC | 「v1.0.0-rc.1 公测 · BYOK · 云账号可选」 | ❌ |
-| **目标** | **D3 GA** | 「正式版上线 · 可订阅专业版/团队版」 | ✅ 支付宝/微信和/或 Stripe |
+| **目标** | **D3 GA** | 「正式版上线 · 可订阅专业版/团队版」 | ✅ **支付宝 + 微信（已定）**；Stripe 可选海外 |
 | **远期** | D4 | 企业 SSO、SLA、专用部署 | 合同 |
 
 **D3 硬性门禁（缺一不可）**：
@@ -72,7 +74,7 @@ gantt
 | **M4** | 2026-10 中 | D3 法务签字 + Sentry + 运维一页纸 |
 | **GA** | **2026-10～11** | **D3 正式上市公告** |
 
-> 若 **8 周内**拿不到国内商户，备选：**Stripe live 海外先行 GA**，国内仍路径 A（双轨运营）。
+> 商户审核若显著延误：可推迟 GA 日期；**不**改为 Stripe-first（与决策一致）。
 
 ---
 
@@ -107,13 +109,7 @@ gantt
 | **B3** | 对账：每日 `PaymentOrder` 与商户后台核对脚本或 checklist | 运维 SOP 一页 |
 | **B3** | Stripe live（可选海外） | webhook 生产 URL 绿 |
 
-**决策点（2026-06-30 前书面确认）**：
-
-| 选项 | 条件 | GA 话术 |
-|------|------|---------|
-| **国内优先** | 支付宝+微信生产商户 | 「支持支付宝/微信订阅」 |
-| **海外先行** | Stripe live，国内仍 A | 「国际卡订阅；国内公测免费」 |
-| **双轨** | 两套商户齐全 | 全量 GA |
+**支付路线（2026-05-24 已确认）**：**国内支付宝 + 微信优先** — 见 [PAYMENT_DECISION_CN_2026-05.md](./PAYMENT_DECISION_CN_2026-05.md)。Stripe 不阻塞 GA。
 
 ---
 
@@ -264,11 +260,11 @@ gantt
 
 ## 10. 立即行动（未来 2 周）
 
-1. **2026-06-30 决策会**：国内商户 vs Stripe 海外 vs 双轨（书面一行结论）。  
-2. **启动 P4-1 续包**（Phase 3 W1）。  
-3. **并行**：`npm run billing:preflight` + 支付宝沙箱 AppID 申请。  
-4. **RC 运营**：发 [RC_ANNOUNCEMENT_2026-05.md](./RC_ANNOUNCEMENT_2026-05.md)；收集「愿付价格」反馈。  
-5. **冻结 GA 定价**：专业版 ¥19 / 团队版 ¥49 是否调整（见 [CN_PAYMENT_SETUP.md](./CN_PAYMENT_SETUP.md)）。
+1. **支付宝沙箱 AppID**：按 [CN_MERCHANT_APPLY_CHECKLIST.md](./CN_MERCHANT_APPLY_CHECKLIST.md) 申请。  
+2. **`npm run billing:preflight`** + **`npm run payment:notify-urls`**。  
+3. **Phase 4 W3**：支付宝沙箱 E2E — [PHASE4_CN_PAYMENT.md](./PHASE4_CN_PAYMENT.md)。  
+4. **并行 Phase 3**：P4-1 索引续包。  
+5. **RC 运营**：收集付费反馈；GA 前冻结 ¥19/¥49 是否调价。
 
 ---
 

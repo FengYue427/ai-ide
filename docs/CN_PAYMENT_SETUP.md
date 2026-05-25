@@ -2,6 +2,8 @@
 
 面向国内用户：**支付宝电脑网站支付** + **微信 Native 扫码**。配置完成后，`dev_mock` 自动关闭，走真实收银台。
 
+> **路线**：国内优先 → D3 GA — [PAYMENT_DECISION_CN_2026-05.md](./PAYMENT_DECISION_CN_2026-05.md) · 周计划 [PHASE4_CN_PAYMENT.md](./PHASE4_CN_PAYMENT.md) · 商户申请 [CN_MERCHANT_APPLY_CHECKLIST.md](./CN_MERCHANT_APPLY_CHECKLIST.md)
+
 ## 定价与配额（宽松默认值）
 
 | 计划 | 月费 | AI 配额/日 | 云工作区 |

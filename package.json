@@ -41,6 +41,7 @@
     "check:skeleton": "node scripts/check-skeleton.mjs",
     "rc:preflight": "node scripts/rc-preflight.mjs",
     "billing:preflight": "node scripts/billing-cn-preflight.mjs",
+    "payment:notify-urls": "node scripts/payment-notify-urls.mjs",
     "prod:db": "node scripts/prod-db-setup.mjs",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
