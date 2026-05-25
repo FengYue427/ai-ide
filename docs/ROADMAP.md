@@ -42,7 +42,7 @@
 
 ## 二、当前阶段
 
-**Phase 4 — 公测体验**（2026-05）：P2/P3 ✅；**i18n** ✅；**P0'/P1 代码** ✅；**P4-1 首包** ✅。**上市评估**：[LAUNCH_ASSESSMENT_2026-05.md](./LAUNCH_ASSESSMENT_2026-05.md) — 可 RC 公告，不可 D2 直至生产 DB 绿。**当前**：[NEXT_EXECUTION.md](./NEXT_EXECUTION.md) **Phase 2**（部署闭环 → 法务/人工 → D2）。
+**Phase 2 RC**（2026-05）✅。**正式上市** → **D3 GA**（约 2026-10～11）：[PLAN_D3_LONGTERM.md](./PLAN_D3_LONGTERM.md)。**当前**：[NEXT_EXECUTION.md](./NEXT_EXECUTION.md) Phase 3 + Phase 4 并行。
 
 **Phase 4 交付清单**：
 

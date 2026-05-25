@@ -12,8 +12,9 @@
 | **云账号** | 注册、云工作区同步需部署方配置 `DATABASE_URL` 等 — [VERCEL_ENV_PHASE2.md](docs/VERCEL_ENV_PHASE2.md) |
 | **订阅** | 公测期路径 A：**不收款**，专业功能免费开放（见应用内说明） |
 
-> **公测公告**：[docs/RC_ANNOUNCEMENT_2026-05.md](docs/RC_ANNOUNCEMENT_2026-05.md) · 法务记录：[docs/LEGAL_RC_2026-05.md](docs/LEGAL_RC_2026-05.md)  
-> 维护者：`npm run smoke:report`（目标 5/5）· 执行清单：[docs/NEXT_EXECUTION.md](docs/NEXT_EXECUTION.md)（**Phase 3**）
+> **公测（现在）**：RC · 路径 A · 不收款 — [RC 公告](docs/RC_ANNOUNCEMENT_2026-05.md)  
+> **正式上市目标**：D3 可收款 GA（约 2026-10～11）— [长期规划](docs/PLAN_D3_LONGTERM.md)  
+> 维护者：`npm run smoke:report` · 当前冲刺：[docs/NEXT_EXECUTION.md](docs/NEXT_EXECUTION.md)
 
 ## ✨ 核心亮点
 
