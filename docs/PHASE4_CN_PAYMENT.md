@@ -20,8 +20,8 @@
 
 | # | 任务 | 负责人 | 完成标准 |
 |---|------|--------|----------|
-| 1 | 填写 [CN_MERCHANT_APPLY_CHECKLIST.md](./CN_MERCHANT_APPLY_CHECKLIST.md) | 运营/你 | 支付宝沙箱 AppID 到手 |
-| 2 | `.env.local` 沙箱密钥 | 研发 | `npm run billing:preflight` 支付宝 ✅ |
+| 1 | 填写 [CN_MERCHANT_APPLY_CHECKLIST.md](./CN_MERCHANT_APPLY_CHECKLIST.md) | 运营/你 | 沙箱 APPID 已有 → [ALIPAY_SANDBOX_QUICKSTART.md](./ALIPAY_SANDBOX_QUICKSTART.md) |
+| 2 | `.env.local` 沙箱密钥（应用私钥 + **支付宝公钥**） | 研发 | `npm run billing:preflight` 支付宝 ✅ |
 | 3 | ngrok 固定域名（可选） | 研发 | `PAYMENT_NOTIFY_URL` 文档化 |
 | 4 | 生产 Vercel **仍路径 A** | — | 勿误开商户 env |
 

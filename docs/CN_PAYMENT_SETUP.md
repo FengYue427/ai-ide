@@ -16,7 +16,11 @@
 
 ---
 
-## 0. 配置前检查
+## 0. 支付宝沙箱快速接入
+
+已有沙箱 APPID（开放平台 → 沙箱应用）→ **[ALIPAY_SANDBOX_QUICKSTART.md](./ALIPAY_SANDBOX_QUICKSTART.md)**（复制密钥 → `.env.local` → `billing:preflight`）。
+
+## 0b. 配置前检查
 
 ```bash
 npm run billing:preflight
