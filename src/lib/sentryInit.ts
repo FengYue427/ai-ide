@@ -7,9 +7,14 @@ export async function initOptionalSentry(): Promise<void> {
 
   try {
     const Sentry = await import('@sentry/react')
+    const release =
+      (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim() ||
+      (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA as string | undefined)?.trim()
+
     Sentry.init({
       dsn,
       environment: import.meta.env.MODE,
+      release: release ? `ai-ide@${release}` : undefined,
       tracesSampleRate: import.meta.env.PROD ? 0.1 : 0.1,
     })
 

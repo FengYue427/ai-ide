@@ -42,6 +42,12 @@
       ]
     }
   ],
+  "crons": [
+    {
+      "path": "/api/billing/expire-subscriptions",
+      "schedule": "0 3 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/website/(.*)",

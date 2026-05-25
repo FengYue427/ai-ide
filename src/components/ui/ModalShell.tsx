@@ -10,6 +10,8 @@ interface ModalShellProps {
   bodyClassName?: string
   footer?: React.ReactNode
   ariaLabel?: string
+  /** Render above another open modal (subscription → pay). */
+  elevated?: boolean
 }
 
 export function ModalShell({
@@ -20,12 +22,17 @@ export function ModalShell({
   bodyClassName = '',
   footer,
   ariaLabel,
+  elevated = false,
 }: ModalShellProps) {
   const { t } = useI18n()
   const labelText = typeof title === 'string' ? title : ariaLabel
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
+    <div
+      className={`modal-overlay${elevated ? ' modal-overlay--elevated' : ''}`.trim()}
+      onClick={onClose}
+      role="presentation"
+    >
       <div
         className={`modal ${className}`.trim()}
         onClick={(e) => e.stopPropagation()}

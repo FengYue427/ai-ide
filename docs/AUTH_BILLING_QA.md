@@ -15,23 +15,30 @@ smoke 5/5： OK
 备注：维护者生产验收通过
 ```
 
-### 国内支付沙箱（Phase 4，配置商户后）
+### 国内支付沙箱（Phase 4）
 
 | 步骤 | 操作 | 期望 |
 |------|------|------|
-| 1 | `npm run billing:preflight` | 支付宝或微信至少一项 ✅ |
-| 2 | 登录 → 订阅 → 专业版 → **支付宝** | 沙箱收银台 → 回跳 success |
-| 3 | 刷新订阅/配额 | Pro；今日用量上限提升 |
-| 4 | **微信** Native | 扫码 → 订单 paid → 升级 |
-| 5 | `GET /api/payment/orders/:id` | status=paid |
+| 0 | `ngrok http 3001` + `PAYMENT_NOTIFY_URL` + `dev:stack` | preflight ✅；probe 无 `/error` |
+| 1 | `npm run billing:preflight` | 支付宝 ✅（微信 W6 后再测微信） |
+| 2 | 登录 → 订阅 → 专业版 → **支付宝** | POST 表单 → 沙箱收银台 |
+| 3 | 沙箱买家付款 | 回跳 URL 含 `method=alipay.trade.page.pay.return` |
+| 4 | 自动补单 | `/api/payment/alipay/return` → Pro |
+| 5 | UI | **今日用量 0/5000**；工具栏 **升级团队版** |
+| 6 | **微信** Native（W6+） | 扫码 → paid → 升级 |
+| 7 | `GET /api/payment/orders/:id` | `status=paid` |
 
-记录：
+**回跳验签**：URL 中 `subscription=success&plan=pro` 与支付宝参数共存时，服务端会剥离后再验签。
+
+**notify 未到**：可用 `npm run billing:reconcile -- aide_<out_trade_no>` 查单补单。
+
+记录（2026-05-25）：
 
 ```
-支付沙箱日期：
-支付宝 E2E： OK / FAIL
-微信 E2E：   OK / FAIL
-notify 升级： OK / FAIL
+支付沙箱日期：2026-05-25
+支付宝 E2E： OK（沙箱 ¥19 → Pro + 5000/日）
+微信 E2E：   待测
+notify/回跳： OK（回跳补单 + ngrok）
 ```
 
 ---
@@ -80,7 +87,22 @@ notify 升级： OK / FAIL
 
 ---
 
-## 三、Stripe 购买（可选 / 海外）
+## 三、订阅生命周期 W8（取消 / 到期）
+
+> 详述：[BILLING_SUBSCRIPTION_LIFECYCLE.md](./BILLING_SUBSCRIPTION_LIFECYCLE.md)
+
+| 步骤 | 操作 | 期望 |
+|------|------|------|
+| 1 | 沙箱升级为 Pro 后打开「查看套餐」 | 「当前订阅」显示周期结束日 |
+| 2 | 点击 **周期结束后取消** | `cancelAtPeriodEnd=true`；提示已安排降级 |
+| 3 | 点击 **恢复订阅续费** | `cancelAtPeriodEnd=false` |
+| 4 | 点击 **立即降级免费版** | 立刻 free；用量回落 |
+| 5 | 将 DB 中 `currentPeriodEnd` 改为 4 天前 → 刷新或 `GET /api/subscription` | 降为 free；Chat 显示到期提示 |
+| 6 | `npm run billing:expire` | 日志 `{ scanned, expired }` |
+
+---
+
+## 四、Stripe 购买（可选 / 海外）
 
 ### 2.1 环境变量（`.env.local`）
 

@@ -3,7 +3,7 @@ import { readKeyFromEnv } from './cnPayment'
 
 function getWxPay(): InstanceType<typeof WxPay> {
   const privateKey = Buffer.from(
-    readKeyFromEnv(process.env.WECHAT_PRIVATE_KEY, process.env.WECHAT_PRIVATE_KEY_PATH),
+    readKeyFromEnv(process.env.WECHAT_PRIVATE_KEY, process.env.WECHAT_PRIVATE_KEY_PATH, 'PRIVATE KEY'),
     'utf8',
   )
 
@@ -14,7 +14,7 @@ function getWxPay(): InstanceType<typeof WxPay> {
       '微信支付缺少平台证书公钥：请设置 WECHAT_PLATFORM_PUBLIC_KEY 或 WECHAT_PLATFORM_PUBLIC_KEY_PATH（商户平台 → API 安全 → 平台证书）',
     )
   }
-  const publicKeyPem = readKeyFromEnv(platformInline, platformPath)
+  const publicKeyPem = readKeyFromEnv(platformInline, platformPath, 'CERTIFICATE')
 
   return new WxPay({
     appid: process.env.WECHAT_APP_ID!.trim(),
@@ -51,6 +51,23 @@ export async function createWechatNativePay(params: {
   }
 
   return { codeUrl }
+}
+
+export async function queryWechatTrade(outTradeNo: string): Promise<{
+  tradeState: string
+  transactionId?: string
+}> {
+  const pay = getWxPay()
+  const result = (await pay.query({ out_trade_no: outTradeNo })) as {
+    trade_state?: string
+    transaction_id?: string
+    data?: { trade_state?: string; transaction_id?: string }
+  }
+
+  const tradeState = result.trade_state || result.data?.trade_state || ''
+  const transactionId = result.transaction_id || result.data?.transaction_id
+
+  return { tradeState, transactionId }
 }
 
 export function getWxPayVerifier() {

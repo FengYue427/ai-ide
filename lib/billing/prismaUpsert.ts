@@ -37,10 +37,30 @@ export async function prismaUpsert<T>(args: {
       include: args.include,
     })
   }
-  return args.delegate.create({
-    data: args.create,
-    include: args.include,
-  })
+  try {
+    return await args.delegate.create({
+      data: args.create,
+      include: args.include,
+    })
+  } catch (error) {
+    if (isPrismaUniqueViolation(error)) {
+      return args.delegate.update({
+        where: args.where,
+        data: args.update,
+        include: args.include,
+      })
+    }
+    throw error
+  }
+}
+
+function isPrismaUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: string }).code === 'P2002'
+  )
 }
 
 export { prisma } from '../../src/lib/prisma'

@@ -5,26 +5,31 @@
 import { existsSync, readFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { parseEnvLocalContent } from './load-env-local.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const envPath = join(root, '.env.local')
 
 if (existsSync(envPath)) {
-  for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    const eq = trimmed.indexOf('=')
-    if (eq === -1) continue
-    const key = trimmed.slice(0, eq).trim()
-    let value = trimmed.slice(eq + 1).trim()
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1)
-    }
+  for (const [key, value] of parseEnvLocalContent(readFileSync(envPath, 'utf8'))) {
     if (!process.env[key]) process.env[key] = value
   }
+}
+
+function tryNormalizePem(raw, pemType) {
+  const text = raw.replace(/\\n/g, '\n').trim()
+  if (!text) return { ok: false, error: '密钥为空' }
+  const body = text
+    .replace(/-----BEGIN [^-]+-----/g, '')
+    .replace(/-----END [^-]+-----/g, '')
+    .replace(/\s+/g, '')
+  if (!body || body.length < 32) {
+    return {
+      ok: false,
+      error: '内容过短（.env 多行无引号时可能只读到第一行；用 *_PATH 或 \\n 单行）',
+    }
+  }
+  return { ok: true }
 }
 
 function has(v) {
@@ -47,21 +52,49 @@ else {
   console.log('⚠️  APP_URL 未设置（将用请求 Host，本地建议 http://localhost:3000）')
 }
 
+const alipayOk =
+  has('ALIPAY_APP_ID') && hasKey('ALIPAY_PRIVATE_KEY', 'ALIPAY_PRIVATE_KEY_PATH') && hasKey('ALIPAY_PUBLIC_KEY', 'ALIPAY_PUBLIC_KEY_PATH')
+
 if (has('PAYMENT_NOTIFY_URL')) {
   console.log(`✅ PAYMENT_NOTIFY_URL=${process.env.PAYMENT_NOTIFY_URL}`)
 } else {
-  console.log('⚠️  PAYMENT_NOTIFY_URL 未设置 — 本地支付宝/微信异步通知需 ngrok 等 HTTPS 隧道')
+  const sandbox = process.env.ALIPAY_SANDBOX === 'true' || process.env.ALIPAY_SANDBOX === '1'
+  const appUrl = process.env.APP_URL?.trim() || ''
+  const localApp = /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(appUrl)
+  if (sandbox && localApp && alipayOk) {
+    console.log(
+      '❌ 沙箱下单: 须设置 PAYMENT_NOTIFY_URL=https://ngrok域名（localhost 作 notify 会跳转 /error）',
+    )
+    issues++
+  } else {
+    console.log('⚠️  PAYMENT_NOTIFY_URL 未设置 — 本地支付宝/微信异步通知需 ngrok 等 HTTPS 隧道')
+  }
 }
-
-const alipayOk =
-  has('ALIPAY_APP_ID') && hasKey('ALIPAY_PRIVATE_KEY', 'ALIPAY_PRIVATE_KEY_PATH') && hasKey('ALIPAY_PUBLIC_KEY', 'ALIPAY_PUBLIC_KEY_PATH')
 
 if (alipayOk) {
   const sandbox = process.env.ALIPAY_SANDBOX === 'true' || process.env.ALIPAY_SANDBOX === '1'
   const gateway =
     process.env.ALIPAY_GATEWAY?.trim() ||
     (sandbox ? 'https://openapi-sandbox.dl.alipaydev.com/gateway.do' : 'https://openapi.alipay.com/gateway.do')
-  console.log(`✅ 支付宝已配置 (${sandbox ? '沙箱' : '正式'}) gateway=${gateway}`)
+  let pemWarn = ''
+  try {
+    const priv = has('ALIPAY_PRIVATE_KEY')
+      ? process.env.ALIPAY_PRIVATE_KEY
+      : readFileSync(process.env.ALIPAY_PRIVATE_KEY_PATH.trim(), 'utf8')
+    const pub = has('ALIPAY_PUBLIC_KEY')
+      ? process.env.ALIPAY_PUBLIC_KEY
+      : readFileSync(process.env.ALIPAY_PUBLIC_KEY_PATH.trim(), 'utf8')
+    const p = tryNormalizePem(priv, 'RSA PRIVATE KEY')
+    const u = tryNormalizePem(pub, 'PUBLIC KEY')
+    if (!p.ok) pemWarn = ` 私钥: ${p.error}`
+    else if (!u.ok) pemWarn = ` 支付宝公钥: ${u.error}`
+  } catch (e) {
+    pemWarn = ` ${e.message}`
+  }
+  console.log(
+    `✅ 支付宝已配置 (${sandbox ? '沙箱' : '正式'}) gateway=${gateway}${pemWarn ? `\n   ⚠️ PEM 可能无效:${pemWarn}` : ''}`,
+  )
+  if (pemWarn) issues++
 } else {
   console.log('❌ 支付宝未齐: 需要 ALIPAY_APP_ID + 应用私钥 + 支付宝公钥')
   issues++

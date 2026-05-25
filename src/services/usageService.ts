@@ -91,12 +91,21 @@ function cacheServerQuota(quota: QuotaCheck): void {
   }
 }
 
+export function clearServerQuotaCache(): void {
+  try {
+    sessionStorage.removeItem(SERVER_QUOTA_CACHE_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 function readCachedServerQuota(currentPlan: string): QuotaCheck | null {
   try {
     const raw = sessionStorage.getItem(SERVER_QUOTA_CACHE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as { quota?: QuotaCheck; date?: string }
     if (parsed.date !== getToday() || !parsed.quota) return null
+    if (parsed.quota.plan && parsed.quota.plan !== currentPlan) return null
     return { ...parsed.quota, plan: parsed.quota.plan || currentPlan }
   } catch {
     return null
@@ -112,8 +121,9 @@ export async function fetchAIQuota(currentPlan: string, isLoggedIn: boolean): Pr
     const response = await apiFetch('/api/usage/ai', { credentials: 'include' })
     const data = await readJsonResponse<{ source?: string; quota?: QuotaCheck }>(response)
     if (response.ok && data?.quota) {
-      cacheServerQuota(data.quota)
-      return data.quota
+      const quota = { ...data.quota, plan: data.quota.plan || currentPlan }
+      cacheServerQuota(quota)
+      return quota
     }
   } catch {
     // use cache or fail-closed below

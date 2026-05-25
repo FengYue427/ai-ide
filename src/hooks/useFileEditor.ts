@@ -3,6 +3,7 @@ import { collaborationService } from '../services/collaborationService'
 import { projectIndexManager } from '../services/projectIndexManager'
 import { detectLanguageFromPath } from '../services/projectIndexService'
 import { workspaceContextService } from '../services/workspaceContextService'
+import { syncToLocalDisk } from '../services/localProjectSync'
 import { useIDEStore } from '../store/ideStore'
 import type { FileItem } from '../types/file'
 
@@ -29,6 +30,7 @@ export function useFileEditor({ activeFile, setFiles }: UseFileEditorOptions) {
 
     if (fileName && workspaceContextService.getFile(fileName)) {
       void workspaceContextService.updateFile(fileName, content)
+      void syncToLocalDisk(fileName, content)
       projectIndexManager.patchFile({
         path: fileName,
         content,

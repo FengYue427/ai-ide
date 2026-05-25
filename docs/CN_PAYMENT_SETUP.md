@@ -18,7 +18,8 @@
 
 ## 0. 支付宝沙箱快速接入
 
-已有沙箱 APPID（开放平台 → 沙箱应用）→ **[ALIPAY_SANDBOX_QUICKSTART.md](./ALIPAY_SANDBOX_QUICKSTART.md)**（复制密钥 → `.env.local` → `billing:preflight`）。
+已有沙箱 APPID → **[ALIPAY_SANDBOX_QUICKSTART.md](./ALIPAY_SANDBOX_QUICKSTART.md)**  
+微信 W6 → **[WECHAT_SANDBOX_QUICKSTART.md](./WECHAT_SANDBOX_QUICKSTART.md)**
 
 ## 0b. 配置前检查
 

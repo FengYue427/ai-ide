@@ -23,6 +23,9 @@
 
 应用会在 `main.tsx` 中通过 `initOptionalSentry()` 自动初始化（DSN 存在且依赖已安装时）。
 
+- **Release 标签**：构建时注入 `VITE_APP_VERSION`（来自 `package.json`），Sentry 事件为 `ai-ide@<version>`；Vercel 亦可设 `VITE_VERCEL_GIT_COMMIT_SHA` 作 fallback。
+- **GA 验收**：故意触发一次前端错误，在 Sentry Issues 中确认 environment=`production`（见 [D3_GA_ACCEPTANCE.md](./D3_GA_ACCEPTANCE.md) §E）。
+
 也可手动扩展 `setErrorReporter` / `setEventReporter`（见 `src/lib/observability.ts`）。
 
 ## 可选：Vercel Analytics

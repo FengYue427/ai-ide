@@ -3,31 +3,10 @@
  * Listens on PORT (default 3001). Pair with Vite proxy via `npm run dev:stack`.
  */
 import { createServer } from 'node:http'
-import { readFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
 import { dispatchApiRequest } from '../lib/api/dispatch'
+import { loadEnvLocal } from './load-env-local.mjs'
 
 const PORT = Number(process.env.API_PORT || 3001)
-
-function loadEnvFile() {
-  const path = join(process.cwd(), '.env.local')
-  if (!existsSync(path)) return
-  for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    const eq = trimmed.indexOf('=')
-    if (eq === -1) continue
-    const key = trimmed.slice(0, eq).trim()
-    let value = trimmed.slice(eq + 1).trim()
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1)
-    }
-    if (!process.env[key]) process.env[key] = value
-  }
-}
 
 async function handleNodeRequest(
   nodeReq: import('node:http').IncomingMessage,
@@ -83,7 +62,7 @@ async function handleNodeRequest(
   nodeRes.end(buffer)
 }
 
-loadEnvFile()
+loadEnvLocal()
 
 const server = createServer((req, res) => {
   handleNodeRequest(req, res).catch((err) => {

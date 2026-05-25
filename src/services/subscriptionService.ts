@@ -23,6 +23,12 @@ export interface Subscription {
   cancelAtPeriodEnd: boolean
 }
 
+export type SubscriptionFetchResult = {
+  subscription: Subscription
+  notice?: 'expired'
+  message?: string
+}
+
 export interface UsageStatus {
   aiRequestsToday: number
   aiRequestsLimit: number
@@ -47,37 +53,46 @@ class SubscriptionService {
 
     for (const delay of delaysMs) {
       if (expectedPlan) {
-        if (last.plan === expectedPlan) return last
-      } else if (last.plan !== 'free') {
-        return last
+        if (last.subscription.plan === expectedPlan) return last.subscription
+      } else if (last.subscription.plan !== 'free') {
+        return last.subscription
       }
       await new Promise((resolve) => window.setTimeout(resolve, delay))
       last = await this.getSubscription()
     }
 
-    return last
+    return last.subscription
   }
 
   // 获取订阅状态
-  async getSubscription(): Promise<Subscription> {
+  async getSubscription(): Promise<SubscriptionFetchResult> {
+    const fallback: Subscription = {
+      plan: 'free',
+      status: 'active',
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    }
     try {
       const res = await fetch('/api/subscription', { credentials: 'include' })
       if (res.ok) {
-        const data = await readJsonResponse<{ subscription?: Subscription }>(res)
+        const data = await readJsonResponse<{
+          subscription?: Subscription
+          notice?: 'expired'
+          message?: string
+        }>(res)
         if (data?.subscription) {
           this.currentPlan = data.subscription.plan
-          return data.subscription
+          return {
+            subscription: data.subscription,
+            notice: data.notice,
+            message: data.message,
+          }
         }
       }
     } catch {
       // 降级到本地默认
     }
-    return {
-      plan: 'free',
-      status: 'active',
-      currentPeriodEnd: null,
-      cancelAtPeriodEnd: false
-    }
+    return { subscription: fallback }
   }
 
   // 获取当前计划

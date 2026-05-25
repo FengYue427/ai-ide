@@ -14,6 +14,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const production = process.argv.includes('--production')
 /** When set, require Alipay or WeChat env for production (Path B). Default Path A does not require merchants. */
 const requireCnBilling = process.argv.includes('--require-cn-billing')
+/** D3 GA: cron secret + recommend Sentry (use with --production --require-cn-billing). */
+const d3Ga = process.argv.includes('--d3-ga')
 const urlArgIndex = process.argv.indexOf('--url')
 const remoteUrl = urlArgIndex >= 0 ? process.argv[urlArgIndex + 1]?.replace(/\/$/, '') : ''
 const envPath = join(root, '.env.local')
@@ -120,6 +122,25 @@ if (production) {
   if (process.env.VITE_ALLOW_OFFLINE_AUTH === 'true') {
     console.log('\n  ❌ VITE_ALLOW_OFFLINE_AUTH=true — must not be set for production builds')
     failed++
+  }
+  if (process.env.ALIPAY_SANDBOX === 'true') {
+    console.log('\n  ❌ ALIPAY_SANDBOX=true — must be unset/false for production GA')
+    failed++
+  }
+  if (d3Ga) {
+    console.log('\nD3 GA extras (--d3-ga):')
+    const cron = process.env.BILLING_CRON_SECRET?.trim() || process.env.CRON_SECRET?.trim()
+    if (cron) {
+      console.log('  ✅ BILLING_CRON_SECRET or CRON_SECRET')
+    } else {
+      console.log('  ❌ BILLING_CRON_SECRET (or CRON_SECRET) — subscription expiry cron')
+      failed++
+    }
+    if (process.env.VITE_SENTRY_DSN?.trim()) {
+      console.log('  ✅ VITE_SENTRY_DSN')
+    } else {
+      console.log('  ⚠️  VITE_SENTRY_DSN — recommended before GA (see docs/OBSERVABILITY.md)')
+    }
   }
 } else if (process.env.STRIPE_SECRET_KEY) {
   const sk = process.env.STRIPE_SECRET_KEY

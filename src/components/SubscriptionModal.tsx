@@ -5,6 +5,7 @@ import { localizePlans } from '../lib/localizePlan'
 import { pickApiResponseMessage } from '../lib/apiUserMessage'
 import { buildSubscriptionPricingNote } from '../lib/subscriptionPricingNote'
 import { readJsonResponse } from '../services/apiUtils'
+import { BILLING_SUCCESS_KEY } from '../services/billingSync'
 import { authService } from '../services/authService'
 import { subscriptionService } from '../services/subscriptionService'
 import { useI18n, type TranslationKey } from '../i18n'
@@ -87,22 +88,33 @@ function buildFallbackPlans(t: (key: TranslationKey) => string): Plan[] {
   ]
 }
 
-const planVisuals: Record<string, { gradient: string; border: string; icon: React.ReactNode }> = {
+const planVisuals: Record<string, { icon: React.ReactNode; headClass: string }> = {
   free: {
-    gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
-    border: '#64748b',
+    headClass: 'subscription-plan-head--free',
     icon: <Zap size={22} />,
   },
   pro: {
-    gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-    border: '#6366f1',
+    headClass: 'subscription-plan-head--pro',
     icon: <Crown size={22} />,
   },
   enterprise: {
-    gradient: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-    border: '#f59e0b',
+    headClass: 'subscription-plan-head--enterprise',
     icon: <Building2 size={22} />,
   },
+}
+
+function checkoutButtonLabel(
+  plan: Plan,
+  paymentMethods: { alipay: boolean; wechat: boolean },
+  checkoutAvailable: boolean,
+  t: (key: TranslationKey) => string,
+): string {
+  if (plan.price === 0) return t('subscription.checkout.free')
+  if (!checkoutAvailable) return t('subscription.checkout.beta')
+  if (paymentMethods.alipay && !paymentMethods.wechat) return t('subscription.checkout.alipay')
+  if (paymentMethods.wechat && !paymentMethods.alipay) return t('subscription.checkout.wechat')
+  if (paymentMethods.alipay || paymentMethods.wechat) return t('subscription.checkout.cn')
+  return t('subscription.checkout.upgrade')
 }
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentPlan = 'free' }) => {
@@ -145,6 +157,14 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
       })
       .catch(() => {})
   }
+
+  useEffect(() => {
+    const paidPlan = sessionStorage.getItem(BILLING_SUCCESS_KEY)
+    if (paidPlan) {
+      sessionStorage.removeItem(BILLING_SUCCESS_KEY)
+      setSuccess(t('subscription.paySuccessDetail', { plan: paidPlan }))
+    }
+  }, [t])
 
   useEffect(() => {
     let cancelled = false
@@ -370,16 +390,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
   return (
     <>
-      {cnPayPlan && (
-        <CnPayModal
-          plan={cnPayPlan}
-          onClose={() => setCnPayPlan(null)}
-          onSuccess={() => {
-            void loadSubscription()
-            setSuccess(t('subscription.paySuccess'))
-          }}
-        />
-      )}
     <ModalShell
       title={t('subscription.title')}
       onClose={onClose}
@@ -402,6 +412,31 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             <AlertBanner variant="info">{localizedPricingNote}</AlertBanner>
           )}
 
+          <p className="subscription-legal">
+            <a
+              href={language === 'en-US' ? '/legal/payment-en.html' : '/legal/payment.html'}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t('subscription.legalPayment')}
+            </a>
+          </p>
+
+          {checkoutAvailable && (paymentMethods.alipay || paymentMethods.wechat) && (
+            <div className="subscription-payment-methods" role="list" aria-label={t('subscription.paymentMethods')}>
+              {paymentMethods.alipay && (
+                <span className="subscription-payment-method subscription-payment-method--alipay" role="listitem">
+                  {t('subscription.payMethod.alipay')}
+                </span>
+              )}
+              {paymentMethods.wechat && (
+                <span className="subscription-payment-method subscription-payment-method--wechat" role="listitem">
+                  {t('subscription.payMethod.wechat')}
+                </span>
+              )}
+            </div>
+          )}
+
           {!checkoutAvailable && !loading && (
             <div className="subscription-beta-banner" role="status">
               {t('subscription.betaNote')}
@@ -416,7 +451,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             <div className="subscription-manage">
               <div className="subscription-manage-title">{t('subscription.manage.title')}</div>
               {subscription.cancelAtPeriodEnd ? (
-                <div style={{ fontSize: '13px', color: '#ffb648', lineHeight: 1.6 }}>
+                <div className="subscription-manage-status subscription-manage-status--warning">
                   {t('subscription.manage.cancelScheduled')}
                   {periodEndLabel
                     ? t('subscription.manage.cancelUntil', {
@@ -426,7 +461,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                     : ''}
                 </div>
               ) : (
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                <div className="subscription-manage-status">
                   {t('subscription.manage.status', { status: subscription.status })}
                   {periodEndLabel
                     ? t('subscription.manage.periodEnd', { date: periodEndLabel })
@@ -482,54 +517,42 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                 const isCurrent = plan.name === currentPlan
                 const isProcessing = processingPlanId === plan.id
 
+                const isPopular = plan.name === 'pro'
+
                 return (
                   <div
                     key={plan.id}
-                    className={`subscription-plan-card${isCurrent ? ' subscription-plan-card--current' : ''}`}
+                    className={`subscription-plan-card subscription-plan-card--${plan.name}${isCurrent ? ' subscription-plan-card--current' : ''}${isPopular && !isCurrent ? ' subscription-plan-card--popular' : ''}`}
+                    aria-current={isCurrent ? 'true' : undefined}
                   >
-                    <div className="subscription-plan-head" style={{ background: visual.gradient }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                        <div
-                          style={{
-                            width: '42px',
-                            height: '42px',
-                            borderRadius: '12px',
-                            background: 'rgba(255,255,255,0.18)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          {visual.icon}
+                    <div className={`subscription-plan-head ${visual.headClass}`}>
+                      <div className="subscription-plan-head-top">
+                        <div className="subscription-plan-icon">{visual.icon}</div>
+                        <div className="subscription-plan-badges">
+                          {isPopular && !isCurrent && (
+                            <span className="subscription-plan-badge subscription-plan-badge--recommended">
+                              {t('subscription.recommended')}
+                            </span>
+                          )}
+                          {isCurrent && (
+                            <span className="subscription-plan-badge">{t('subscription.currentPlan')}</span>
+                          )}
                         </div>
-                        {isCurrent && (
-                          <span
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: '999px',
-                              background: 'rgba(255,255,255,0.18)',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                            }}
-                          >
-                            {t('subscription.currentPlan')}
-                          </span>
-                        )}
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: 800, marginBottom: '4px' }}>{plan.displayName}</div>
-                      <div style={{ fontSize: '13px', lineHeight: 1.6, opacity: 0.9 }}>{plan.description}</div>
+                      <div className="subscription-plan-name">{plan.displayName}</div>
+                      <div className="subscription-plan-desc">{plan.description}</div>
                     </div>
 
                     <div className="subscription-plan-body">
                       <div className="subscription-plan-price-row">
-                        <span style={{ fontSize: '16px', color: 'var(--text-secondary)' }}>
+                        <span className="subscription-plan-currency">
                           {plan.currency === 'CNY' ? '¥' : '$'}
                         </span>
                         <span className="subscription-plan-price">{plan.price}</span>
                         <span className="subscription-plan-period">{t('subscription.perMonth')}</span>
                       </div>
 
-                      <div style={{ display: 'grid', gap: '8px' }}>
+                      <div className="subscription-limits-grid">
                         {[
                           [
                             t('subscription.limit.ai'),
@@ -551,10 +574,10 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                         ))}
                       </div>
 
-                      <div style={{ display: 'grid', gap: '10px' }}>
+                      <div className="subscription-features-grid">
                         {plan.features.map((feature) => (
                           <div key={feature} className="subscription-feature-row">
-                            <Check size={15} color={visual.border} style={{ marginTop: '2px', flexShrink: 0 }} />
+                            <Check size={15} className="subscription-feature-check" />
                             <span>{feature}</span>
                           </div>
                         ))}
@@ -562,10 +585,10 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
                       <div className="subscription-plan-footer">
                         <button
-                          className={isCurrent ? 'btn btn-secondary' : 'btn btn-primary'}
-                          onClick={() => handleSubscribe(plan.id, plan.name)}
+                          type="button"
+                          className={`subscription-plan-cta ${isCurrent ? 'btn btn-secondary' : 'btn btn-primary'}`}
+                          onClick={() => void handleSubscribe(plan.id, plan.name)}
                           disabled={!!processingPlanId || isCurrent}
-                          style={{ width: '100%', justifyContent: 'center' }}
                         >
                           {isProcessing ? (
                             <>
@@ -574,16 +597,17 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                             </>
                           ) : isCurrent ? (
                             t('subscription.checkout.current')
-                          ) : plan.price === 0 ? (
-                            t('subscription.checkout.free')
-                          ) : checkoutAvailable ? (
-                            paymentMethods.alipay || paymentMethods.wechat
-                              ? t('subscription.checkout.cn')
-                              : t('subscription.checkout.upgrade')
                           ) : (
-                            t('subscription.checkout.beta')
+                            checkoutButtonLabel(plan, paymentMethods, checkoutAvailable, t)
                           )}
                         </button>
+                        {checkoutAvailable &&
+                          plan.price > 0 &&
+                          !isCurrent &&
+                          paymentMethods.alipay &&
+                          !paymentMethods.wechat && (
+                            <p className="subscription-payment-hint">{t('subscription.checkout.alipayHint')}</p>
+                          )}
                       </div>
                     </div>
                   </div>
@@ -592,6 +616,18 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             </div>
           )}
     </ModalShell>
+      {cnPayPlan && (
+        <CnPayModal
+          plan={cnPayPlan}
+          alipay={paymentMethods.alipay}
+          wechat={paymentMethods.wechat}
+          onClose={() => setCnPayPlan(null)}
+          onSuccess={() => {
+            void loadSubscription()
+            setSuccess(t('subscription.paySuccess'))
+          }}
+        />
+      )}
     </>
   )
 }

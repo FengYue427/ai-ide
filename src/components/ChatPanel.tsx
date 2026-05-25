@@ -9,7 +9,22 @@ import {
 import { loadMcpSettings } from '../services/mcpConfigService'
 import { parseAgentFileChanges, type AgentFileChange } from '../services/agentApplyService'
 import { getOldContentForPath } from '../services/fileApplyService'
-import { extractCodeBlocks, generateCodePrompt, sendMessage, type AIConfig, type QuotaCheck } from '../services/aiService'
+import {
+  extractCodeBlocks,
+  generateCodePrompt,
+  sendMessage,
+  type AIConfig,
+  type QuotaCheck,
+} from '../services/aiService'
+import { supportsAgentToolCalling } from '../services/agentChatCompletion'
+import { loadAgentSettings } from '../services/agentSettingsService'
+import {
+  buildAgentToolMessages,
+  formatActivityForChat,
+  runAgentLoop,
+  type AgentActivityEntry,
+} from '../services/agentRunner'
+import { BILLING_SYNC_EVENT } from '../hooks/useBillingSync'
 import { fetchAIQuota } from '../services/usageService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { QuotaIndicator } from './ui/QuotaIndicator'
@@ -83,10 +98,13 @@ ${t('ai.chat.prompt')}`
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [pendingAgentChanges, setPendingAgentChanges] = useState<AgentFileChange[] | null>(null)
+  const [agentActivity, setAgentActivity] = useState<AgentActivityEntry[]>([])
+  const [subscriptionExpiredBanner, setSubscriptionExpiredBanner] = useState<string | null>(null)
   const [mentionHits, setMentionHits] = useState<IndexSearchHit[]>([])
   const [mentionIndex, setMentionIndex] = useState(0)
   const [indexVersion, setIndexVersion] = useState(() => projectIndexManager.getVersion())
   const indexStats = useMemo(() => projectIndexManager.getIndexStats(), [indexVersion])
+  const indexBuildState = useMemo(() => projectIndexManager.getBuildState(), [indexVersion])
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [quota, setQuota] = useState<QuotaCheck>({
     allowed: true,
@@ -155,6 +173,23 @@ ${t('ai.chat.prompt')}`
   useEffect(() => {
     refreshQuota()
   }, [currentPlan, currentUser, refreshQuota])
+
+  useEffect(() => {
+    const onBillingSync = (event: Event) => {
+      refreshQuota()
+      const detail = (event as CustomEvent<{ notice?: string; previousPlan?: string; message?: string }>)
+        .detail
+      if (
+        detail?.notice === 'expired' &&
+        detail.previousPlan &&
+        detail.previousPlan !== 'free'
+      ) {
+        setSubscriptionExpiredBanner(detail.message || t('chat.subscriptionExpired'))
+      }
+    }
+    window.addEventListener(BILLING_SYNC_EVENT, onBillingSync)
+    return () => window.removeEventListener(BILLING_SYNC_EVENT, onBillingSync)
+  }, [refreshQuota, t])
 
   const refreshWorkspaceStats = useCallback(() => {
     setWorkspaceStats(workspaceContextService.getStats())
@@ -271,42 +306,123 @@ ${t('ai.chat.prompt')}`
     setMessages((prev) => [...prev, userMessage])
     if (!customInput) setInput('')
     setLoading(true)
+    setAgentActivity([])
 
     try {
       const history = messages
         .slice(1)
         .map((message) => ({ role: message.role as 'user' | 'assistant', content: message.content }))
 
-      let aiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[]
+      let aiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = []
+      let assistantContent = ''
 
-      if (agentMode) {
-        const workspaceSummary =
+      const buildAgentWorkspaceSummary = async () => {
+        const base =
           useWorkspaceContext && workspaceStats.selectedFiles > 0
             ? workspaceContextService.generateSystemPrompt(
                 action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : '',
                 language,
               )
             : t('chat.prompt.editorFile', { code: currentCode })
-
         const mcpSection = await buildMcpToolsPromptSection()
-        let agentSystemPrompt = await augmentWithSemanticContext(
-          applyProjectRules(workspaceSummary),
-          textToSend,
-        )
+        let summary = await augmentWithSemanticContext(applyProjectRules(base), textToSend)
         const mentionSection = buildMentionContextSection(
           textToSend,
           editorFiles,
           projectIndexManager.getIndex(),
           language,
         )
-        if (mentionSection) {
-          agentSystemPrompt = `${agentSystemPrompt}\n\n${mentionSection}`
+        if (mentionSection) summary = `${summary}\n\n${mentionSection}`
+        return appendMcpToolsToPrompt(summary, mcpSection)
+      }
+
+      const agentSettings = await loadAgentSettings()
+      const useToolLoop =
+        agentMode && agentSettings.useToolLoop && supportsAgentToolCalling(aiConfig.provider)
+
+      if (agentMode && useToolLoop) {
+        const workspaceSummary = await buildAgentWorkspaceSummary()
+        const toolMessages = buildAgentToolMessages(workspaceSummary, textToSend, history)
+
+        const labelActivity = (tool: AgentActivityEntry['tool'], detail: string, ok: boolean) => {
+          const toolLabel = t(`agent.tool.${tool}` as 'agent.tool.read_file')
+          return t(ok ? 'agent.tool.lineOk' : 'agent.tool.lineFail', { tool: toolLabel, detail })
         }
-        aiMessages = aiAgentService.buildMessages(
-          textToSend,
-          appendMcpToolsToPrompt(agentSystemPrompt, mcpSection),
-          history,
-        )
+
+        const result = await runAgentLoop(aiConfig, toolMessages, {
+          onActivity: (entry) => {
+            setAgentActivity((prev) => [...prev, entry])
+          },
+          onAssistantText: (text) => {
+            assistantContent = text
+            setMessages((prev) => {
+              const next = [...prev]
+              const lastMessage = next[next.length - 1]
+              if (lastMessage?.role === 'assistant') {
+                lastMessage.content = text
+              } else {
+                next.push({ role: 'assistant', content: text })
+              }
+              return next
+            })
+          },
+        })
+
+        assistantContent = result.finalContent
+        if (result.activity.length > 0) {
+          const log = formatActivityForChat(result.activity, labelActivity)
+          assistantContent = assistantContent
+            ? `${assistantContent}\n\n---\n${log}`
+            : log
+        }
+
+        setMessages((prev) => {
+          const next = [...prev]
+          const last = next[next.length - 1]
+          if (last?.role === 'assistant') {
+            last.content = assistantContent
+          } else {
+            next.push({ role: 'assistant', content: assistantContent })
+          }
+          return next
+        })
+
+        if (result.pendingChanges.length > 0) {
+          setPendingAgentChanges(result.pendingChanges)
+        } else {
+          const agentChanges = parseAgentFileChanges(assistantContent)
+          if (agentChanges.length > 0) {
+            setPendingAgentChanges(agentChanges)
+          } else {
+            setPendingAgentChanges(null)
+            generateFilesFromResponse(assistantContent)
+          }
+        }
+
+        if (agentSettings.autoApplyWrites && onGenerateFiles) {
+          const writtenPaths = result.activity
+            .filter((a) => a.tool === 'write_file' && a.ok && a.detail)
+            .map((a) => a.detail)
+          if (writtenPaths.length > 0) {
+            const payload = writtenPaths
+              .map((path) => workspaceContextService.getFile(path))
+              .filter((f): f is NonNullable<typeof f> => !!f)
+              .map((f) => ({
+                name: f.path,
+                content: f.content,
+                language: f.language,
+              }))
+            if (payload.length > 0) onGenerateFiles(payload)
+          }
+        }
+
+        refreshQuota()
+        return
+      }
+
+      if (agentMode) {
+        const workspaceSummary = await buildAgentWorkspaceSummary()
+        aiMessages = aiAgentService.buildMessages(textToSend, workspaceSummary, history)
       } else {
         let systemPrompt: string
 
@@ -338,8 +454,6 @@ ${t('ai.chat.prompt')}`
           { role: 'user' as const, content: textToSend },
         ]
       }
-
-      let assistantContent = ''
 
       await sendMessage(aiConfig, aiMessages, (chunk) => {
         assistantContent += chunk
@@ -507,6 +621,9 @@ ${t('ai.chat.prompt')}`
             <span>
               {t('chat.agent')}
               {agentMode ? ` ${t('chat.agentOn')}` : ''}
+              {agentMode && supportsAgentToolCalling(aiConfig.provider)
+                ? ` · ${t('chat.agentToolsActive')}`
+                : ''}
             </span>
           </button>
 
@@ -529,17 +646,45 @@ ${t('ai.chat.prompt')}`
             </span>
           </button>
         </div>
-        {indexStats.indexedFiles > 0 && (
+        {(indexStats.indexedFiles > 0 || indexBuildState.status === 'building' || indexBuildState.status === 'error') && (
           <p className="chat-index-hint" title={t('chat.indexHintTitle')}>
-            {indexStats.capped
-              ? t('chat.indexCapped', {
-                  indexed: indexStats.indexedFiles,
-                  eligible: indexStats.eligibleFiles,
-                })
-              : t('chat.indexOk', { count: indexStats.indexedFiles })}
+            {indexBuildState.status === 'building' ? (
+              t('chat.indexBuilding')
+            ) : indexBuildState.status === 'error' ? (
+              <>
+                {t('chat.indexError', { message: indexBuildState.lastError ?? '' })}{' '}
+                <button
+                  type="button"
+                  className="chat-index-retry"
+                  onClick={() => {
+                    const files = editorFiles.map((f) => ({
+                      name: f.name,
+                      content: f.content,
+                      language: f.language,
+                    }))
+                    projectIndexManager.forceRebuildFromWorkspace(files)
+                  }}
+                >
+                  {t('chat.indexRetry')}
+                </button>
+              </>
+            ) : indexStats.capped ? (
+              t('chat.indexCapped', {
+                indexed: indexStats.indexedFiles,
+                eligible: indexStats.eligibleFiles,
+              })
+            ) : (
+              t('chat.indexOk', { count: indexStats.indexedFiles })
+            )}
           </p>
         )}
       </div>
+
+      {subscriptionExpiredBanner && (
+        <div className="chat-subscription-expired" role="status">
+          {subscriptionExpiredBanner}
+        </div>
+      )}
 
       <div className="chat-messages">
         {messages.map((message, index) => {
@@ -581,6 +726,24 @@ ${t('ai.chat.prompt')}`
                   <span className="dot" />
                 </span>
               </div>
+              {agentActivity.length > 0 && (
+                <div className="chat-agent-activity">
+                  <div className="chat-agent-activity__title">{t('chat.agentActivityTitle')}</div>
+                  <ul className="chat-agent-activity__list">
+                    {agentActivity.map((entry, idx) => (
+                      <li
+                        key={`${entry.round}-${entry.tool}-${idx}`}
+                        className={entry.ok ? 'chat-agent-activity__item' : 'chat-agent-activity__item chat-agent-activity__item--fail'}
+                      >
+                        {t(entry.ok ? 'agent.tool.lineOk' : 'agent.tool.lineFail', {
+                          tool: t(`agent.tool.${entry.tool}` as 'agent.tool.read_file'),
+                          detail: entry.detail,
+                        })}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         )}

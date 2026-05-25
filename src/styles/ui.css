@@ -50,12 +50,100 @@
 }
 
 .modal--compact {
-  width: min(420px, 94vw);
+  width: min(440px, 94vw);
 }
 
 .modal-body--grid {
   display: grid;
   gap: var(--space-4);
+}
+
+.pay-modal-body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.pay-summary {
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  display: grid;
+  gap: 6px;
+}
+
+.pay-summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pay-summary-plan {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.pay-summary-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.pay-amount-block {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+
+.pay-amount {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.pay-amount-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+.pay-channel-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pay-channel-list--single .btn-pay {
+  padding: 14px 18px;
+  font-size: 15px;
+}
+
+.pay-redirect {
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+}
+
+.pay-redirect-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.pay-redirect-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 280px;
+}
+
+.pay-footer-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.5;
 }
 
 .btn-pay {
@@ -72,6 +160,7 @@
   color: #fff;
   cursor: pointer;
   transition: filter 0.2s var(--ease-out), transform 0.15s var(--ease-out);
+  min-height: 48px;
 }
 
 .btn-pay:hover:not(:disabled) {
@@ -90,18 +179,6 @@
 
 .btn-pay--wechat {
   background: var(--wechat-green);
-}
-
-.pay-amount {
-  font-size: 28px;
-  font-weight: 800;
-  text-align: center;
-}
-
-.pay-amount-unit {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
 }
 
 .pay-qr-wrap {

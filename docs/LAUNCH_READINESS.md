@@ -13,7 +13,7 @@
 | **D0 演示站** | BYOK、无账号、纯前端 | ✅ 已长期具备 |
 | **D1 技术预览** | 账号 API + 云工作区 + 配额 UI | ✅ 生产 smoke 5/5 |
 | **D2 MLP（最小可上市）** | 稳定注册、云工作区、法务页、观测、公测配额 | ✅ RC 路径 A（2026-05-24）；可选 Sentry 未接 |
-| **D3 可收款 GA** | D2 + 真实订阅与发票/退款流程 | ⬜ 差 P1 路径 B+ 商户 |
+| **D3 可收款 GA** | D2 + 真实订阅与发票/退款流程 | 🔶 **代码就绪**；差生产商户 env + 主体 + 发公告 — [GA_LAUNCH_RUNBOOK.md](./GA_LAUNCH_RUNBOOK.md) |
 | **D4 企业级** | SSO、审计、专用部署、SLA | ⬜ 未规划 |
 
 **结论（2026-05-24，Phase 2 闭环，见 [LAUNCH_ASSESSMENT_2026-05.md](./LAUNCH_ASSESSMENT_2026-05.md)）**：
@@ -22,7 +22,7 @@
 - **生产**：`https://ai-ide-flame.vercel.app` → `health: ok`，`database: connected`；**smoke 5/5**（[PRODUCTION_SMOKE_LAST.md](./PRODUCTION_SMOKE_LAST.md)）。
 - **验收**：P2-5 人工 QA、P2-9 英文、P2-6 法务 RC 定稿（[LEGAL_RC_2026-05.md](./LEGAL_RC_2026-05.md)）。
 - **对外（当前）**：**RC 公测**（路径 A，**不收款**）— 见 [RC_ANNOUNCEMENT_2026-05.md](./RC_ANNOUNCEMENT_2026-05.md)。  
-- **正式上市**：以 **D3 可收款 GA** 为准 — 长期路线 [PLAN_D3_LONGTERM.md](./PLAN_D3_LONGTERM.md)（目标约 **2026-10～11**）。
+- **正式上市**：以 **D3 可收款 GA** 为准 — **建议软 GA**（商户就绪后 1～2 周）见 [GA_LAUNCH_DECISION.md](./GA_LAUNCH_DECISION.md)；路线 [PLAN_D3_LONGTERM.md](./PLAN_D3_LONGTERM.md)。
 
 ---
 
@@ -66,7 +66,7 @@
 |---|-----|------|------|
 | L18 | 路径 A：公测不收款文案一致 | ✅ | `billingPath=A` + 订阅「公测免费」 |
 | L19 | 路径 B：checkout → webhook → 订阅状态 | 🔶 | 骨架 + 集成测 simulate/order；生产需商户 |
-| L20 | 退款 / 取消订阅 / 发票 | ⬜ | D3 |
+| L20 | 退款 / 取消订阅 / 发票 | 🔶 | 取消/到期 ✅；退款 SOP ⬜ |
 
 ### 2.5 观测与运维
 

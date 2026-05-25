@@ -15,13 +15,23 @@
 2. 复制 **应用私钥** → `ALIPAY_PRIVATE_KEY`（整段 PEM，含 `BEGIN`/`END`）  
 3. 复制 **支付宝公钥**（不是应用公钥）→ `ALIPAY_PUBLIC_KEY`
 
-私钥在 `.env` 里可写成一行，用 `\n` 表示换行，例如：
+私钥在 `.env` 里任选一种写法：
+
+**A. 多行 + 双引号**（与开放平台复制格式一致，首尾各一行引号）：
+
+```env
+ALIPAY_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
+MIIE...多行base64...
+-----END RSA PRIVATE KEY-----"
+```
+
+**B. 单行** 用 `\n`：
 
 ```env
 ALIPAY_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----"
 ```
 
-或把 PEM 存为 `secrets/alipay-app-private.pem`，设置：
+**C. 文件路径**（最省心）— 把 PEM 存为 `secrets/alipay-app-private.pem`，设置：
 
 ```env
 ALIPAY_PRIVATE_KEY_PATH=secrets/alipay-app-private.pem
@@ -44,7 +54,9 @@ ALIPAY_PUBLIC_KEY="支付宝公钥PEM"
 # ALIPAY_GATEWAY=https://openapi-sandbox.dl.alipaydev.com/gateway.do
 ```
 
-**不要**在仅测跳转时设 `PAYMENT_NOTIFY_URL`；要测「付款后自动升级 Pro」时再配 ngrok（见下）。
+**沙箱电脑网站支付必须**配置 HTTPS 的 `PAYMENT_NOTIFY_URL`（ngrok 到 API `3001`）。  
+若用 `http://localhost:3000` 当 notify，支付宝会跳到 **`/error`** 登录页（你截图那种情况）。  
+仅测付款后升级 Pro 也需要 notify 能打到本机 API。
 
 ## 3. 验证
 
@@ -64,7 +76,40 @@ curl http://127.0.0.1:3001/api/subscription/payment-methods
 
 浏览器：`http://localhost:3000` → 登录 → 订阅 → 专业版 → **支付宝** → 沙箱收银台。
 
-## 4. 测 notify（付款后自动升级）
+## 4. HTTPS 隧道 + PAYMENT_NOTIFY_URL（沙箱下单必填）
+
+支付宝 **不能** 用 `localhost` 当 `notify_url`，需要公网 HTTPS 指到本机 API **3001**。
+
+### 方式 A — 不用安装 ngrok（推荐先试）
+
+**终端 1**（保持运行）：
+
+```powershell
+cd c:\Users\18663\IDE\ai-ide
+npm run tunnel:api
+```
+
+会打印类似 `your url is: https://xxxx.loca.lt`，写入 `.env.local`：
+
+```env
+PAYMENT_NOTIFY_URL=https://xxxx.loca.lt
+```
+
+**终端 2**：`npm run dev:stack`
+
+### 方式 B — 安装 ngrok（长期）
+
+完整图文步骤见 **[NGROK_WINDOWS_SETUP.md](./NGROK_WINDOWS_SETUP.md)**（注册、PATH、authtoken、双终端日常流程）。
+
+重启 `dev:stack`。可运行诊断：
+
+```powershell
+npm run billing:alipay-probe
+```
+
+期望：`✅ 网关未直接返回 error`，而不是 `goto=.../error`。
+
+## 5. 测 notify（付款后自动升级）
 
 1. `ngrok http 3001`（或 cloudflared tunnel）  
 2. `.env.local` 增加：
@@ -82,20 +127,23 @@ PAYMENT_NOTIFY_URL=https://你的隧道域名
 npm run payment:notify-urls
 ```
 
-## 5. 沙箱买家账号
+## 6. 沙箱买家账号
 
 沙箱页 **沙箱账号** 标签中有买家登录账号/密码，用于在收银台付款。
 
-## 6. 常见错误
+## 7. 常见错误
 
 | 现象 | 处理 |
 |------|------|
 | preflight 支付宝 ❌ | 缺 `ALIPAY_PUBLIC_KEY`（易漏） |
+| `[Checkout] Cannot read properties of undefined (reading 'includes')` | **密钥 PEM 不完整**：须 **首尾双引号包住多行**，或 `*_PATH` 指向 `.pem`，或单行 `\\n`。不要多行且**无引号**（只会读第一行） |
+| preflight ⚠️ PEM 可能无效 | 同上，改 `secrets/*.pem` 或单行 `\n` 后重启 `dev:stack` |
 | checkout 503 alipayNotConfigured | 重启 `dev:stack` 使 env 生效 |
-| 付了仍是 free | 未收到 notify → 配 `PAYMENT_NOTIFY_URL` + ngrok |
+| 打开收银台跳到 `/error` | `notify_url` 用了 localhost → 必须 `PAYMENT_NOTIFY_URL` 为 **HTTPS ngrok** |
+| 付了仍是 free | notify 未打到本机 API → 确认 ngrok 指向 **3001** 且重启 dev:stack |
 | 验签失败 | 私钥/公钥与应用不匹配，重新复制沙箱密钥 |
 
-## 7. 下一步
+## 8. 下一步
 
 - 沙箱 E2E 通过 → [PHASE4_CN_PAYMENT.md](./PHASE4_CN_PAYMENT.md) W3～W5  
 - 再开通微信沙箱/测试商户

@@ -13,6 +13,7 @@
 | **[PRODUCT_ANALYSIS.md](./PRODUCT_ANALYSIS.md)** | 既有产品全景分析（架构、功能完成度、SWOT、成熟度） | 全员 / 新成员 onboarding |
 | **[OPTIMIZATION_PLAN.md](./OPTIMIZATION_PLAN.md)** | 下一步拓展与优化规划（P0～P3 轨道、排期、验收） | 产品 / 研发排期 |
 | **[IDE_GAP_CHECKLIST.md](./IDE_GAP_CHECKLIST.md)** | 与 Cursor/Kiro 差距清单 + Phase IDE-1/2/3 | 产品 / 研发 |
+| **[PHASE_IDE4_CURSOR_PARITY.md](./PHASE_IDE4_CURSOR_PARITY.md)** | **IDE-4 细致规划**：本地盘 + Tool Agent + Electron | 产品 / 研发 |
 | **[PRODUCT_SUMMARY_2026-05.md](./PRODUCT_SUMMARY_2026-05.md)** | 本轮迭代总结（P0～P3） | 全员 |
 | **[PLAN_NEXT_2026.md](./PLAN_NEXT_2026.md)** | 下一轮规划（P0' / P1 / P4） | 产品 / 研发 |
 | **[LAUNCH_READINESS.md](./LAUNCH_READINESS.md)** | 真正上市（GA）门禁与 blocker | 产品 / 运维 |
@@ -63,7 +64,7 @@
 | P3 协作 Beta | `CollaborationPanel` 说明 + 设置页 Beta 标签 | ✅ |
 | P3 插件市场 M3 | `pluginCatalogService` + `PluginManager` 市场 Tab | ✅ |
 
-**IDE 能力**（IDE-1/2/3 基础已完成，见 [IDE_GAP_CHECKLIST.md](./IDE_GAP_CHECKLIST.md)）。
+**IDE 能力**（IDE-1/2/3 基础已完成；**下一阶段** → [PHASE_IDE4_CURSOR_PARITY.md](./PHASE_IDE4_CURSOR_PARITY.md)）。
 
 **商业化**：商户未接时默认 **路径 A（内测不收款）**；接商户后走 **路径 B** — [CN_PAYMENT_SETUP.md](./CN_PAYMENT_SETUP.md)。
 

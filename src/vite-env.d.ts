@@ -2,7 +2,9 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_ENDPOINT: string | undefined
-  // 添加其他环境变量...
+  readonly VITE_GA_LIVE: string | undefined
+  readonly VITE_SENTRY_DSN: string | undefined
+  readonly VITE_APP_VERSION: string | undefined
 }
 
 interface ImportMeta {

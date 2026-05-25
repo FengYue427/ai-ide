@@ -187,7 +187,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     <Sparkles size={14} />
                     {t('welcome.badge')}
                   </div>
-                  <span className="welcome-rc-badge">{t('welcome.rcBadge')}</span>
+                  <span className="welcome-rc-badge">
+                    {import.meta.env.VITE_GA_LIVE === 'true'
+                      ? t('welcome.gaBadge')
+                      : t('welcome.rcBadge')}
+                  </span>
                 </div>
                 <h1 className="welcome-title">{t('welcome.title')}</h1>
               </div>

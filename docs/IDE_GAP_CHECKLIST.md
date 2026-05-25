@@ -15,13 +15,13 @@
 | 编辑器核心 | 2.5 | 3.5 | 中 |
 | 语言服务 / 导航 | 1.5 | 3.5 | **大** |
 | 代码库理解 / 检索 | 1.5 | 3.5 | **大** |
-| AI 与编辑融合 | 2.0 | 3.5 | **大** |
-| Agent / 自动化 | 1.5 | 3.0 | **大** |
+| AI 与编辑融合 | **2.3** | 3.5 | 中 |
+| Agent / 自动化 | **2.5** | 3.0 | 中（IDE-4a 工具循环） |
 | 运行 / 调试 / Git | 2.0 | 3.0 | 大 |
 | 扩展 / MCP | 1.0 | 3.0 | **大** |
 | 协作 / 团队 | 1.0 | 2.5 | 大 |
 | 商业化 / 部署 | 2.0 | 3.0 | 中 |
-| **综合（主力 IDE）** | **~1.8** | **~3.2** | **约一代产品**（P3 后见 [COMPETITIVE_BENCHMARK_2026.md](./COMPETITIVE_BENCHMARK_2026.md)） |
+| **综合（主力 IDE）** | **~2.2** | **~3.2** | 仍低 Cursor 一代；见 [COMPETITOR_SCORE_2026-05.md](./COMPETITOR_SCORE_2026-05.md) |
 
 ---
 
@@ -148,6 +148,26 @@
 | IDE-1 | `Ctrl+Shift+P` 输入 `@auth` 能跳到符号；Agent 改 3 个文件可一键应用 |
 | IDE-2 | 侧栏看到函数列表；F12 在 TS 文件跳转 |
 | IDE-3 | 配置 MCP 后 Agent 可调外部工具 |
+
+### Phase IDE-4 — Cursor 级工作区 + Tool Agent（规划）
+
+> 细致任务、里程碑、风险：**[PHASE_IDE4_CURSOR_PARITY.md](./PHASE_IDE4_CURSOR_PARITY.md)**
+
+| 子阶段 | 周期 | 核心交付 | 状态 |
+|--------|------|----------|------|
+| **4a-1** | 1～2 周 | File System Access：打开/写回本地文件夹 | ✅ |
+| **4a-2** | 2～4 周 | 内置工具 `read/write/list/search/run` | ✅ |
+| **4a-3** | 3～5 周 | `agentRunner` 多轮 tool_calls（DeepSeek 等） | ✅ |
+| **4a-4** | 5～7 周 | Agent 时间线 UI、E2E、文档 | ✅（E2E 可选） |
+| **4a-RC** | +1～2 周 | 文档/回归/`v1.1.0-rc` | 🔶 文档 ✅；人工回归 ⬜ |
+| **4b** | +4～6 周 | Electron 桌面壳（可选，GA 后） | ⬜ |
+| **4c** | GA 后 | 大仓索引 / Cloud Agent（可选） | ⬜ |
+
+| ID | 能力 | Cursor | 目标（4a 后） | 状态 |
+|----|------|--------|---------------|------|
+| C7 | **本地文件夹可写** | 原生 | FS Access 或 Electron | ✅ IDE-4a（浏览器）；4b Electron 增强 |
+| C8 | **Tool-calling Agent** | 多轮 tools | agentRunner + 内置工具 | ✅ IDE-4a |
+| C9 | 自动应用策略 | 可配置 | Diff 确认 + 设置项 | ✅ IDE-4a（`autoApplyWrites` 设置） |
 
 ---
 

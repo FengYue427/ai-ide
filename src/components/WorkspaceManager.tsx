@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Check, Clock, Cloud, Download, Folder, HardDrive, RotateCcw, Save, Search, Trash2, Upload, X } from 'lucide-react'
+import { Check, Clock, Cloud, Download, Folder, FolderOpen, HardDrive, RotateCcw, Save, Search, Trash2, Upload, X } from 'lucide-react'
 import { cloudSyncService, type WorkspaceBackup } from '../services/cloudSyncService'
 import {
   deleteWorkspaceEntry,
@@ -9,6 +9,12 @@ import {
   type WorkspaceEntry,
 } from '../services/workspaceCatalogService'
 import { recentFilesService } from '../services/recentFilesService'
+import {
+  localProjectEntriesToEditorFiles,
+  openLocalProjectIntoWorkspace,
+  restoreLocalProjectIntoWorkspace,
+} from '../services/localProjectBridge'
+import { localProjectService, supportsLocalProject } from '../services/localProjectService'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import type { ConfirmRequest, ToastKind } from './FeedbackCenter'
@@ -48,6 +54,8 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [localDiskName, setLocalDiskName] = useState<string | null>(localProjectService.getRootName())
+  const canOpenLocalDisk = supportsLocalProject()
 
   const loadWorkspaces = async () => {
     setLoading(true)
@@ -227,6 +235,46 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     onClose()
   }
 
+  const handleOpenLocalFolder = async () => {
+    setMessage(null)
+    try {
+      const result = await openLocalProjectIntoWorkspace()
+      setLocalDiskName(result.rootName)
+      onLoadWorkspace(localProjectEntriesToEditorFiles(result.entries), currentSettings)
+      const detail = result.capped
+        ? t('wp.local.openDetailCapped', { count: result.imported })
+        : t('wp.local.openDetail', { count: result.imported })
+      notify('success', t('wp.local.openTitle', { name: result.rootName }), detail)
+      onClose()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg === 'LOCAL_PROJECT_UNSUPPORTED') {
+        setMessage({ type: 'error', text: t('wp.local.unsupported') })
+      } else if (msg === 'LOCAL_PROJECT_PERMISSION_DENIED') {
+        setMessage({ type: 'error', text: t('wp.local.permissionDenied') })
+      } else {
+        setMessage({ type: 'error', text: t('wp.local.openFailed') })
+      }
+    }
+  }
+
+  const handleRestoreLocalFolder = async () => {
+    setMessage(null)
+    try {
+      const result = await restoreLocalProjectIntoWorkspace()
+      if (!result) {
+        notify('info', t('wp.local.restoreNone'))
+        return
+      }
+      setLocalDiskName(result.rootName)
+      onLoadWorkspace(localProjectEntriesToEditorFiles(result.entries), currentSettings)
+      notify('success', t('wp.local.restoreTitle'), t('wp.local.openDetail', { count: result.imported }))
+      onClose()
+    } catch {
+      setMessage({ type: 'error', text: t('wp.local.openFailed') })
+    }
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal wm-modal" onClick={(event) => event.stopPropagation()}>
@@ -244,6 +292,38 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
           <div className="wm-panel wm-panel--hero">
             <div className="wm-hero-title">{t('wm.hero.title')}</div>
             <div className="wm-hero-desc">{isLoggedIn ? t('wm.hero.loggedIn') : t('wm.hero.guest')}</div>
+          </div>
+
+          <div className="wm-panel wm-panel--local">
+            <div className="wm-hero-title">{t('wm.local.sectionTitle')}</div>
+            <div className="wm-hero-desc">
+              {canOpenLocalDisk ? t('wm.local.sectionDesc') : t('wp.local.unsupported')}
+            </div>
+            {canOpenLocalDisk && (
+              <>
+                <div className="wm-actions" style={{ marginTop: '12px' }}>
+                  <button type="button" className="btn btn-primary" onClick={() => void handleOpenLocalFolder()}>
+                    <FolderOpen size={16} className="wm-btn-icon-gap" />
+                    {t('wp.local.openFolder')}
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={() => void handleRestoreLocalFolder()}>
+                    <RotateCcw size={16} className="wm-btn-icon-gap" />
+                    {t('wp.local.restore')}
+                  </button>
+                </div>
+                {localDiskName && (
+                  <div className="status-pill" style={{ marginTop: '10px' }}>
+                    <HardDrive size={14} />
+                    {t('wp.local.bound', { name: localDiskName })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="wm-panel wm-panel--hero" style={{ opacity: 0.85 }}>
+            <div className="wm-hero-title" style={{ fontSize: '13px' }}>{t('wm.cloud.sectionTitle')}</div>
+            <div className="wm-hero-desc" style={{ fontSize: '12px' }}>{t('wm.cloud.sectionDesc')}</div>
           </div>
 
           {message && (

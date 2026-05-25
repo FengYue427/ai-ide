@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AgentSettingsSection } from './AgentSettingsSection'
 import { McpSettingsSection } from './McpSettingsSection'
 import { ProjectRulesSection } from './ProjectRulesSection'
 import { QuotaIndicator } from './ui/QuotaIndicator'
@@ -17,6 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import { modelOptions, modelProviderTranslationKey, type AIModel, type QuotaCheck } from '../services/aiService'
+import { BILLING_SYNC_EVENT } from '../hooks/useBillingSync'
 import { fetchAIQuota } from '../services/usageService'
 import { useI18n, type Language } from '../i18n'
 import { isSemanticSearchEnabled, setSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
@@ -71,6 +73,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
     plan: currentPlan,
   })
   const persistMcpRef = useRef<(() => Promise<void>) | null>(null)
+  const persistAgentRef = useRef<(() => Promise<void>) | null>(null)
   const [semanticSearchEnabled, setSemanticSearchEnabledState] = useState(isSemanticSearchEnabled)
 
   const tabs = useMemo(
@@ -144,9 +147,19 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
 
   const activeMeta = useMemo(() => tabs.find((tab) => tab.id === activeTab) ?? tabs[0], [activeTab, tabs])
 
-  useEffect(() => {
+  const refreshQuota = useCallback(() => {
     void fetchAIQuota(currentPlan, !!currentUser).then(setQuota)
   }, [currentPlan, currentUser])
+
+  useEffect(() => {
+    refreshQuota()
+  }, [refreshQuota])
+
+  useEffect(() => {
+    const onBillingSync = () => refreshQuota()
+    window.addEventListener(BILLING_SYNC_EVENT, onBillingSync)
+    return () => window.removeEventListener(BILLING_SYNC_EVENT, onBillingSync)
+  }, [refreshQuota])
 
   useEffect(() => {
     setLocalAIConfig(aiConfig)
@@ -162,6 +175,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
       if (localTheme !== theme) onToggleTheme()
       if (localLanguage !== language) onChangeLanguage(localLanguage)
       await persistMcpRef.current?.()
+      await persistAgentRef.current?.()
       setSemanticSearchEnabled(semanticSearchEnabled)
       onClose()
     })()
@@ -408,6 +422,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 {onEditProjectRules ? (
                   <ProjectRulesSection rulesPreview={projectRulesPreview} onEditRules={onEditProjectRules} />
                 ) : null}
+                <AgentSettingsSection onRegisterPersist={(persist) => { persistAgentRef.current = persist }} />
                 <McpSettingsSection onRegisterPersist={(persist) => { persistMcpRef.current = persist }} />
               </div>
             )}

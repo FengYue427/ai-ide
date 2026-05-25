@@ -9,6 +9,11 @@
   backdrop-filter: blur(8px);
 }
 
+/* Stacked modals (e.g. CN pay on top of subscription) */
+.modal-overlay--elevated {
+  z-index: 1100;
+}
+
 .modal {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);

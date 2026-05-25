@@ -5,6 +5,45 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- GA `1.0.0` after production Alipay + [GA_LAUNCH_RUNBOOK.md](docs/GA_LAUNCH_RUNBOOK.md).
+
+## [1.1.0-rc.2] — 2026-05-26 (deploy bundle: IDE-4a + W8 + P4 + GA docs)
+
+### Added
+
+- P4-1：索引增量同步；P4-4：Tab 幽灵补全（防抖/缓存）
+- 付费页 `payment.html`；`d3:preflight` / `check:release:d3`；[BILLING_REFUND_SOP.md](docs/BILLING_REFUND_SOP.md)
+- GA：`VITE_GA_LIVE` 欢迎页徽章；竞品 ~2.35；[PLAN_STRATEGY_2026_Q3.md](docs/PLAN_STRATEGY_2026_Q3.md)
+- Alipay 对账/探测脚本；`tunnel:api`；197 单元测试全绿
+
+### Changed
+
+- `subscriptionDb` 类型修复；`WorkspacePanel` ref 修复；File System Access 类型声明
+
+## [1.1.0-rc] — 2026-05-25 (IDE-4a RC + W8)
+
+### IDE-4a — 本地盘 + 工具 Agent
+
+- File System Access：工作区管理「打开本机项目」、写回磁盘 `syncToLocalDisk`
+- 内置 Agent 工具：`list_files` / `read_file` / `write_file` / `search_repo` / `run_command`
+- `agentRunner` 多轮 tool_calls（DeepSeek 等）；Chat Agent 活动时间线
+- 设置 → Agent 工具循环（自动应用写入、最大轮数）
+- DeepSeek V4：Agent 请求禁用 thinking，避免工具循环 400
+
+### Phase 4 W8 — 订阅生命周期
+
+- 周期结束 + **3 天宽限期** 后自动降为 free（`GET /api/subscription` 懒检查）
+- `POST /api/billing/expire-subscriptions` + `npm run billing:expire` 批量到期
+- 订阅弹窗：取消续费 / 恢复 / 立即降级（已有 UI 接 API）
+- Chat 订阅到期提示条
+
+### Docs
+
+- [docs/RC_ANNOUNCEMENT_IDE4A.md](docs/RC_ANNOUNCEMENT_IDE4A.md)
+- [docs/AGENT_REGRESSION_CHECKLIST.md](docs/AGENT_REGRESSION_CHECKLIST.md)
+- [docs/BILLING_SUBSCRIPTION_LIFECYCLE.md](docs/BILLING_SUBSCRIPTION_LIFECYCLE.md)
+- [docs/PHASE_AFTER_IDE4A.md](docs/PHASE_AFTER_IDE4A.md)
+
 ### Phase 3 (started)
 
 - See [docs/PHASE3_KICKOFF.md](docs/PHASE3_KICKOFF.md) — P4-1 indexing continuation next.

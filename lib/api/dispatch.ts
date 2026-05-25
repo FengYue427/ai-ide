@@ -71,6 +71,12 @@ const routes: RouteEntry[] = [
   },
   {
     method: 'POST',
+    match: (p) => (p === '/api/payment/alipay/return' ? {} : null),
+    load: () => import('./handlers/payment/alipay/return'),
+    export: 'POST',
+  },
+  {
+    method: 'POST',
     match: (p) => (p === '/api/payment/wechat/notify' ? {} : null),
     load: () => import('./handlers/payment/wechat/notify'),
     export: 'POST',
@@ -119,6 +125,18 @@ const routes: RouteEntry[] = [
     match: (p) => (p === '/api/subscription/resume' ? {} : null),
     load: () => import('./handlers/subscription/resume'),
     export: 'POST',
+  },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/billing/expire-subscriptions' ? {} : null),
+    load: () => import('./handlers/billing/expire-subscriptions'),
+    export: 'POST',
+  },
+  {
+    method: 'GET',
+    match: (p) => (p === '/api/billing/expire-subscriptions' ? {} : null),
+    load: () => import('./handlers/billing/expire-subscriptions'),
+    export: 'GET',
   },
   { method: 'GET', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'GET' },
   { method: 'POST', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'POST' },

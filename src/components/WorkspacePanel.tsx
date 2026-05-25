@@ -19,6 +19,14 @@ import {
   X,
 } from 'lucide-react'
 import { workspaceContextService, type WorkspaceFile } from '../services/workspaceContextService'
+import {
+  localProjectService,
+  supportsLocalProject,
+} from '../services/localProjectService'
+import {
+  openLocalProjectIntoWorkspace,
+  restoreLocalProjectIntoWorkspace,
+} from '../services/localProjectBridge'
 import { useI18n } from '../i18n'
 import type { ConfirmRequest, ToastKind } from './FeedbackCenter'
 
@@ -53,8 +61,10 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [error, setError] = useState<string | null>(null)
-  const hasSyncedFiles = useRef(false)
+  const [localRoot, setLocalRoot] = useState<string | null>(localProjectService.getRootName())
+  const canLocalDisk = supportsLocalProject()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const hasSyncedFiles = useRef(false)
 
   const refreshFiles = useCallback(() => {
     const allFiles = workspaceContextService.getAllFiles()
@@ -84,6 +94,53 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
       refreshFiles()
     }
   }, [currentFiles, refreshFiles])
+
+  const handleOpenLocalProject = useCallback(async () => {
+    setError(null)
+    setIsImporting(true)
+    try {
+      const result = await openLocalProjectIntoWorkspace()
+      setLocalRoot(result.rootName)
+      refreshFiles()
+      const detail = result.capped
+        ? t('wp.local.openDetailCapped', { count: result.imported })
+        : t('wp.local.openDetail', { count: result.imported })
+      notify('success', t('wp.local.openTitle', { name: result.rootName }), detail)
+      if (result.errors.length > 0) {
+        notify('info', t('wp.notify.partialImport'), result.errors.slice(0, 3).join('; '))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg === 'LOCAL_PROJECT_UNSUPPORTED') {
+        setError(t('wp.local.unsupported'))
+      } else if (msg === 'LOCAL_PROJECT_PERMISSION_DENIED') {
+        setError(t('wp.local.permissionDenied'))
+      } else {
+        setError(t('wp.local.openFailed'))
+      }
+    } finally {
+      setIsImporting(false)
+    }
+  }, [notify, refreshFiles, t])
+
+  const handleRestoreLocalProject = useCallback(async () => {
+    setError(null)
+    setIsImporting(true)
+    try {
+      const result = await restoreLocalProjectIntoWorkspace()
+      if (!result) {
+        notify('info', t('wp.local.restoreNone'))
+        return
+      }
+      setLocalRoot(result.rootName)
+      refreshFiles()
+      notify('success', t('wp.local.restoreTitle'), t('wp.local.openDetail', { count: result.imported }))
+    } catch {
+      setError(t('wp.local.openFailed'))
+    } finally {
+      setIsImporting(false)
+    }
+  }, [notify, refreshFiles, t])
 
   const handleDrag = useCallback((event: React.DragEvent) => {
     event.preventDefault()
@@ -360,6 +417,31 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
               <AlertCircle size={16} />
               {error}
             </div>
+          )}
+
+          {canLocalDisk && (
+            <div className="wp-local-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+              <button type="button" className="btn btn-primary" disabled={isImporting} onClick={() => void handleOpenLocalProject()}>
+                <FolderOpen size={14} style={{ marginRight: '6px' }} />
+                {t('wp.local.openFolder')}
+              </button>
+              <button type="button" className="btn btn-secondary" disabled={isImporting} onClick={() => void handleRestoreLocalProject()}>
+                <RefreshCw size={14} style={{ marginRight: '6px' }} />
+                {t('wp.local.restore')}
+              </button>
+              {localRoot && (
+                <span className="status-pill" style={{ alignSelf: 'center' }}>
+                  <HardDrive size={14} />
+                  {t('wp.local.bound', { name: localRoot })}
+                </span>
+              )}
+            </div>
+          )}
+
+          {!canLocalDisk && (
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
+              {t('wp.local.unsupported')}
+            </p>
           )}
 
           <div

@@ -1,6 +1,5 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../src/lib/prisma'
-import { prismaSupportsTransactions } from '../../src/lib/prismaTransactions'
 import { prismaUpsert, type UpsertDelegate } from './prismaUpsert'
 import { BILLING_PLANS } from './plans'
 import { mapStripeSubscriptionStatus } from './stripeStatus'
@@ -27,10 +26,14 @@ export async function ensurePlansSeeded(): Promise<void> {
   }
 }
 
-export async function upsertUserSubscription(userId: string, planName: string, stripeIds?: {
-  customerId?: string
-  subscriptionId?: string
-}) {
+export async function upsertUserSubscription(
+  userId: string,
+  planName: string,
+  stripeIds?: {
+    customerId?: string
+    subscriptionId?: string
+  },
+): Promise<SubscriptionWithPlan> {
   await ensurePlansSeeded()
 
   const plan = await prisma.plan.findUnique({ where: { name: planName } })
@@ -52,20 +55,8 @@ export async function upsertUserSubscription(userId: string, planName: string, s
     stripeSubscriptionId: stripeIds?.subscriptionId,
   }
 
-  if (!prismaSupportsTransactions()) {
-    const existing = await prisma.subscription.findUnique({ where: { userId } })
-    if (existing) {
-      await prisma.subscription.update({ where: { userId }, data: payload })
-    } else {
-      await prisma.subscription.create({ data: { userId, ...payload } })
-    }
-    return prisma.subscription.findUniqueOrThrow({
-      where: { userId },
-      include: { plan: true },
-    })
-  }
-
-  return prisma.subscription.upsert({
+  return prismaUpsert<SubscriptionWithPlan>({
+    delegate: prisma.subscription as unknown as UpsertDelegate<SubscriptionWithPlan>,
     where: { userId },
     create: { userId, ...payload },
     update: payload,

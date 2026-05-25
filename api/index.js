@@ -65,6 +65,34 @@ var init_http = __esm({
   }
 });
 
+// lib/billing/pemKey.ts
+function normalizePemKey(raw, defaultType) {
+  const text = raw.replace(/\\n/g, "\n").trim();
+  if (!text) {
+    throw new Error(
+      "\u5BC6\u94A5\u4E3A\u7A7A\u3002\u82E5\u5199\u5728 .env.local \u591A\u884C\u65E0\u5F15\u53F7\uFF0C\u53EF\u80FD\u53EA\u8BFB\u5165\u7B2C\u4E00\u884C\uFF1B\u8BF7\u7528 ALIPAY_*_PATH \u6307\u5411 .pem \u6587\u4EF6\uFF0C\u6216\u5355\u884C\u7528 \\n \u8FDE\u63A5\u3002"
+    );
+  }
+  const begin = text.match(/-----BEGIN ([^-]+)-----/);
+  const end = text.match(/-----END ([^-]+)-----/);
+  const type = begin?.[1]?.trim() || end?.[1]?.trim() || defaultType;
+  const body = text.replace(/-----BEGIN [^-]+-----/g, "").replace(/-----END [^-]+-----/g, "").replace(/\s+/g, "");
+  if (!body || body.length < 32) {
+    throw new Error(
+      "\u5BC6\u94A5\u5185\u5BB9\u8FC7\u77ED\u6216\u65E0\u6548\u3002\u8BF7\u4ECE\u652F\u4ED8\u5B9D\u5F00\u653E\u5E73\u53F0\u590D\u5236\u5B8C\u6574\u5E94\u7528\u79C1\u94A5\u4E0E\u652F\u4ED8\u5B9D\u516C\u94A5\uFF0C\u6216\u4F7F\u7528 *_PATH \u6307\u5411 pem \u6587\u4EF6\u3002"
+    );
+  }
+  const lines = body.match(/.{1,64}/g) ?? [body];
+  return `-----BEGIN ${type}-----
+${lines.join("\n")}
+-----END ${type}-----`;
+}
+var init_pemKey = __esm({
+  "lib/billing/pemKey.ts"() {
+    "use strict";
+  }
+});
+
 // lib/billing/plans.ts
 function getBillablePlanNames() {
   return BILLING_PLANS.filter((plan) => plan.name !== "free").map((plan) => plan.name);
@@ -245,10 +273,22 @@ var init_stripe = __esm({
 function resolvePaymentReturnOrigin(req) {
   return resolveAppOrigin(req);
 }
+function isLocalNotifyOrigin(origin) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin.replace(/\/$/, ""));
+}
 function resolvePaymentNotifyOrigin(req) {
   const override = process.env.PAYMENT_NOTIFY_URL?.trim();
   if (override) return override.replace(/\/$/, "");
-  return resolveAppOrigin(req);
+  const origin = resolveAppOrigin(req);
+  const sandbox = process.env.ALIPAY_SANDBOX === "true" || process.env.ALIPAY_SANDBOX === "1";
+  if (sandbox && isLocalNotifyOrigin(origin)) {
+    const fallback = process.env.ALIPAY_SANDBOX_NOTIFY_FALLBACK?.trim();
+    if (fallback) return fallback.replace(/\/$/, "");
+    throw new Error(
+      "\u652F\u4ED8\u5B9D\u6C99\u7BB1\u4E0D\u63A5\u53D7 localhost \u4F5C\u4E3A notify_url\u3002\u8BF7\u8FD0\u884C ngrok http 3001\uFF0C\u5728 .env.local \u8BBE\u7F6E PAYMENT_NOTIFY_URL=https://\u4F60\u7684\u96A7\u9053\u57DF\u540D\uFF0C\u7136\u540E\u91CD\u542F dev:stack\u3002"
+    );
+  }
+  return origin;
 }
 var init_paymentOrigin = __esm({
   "lib/billing/paymentOrigin.ts"() {
@@ -382,14 +422,23 @@ function resolveAlipayGateway() {
   return ALIPAY_GATEWAY_PRODUCTION;
 }
 function getAlipaySdk() {
-  const privateKey = readKeyFromEnv(
-    process.env.ALIPAY_PRIVATE_KEY,
-    process.env.ALIPAY_PRIVATE_KEY_PATH
-  );
-  const alipayPublicKey = readKeyFromEnv(
-    process.env.ALIPAY_PUBLIC_KEY,
-    process.env.ALIPAY_PUBLIC_KEY_PATH
-  );
+  let privateKey;
+  let alipayPublicKey;
+  try {
+    privateKey = readKeyFromEnv(
+      process.env.ALIPAY_PRIVATE_KEY,
+      process.env.ALIPAY_PRIVATE_KEY_PATH,
+      "RSA PRIVATE KEY"
+    );
+    alipayPublicKey = readKeyFromEnv(
+      process.env.ALIPAY_PUBLIC_KEY,
+      process.env.ALIPAY_PUBLIC_KEY_PATH,
+      "PUBLIC KEY"
+    );
+  } catch (err) {
+    const hint = err instanceof Error ? err.message : String(err);
+    throw new Error(`\u652F\u4ED8\u5B9D\u5BC6\u94A5\u65E0\u6548: ${hint}`);
+  }
   return new AlipaySdk({
     appId: process.env.ALIPAY_APP_ID.trim(),
     privateKey,
@@ -398,9 +447,8 @@ function getAlipaySdk() {
     signType: "RSA2"
   });
 }
-async function createAlipayPageUrl(params) {
-  const sdk = getAlipaySdk();
-  const url = sdk.pageExecute("alipay.trade.page.pay", "GET", {
+function buildPagePayParams(params) {
+  return {
     bizContent: {
       out_trade_no: params.outTradeNo,
       total_amount: params.totalAmountYuan,
@@ -409,23 +457,68 @@ async function createAlipayPageUrl(params) {
     },
     returnUrl: params.returnUrl,
     notifyUrl: params.notifyUrl
-  });
-  if (!url || typeof url !== "string") {
-    throw new Error("\u652F\u4ED8\u5B9D\u672A\u8FD4\u56DE\u652F\u4ED8\u94FE\u63A5");
+  };
+}
+function createAlipayPageFormHtml(params) {
+  const sdk = getAlipaySdk();
+  const html = sdk.pageExecute("alipay.trade.page.pay", "POST", buildPagePayParams(params));
+  if (!html || typeof html !== "string" || !html.includes("<form")) {
+    throw new Error("\u652F\u4ED8\u5B9D\u672A\u8FD4\u56DE\u652F\u4ED8\u8868\u5355");
   }
-  return url;
+  return html;
+}
+function parseAlipayReturnQuery(search) {
+  const q = search.startsWith("?") ? search.slice(1) : search;
+  const params = {};
+  if (!q) return params;
+  for (const part of q.split("&")) {
+    if (!part) continue;
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    const key = decodeURIComponent(part.slice(0, eq));
+    const value = decodeURIComponent(part.slice(eq + 1).replace(/\+/g, " "));
+    params[key] = value;
+  }
+  return params;
+}
+function stripAppReturnQueryParams(params) {
+  const out = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (APP_RETURN_QUERY_KEYS.has(key)) continue;
+    out[key] = value;
+  }
+  return out;
+}
+function verifyAlipaySign(params) {
+  const sdk = getAlipaySdk();
+  const signedOnly = stripAppReturnQueryParams(params);
+  if (sdk.checkNotifySign(signedOnly)) return true;
+  try {
+    return sdk.checkNotifySignV2(signedOnly);
+  } catch {
+    return false;
+  }
 }
 function verifyAlipayNotify(params) {
-  const sdk = getAlipaySdk();
-  return sdk.checkNotifySign(params);
+  return verifyAlipaySign(params);
 }
-var ALIPAY_GATEWAY_PRODUCTION, ALIPAY_GATEWAY_SANDBOX;
+async function queryAlipayTrade(outTradeNo) {
+  const sdk = getAlipaySdk();
+  const raw = await sdk.exec("alipay.trade.query", {
+    bizContent: { out_trade_no: outTradeNo }
+  });
+  const tradeStatus = String(raw.tradeStatus ?? raw.trade_status ?? "");
+  const tradeNo = raw.tradeNo != null ? String(raw.tradeNo) : raw.trade_no != null ? String(raw.trade_no) : void 0;
+  return { tradeStatus, tradeNo };
+}
+var ALIPAY_GATEWAY_PRODUCTION, ALIPAY_GATEWAY_SANDBOX, APP_RETURN_QUERY_KEYS;
 var init_alipayPay = __esm({
   "lib/billing/alipayPay.ts"() {
     "use strict";
     init_cnPayment();
     ALIPAY_GATEWAY_PRODUCTION = "https://openapi.alipay.com/gateway.do";
     ALIPAY_GATEWAY_SANDBOX = "https://openapi-sandbox.dl.alipaydev.com/gateway.do";
+    APP_RETURN_QUERY_KEYS = /* @__PURE__ */ new Set(["subscription", "plan"]);
   }
 });
 
@@ -433,7 +526,7 @@ var init_alipayPay = __esm({
 import WxPay from "wechatpay-node-v3";
 function getWxPay() {
   const privateKey = Buffer.from(
-    readKeyFromEnv(process.env.WECHAT_PRIVATE_KEY, process.env.WECHAT_PRIVATE_KEY_PATH),
+    readKeyFromEnv(process.env.WECHAT_PRIVATE_KEY, process.env.WECHAT_PRIVATE_KEY_PATH, "PRIVATE KEY"),
     "utf8"
   );
   const platformInline = process.env.WECHAT_PLATFORM_PUBLIC_KEY?.trim();
@@ -443,7 +536,7 @@ function getWxPay() {
       "\u5FAE\u4FE1\u652F\u4ED8\u7F3A\u5C11\u5E73\u53F0\u8BC1\u4E66\u516C\u94A5\uFF1A\u8BF7\u8BBE\u7F6E WECHAT_PLATFORM_PUBLIC_KEY \u6216 WECHAT_PLATFORM_PUBLIC_KEY_PATH\uFF08\u5546\u6237\u5E73\u53F0 \u2192 API \u5B89\u5168 \u2192 \u5E73\u53F0\u8BC1\u4E66\uFF09"
     );
   }
-  const publicKeyPem = readKeyFromEnv(platformInline, platformPath);
+  const publicKeyPem = readKeyFromEnv(platformInline, platformPath, "CERTIFICATE");
   return new WxPay({
     appid: process.env.WECHAT_APP_ID.trim(),
     mchid: process.env.WECHAT_MCH_ID.trim(),
@@ -484,7 +577,7 @@ var init_wechatPay = __esm({
 import { readFileSync } from "node:fs";
 function isAlipayConfigured() {
   return Boolean(
-    process.env.ALIPAY_APP_ID?.trim() && (process.env.ALIPAY_PRIVATE_KEY?.trim() || process.env.ALIPAY_PRIVATE_KEY_PATH?.trim())
+    process.env.ALIPAY_APP_ID?.trim() && (process.env.ALIPAY_PRIVATE_KEY?.trim() || process.env.ALIPAY_PRIVATE_KEY_PATH?.trim()) && (process.env.ALIPAY_PUBLIC_KEY?.trim() || process.env.ALIPAY_PUBLIC_KEY_PATH?.trim())
   );
 }
 function isWechatPayConfigured() {
@@ -498,14 +591,17 @@ function isWechatPayConfigured() {
 function isCnPaymentConfigured() {
   return isAlipayConfigured() || isWechatPayConfigured();
 }
-function readKeyFromEnv(inlineKey, pathKey) {
+function readKeyFromEnv(inlineKey, pathKey, pemType) {
+  let raw;
   if (inlineKey?.trim()) {
-    return inlineKey.replace(/\\n/g, "\n").trim();
+    raw = inlineKey;
+  } else if (pathKey?.trim()) {
+    raw = readFileSync(pathKey.trim(), "utf8");
   }
-  if (pathKey?.trim()) {
-    return readFileSync(pathKey.trim(), "utf8");
+  if (!raw) {
+    throw new Error(`\u5BC6\u94A5\u672A\u914D\u7F6E\uFF08\u9700\u8981 ${pemType}\uFF09`);
   }
-  throw new Error("\u5BC6\u94A5\u672A\u914D\u7F6E");
+  return normalizePemKey(raw, pemType);
 }
 async function createCnCheckout(params) {
   const plan = findPlanByName(params.planName);
@@ -525,14 +621,14 @@ async function createCnCheckout(params) {
     if (!isAlipayConfigured()) {
       throw new Error("\u652F\u4ED8\u5B9D\u672A\u914D\u7F6E\uFF1A\u8BF7\u8BBE\u7F6E ALIPAY_APP_ID\u3001ALIPAY_PRIVATE_KEY\u3001ALIPAY_PUBLIC_KEY");
     }
-    const url = await createAlipayPageUrl({
+    const formHtml = createAlipayPageFormHtml({
       outTradeNo: order.outTradeNo,
       totalAmountYuan: (amountCents / 100).toFixed(2),
       subject,
       returnUrl: `${returnOrigin}/?subscription=success&plan=${params.planName}`,
       notifyUrl: `${notifyOrigin}/api/payment/alipay/notify`
     });
-    return { mode: "alipay", orderId: order.id, outTradeNo: order.outTradeNo, url };
+    return { mode: "alipay", orderId: order.id, outTradeNo: order.outTradeNo, formHtml };
   }
   if (!isWechatPayConfigured()) {
     throw new Error("\u5FAE\u4FE1\u652F\u4ED8\u672A\u914D\u7F6E\uFF1A\u8BF7\u8BBE\u7F6E WECHAT_APP_ID\u3001WECHAT_MCH_ID\u3001WECHAT_API_V3_KEY\u3001WECHAT_PRIVATE_KEY");
@@ -553,6 +649,7 @@ async function createCnCheckout(params) {
 var init_cnPayment = __esm({
   "lib/billing/cnPayment.ts"() {
     "use strict";
+    init_pemKey();
     init_paymentOrigin();
     init_plans();
     init_paymentOrders();
@@ -988,6 +1085,8 @@ var init_apiMessages = __esm({
         "api.subscription.cancelEndOfPeriod": "\u5DF2\u5B89\u6392\u5728\u5468\u671F\u7ED3\u675F\u540E\u964D\u7EA7\uFF0C\u5230\u671F\u524D\u4ECD\u53EF\u4F7F\u7528\u5F53\u524D\u8BA1\u5212",
         "api.subscription.resumeActive": "\u8BA2\u9605\u4ECD\u5728\u751F\u6548\u4E2D\uFF0C\u65E0\u9700\u6062\u590D",
         "api.subscription.resumeOk": "\u5DF2\u6062\u590D\u8BA2\u9605\uFF0C\u4E0B\u4E2A\u5468\u671F\u5C06\u6B63\u5E38\u7EED\u8D39",
+        "api.subscription.expired": "\u8BA2\u9605\u5DF2\u5230\u671F\uFF0C\u5DF2\u6062\u590D\u4E3A\u514D\u8D39\u7248\u914D\u989D",
+        "api.billing.expireCronOk": "\u5DF2\u5904\u7406\u5230\u671F\u8BA2\u9605\uFF08{expired}/{scanned}\uFF09",
         "api.payment.orderIdRequired": "\u7F3A\u5C11\u8BA2\u5355 ID",
         "api.payment.orderNotFound": "\u8BA2\u5355\u4E0D\u5B58\u5728",
         "api.payment.devOnly": "\u4EC5\u5F00\u53D1\u73AF\u5883\u53EF\u7528",
@@ -1071,6 +1170,8 @@ var init_apiMessages = __esm({
         "api.subscription.cancelEndOfPeriod": "Cancellation scheduled for period end; current plan remains active until then",
         "api.subscription.resumeActive": "Subscription is still active",
         "api.subscription.resumeOk": "Subscription resumed; renewal continues next period",
+        "api.subscription.expired": "Subscription ended; your plan is now Free",
+        "api.billing.expireCronOk": "Processed expired subscriptions ({expired}/{scanned})",
         "api.payment.orderIdRequired": "Missing order ID",
         "api.payment.orderNotFound": "Order not found",
         "api.payment.devOnly": "Development environment only",
@@ -1810,10 +1911,24 @@ async function prismaUpsert(args) {
       include: args.include
     });
   }
-  return args.delegate.create({
-    data: args.create,
-    include: args.include
-  });
+  try {
+    return await args.delegate.create({
+      data: args.create,
+      include: args.include
+    });
+  } catch (error) {
+    if (isPrismaUniqueViolation(error)) {
+      return args.delegate.update({
+        where: args.where,
+        data: args.update,
+        include: args.include
+      });
+    }
+    throw error;
+  }
+}
+function isPrismaUniqueViolation(error) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 var init_prismaUpsert = __esm({
   "lib/billing/prismaUpsert.ts"() {
@@ -2106,53 +2221,6 @@ var init_workspaces = __esm({
   }
 });
 
-// lib/api/handlers/subscription/index.ts
-var subscription_exports = {};
-__export(subscription_exports, {
-  GET: () => GET7
-});
-async function GET7(req) {
-  try {
-    const user = await optionalAuth(req);
-    if (!user) {
-      return jsonResponse({ subscription: freeSubscription });
-    }
-    const record = await prisma.subscription.findUnique({
-      where: { userId: user.id },
-      include: { plan: true }
-    });
-    if (!record) {
-      return jsonResponse({ subscription: freeSubscription });
-    }
-    return jsonResponse({
-      subscription: {
-        plan: record.plan.name,
-        status: record.status,
-        currentPeriodEnd: record.currentPeriodEnd.toISOString(),
-        cancelAtPeriodEnd: record.cancelAtPeriodEnd
-      }
-    });
-  } catch (error) {
-    console.error("[Subscription] Status error:", error);
-    return jsonResponse({ subscription: freeSubscription });
-  }
-}
-var freeSubscription;
-var init_subscription = __esm({
-  "lib/api/handlers/subscription/index.ts"() {
-    "use strict";
-    init_http();
-    init_requireAuth();
-    init_prisma();
-    freeSubscription = {
-      plan: "free",
-      status: "active",
-      currentPeriodEnd: null,
-      cancelAtPeriodEnd: false
-    };
-  }
-});
-
 // lib/billing/stripeStatus.ts
 function mapStripeSubscriptionStatus(stripeStatus) {
   switch (stripeStatus) {
@@ -2226,19 +2294,8 @@ async function upsertUserSubscription(userId, planName, stripeIds) {
     stripeCustomerId: stripeIds?.customerId,
     stripeSubscriptionId: stripeIds?.subscriptionId
   };
-  if (!prismaSupportsTransactions()) {
-    const existing = await prisma.subscription.findUnique({ where: { userId } });
-    if (existing) {
-      await prisma.subscription.update({ where: { userId }, data: payload });
-    } else {
-      await prisma.subscription.create({ data: { userId, ...payload } });
-    }
-    return prisma.subscription.findUniqueOrThrow({
-      where: { userId },
-      include: { plan: true }
-    });
-  }
-  return prisma.subscription.upsert({
+  return prismaUpsert({
+    delegate: prisma.subscription,
     where: { userId },
     create: { userId, ...payload },
     update: payload,
@@ -2339,10 +2396,112 @@ var init_subscriptionDb = __esm({
   "lib/billing/subscriptionDb.ts"() {
     "use strict";
     init_prisma();
-    init_prismaTransactions();
     init_prismaUpsert();
     init_plans();
     init_stripeStatus();
+  }
+});
+
+// lib/billing/subscriptionExpiry.ts
+function periodEndWithGrace(periodEnd, graceDays = SUBSCRIPTION_GRACE_DAYS) {
+  return new Date(periodEnd.getTime() + graceDays * MS_PER_DAY);
+}
+function shouldExpireSubscription(record, now = /* @__PURE__ */ new Date()) {
+  if (record.plan.name === "free") return false;
+  return periodEndWithGrace(record.currentPeriodEnd) <= now;
+}
+async function expireUserSubscriptionIfDue(userId) {
+  const record = await getUserSubscription(userId);
+  if (!record || !shouldExpireSubscription(record)) {
+    return { expired: false };
+  }
+  await downgradeUserToFree(userId);
+  return { expired: true };
+}
+async function processExpiredSubscriptions() {
+  const now = /* @__PURE__ */ new Date();
+  const graceCutoff = new Date(now.getTime() - SUBSCRIPTION_GRACE_DAYS * MS_PER_DAY);
+  const candidates = await prisma.subscription.findMany({
+    where: {
+      currentPeriodEnd: { lt: graceCutoff },
+      plan: { name: { not: "free" } }
+    },
+    include: { plan: true }
+  });
+  let expired = 0;
+  for (const record of candidates) {
+    if (!shouldExpireSubscription(record, now)) continue;
+    await downgradeUserToFree(record.userId);
+    expired += 1;
+  }
+  return { scanned: candidates.length, expired };
+}
+var SUBSCRIPTION_GRACE_DAYS, MS_PER_DAY;
+var init_subscriptionExpiry = __esm({
+  "lib/billing/subscriptionExpiry.ts"() {
+    "use strict";
+    init_prisma();
+    init_subscriptionDb();
+    SUBSCRIPTION_GRACE_DAYS = 3;
+    MS_PER_DAY = 24 * 60 * 60 * 1e3;
+  }
+});
+
+// lib/api/handlers/subscription/index.ts
+var subscription_exports = {};
+__export(subscription_exports, {
+  GET: () => GET7
+});
+async function GET7(req) {
+  try {
+    const user = await optionalAuth(req);
+    if (!user) {
+      return jsonResponse({ subscription: freeSubscription });
+    }
+    const { expired } = await expireUserSubscriptionIfDue(user.id);
+    if (expired) {
+      return jsonResponse(
+        appendApiMessage(req, "api.subscription.expired", {
+          subscription: freeSubscription,
+          notice: "expired"
+        })
+      );
+    }
+    const record = await prisma.subscription.findUnique({
+      where: { userId: user.id },
+      include: { plan: true }
+    });
+    if (!record) {
+      return jsonResponse({ subscription: freeSubscription });
+    }
+    return jsonResponse({
+      subscription: {
+        plan: record.plan.name,
+        status: record.status,
+        currentPeriodEnd: record.currentPeriodEnd.toISOString(),
+        cancelAtPeriodEnd: record.cancelAtPeriodEnd
+      }
+    });
+  } catch (error) {
+    console.error("[Subscription] Status error:", error);
+    return jsonResponse({ subscription: freeSubscription });
+  }
+}
+var freeSubscription;
+var init_subscription = __esm({
+  "lib/api/handlers/subscription/index.ts"() {
+    "use strict";
+    init_http();
+    init_localizedError();
+    init_requireAuth();
+    init_subscriptionExpiry();
+    init_prisma();
+    freeSubscription = {
+      plan: "free",
+      status: "active",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false
+    };
   }
 });
 
@@ -2562,12 +2721,135 @@ var init_notify = __esm({
   }
 });
 
-// lib/api/handlers/payment/wechat/notify.ts
-var notify_exports2 = {};
-__export(notify_exports2, {
+// lib/billing/alipayReconcile.ts
+function formatSubscription(record) {
+  if (!record) {
+    return {
+      plan: "free",
+      status: "active",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false
+    };
+  }
+  return {
+    plan: record.plan.name,
+    status: record.status,
+    currentPeriodEnd: record.currentPeriodEnd.toISOString(),
+    cancelAtPeriodEnd: record.cancelAtPeriodEnd
+  };
+}
+function isPaidTradeStatus(status) {
+  return status === "TRADE_SUCCESS" || status === "TRADE_FINISHED";
+}
+function resolveReturnParams(payload) {
+  if (payload.returnQuery?.trim()) {
+    return parseAlipayReturnQuery(payload.returnQuery.trim());
+  }
+  const { returnQuery: _rq, ...rest } = payload;
+  return rest;
+}
+async function reconcileAlipayReturn(userId, payload) {
+  const returnParams = resolveReturnParams(payload);
+  if (!verifyAlipaySign(returnParams)) {
+    throw new Error("\u652F\u4ED8\u5B9D\u56DE\u8DF3\u9A8C\u7B7E\u5931\u8D25\uFF08\u8BF7\u7528\u6D4F\u89C8\u5668\u5B8C\u6574\u56DE\u8DF3 URL \u5237\u65B0\uFF0C\u52FF\u624B\u5199 fetch\uFF09");
+  }
+  const outTradeNo = returnParams.out_trade_no?.trim();
+  if (!outTradeNo) {
+    throw new Error("\u7F3A\u5C11 out_trade_no");
+  }
+  const order = await getPaymentOrderByOutTradeNo(outTradeNo);
+  if (!order || order.userId !== userId) {
+    throw new Error("\u8BA2\u5355\u4E0D\u5B58\u5728\u6216\u65E0\u6743\u8BBF\u95EE");
+  }
+  if (order.status === "paid") {
+    const record = await getUserSubscription(userId);
+    return {
+      fulfilled: false,
+      alreadyPaid: true,
+      tradeStatus: "TRADE_SUCCESS",
+      subscription: formatSubscription(record)
+    };
+  }
+  const { tradeStatus, tradeNo } = await queryAlipayTrade(outTradeNo);
+  if (!isPaidTradeStatus(tradeStatus)) {
+    const record = await getUserSubscription(userId);
+    return {
+      fulfilled: false,
+      alreadyPaid: false,
+      tradeStatus,
+      subscription: formatSubscription(record)
+    };
+  }
+  const result = await fulfillPaymentOrder(outTradeNo, tradeNo ?? returnParams.trade_no);
+  return {
+    fulfilled: !result.alreadyPaid,
+    alreadyPaid: result.alreadyPaid,
+    tradeStatus,
+    subscription: formatSubscription(result.subscription)
+  };
+}
+var init_alipayReconcile = __esm({
+  "lib/billing/alipayReconcile.ts"() {
+    "use strict";
+    init_fulfillOrder();
+    init_paymentOrders();
+    init_subscriptionDb();
+    init_alipayPay();
+  }
+});
+
+// lib/api/handlers/payment/alipay/return.ts
+var return_exports = {};
+__export(return_exports, {
   POST: () => POST9
 });
 async function POST9(request) {
+  if (!isAlipayConfigured()) {
+    return localizedErrorResponse(request, "api.checkout.alipayNotConfigured", 503);
+  }
+  try {
+    const auth = await requireAuth(request);
+    if (!auth.ok) return auth.response;
+    const body = await request.json();
+    const result = await reconcileAlipayReturn(auth.user.id, body);
+    const parsed = body.returnQuery?.trim() ? parseAlipayReturnQuery(body.returnQuery) : body;
+    trackServerEvent(request, "billing.alipay.return", {
+      userId: auth.user.id,
+      outTradeNo: parsed.out_trade_no,
+      fulfilled: result.fulfilled,
+      alreadyPaid: result.alreadyPaid,
+      tradeStatus: result.tradeStatus,
+      plan: result.subscription.plan
+    });
+    return jsonResponse({
+      ...result,
+      messageKey: result.subscription.plan !== "free" ? "api.payment.return.upgraded" : result.fulfilled ? "api.payment.return.pending" : "api.payment.return.notPaid"
+    });
+  } catch (error) {
+    console.error("[Alipay return] error:", error);
+    const detail = error instanceof Error ? error.message : String(error);
+    return jsonResponse({ error: detail, errorKey: "api.payment.return.failed" }, 400);
+  }
+}
+var init_return = __esm({
+  "lib/api/handlers/payment/alipay/return.ts"() {
+    "use strict";
+    init_http();
+    init_localizedError();
+    init_requireAuth();
+    init_cnPayment();
+    init_alipayPay();
+    init_alipayReconcile();
+    init_logger();
+  }
+});
+
+// lib/api/handlers/payment/wechat/notify.ts
+var notify_exports2 = {};
+__export(notify_exports2, {
+  POST: () => POST10
+});
+async function POST10(request) {
   if (!isWechatPayConfigured()) {
     return new Response(JSON.stringify({ code: "FAIL", message: "not configured" }), { status: 501 });
   }
@@ -2660,9 +2942,9 @@ var init_byId = __esm({
 // lib/api/handlers/payment/dev/simulate.ts
 var simulate_exports = {};
 __export(simulate_exports, {
-  POST: () => POST10
+  POST: () => POST11
 });
-async function POST10(request) {
+async function POST11(request) {
   if (!isDevPaymentSimulateAllowed()) {
     return localizedErrorResponse(request, "api.payment.devOnly", 403);
   }
@@ -2723,9 +3005,9 @@ var init_simulate = __esm({
 // lib/api/handlers/subscription/checkout.ts
 var checkout_exports = {};
 __export(checkout_exports, {
-  POST: () => POST11
+  POST: () => POST12
 });
-async function POST11(request) {
+async function POST12(request) {
   try {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
@@ -2834,7 +3116,7 @@ var init_checkout2 = __esm({
 // lib/api/handlers/subscription/webhook.ts
 var webhook_exports = {};
 __export(webhook_exports, {
-  POST: () => POST12
+  POST: () => POST13
 });
 async function handleSubscriptionDeleted(subscription) {
   const userId = subscription.metadata?.userId;
@@ -2867,7 +3149,7 @@ async function handleInvoicePaymentFailed(invoice) {
   if (!stripeSubscriptionId) return;
   await markSubscriptionPastDueByStripeSubscriptionId(stripeSubscriptionId);
 }
-async function POST12(request) {
+async function POST13(request) {
   if (!isStripeConfigured()) {
     return localizedErrorResponse(request, "api.subscription.stripeNotConfigured", 501);
   }
@@ -2910,9 +3192,9 @@ var init_webhook = __esm({
 // lib/api/handlers/subscription/cancel.ts
 var cancel_exports = {};
 __export(cancel_exports, {
-  POST: () => POST13
+  POST: () => POST14
 });
-async function POST13(request) {
+async function POST14(request) {
   try {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
@@ -2979,9 +3261,9 @@ var init_cancel = __esm({
 // lib/api/handlers/subscription/portal.ts
 var portal_exports = {};
 __export(portal_exports, {
-  POST: () => POST14
+  POST: () => POST15
 });
-async function POST14(request) {
+async function POST15(request) {
   try {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
@@ -3016,9 +3298,9 @@ var init_portal = __esm({
 // lib/api/handlers/subscription/resume.ts
 var resume_exports = {};
 __export(resume_exports, {
-  POST: () => POST15
+  POST: () => POST16
 });
-async function POST15(request) {
+async function POST16(request) {
   try {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
@@ -3068,13 +3350,58 @@ var init_resume = __esm({
   }
 });
 
+// lib/api/handlers/billing/expire-subscriptions.ts
+var expire_subscriptions_exports = {};
+__export(expire_subscriptions_exports, {
+  GET: () => GET11,
+  POST: () => POST17
+});
+function cronAuthorized(request) {
+  const secret = process.env.CRON_SECRET?.trim() || process.env.BILLING_CRON_SECRET?.trim();
+  if (!secret) return false;
+  const auth = request.headers.get("authorization") ?? "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  return token.length > 0 && token === secret;
+}
+async function runExpire(request) {
+  if (!cronAuthorized(request)) {
+    return localizedErrorResponse(request, "api.auth.unauthorized", 401);
+  }
+  try {
+    const result = await processExpiredSubscriptions();
+    return jsonResponse(
+      appendApiMessage(request, "api.billing.expireCronOk", {
+        success: true,
+        ...result
+      })
+    );
+  } catch (error) {
+    console.error("[Billing expire cron] error:", error);
+    return localizedErrorResponse(request, "api.subscription.cancelFailed", 500);
+  }
+}
+async function GET11(request) {
+  return runExpire(request);
+}
+async function POST17(request) {
+  return runExpire(request);
+}
+var init_expire_subscriptions = __esm({
+  "lib/api/handlers/billing/expire-subscriptions.ts"() {
+    "use strict";
+    init_http();
+    init_localizedError();
+    init_subscriptionExpiry();
+  }
+});
+
 // lib/api/handlers/usage/ai.ts
 var ai_exports = {};
 __export(ai_exports, {
-  GET: () => GET11,
-  POST: () => POST16
+  GET: () => GET12,
+  POST: () => POST18
 });
-async function GET11(req) {
+async function GET12(req) {
   try {
     const user = await optionalAuth(req);
     if (!user) {
@@ -3091,7 +3418,7 @@ async function GET11(req) {
     return localizedErrorResponse(req, "api.usage.readFailed", 500);
   }
 }
-async function POST16(req) {
+async function POST18(req) {
   try {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
@@ -3209,9 +3536,9 @@ var init_mcpProxy = __esm({
 // lib/api/handlers/mcp/proxy.ts
 var proxy_exports = {};
 __export(proxy_exports, {
-  POST: () => POST17
+  POST: () => POST19
 });
-async function POST17(request) {
+async function POST19(request) {
   const auth = await requireAuth(request);
   if (!auth.ok) return auth.response;
   let body;
@@ -3270,10 +3597,10 @@ var init_proxy = __esm({
 var byId_exports2 = {};
 __export(byId_exports2, {
   DELETE: () => DELETE,
-  GET: () => GET12,
+  GET: () => GET13,
   PUT: () => PUT
 });
-async function GET12(req, ctx) {
+async function GET13(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -3372,10 +3699,10 @@ var init_byId2 = __esm({
 // lib/api/handlers/auth/authCatchAll.ts
 var authCatchAll_exports = {};
 __export(authCatchAll_exports, {
-  GET: () => GET13
+  GET: () => GET14
 });
 import { randomBytes as randomBytes2 } from "crypto";
-async function GET13(req) {
+async function GET14(req) {
   const url = new URL(req.url);
   const pathname = url.pathname;
   if (pathname.includes("providers")) {
@@ -3456,6 +3783,12 @@ var routes = [
   },
   {
     method: "POST",
+    match: (p) => p === "/api/payment/alipay/return" ? {} : null,
+    load: () => Promise.resolve().then(() => (init_return(), return_exports)),
+    export: "POST"
+  },
+  {
+    method: "POST",
     match: (p) => p === "/api/payment/wechat/notify" ? {} : null,
     load: () => Promise.resolve().then(() => (init_notify2(), notify_exports2)),
     export: "POST"
@@ -3504,6 +3837,18 @@ var routes = [
     match: (p) => p === "/api/subscription/resume" ? {} : null,
     load: () => Promise.resolve().then(() => (init_resume(), resume_exports)),
     export: "POST"
+  },
+  {
+    method: "POST",
+    match: (p) => p === "/api/billing/expire-subscriptions" ? {} : null,
+    load: () => Promise.resolve().then(() => (init_expire_subscriptions(), expire_subscriptions_exports)),
+    export: "POST"
+  },
+  {
+    method: "GET",
+    match: (p) => p === "/api/billing/expire-subscriptions" ? {} : null,
+    load: () => Promise.resolve().then(() => (init_expire_subscriptions(), expire_subscriptions_exports)),
+    export: "GET"
   },
   { method: "GET", match: (p) => p === "/api/usage/ai" ? {} : null, load: () => Promise.resolve().then(() => (init_ai(), ai_exports)), export: "GET" },
   { method: "POST", match: (p) => p === "/api/usage/ai" ? {} : null, load: () => Promise.resolve().then(() => (init_ai(), ai_exports)), export: "POST" },
@@ -3663,18 +4008,18 @@ async function handle(request) {
     );
   }
 }
-var GET14 = handle;
-var POST18 = handle;
+var GET15 = handle;
+var POST20 = handle;
 var PUT2 = handle;
 var DELETE2 = handle;
 var PATCH = handle;
 var OPTIONS = handle;
 export {
   DELETE2 as DELETE,
-  GET14 as GET,
+  GET15 as GET,
   OPTIONS,
   PATCH,
-  POST18 as POST,
+  POST20 as POST,
   PUT2 as PUT
 };
 //# sourceMappingURL=index.js.map

@@ -1,14 +1,16 @@
 import { readFileSync } from 'node:fs'
+import { normalizePemKey } from './pemKey'
 import { resolvePaymentNotifyOrigin, resolvePaymentReturnOrigin } from './paymentOrigin'
 import { findPlanByName, getPlanAmountCents } from './plans'
 import { createPaymentOrder, type PaymentChannel } from './paymentOrders'
-import { createAlipayPageUrl } from './alipayPay'
+import { createAlipayPageFormHtml } from './alipayPay'
 import { createWechatNativePay } from './wechatPay'
 
 export function isAlipayConfigured(): boolean {
   return Boolean(
     process.env.ALIPAY_APP_ID?.trim() &&
-      (process.env.ALIPAY_PRIVATE_KEY?.trim() || process.env.ALIPAY_PRIVATE_KEY_PATH?.trim()),
+      (process.env.ALIPAY_PRIVATE_KEY?.trim() || process.env.ALIPAY_PRIVATE_KEY_PATH?.trim()) &&
+      (process.env.ALIPAY_PUBLIC_KEY?.trim() || process.env.ALIPAY_PUBLIC_KEY_PATH?.trim()),
   )
 }
 
@@ -30,14 +32,21 @@ export function isCnPaymentConfigured(): boolean {
   return isAlipayConfigured() || isWechatPayConfigured()
 }
 
-export function readKeyFromEnv(inlineKey?: string, pathKey?: string): string {
+export function readKeyFromEnv(
+  inlineKey: string | undefined,
+  pathKey: string | undefined,
+  pemType: string,
+): string {
+  let raw: string | undefined
   if (inlineKey?.trim()) {
-    return inlineKey.replace(/\\n/g, '\n').trim()
+    raw = inlineKey
+  } else if (pathKey?.trim()) {
+    raw = readFileSync(pathKey.trim(), 'utf8')
   }
-  if (pathKey?.trim()) {
-    return readFileSync(pathKey.trim(), 'utf8')
+  if (!raw) {
+    throw new Error(`密钥未配置（需要 ${pemType}）`)
   }
-  throw new Error('密钥未配置')
+  return normalizePemKey(raw, pemType)
 }
 
 export async function createCnCheckout(params: {
@@ -67,14 +76,14 @@ export async function createCnCheckout(params: {
     if (!isAlipayConfigured()) {
       throw new Error('支付宝未配置：请设置 ALIPAY_APP_ID、ALIPAY_PRIVATE_KEY、ALIPAY_PUBLIC_KEY')
     }
-    const url = await createAlipayPageUrl({
+    const formHtml = createAlipayPageFormHtml({
       outTradeNo: order.outTradeNo,
       totalAmountYuan: (amountCents / 100).toFixed(2),
       subject,
       returnUrl: `${returnOrigin}/?subscription=success&plan=${params.planName}`,
       notifyUrl: `${notifyOrigin}/api/payment/alipay/notify`,
     })
-    return { mode: 'alipay' as const, orderId: order.id, outTradeNo: order.outTradeNo, url }
+    return { mode: 'alipay' as const, orderId: order.id, outTradeNo: order.outTradeNo, formHtml }
   }
 
   if (!isWechatPayConfigured()) {

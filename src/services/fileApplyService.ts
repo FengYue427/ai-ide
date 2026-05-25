@@ -1,6 +1,7 @@
 import type { FileItem } from '../types/file'
 import { workspaceContextService } from './workspaceContextService'
 import { clearSemanticSearchCache } from './semanticSearchService'
+import { syncToLocalDisk } from './localProjectSync'
 
 export interface FileChangeInput {
   path: string
@@ -59,6 +60,7 @@ export async function applyChangesToWorkspace(changes: FileChangeInput[]): Promi
 
     if (existing) {
       await workspaceContextService.updateFile(path, change.content)
+      await syncToLocalDisk(path, change.content)
       touched = true
       continue
     }
@@ -71,6 +73,7 @@ export async function applyChangesToWorkspace(changes: FileChangeInput[]): Promi
       language: change.language,
       selected: true,
     })
+    await syncToLocalDisk(path, change.content)
     touched = true
   }
 

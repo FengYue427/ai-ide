@@ -1,18 +1,12 @@
 # Production smoke report
 
 - **URL**: https://ai-ide-flame.vercel.app
-- **Time**: 2026-05-24T13:14:35.786Z
+- **Time**: 2026-05-25T14:03:09.668Z
 
-- [x] **health** — ok db=connected
-- [ ] **session** — HTTP 500
-- [ ] **workspaces 401** — HTTP 500
-- [ ] **subscription** — HTTP 500
+- [x] **health** — ok db=connected authSecret=yes prismaRouter=unavailable
+- [x] **session** — HTTP 200
+- [x] **workspaces 401** — HTTP 401
+- [x] **subscription** — anonymous free
 - [x] **index** — HTTP 200
 
-**Result**: 2/5 passed
-
-## Next steps
-
-1. Fix Vercel env — [docs/VERCEL_ENV_PHASE2.md](../docs/VERCEL_ENV_PHASE2.md)
-2. Redeploy
-3. Re-run `npm run smoke:report`
+**Result**: 5/5 passed

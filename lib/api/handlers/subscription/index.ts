@@ -2,7 +2,9 @@
  * Subscription status API — reads from DB when authenticated
  */
 import { jsonResponse } from '../../http'
+import { appendApiMessage } from '../../localizedError'
 import { optionalAuth } from '../../requireAuth'
+import { expireUserSubscriptionIfDue } from '../../../billing/subscriptionExpiry'
 import { prisma } from '../../../../src/lib/prisma'
 
 const freeSubscription = {
@@ -17,6 +19,16 @@ export async function GET(req: Request) {
     const user = await optionalAuth(req)
     if (!user) {
       return jsonResponse({ subscription: freeSubscription })
+    }
+
+    const { expired } = await expireUserSubscriptionIfDue(user.id)
+    if (expired) {
+      return jsonResponse(
+        appendApiMessage(req, 'api.subscription.expired', {
+          subscription: freeSubscription,
+          notice: 'expired' as const,
+        }),
+      )
     }
 
     const record = await prisma.subscription.findUnique({

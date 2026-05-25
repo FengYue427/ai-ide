@@ -3,7 +3,6 @@ import { modelOptions } from '../services/aiService'
 import { authService } from '../services/authService'
 import { recentFilesService } from '../services/recentFilesService'
 import { getShare } from '../services/shareService'
-import { subscriptionService } from '../services/subscriptionService'
 import { useIDEStore } from '../store/ideStore'
 import { unifiedStorage } from '../services/unifiedStorage'
 import type { FileItem } from '../types/file'
@@ -52,7 +51,7 @@ export function useAppBootstrap() {
   }, [])
 
   useEffect(() => {
-    const { setCurrentUser, setAuthChecked, setCurrentPlan } = useIDEStore.getState()
+    const { setCurrentUser, setAuthChecked } = useIDEStore.getState()
     const params = new URLSearchParams(window.location.search)
     const needsOAuthSync = params.get('oauth_sync') === '1'
 
@@ -73,13 +72,13 @@ export function useAppBootstrap() {
         setCurrentUser(session?.user || null)
       }
       setAuthChecked(true)
+      if (useIDEStore.getState().currentUser) {
+        const { syncBillingFromServer } = await import('../services/billingSync')
+        await syncBillingFromServer()
+      }
     }
 
     void finishAuth()
-
-    subscriptionService.getSubscription().then((sub) => {
-      setCurrentPlan(sub.plan)
-    })
   }, [])
 
   useEffect(() => {

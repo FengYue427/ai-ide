@@ -1,6 +1,7 @@
 import { FeedbackCenter } from '../components/FeedbackCenter'
 import { PluginModal } from '../components/PluginModal'
 import { useBillingReturn } from '../hooks/useBillingReturn'
+import { useBillingSync } from '../hooks/useBillingSync'
 import { usePluginHost } from '../hooks/usePluginHost'
 import { useAppBootstrap } from '../hooks/useAppBootstrap'
 import { useAppShortcuts } from '../hooks/useAppShortcuts'
@@ -91,6 +92,7 @@ export function AppShell() {
   } = useWebContainer()
 
   useAppBootstrap()
+  useBillingSync()
   useSessionGuard(notify, t)
   useApiErrorFeedback(notify, t)
   useMcpBootstrap()
