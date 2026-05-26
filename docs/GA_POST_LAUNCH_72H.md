@@ -8,7 +8,7 @@
 ## D0（发布当天）
 
 - [ ] 发公告（[GA_ANNOUNCEMENT.md](./GA_ANNOUNCEMENT.md) 短版 → GitHub Discussions / Issues 置顶）
-- [ ] 掘金 / V2EX（[docs/publish/](./publish/) 复制粘贴发布）
+- [ ] 掘金 / V2EX / 小红书 / B站（[docs/publish/](./publish/) 文案 + 封面）
 - [ ] Vercel **Logs** 过滤 `payment/alipay/notify` — 无连续 5xx
 - [ ] 自测账号配额仍为 Pro（5000/日 量级）
 - [ ] `payment.html` 运营主体是否已填（未填则尽快补）

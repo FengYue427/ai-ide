@@ -1,11 +1,12 @@
 # 对外发布素材
 
-| 平台 | 文件 | 操作 |
+| 平台 | 文案 | 封面 |
 |------|------|------|
-| **掘金** | [JUEJIN_POST.md](./JUEJIN_POST.md) | 新建文章 → 粘贴正文 → 选标签 → 发布 |
-| **V2EX** | [V2EX_POST.md](./V2EX_POST.md) | [创建主题](https://www.v2ex.com/create/discussion) → 粘贴 |
-| **GitHub** | [GA_ANNOUNCEMENT.md](../GA_ANNOUNCEMENT.md) | Discussions / Release 说明 |
-| **知乎（可选）** | 复制掘金正文，删代码块过多部分 | 专栏或回答「浏览器 AI IDE」类问题 |
+| **掘金** | [JUEJIN_POST.md](./JUEJIN_POST.md) | [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png) |
+| **V2EX** | [V2EX_POST.md](./V2EX_POST.md) | — |
+| **小红书** | [XIAOHONGSHU_POST.md](./XIAOHONGSHU_POST.md) | [xiaohongshu-cover-ai-ide-v1.png](./xiaohongshu-cover-ai-ide-v1.png) |
+| **B站** | [BILIBILI_POST.md](./BILIBILI_POST.md) | [bilibili-cover-ai-ide-v1.png](./bilibili-cover-ai-ide-v1.png) |
+| **GitHub** | [GA_ANNOUNCEMENT.md](../GA_ANNOUNCEMENT.md) | — |
 
 ## 统一链接
 
@@ -14,6 +15,10 @@
 - 桌面：https://github.com/FengYue427/ai-ide/releases/latest
 - Issue：https://github.com/FengYue427/ai-ide/issues
 
-## 发帖后
+## 发布顺序建议
 
-勾选 [GA_POST_LAUNCH_72H.md](../GA_POST_LAUNCH_72H.md) D0「发公告」。
+1. 掘金 / V2EX（开发者）  
+2. 小红书（图文，当天）  
+3. B站（录屏 1 天内上传）  
+
+发帖后勾选 [GA_POST_LAUNCH_72H.md](../GA_POST_LAUNCH_72H.md)。

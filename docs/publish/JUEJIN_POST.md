@@ -2,7 +2,7 @@
 
 > **建议分类**：前端 / 开源 / 人工智能  
 > **建议标签**：`AI` `开源` `IDE` `Agent` `DeepSeek` `独立开发`  
-> **封面**：产品截图（欢迎页 + Agent 改文件）  
+> **封面**：使用同目录 [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png)（16:9，掘金编辑器 → 上传封面）  
 > **仓库链接**：https://github.com/FengYue427/ai-ide
 
 ---
