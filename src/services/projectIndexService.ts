@@ -48,9 +48,10 @@ export type IndexBuildStats = {
 export function buildIndexSourcesWithStats(
   merged: IndexSource[],
   gitignoreRules: GitignoreRule[] = gitignoreRulesFromSources(merged),
+  maxFiles?: number,
 ): { sources: IndexSource[]; stats: IndexBuildStats } {
   const eligible = merged.filter((file) => shouldIndexPath(file.path, gitignoreRules))
-  const sources = capIndexSources(eligible)
+  const sources = capIndexSources(eligible, maxFiles)
 
   return {
     sources,

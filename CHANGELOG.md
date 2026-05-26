@@ -7,7 +7,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- 下一附属 **1.0.2.3** Tab FIM：[ROADMAP_V1.0.2.x.md](docs/ROADMAP_V1.0.2.x.md) · 策略：[VERSIONING.md](docs/VERSIONING.md)
+- 下一附属 **1.0.2.5** Agent 工具链：[ROADMAP_V1.0.2.x.md](docs/ROADMAP_V1.0.2.x.md)
+
+## [1.0.2.4] — 2026-05-26（1.0.2 附属 · 索引第二档）
+
+- 索引上限 **500** / **2000**（浏览器 / 桌面）；总字节约 4MB
+- Web Worker 分批索引（≥80 文件）+ Chat 进度 `indexed/total`
+- 文档：[PHASE_V1.0.2.4_INDEX.md](docs/PHASE_V1.0.2.4_INDEX.md)
+
+## [1.0.2.3] — 2026-05-26（1.0.2 附属 · Tab FIM）
+
+- DeepSeek FIM API + 多行 chat 回退；设置 → 编辑器 Tab 补全开关与最大行数
+- 文档：[PHASE_V1.0.2.3_TAB_FIM.md](docs/PHASE_V1.0.2.3_TAB_FIM.md)
 
 ## [1.0.2.2] — 2026-05-26（1.0.2 附属 · 块级 Diff）
 

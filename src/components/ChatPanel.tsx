@@ -649,7 +649,12 @@ ${t('ai.chat.prompt')}`
         {(indexStats.indexedFiles > 0 || indexBuildState.status === 'building' || indexBuildState.status === 'error') && (
           <p className="chat-index-hint" title={t('chat.indexHintTitle')}>
             {indexBuildState.status === 'building' ? (
-              t('chat.indexBuilding')
+              indexBuildState.progress
+                ? t('chat.indexBuildingProgress', {
+                    indexed: indexBuildState.progress.indexed,
+                    total: indexBuildState.progress.total,
+                  })
+                : t('chat.indexBuilding')
             ) : indexBuildState.status === 'error' ? (
               <>
                 {t('chat.indexError', { message: indexBuildState.lastError ?? '' })}{' '}

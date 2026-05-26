@@ -2,15 +2,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearInlineCompletionCache, inlineCompletionService } from './inlineCompletionService'
 
 vi.mock('./aiService', () => ({
-  sendMessageWithDebounce: vi.fn(async () => 'nextLine();'),
+  sendMessageWithDebounce: vi.fn(async () => 'line1\nline2\nline3'),
 }))
+
+vi.mock('./fimCompletionService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./fimCompletionService')>()
+  return {
+    ...actual,
+    supportsFimApi: () => false,
+    fetchFimCompletion: vi.fn(async () => null),
+  }
+})
 
 import { sendMessageWithDebounce } from './aiService'
 
 describe('inlineCompletionService', () => {
   beforeEach(() => {
     clearInlineCompletionCache()
-    vi.mocked(sendMessageWithDebounce).mockClear()
+    vi.mocked(sendMessageWithDebounce).mockReset()
+    vi.mocked(sendMessageWithDebounce).mockResolvedValue('line1\nline2\nline3')
   })
 
   it('returns null without api key for cloud providers', async () => {
@@ -38,8 +48,8 @@ describe('inlineCompletionService', () => {
     const first = await inlineCompletionService.fetchCompletion(req)
     const second = await inlineCompletionService.fetchCompletion(req)
 
-    expect(first).toBe('nextLine();')
-    expect(second).toBe('nextLine();')
+    expect(first).toBe('line1\nline2\nline3')
+    expect(second).toBe('line1\nline2\nline3')
     expect(sendMessageWithDebounce).toHaveBeenCalledTimes(1)
   })
 })

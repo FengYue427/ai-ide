@@ -1,4 +1,5 @@
 import { FileText, Shield, Sparkles, TerminalSquare, X } from 'lucide-react'
+import { isTabCompletionEnabled } from '../lib/inlineCompletionPrefs'
 import { useI18n } from '../i18n'
 import Editor from '../components/Editor'
 import Terminal from '../components/Terminal'
@@ -132,7 +133,9 @@ export function EditorLayout({
             content: file.content,
             language: file.language,
           }))}
-          inlineCompletionEnabled={!!aiConfig.apiKey || aiConfig.provider === 'ollama'}
+          inlineCompletionEnabled={
+            isTabCompletionEnabled() && (!!aiConfig.apiKey || aiConfig.provider === 'ollama')
+          }
           onChange={onFileChange}
           onDiagnosticsChange={(markers) => setDiagnosticCount(markers.length)}
         />

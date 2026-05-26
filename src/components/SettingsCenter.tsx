@@ -21,6 +21,14 @@ import { modelOptions, modelProviderTranslationKey, type AIModel, type QuotaChec
 import { BILLING_SYNC_EVENT } from '../hooks/useBillingSync'
 import { fetchAIQuota } from '../services/usageService'
 import { useI18n, type Language } from '../i18n'
+import {
+  getTabCompletionMaxLines,
+  isTabCompletionEnabled,
+  MAX_TAB_MAX_LINES,
+  MIN_TAB_MAX_LINES,
+  setTabCompletionEnabled,
+  setTabCompletionMaxLines,
+} from '../lib/inlineCompletionPrefs'
 import { isSemanticSearchEnabled, setSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
 
@@ -75,6 +83,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   const persistMcpRef = useRef<(() => Promise<void>) | null>(null)
   const persistAgentRef = useRef<(() => Promise<void>) | null>(null)
   const [semanticSearchEnabled, setSemanticSearchEnabledState] = useState(isSemanticSearchEnabled)
+  const [tabCompletionEnabled, setTabCompletionEnabledState] = useState(isTabCompletionEnabled)
+  const [tabMaxLines, setTabMaxLines] = useState(getTabCompletionMaxLines)
 
   const tabs = useMemo(
     () =>
@@ -177,6 +187,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
       await persistMcpRef.current?.()
       await persistAgentRef.current?.()
       setSemanticSearchEnabled(semanticSearchEnabled)
+      setTabCompletionEnabled(tabCompletionEnabled)
+      setTabCompletionMaxLines(tabMaxLines)
       onClose()
     })()
   }
@@ -375,6 +387,48 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     checked={localAutoSave}
                     onChange={() => setLocalAutoSave((value) => !value)}
                     aria-label={t('settings.autosave.aria')}
+                  />
+                </div>
+
+                <div className="settings-card settings-card--row">
+                  <div>
+                    <div className="settings-row-title">{t('settings.tabCompletion.title')}</div>
+                    <div className="settings-row-desc">{t('settings.tabCompletion.desc')}</div>
+                  </div>
+                  <Toggle
+                    checked={tabCompletionEnabled}
+                    onChange={() => setTabCompletionEnabledState((v) => !v)}
+                    aria-label={t('settings.tabCompletion.title')}
+                  />
+                </div>
+
+                <div className="settings-card settings-card--row">
+                  <div>
+                    <div className="settings-row-title">{t('settings.tabCompletion.maxLines')}</div>
+                    <div className="settings-row-desc">{t('settings.tabCompletion.maxLinesDesc')}</div>
+                  </div>
+                  <input
+                    type="number"
+                    min={MIN_TAB_MAX_LINES}
+                    max={MAX_TAB_MAX_LINES}
+                    value={tabMaxLines}
+                    disabled={!tabCompletionEnabled}
+                    onChange={(e) =>
+                      setTabMaxLines(
+                        Math.min(
+                          MAX_TAB_MAX_LINES,
+                          Math.max(MIN_TAB_MAX_LINES, Number(e.target.value) || MIN_TAB_MAX_LINES),
+                        ),
+                      )
+                    }
+                    style={{
+                      width: '64px',
+                      padding: '6px 8px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      background: 'var(--bg-primary)',
+                      color: 'var(--text-primary)',
+                    }}
                   />
                 </div>
 

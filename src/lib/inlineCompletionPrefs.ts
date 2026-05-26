@@ -1,0 +1,32 @@
+const ENABLED_KEY = 'ai-ide:tab-completion-enabled'
+const MAX_LINES_KEY = 'ai-ide:tab-completion-max-lines'
+
+export const DEFAULT_TAB_MAX_LINES = 5
+export const MIN_TAB_MAX_LINES = 1
+export const MAX_TAB_MAX_LINES = 12
+
+export function isTabCompletionEnabled(): boolean {
+  if (typeof localStorage === 'undefined') return true // vitest / SSR
+  const raw = localStorage.getItem(ENABLED_KEY)
+  if (raw === null) return true
+  return raw !== 'false'
+}
+
+export function setTabCompletionEnabled(enabled: boolean): void {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(ENABLED_KEY, enabled ? 'true' : 'false')
+}
+
+export function getTabCompletionMaxLines(): number {
+  if (typeof localStorage === 'undefined') return DEFAULT_TAB_MAX_LINES
+  const raw = localStorage.getItem(MAX_LINES_KEY)
+  const n = raw ? Number.parseInt(raw, 10) : DEFAULT_TAB_MAX_LINES
+  if (!Number.isFinite(n)) return DEFAULT_TAB_MAX_LINES
+  return Math.min(MAX_TAB_MAX_LINES, Math.max(MIN_TAB_MAX_LINES, n))
+}
+
+export function setTabCompletionMaxLines(lines: number): void {
+  if (typeof localStorage === 'undefined') return
+  const clamped = Math.min(MAX_TAB_MAX_LINES, Math.max(MIN_TAB_MAX_LINES, lines))
+  localStorage.setItem(MAX_LINES_KEY, String(clamped))
+}

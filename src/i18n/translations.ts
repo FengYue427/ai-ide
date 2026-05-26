@@ -170,6 +170,11 @@ export const translations = {
     'settings.autosave': '自动保存',
     'settings.autosave.desc': '在你编辑代码时自动保存到本地与工作区状态，减少误关页面带来的损失。',
     'settings.autosave.aria': '自动保存',
+    'settings.tabCompletion.title': 'Tab AI 补全',
+    'settings.tabCompletion.desc':
+      '在编辑器中通过 Tab / 内联补全插入 AI 建议（需 BYOK）。DeepSeek 优先走 FIM 接口，其他模型走对话回退。',
+    'settings.tabCompletion.maxLines': '补全最大行数',
+    'settings.tabCompletion.maxLinesDesc': '单次补全最多插入的行数（1～12）。',
     'settings.editorPrefs': '编辑偏好',
     'settings.editorPrefs.desc':
       '当前版本先保留简洁设置，把最常用的自动保存、主题和语言收在一处。后续适合继续补充字体、缩进与格式化策略。',
@@ -368,6 +373,7 @@ export const translations = {
     'chat.indexCapped': '已索引 {indexed}/{eligible} 个文件（已达上限，大文件已跳过）',
     'chat.indexHintTitle': '符号索引与语义检索遵循 .gitignore 与文件大小上限',
     'chat.indexBuilding': '正在更新项目索引…',
+    'chat.indexBuildingProgress': '正在索引 {indexed}/{total} 个文件…',
     'chat.indexError': '索引失败：{message}',
     'chat.indexRetry': '重试',
     'chat.thinking': '思考中',
@@ -1353,6 +1359,11 @@ export const translations = {
     'settings.autosave': 'Autosave',
     'settings.autosave.desc': 'Save locally and to workspace state while you edit.',
     'settings.autosave.aria': 'Autosave',
+    'settings.tabCompletion.title': 'Tab AI completion',
+    'settings.tabCompletion.desc':
+      'Inline Tab completions in the editor (BYOK required). DeepSeek uses FIM API when available; others use chat fallback.',
+    'settings.tabCompletion.maxLines': 'Max completion lines',
+    'settings.tabCompletion.maxLinesDesc': 'Maximum lines per suggestion (1–12).',
     'settings.editorPrefs': 'Editor preferences',
     'settings.editorPrefs.desc':
       'Keeps settings minimal for now. Font, indent, and format options may come later.',
@@ -1553,6 +1564,7 @@ export const translations = {
     'chat.indexCapped': 'Indexed {indexed}/{eligible} files (limit reached; large files skipped)',
     'chat.indexHintTitle': 'Index respects .gitignore and file size caps',
     'chat.indexBuilding': 'Updating project index…',
+    'chat.indexBuildingProgress': 'Indexing {indexed}/{total} files…',
     'chat.indexError': 'Index failed: {message}',
     'chat.indexRetry': 'Retry',
     'chat.thinking': 'Thinking',
