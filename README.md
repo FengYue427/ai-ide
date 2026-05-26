@@ -1,32 +1,22 @@
 # ⚡ AI IDE
 
-AI IDE v1.0 正式上线 🎉
+> 开源 AI 原生轻量 IDE —— 浏览器开箱，Agent 改你电脑上的项目
 
-在浏览器里打开就能用 AI 改你电脑上的项目（Chrome/Edge），支持工具 Agent、本机文件夹、@ 代码库。
+**v1.0 正式版（GA）** · 支付宝 ¥19/¥49 · BYOK — 见 [CHANGELOG.md](./CHANGELOG.md)
 
-🇨🇳 专业版 ¥19/月、团队版 ¥49/月，支付宝付款；也可自带 API Key（BYOK）。
-
-👉 https://ai-ide-flame.vercel.app
-
-Windows 桌面便携版（大项目 + 本机终端）：
-https://github.com/FengYue427/ai-ide/releases/latest
-
-反馈：https://github.com/FengYue427/ai-ide/issues
-> 开源 AI 原生轻量 IDE —— 在浏览器里跑完整开发环境
-
-**版本 `v1.0.0-rc.1` · RC 公测** — 见 [CHANGELOG.md](./CHANGELOG.md)
-
-**[🚀 立即体验](https://ai-ide-flame.vercel.app)**
+| | 链接 |
+|--|------|
+| **在线体验** | https://ai-ide-flame.vercel.app |
+| **Windows 桌面** | https://github.com/FengYue427/ai-ide/releases/latest |
+| **反馈** | https://github.com/FengYue427/ai-ide/issues |
 
 | 模式 | 说明 |
 |------|------|
-| **BYOK（推荐）** | 自带 API Key，本地/浏览器编辑，无需云数据库 |
-| **云账号** | 注册、云工作区同步需部署方配置 `DATABASE_URL` 等 — [VERCEL_ENV_PHASE2.md](docs/VERCEL_ENV_PHASE2.md) |
-| **订阅** | 公测期路径 A：**不收款**，专业功能免费开放（见应用内说明） |
+| **BYOK（推荐）** | 自带 API Key，Key 存本地 |
+| **云账号** | 注册、云工作区同步 — [VERCEL_ENV_PHASE2.md](docs/VERCEL_ENV_PHASE2.md) |
+| **订阅** | 专业版 ¥19/月、团队版 ¥49/月，**支付宝**（生产 Path B） |
 
-> **公测（现在）**：RC · 路径 A · 不收款 — [RC 公告](docs/RC_ANNOUNCEMENT_2026-05.md)  
-> **正式上市**：D3 GA（约 2026-10～11）· **支付宝+微信优先** — [长期规划](docs/PLAN_D3_LONGTERM.md) · [支付周计划](docs/PHASE4_CN_PAYMENT.md)  
-> 维护者：`npm run smoke:report` · 当前冲刺：[docs/NEXT_EXECUTION.md](docs/NEXT_EXECUTION.md)
+> 宣传稿（掘金/V2EX）：[docs/publish/](docs/publish/) · 上线清单：[GO_LIVE_NOW.md](docs/GO_LIVE_NOW.md) · 72h 值班：[GA_POST_LAUNCH_72H.md](docs/GA_POST_LAUNCH_72H.md)
 
 ## ✨ 核心亮点
 
