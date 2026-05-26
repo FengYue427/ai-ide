@@ -3,10 +3,15 @@
 | 平台 | 文案 | 封面 |
 |------|------|------|
 | **掘金** | [JUEJIN_POST.md](./JUEJIN_POST.md) | [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png) |
+| **知乎** | [ZHIHU_POST.md](./ZHIHU_POST.md) | 同掘金封面或截图 |
+| **CSDN** | [CSDN_POST.md](./CSDN_POST.md) | 同掘金封面或截图 |
 | **V2EX** | [V2EX_POST.md](./V2EX_POST.md) | — |
 | **小红书** | [XIAOHONGSHU_POST.md](./XIAOHONGSHU_POST.md) | [xiaohongshu-cover-ai-ide-v1.png](./xiaohongshu-cover-ai-ide-v1.png) |
 | **B站** | [BILIBILI_POST.md](./BILIBILI_POST.md) | [bilibili-cover-ai-ide-v1.png](./bilibili-cover-ai-ide-v1.png) |
 | **GitHub** | [GA_ANNOUNCEMENT.md](../GA_ANNOUNCEMENT.md) | — |
+
+更多平台清单：[PLATFORMS_MATRIX.md](./PLATFORMS_MATRIX.md)  
+深度代码审查：[PRE_LAUNCH_DEEP_REVIEW.md](../PRE_LAUNCH_DEEP_REVIEW.md)
 
 ## 统一链接
 
@@ -18,7 +23,8 @@
 ## 发布顺序建议
 
 1. 掘金 / V2EX（开发者）  
-2. 小红书（图文，当天）  
-3. B站（录屏 1 天内上传）  
+2. **知乎 / CSDN**（专栏 / 博客）  
+3. 小红书（图文）  
+4. B站（录屏）  
 
 发帖后勾选 [GA_POST_LAUNCH_72H.md](../GA_POST_LAUNCH_72H.md)。
