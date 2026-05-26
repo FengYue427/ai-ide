@@ -1,4 +1,4 @@
-# IDE-5-1 块级 Diff（v1.0.4）
+# IDE-5-1 块级 Diff（v1.0.2.2）
 
 > **目标**：Agent `write_file` 结果以 **变更块（hunk）** 预览，可逐块接受/拒绝，再写入工作区。  
 > **默认安全**：`autoApplyWrites: false` 时仅预览，不直接落盘。
@@ -43,7 +43,7 @@
 | `DiffViewer.tsx` | 块勾选 + 行级对比 |
 | `agentRunner.ts` | `pendingChanges` + `hunkCount` 活动线 |
 
-## 限制（v1.0.4）
+## 限制（v1.0.2.2）
 
 - 行级 diff（非 AST）；相邻行改动可能合并为一块。
 - 不做三向 merge / 冲突标记。
@@ -57,4 +57,4 @@
 
 ---
 
-**下一版**：[ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md) § v1.0.5 Tab FIM
+**下一附属**：[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) § 1.0.2.3 Tab FIM

@@ -3,7 +3,7 @@
 > 对标桌面 IDE（Cursor / VS Code）时，以下限制来自 **浏览器 + WebContainer** 运行时，而非产品疏漏。  
 > **桌面版（Electron）** 另见下表「桌面」列。实现常量：`src/services/indexLimits.ts`、`localProjectService.ts`、`electron/fsProject.mjs`。
 
-## 容量上限（v1.0.3 与代码一致）
+## 容量上限（v1.0.2.1 与代码一致）
 
 | 场景 | 浏览器（Web） | 桌面（Electron） |
 |------|:-------------:|:----------------:|
@@ -38,7 +38,7 @@
 | 语义检索 | 🔶 | 可选 embedding（OpenAI 兼容 `/embeddings`） |
 | MCP 工具 | 🔶 | 经 `/api/mcp/proxy`；生产 localhost 需显式放行 |
 | **内置 Agent 工具** | ✅ | `list/read/write/search_repo/run_command` |
-| 后台长任务 Agent | ❌ | 需服务端任务队列（规划 v1.0.8+） |
+| 后台长任务 Agent | ❌ | 规划 1.0.2.6+ / 主版本 1.0.3 |
 
 ## 网络与访问（国内）
 
@@ -46,7 +46,7 @@
 |------|------|
 | `*.vercel.app` 加载慢或超时 | 换网络/时段重试；安装 **Windows 桌面版**（壳内仍加载线上 UI，但本机盘与终端不依赖浏览器 FS） |
 | 仅 BYOK 本地编辑 | 云端不可用时仍可用；见欢迎页网络提示 |
-| 自定义域名 | 规划 **v1.0.8** |
+| 自定义域名 | 规划 **1.0.2.6** / 主版本 **1.0.3** |
 
 ## 推荐工作流
 

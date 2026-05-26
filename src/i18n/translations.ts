@@ -52,7 +52,7 @@ export const translations = {
     'welcome.cloudDegraded':
       '云端数据库暂不可用：注册/云工作区可能失败。你仍可使用 BYOK 与本地编辑；维护者请检查部署环境变量。',
     'welcome.networkTips':
-      '页面加载慢或 API 超时？国内访问 vercel.app 可能不稳定。可稍后重试、更换网络，或下载 Windows 桌面版（本机盘与终端不依赖浏览器文件 API）。自定义域名规划中（v1.0.8）。',
+      '页面加载慢或 API 超时？国内访问 vercel.app 可能不稳定。可稍后重试、更换网络，或下载 Windows 桌面版。自定义域名规划见 1.0.2.6 / 主版本 1.0.3。',
     'welcome.title': '更快进入思路，更少消耗在环境上',
     'welcome.lead':
       '打开文件、与 AI 协作、运行代码、管理工作区，全部在一个轻量界面里完成。从下面的入口直接开始工作，不用先穿过一层说明页。',
@@ -199,7 +199,7 @@ export const translations = {
     'settings.advanced.experimentalDesc': '为后续迭代预留的入口。等功能成熟后再开放实际开关。',
     'settings.network.title': '网络与访问',
     'settings.network.desc':
-      '若站点打开慢或登录失败，可能是国内访问 vercel.app 不稳定。可换网络重试、使用 BYOK 本地编辑，或安装 Windows 桌面版。详见欢迎页提示与 docs/BROWSER_LIMITATIONS.md。',
+      '若站点打开慢或登录失败，可能是国内访问 vercel.app 不稳定。可换网络重试、使用 BYOK 本地编辑，或安装 Windows 桌面版。自定义域名规划见 1.0.2.6 / 主版本 1.0.3。',
     'settings.badge.comingSoon': '暂未开放',
     'settings.footer.hint': '保存后立即应用到当前工作区。',
     'settings.saveChanges': '保存更改',

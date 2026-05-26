@@ -7,45 +7,36 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- 下一版 **v1.0.5** Tab FIM：[ROADMAP_V1.0.3-V1.0.9.md](docs/ROADMAP_V1.0.3-V1.0.9.md)
+- 下一附属 **1.0.2.3** Tab FIM：[ROADMAP_V1.0.2.x.md](docs/ROADMAP_V1.0.2.x.md) · 策略：[VERSIONING.md](docs/VERSIONING.md)
 
-## [1.0.4] — 2026-05-26（块级 Diff MVP）
+## [1.0.2.2] — 2026-05-26（1.0.2 附属 · 块级 Diff）
+
+> 原称 v1.0.4，已并入 [1.0.2.x](docs/VERSIONING.md) 体系。
 
 ### 功能
 
-- Agent `write_file` 预览：逐 **变更块** 接受/拒绝（`AgentApplyModal` + `DiffViewer`）
-- 多文件队列：每文件独立块选择；**应用已选块** / **应用整文件** / **跳过本文件** / **应用全部**
-- Agent 活动线：`write_file` 待预览时显示变更块数量
-- 文档：[PHASE_IDE5_DIFF.md](docs/PHASE_IDE5_DIFF.md)
+- Agent `write_file` 预览：逐 **变更块** 接受/拒绝
+- 多文件队列；**应用已选块** / **跳过** / **应用全部**
 
 ### 技术
 
 - `agentApplyHunks.ts`、`mergeAgentFileContent` / `countDiffHunks`
-- `autoApplyWrites: false`（默认）仍走 Diff 预览
+- 文档：[PHASE_IDE5_DIFF.md](docs/PHASE_IDE5_DIFF.md)
 
-## [1.0.3] — 2026-05-26（运维与信任）
+## [1.0.2.1] — 2026-05-26（1.0.2 附属 · 运维与信任）
+
+> 原称 v1.0.3，已并入 [1.0.2.x](docs/VERSIONING.md) 体系。
 
 ### 运维
 
-- Cron `expire-subscriptions`：支持 `CRON_SECRET` 与 `BILLING_CRON_SECRET` 双 Bearer（修复 Vercel 401）
-- `npm run billing:verify-cron` 验收脚本
-- [V1.0.3_RELEASE.md](docs/V1.0.3_RELEASE.md)、[WEEKLY_OPS_TEMPLATE.md](docs/WEEKLY_OPS_TEMPLATE.md)、[OPERATOR_LEGAL.md](docs/OPERATOR_LEGAL.md)
+- Cron 双 secret；`billing:verify-cron`；[V1.0.2.1_RELEASE.md](docs/V1.0.2.1_RELEASE.md)
+- payment 主体、BROWSER_LIMITATIONS 对齐、网络慢提示
 
-### 文档与合规
+### 待 Vercel
 
-- `BROWSER_LIMITATIONS.md` 与 `indexLimits` / 桌面 2000 对齐
-- `payment.html` / `payment-en.html` 运营主体与 GA 收款说明
+- `VITE_SENTRY_DSN`（release `ai-ide@1.0.2.1`）
 
-### 产品
-
-- 欢迎页 / 设置：国内网络慢或 API 超时提示（`welcome.networkTips`）
-- `useCloudHealth` 慢请求（≥6s）触发网络提示
-
-### 待你在 Vercel 完成
-
-- 配置 `VITE_SENTRY_DSN` 后验收 Sentry 测试事件（见 [OBSERVABILITY.md](docs/OBSERVABILITY.md)）
-
-## [1.0.2] — 2026-05-26（上线包 · CI + 发布文档）
+## [1.0.2] — 2026-05-26（主版本 · GA）
 
 ### 发布
 
