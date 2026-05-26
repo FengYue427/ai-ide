@@ -5,7 +5,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-- GA `1.0.0` after production Alipay + [GA_LAUNCH_RUNBOOK.md](docs/GA_LAUNCH_RUNBOOK.md).
+## [1.0.0] — 2026-05-26 (D3 GA — 正式版可收款)
+
+### 上市
+
+- 生产 **支付宝 Path B**：`billingPath=B`，专业版 ¥19 / 团队版 ¥49
+- Vercel Production：`APP_URL`、`ALIPAY_*`、`BILLING_CRON_SECRET`；欢迎页 `VITE_GA_LIVE`
+- 文档：[GA_LAUNCH_RUNBOOK.md](docs/GA_LAUNCH_RUNBOOK.md)、[GA_POST_LAUNCH_72H.md](docs/GA_POST_LAUNCH_72H.md)
+
+### 产品（自 1.1.0-rc.2 起累积）
+
+- IDE-4a 工具 Agent + 本机文件夹；W8 订阅生命周期；P4 索引 / Tab 补全
+- 付费法务页、退款 SOP、`d3:preflight`
 
 ## [1.1.0-rc.2] — 2026-05-26 (deploy bundle: IDE-4a + W8 + P4 + GA docs)
 

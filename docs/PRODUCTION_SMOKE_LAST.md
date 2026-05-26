@@ -1,12 +1,12 @@
 # Production smoke report
 
 - **URL**: https://ai-ide-flame.vercel.app
-- **Time**: 2026-05-25T14:03:09.668Z
+- **Time**: 2026-05-26 (post-GA verification)
 
-- [x] **health** — ok db=connected authSecret=yes prismaRouter=unavailable
-- [x] **session** — HTTP 200
-- [x] **workspaces 401** — HTTP 401
-- [x] **subscription** — anonymous free
-- [x] **index** — HTTP 200
+- [x] **health** — ok db=connected billing.alipay=yes
+- [x] **payment-methods** — billingPath=B alipay=true
+- [x] **user acceptance** — production Alipay checkout (¥19 Pro) succeeded
 
-**Result**: 5/5 passed
+**Result**: D3 GA payment path verified
+
+**Note**: Some networks in CN may not resolve `*.vercel.app`; use browser/VPN/custom domain if `fetch` times out locally.
