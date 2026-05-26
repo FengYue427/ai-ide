@@ -21,3 +21,11 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   artifactName: AI-IDE-${version}-win-setup.${ext}
+mac:
+  target:
+    - dmg
+    - zip
+  artifactName: AI-IDE-${version}-mac-${arch}.${ext}
+  category: public.app-category.developer-tools
+  hardenedRuntime: false
+  gatekeeperAssess: false

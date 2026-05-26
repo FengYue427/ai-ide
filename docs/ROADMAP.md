@@ -1,8 +1,8 @@
 # AI IDE 路线图与文档导航
 
-> **主版本**：**1.0.2** GA · **当前附属**：**1.0.2.6** · [VERSIONING.md](./VERSIONING.md)  
-> **附属路线**：[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) · **下一主版本**：[ROADMAP_V1.0.3.md](./ROADMAP_V1.0.3.md)  
-> **大总结**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md) · **竞品**：[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)  
+> **主版本**：**1.0.2** GA · **1.0.2.x 收官**：**1.0.2.7** ✅ · **当前**：**v1.0.3 Kickoff**  
+> **附属路线**：[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) · **1.0.3 大规划**：[V1.0.3_MASTER_PLAN.md](./V1.0.3_MASTER_PLAN.md)  
+> **大总结**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md) · **竞品**：[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)（**2.75**）  
 > 演示站：[https://ai-ide.vercel.app](https://ai-ide.vercel.app)
 
 ---
@@ -20,8 +20,10 @@
 | **[LAUNCH_READINESS.md](./LAUNCH_READINESS.md)** | 真正上市（GA）门禁与 blocker | 产品 / 运维 |
 | **[COMPETITIVE_BENCHMARK_2026.md](./COMPETITIVE_BENCHMARK_2026.md)** | vs Cursor、Kiro 等竞品评分 | 产品 / 市场 |
 | **[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)** | 四竞品逐项真对比（当前） | 产品 / 市场 |
-| **[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md)** | 1.0.2 附属 1.0.2.1～1.0.2.7 | 研发排期 |
-| **[ROADMAP_V1.0.3.md](./ROADMAP_V1.0.3.md)** | 下一主版本大规划 | 产品 |
+| **[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md)** | 1.0.2 附属 1.0.2.1～1.0.2.7（**已收官**） | 研发排期 |
+| **[V1.0.3_MASTER_PLAN.md](./V1.0.3_MASTER_PLAN.md)** | **1.0.3 主版本大规划** | 产品 / 全员 |
+| **[V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md)** | 1.0.3 执行 checklist | 研发 / 运维 |
+| **[ROADMAP_V1.0.3.md](./ROADMAP_V1.0.3.md)** | 1.0.3 精简路线图 | 产品 |
 | **[VERSIONING.md](./VERSIONING.md)** | 四段版本号策略 | 全员 |
 | **本文件 ROADMAP.md** | 阶段索引、测试矩阵、文档导航 | 快速查阅 |
 

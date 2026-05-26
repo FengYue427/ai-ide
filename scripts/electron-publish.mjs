@@ -5,7 +5,7 @@
  *   set GH_TOKEN=ghp_...
  *   npm run electron:publish
  *
- * Tags: push git tag v1.0.1 then run, or CI on tag push.
+ * Tags: push git tag v1.0.2.7 then run, or CI on tag push.
  */
 import { spawnSync } from 'child_process'
 import { dirname, join } from 'path'
@@ -18,7 +18,7 @@ function run(cmd, args, env = {}) {
     cwd: root,
     stdio: 'inherit',
     shell: process.platform === 'win32',
-    env: { ...process.env, ...env },
+    env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: 'false', ...env },
   })
   if (r.status !== 0) process.exit(r.status ?? 1)
 }
@@ -29,14 +29,41 @@ if (!process.env.GH_TOKEN?.trim()) {
 }
 
 console.log('=== AI IDE desktop publish (GitHub Releases) ===\n')
-run('npx', [
-  'electron-builder',
-  '--config',
-  'electron-builder.yml',
-  '--win',
-  'portable',
-  'nsis',
-  '--publish',
-  'always',
-])
+
+if (process.platform === 'darwin') {
+  run('npx', [
+    'electron-builder',
+    '--config',
+    'electron-builder.yml',
+    '--mac',
+    'dmg',
+    'zip',
+    '--publish',
+    'always',
+  ])
+} else if (process.platform === 'win32') {
+  run('npx', [
+    'electron-builder',
+    '--config',
+    'electron-builder.yml',
+    '--win',
+    'portable',
+    'nsis',
+    '--publish',
+    'always',
+  ])
+} else {
+  console.log('Publishing Windows + macOS from Linux CI is handled by .github/workflows/desktop-release.yml')
+  run('npx', [
+    'electron-builder',
+    '--config',
+    'electron-builder.yml',
+    '--win',
+    'portable',
+    'nsis',
+    '--publish',
+    'always',
+  ])
+}
+
 console.log('\n✅ Published. Users with packaged app will receive updates via electron-updater.')

@@ -1,26 +1,29 @@
 # 当前执行清单
 
-> **当前附属**：**1.0.2.6** · **下一附属**：**1.0.2.7** macOS 收官  
-> [ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) · [VERSIONING.md](./VERSIONING.md)
+> **1.0.2.x**：**已收官**（1.0.2.7）  
+> **当前主版本**：**v1.0.3 Kickoff**  
+> [V1.0.3_MASTER_PLAN.md](./V1.0.3_MASTER_PLAN.md) · [V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md)
 
 ---
 
-## 已完成（1.0.2.x）
+## 1.0.2.7 收尾（可选）
 
-| 版本 | 主题 |
-|------|------|
-| 1.0.2.1 | 运维与信任 |
-| 1.0.2.2 | 块级 Diff |
-| 1.0.2.3 | Tab FIM |
-| 1.0.2.4 | 索引第二档 |
-| 1.0.2.5 | Agent 工具链 |
-| 1.0.2.6 | 任务清单 + 域名 + Toast |
+- [ ] `git tag v1.0.2.7 && git push origin v1.0.2.7` → 触发 Win+Mac Release
+- [ ] 验证 GitHub Releases 含 macOS dmg
 
 ---
 
-## 下一开发：1.0.2.7
+## v1.0.3 Phase 0（本周）
 
-- Electron macOS CI、Release `v1.0.2.7`、README/ROADMAP 终稿
+- [ ] 对齐 Master Plan：稳定版叙事，非功能大爆炸
+- [ ] 确认生产 `APP_URL` / 自定义域
+- [ ] macOS 签名决策、微信 live 决策记录
+
+---
+
+## v1.0.3 Phase 1～3
+
+见 [V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md) 完整 checklist。
 
 ---
 

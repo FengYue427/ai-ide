@@ -1,4 +1,4 @@
-# Build Windows desktop installers/portable and attach to GitHub Release.
+# Build Windows + macOS desktop artifacts and attach to GitHub Release.
 # Trigger: version tags (v*.*.*) — separate from Vercel web deploy.
 name: Desktop release
 
@@ -10,6 +10,9 @@ on:
 
 permissions:
   contents: write
+
+env:
+  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
 jobs:
   win-desktop:
@@ -24,7 +27,24 @@ jobs:
 
       - run: npm ci
 
-      - name: Build & publish to GitHub Release
+      - name: Build & publish Windows to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --config electron-builder.yml --win portable nsis --publish always
+
+  mac-desktop:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build & publish macOS to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --config electron-builder.yml --mac dmg zip --publish always

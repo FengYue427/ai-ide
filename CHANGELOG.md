@@ -7,7 +7,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- 下一附属 **1.0.2.7** macOS 桌面收官：[ROADMAP_V1.0.2.x.md](docs/ROADMAP_V1.0.2.x.md)
+- **v1.0.3 主版本 Kickoff**：[V1.0.3_MASTER_PLAN.md](docs/V1.0.3_MASTER_PLAN.md) · [V1.0.3_KICKOFF.md](docs/V1.0.3_KICKOFF.md)
+
+## [1.0.2.7] — 2026-05-26（1.0.2 附属 · macOS 收官）
+
+- macOS 桌面 CI（`ci.yml` + `desktop-release.yml` dmg/zip）
+- 竞品复评 **2.75**；README/ROADMAP 封板；正式开启 1.0.3 大规划
+- 文档：[PHASE_V1.0.2.7_DESKTOP.md](docs/PHASE_V1.0.2.7_DESKTOP.md) · [V1.0.2.7_RELEASE.md](docs/V1.0.2.7_RELEASE.md)
 
 ## [1.0.2.6] — 2026-05-26（1.0.2 附属 · 任务清单 + 域名 + Toast）
 
