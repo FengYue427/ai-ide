@@ -2,7 +2,7 @@
 
 > **日期**：2026-05-26  
 > **前提**：本地验收无问题（Agent、订阅链路、`test:local` 全绿）  
-> **竞品**：[COMPETITOR_SCORE_2026-05.md](./COMPETITOR_SCORE_2026-05.md)（综合 **~2.35**，Cursor **~3.6**）  
+> **竞品**：[COMPETITOR_SCORE_2026-05.md](./COMPETITOR_SCORE_2026-05.md)（综合 **~2.35**，Cursor **~3.6**；四竞品矩阵见 [COMPETITOR_MATRIX_2026-05.md](./COMPETITOR_MATRIX_2026-05.md)）  
 > **原则**：不追平 Cursor；做 **「国内可付费的浏览器 Cursor 入门版」**，GA 后再用桌面版拉高上限。
 
 ---
@@ -70,7 +70,7 @@ flowchart LR
 | 4b-1 | Electron 壳 + 复用现有 Web UI | Win/mac 安装包可打开项目 | 3～4 周 |
 | 4b-2 | Node 子进程终端（非 WebContainer） | `npm run dev` 在 IDE 内可跑 | 2～3 周 |
 | 4b-3 | 本机递归读盘（绕过 FS Access 上限） | 2000 文件项目可索引 | 2 周 |
-| 4b-4 | 自动更新 + 崩溃上报 | Sentry release 对齐 | 1 周 |
+| 4b-4 | 自动更新 + 崩溃上报 | Sentry release 对齐 | 1 周 | ✅ 4b-5 |
 
 **非目标**：VS Code 插件、系统级 Git GUI 替代。
 
@@ -79,6 +79,8 @@ flowchart LR
 ---
 
 ### 阶段 2 — IDE-5 智能第二档（GA 后 4～9 月）
+
+> 详细 WBS + 与 Kiro/Windsurf 映射：[PLAN_IDE5_AND_COMPETITORS.md](./PLAN_IDE5_AND_COMPETITORS.md)
 
 **目标**：综合分 **~2.55 → ~2.75**；缩小 **Tab++、Composer Diff、@ 检索** 差距，仍不碰后台 Agent。
 
@@ -102,18 +104,20 @@ flowchart LR
 
 ---
 
-## 4. 与 Cursor 并排的对外叙事（GA 时用）
+## 4. 与 Cursor / Kiro / Windsurf 并排的对外叙事（GA 时用）
 
-|  | **Cursor** | **AI IDE** |
-|--|------------|------------|
-| **安装** | 桌面客户端 | **浏览器优先**，可选桌面版 |
-| **价格** | USD Pro | **¥19 / ¥49**，支付宝 |
-| **模型** | 平台绑定 | **BYOK** + 平台配额 |
-| **改本地代码** | Composer | **工具 Agent** + 本机文件夹 |
-| **适合** | 专业全栈、大仓、插件 | 国内个人、小仓、课堂、前端 |
+|  | **Cursor** | **Windsurf** | **Kiro** | **AI IDE** |
+|--|------------|--------------|----------|------------|
+| **安装** | 桌面 | 桌面 | 桌面 + CLI | **浏览器优先**，可选桌面 |
+| **Agent** | Composer | Cascade | Spec + Hooks | 工具 Agent |
+| **价格** | USD Pro | ~$10 Pro | AWS 积分 | **¥19 / ¥49 支付宝** |
+| **模型** | 平台 | 多模型套餐 | Bedrock | **BYOK** + 配额 |
+| **适合** | 专业全栈 | Agent 重度 | AWS 企业 | 国内个人/小仓/课堂 |
 
 **不要说**：「比 Cursor 更强」  
-**要说**：「在浏览器里完成 Cursor 入门档 70% 的 Agent 体验，加上国内付费和自带 Key。」
+**要说**：「入门 Agent + 国内付费 + 浏览器开箱；桌面版补大仓与真终端。」
+
+（完整矩阵：[COMPETITOR_MATRIX_2026-05.md](./COMPETITOR_MATRIX_2026-05.md)）
 
 ---
 
@@ -160,6 +164,8 @@ flowchart LR
 | [PHASE_AFTER_IDE4A.md](./PHASE_AFTER_IDE4A.md) | 4a 完成后路径 |
 | [PHASE_IDE4_CURSOR_PARITY.md](./PHASE_IDE4_CURSOR_PARITY.md) | 4a/4b 技术 WBS |
 | [COMPETITOR_SCORE_2026-05.md](./COMPETITOR_SCORE_2026-05.md) | 竞品分（本文同步） |
+| [COMPETITOR_MATRIX_2026-05.md](./COMPETITOR_MATRIX_2026-05.md) | Cursor / Kiro / Windsurf 四竞品矩阵 |
+| [PLAN_IDE5_AND_COMPETITORS.md](./PLAN_IDE5_AND_COMPETITORS.md) | IDE-5 WBS + 竞品映射 |
 | [NEXT_EXECUTION.md](./NEXT_EXECUTION.md) | 当前周执行 |
 
 ---

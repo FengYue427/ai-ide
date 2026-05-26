@@ -13,6 +13,12 @@ contextBridge.exposeInMainWorld('aiIdeDesktop', {
   runCommand: (rootPath, commandLine) =>
     ipcRenderer.invoke('desktop:run-command', { rootPath, commandLine }),
   getInfo: () => ipcRenderer.invoke('desktop:info'),
+  checkForUpdates: () => ipcRenderer.invoke('desktop:check-updates'),
+  onUpdateStatus: (callback) => {
+    const listener = (_event, payload) => callback(payload)
+    ipcRenderer.on('desktop:update-status', listener)
+    return () => ipcRenderer.removeListener('desktop:update-status', listener)
+  },
   onProjectOpened: (callback) => {
     const listener = (_event, payload) => callback(payload)
     ipcRenderer.on('desktop:project-opened', listener)

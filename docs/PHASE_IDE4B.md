@@ -12,7 +12,7 @@
 | 4b-2 | 本机终端 `run_command` | ✅ |
 | 4b-3 | fs 扫描 2000 文件 / 索引 800 | ✅ |
 | 4b-4 | Windows 便携版 + 菜单 Ctrl+O | ✅ |
-| 4b-5 | 自动更新 | ⬜ |
+| 4b-5 | 自动更新 + 壳崩溃日志 | ✅ |
 
 ---
 
@@ -59,6 +59,23 @@ npm run electron:pack
 npm run electron:pack:installer
 ```
 
+### 发布桌面版（GitHub Releases + 自动更新）
+
+```powershell
+# 打 tag 触发 CI，或本地（需 GH_TOKEN）
+git tag v1.0.1
+git push origin v1.0.1
+
+# 或
+$env:GH_TOKEN="ghp_..."
+npm run electron:publish
+```
+
+- 打包版启动 **12s 后**自动检查更新；**Help → Check for Updates**
+- **NSIS 安装版**：完整 in-place 更新；**便携版**失败时引导打开 Releases 页
+- 壳崩溃：`%APPDATA%/ai-ide/desktop-crash.log`；Web UI 仍用 `VITE_SENTRY_DSN`
+- Remote shell：UI 走 Vercel；**updater 只更新 Electron 壳**
+
 ---
 
 ## 桌面功能
@@ -77,6 +94,8 @@ npm run electron:pack:installer
 - [ ] Ctrl+O 打开 >500 文件仓库  
 - [ ] Agent `run_command` → `node -v` 有输出  
 - [ ] 登录 + 订阅与浏览器一致  
+- [ ] Help → Check for Updates（或等 12s 自动检查）  
+- [ ] `git tag v*.*.*` 后 GitHub Release 含 portable + setup  
 
 ---
 
@@ -84,6 +103,7 @@ npm run electron:pack:installer
 
 ```
 electron/main.mjs      — 窗口、菜单、IPC、spawn
+electron/updater.mjs   — electron-updater + crash log
 electron/preload.mjs — aiIdeDesktop（含 onProjectOpened）
 electron/fsProject.mjs
 src/services/desktopBridge.ts

@@ -22,6 +22,23 @@ export type DesktopRunResult = {
 
 export type DesktopShellMode = 'remote' | 'local-dev' | 'local-dist'
 
+export type DesktopUpdatePhase =
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error'
+
+export type DesktopUpdateStatus = {
+  phase: DesktopUpdatePhase
+  version?: string
+  message?: string
+  percent?: number
+  transferred?: number
+  total?: number
+}
+
 export interface AiIdeDesktopApi {
   isDesktop: true
   shellMode: () => Promise<{ mode: DesktopShellMode; appUrl?: string }>
@@ -36,7 +53,16 @@ export interface AiIdeDesktopApi {
   ) => Promise<string>
   writeFile: (rootPath: string, relPath: string, content: string) => Promise<{ ok: boolean }>
   runCommand: (rootPath: string, commandLine: string) => Promise<DesktopRunResult>
-  getInfo: () => Promise<{ version: string; platform: string; maxImportFiles: number }>
+  getInfo: () => Promise<{
+    version: string
+    platform: string
+    maxImportFiles: number
+    shellMode?: DesktopShellMode
+    packaged?: boolean
+    autoUpdate?: boolean
+  }>
+  checkForUpdates: () => Promise<{ ok: boolean; reason?: string; error?: string }>
+  onUpdateStatus: (callback: (status: DesktopUpdateStatus) => void) => () => void
   onProjectOpened: (callback: (result: DesktopOpenResult) => void) => () => void
 }
 

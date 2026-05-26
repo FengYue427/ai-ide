@@ -8,6 +8,11 @@ files:
   - electron/**/*
   - package.json
 asar: true
+publish:
+  provider: github
+  owner: FengYue427
+  repo: ai-ide
+  releaseType: release
 win:
   target:
     - portable

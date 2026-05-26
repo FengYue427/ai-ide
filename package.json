@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -77,7 +77,8 @@
     "build:electron": "vite build --mode electron",
     "electron:pack": "node scripts/electron-pack.mjs",
     "electron:pack:installer": "electron-builder --config electron-builder.yml --win nsis --publish never",
-    "electron:pack:offline": "npm run build:electron && electron-builder --config electron-builder.yml --win portable --publish never"
+    "electron:pack:offline": "npm run build:electron && electron-builder --config electron-builder.yml --win portable --publish never",
+    "electron:publish": "node scripts/electron-publish.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",
@@ -92,6 +93,7 @@
     "@webcontainer/api": "^1.6.4",
     "alipay-sdk": "^4.14.0",
     "bcryptjs": "^3.0.3",
+    "electron-updater": "^6.8.3",
     "fuse.js": "^7.3.0",
     "idb": "^8.0.3",
     "isomorphic-git": "^1.37.5",

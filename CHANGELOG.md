@@ -10,6 +10,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Electron shell: remote production URL + preload native FS / terminal
 - `npm run electron:dev` / `electron:pack` (Windows portable)
 - Up to 2000 local files; index cap 800 on desktop
+- **4b-5**: `electron-updater`, Help → Check for Updates, GitHub Releases CI, crash log
+
+### Planning
+
+- [COMPETITOR_MATRIX_2026-05.md](./docs/COMPETITOR_MATRIX_2026-05.md) — Cursor / Kiro / Windsurf
+- [PLAN_IDE5_AND_COMPETITORS.md](./docs/PLAN_IDE5_AND_COMPETITORS.md) — IDE-5 WBS
 
 ## [1.0.0] — 2026-05-26 (D3 GA — 正式版可收款)
 

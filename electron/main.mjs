@@ -12,6 +12,7 @@ import {
   scanProjectFolder,
   writeProjectFile,
 } from './fsProject.mjs'
+import { checkForUpdates, installDesktopCrashLog, setupDesktopUpdater } from './updater.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PRODUCTION_APP_URL =
@@ -140,6 +141,21 @@ function buildAppMenu() {
       label: 'View',
       submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }],
     },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Check for Updates',
+          click: () => {
+            void checkForUpdates(true)
+          },
+        },
+        {
+          label: 'Release Notes',
+          click: () => shell.openExternal('https://github.com/FengYue427/ai-ide/releases'),
+        },
+      ],
+    },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
@@ -195,7 +211,11 @@ function registerIpc() {
     platform: process.platform,
     maxImportFiles: DESKTOP_MAX_IMPORT_FILES,
     shellMode,
+    packaged: app.isPackaged,
+    autoUpdate: app.isPackaged && process.env.AI_IDE_AUTO_UPDATE !== '0',
   }))
+
+  ipcMain.handle('desktop:check-updates', async () => checkForUpdates(true))
 
   ipcMain.handle('desktop:pick-folder', async () => {
     const payload = await pickAndScanFolder()
@@ -261,11 +281,13 @@ function registerIpc() {
 }
 
 app.whenReady().then(() => {
+  installDesktopCrashLog()
   shellMode = resolveShellMode()
   patchSessionHeaders(shellMode)
   buildAppMenu()
   registerIpc()
   createWindow()
+  setupDesktopUpdater(() => mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
