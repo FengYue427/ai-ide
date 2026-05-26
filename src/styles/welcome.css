@@ -112,6 +112,12 @@
   border: 1px solid color-mix(in srgb, #f59e0b 40%, var(--border-color));
 }
 
+.welcome-cloud-banner--info {
+  color: var(--text-secondary);
+  background: color-mix(in srgb, #3b82f6 10%, transparent);
+  border: 1px solid color-mix(in srgb, #3b82f6 30%, var(--border-color));
+}
+
 .welcome-title {
   margin: 0;
   font-size: clamp(28px, 4vw, var(--font-display));

@@ -13,15 +13,16 @@
 ## 自动到期
 
 - **懒检查**：用户请求 `GET /api/subscription` 时，若 `currentPeriodEnd + 3 天 < 现在`，则降级并返回 `notice: "expired"`。
-- **批量**：`POST /api/billing/expire-subscriptions`（需 `Authorization: Bearer $BILLING_CRON_SECRET`）。
+- **批量**：`GET|POST /api/billing/expire-subscriptions`（`Authorization: Bearer` 为 `CRON_SECRET` 和/或 `BILLING_CRON_SECRET` 之一即可，见 `lib/api/cronAuth.ts`）。
 - **本地脚本**：`npm run billing:expire`（读 `.env.local` 的 `DATABASE_URL`）。
 
 ## 环境变量
 
 ```env
-# Vercel Cron 自动注入 CRON_SECRET；本地脚本可用 BILLING_CRON_SECRET
-CRON_SECRET=your-long-random-secret
-BILLING_CRON_SECRET=your-long-random-secret
+# Vercel Cron 使用自动生成的 CRON_SECRET（Bearer）
+CRON_SECRET=vercel-generated
+# 本地/CI 脚本可用另一串，不必与 CRON_SECRET 相同
+BILLING_CRON_SECRET=manual-ops-secret
 ```
 
 已在 `vercel.json` 配置每日 03:00 UTC 调用：

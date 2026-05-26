@@ -3350,21 +3350,38 @@ var init_resume = __esm({
   }
 });
 
+// lib/api/cronAuth.ts
+function getCronSecrets() {
+  const values = [process.env.CRON_SECRET, process.env.BILLING_CRON_SECRET];
+  const unique = /* @__PURE__ */ new Set();
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) unique.add(trimmed);
+  }
+  return [...unique];
+}
+function isCronAuthorized(request) {
+  const secrets = getCronSecrets();
+  if (secrets.length === 0) return false;
+  const auth = request.headers.get("authorization") ?? "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (!token) return false;
+  return secrets.includes(token);
+}
+var init_cronAuth = __esm({
+  "lib/api/cronAuth.ts"() {
+    "use strict";
+  }
+});
+
 // lib/api/handlers/billing/expire-subscriptions.ts
 var expire_subscriptions_exports = {};
 __export(expire_subscriptions_exports, {
   GET: () => GET11,
   POST: () => POST17
 });
-function cronAuthorized(request) {
-  const secret = process.env.CRON_SECRET?.trim() || process.env.BILLING_CRON_SECRET?.trim();
-  if (!secret) return false;
-  const auth = request.headers.get("authorization") ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  return token.length > 0 && token === secret;
-}
 async function runExpire(request) {
-  if (!cronAuthorized(request)) {
+  if (!isCronAuthorized(request)) {
     return localizedErrorResponse(request, "api.auth.unauthorized", 401);
   }
   try {
@@ -3389,6 +3406,7 @@ async function POST17(request) {
 var init_expire_subscriptions = __esm({
   "lib/api/handlers/billing/expire-subscriptions.ts"() {
     "use strict";
+    init_cronAuth();
     init_http();
     init_localizedError();
     init_subscriptionExpiry();

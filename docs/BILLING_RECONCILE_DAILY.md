@@ -1,6 +1,7 @@
 # 支付每日对账清单（D3 W9～W10）
 
-> 与 [PHASE4_CN_PAYMENT.md](./PHASE4_CN_PAYMENT.md) · [BILLING_SUBSCRIPTION_LIFECYCLE.md](./BILLING_SUBSCRIPTION_LIFECYCLE.md) 配套。
+> 与 [PHASE4_CN_PAYMENT.md](./PHASE4_CN_PAYMENT.md) · [BILLING_SUBSCRIPTION_LIFECYCLE.md](./BILLING_SUBSCRIPTION_LIFECYCLE.md) 配套。  
+> **每周汇总**：复制 [WEEKLY_OPS_TEMPLATE.md](./WEEKLY_OPS_TEMPLATE.md)（v1.0.3+）。
 
 ## 每日（约 10 分钟）
 
@@ -21,7 +22,8 @@
 ## 环境
 
 - 生产：`DATABASE_URL` 指向生产 Neon  
-- Cron：`CRON_SECRET` 与 Vercel 项目一致（或 `BILLING_CRON_SECRET`）
+- Cron：`CRON_SECRET`（Vercel 自动生成）与/或 `BILLING_CRON_SECRET`（本地脚本）；二者可不同，见 `lib/api/cronAuth.ts`
+- 验收：`npm run billing:verify-cron`（需 `APP_URL` + secret）
 
 ## 事故
 

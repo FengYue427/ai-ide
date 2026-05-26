@@ -25,6 +25,7 @@
 
 - **Release 标签**：构建时注入 `VITE_APP_VERSION`（来自 `package.json`），Sentry 事件为 `ai-ide@<version>`；Vercel 亦可设 `VITE_VERCEL_GIT_COMMIT_SHA` 作 fallback。
 - **GA 验收**：故意触发一次前端错误，在 Sentry Issues 中确认 environment=`production`（见 [D3_GA_ACCEPTANCE.md](./D3_GA_ACCEPTANCE.md) §E）。
+- **v1.0.3**：部署后 release 应为 `ai-ide@1.0.3`；步骤见 [V1.0.3_RELEASE.md](./V1.0.3_RELEASE.md)。
 
 也可手动扩展 `setErrorReporter` / `setEventReporter`（见 `src/lib/observability.ts`）。
 

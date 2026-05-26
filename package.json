@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -49,6 +49,7 @@
     "billing:wechat-probe": "tsx scripts/wechat-sandbox-probe.ts",
     "billing:reconcile": "tsx scripts/reconcile-alipay-order.ts",
     "billing:expire": "tsx scripts/billing-expire-subscriptions.ts",
+    "billing:verify-cron": "node scripts/verify-cron-expire.mjs",
     "billing:reconcile-alipay": "tsx scripts/reconcile-alipay-order.ts",
     "tunnel:api": "node scripts/tunnel-api.mjs",
     "payment:notify-urls": "node scripts/payment-notify-urls.mjs",

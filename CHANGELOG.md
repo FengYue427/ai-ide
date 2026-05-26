@@ -5,11 +5,31 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### 规划（未开发）
+### 规划
 
-- 版本路线图：[ROADMAP_V1.0.3-V1.0.9.md](docs/ROADMAP_V1.0.3-V1.0.9.md)
-- 状态总览：[V1.0.2_STATUS_SUMMARY.md](docs/V1.0.2_STATUS_SUMMARY.md)
-- 竞品对比：[COMPETITOR_COMPARISON_V1.0.2.md](docs/COMPETITOR_COMPARISON_V1.0.2.md)
+- 下一版 **v1.0.4** 块级 Diff：[ROADMAP_V1.0.3-V1.0.9.md](docs/ROADMAP_V1.0.3-V1.0.9.md)
+
+## [1.0.3] — 2026-05-26（运维与信任）
+
+### 运维
+
+- Cron `expire-subscriptions`：支持 `CRON_SECRET` 与 `BILLING_CRON_SECRET` 双 Bearer（修复 Vercel 401）
+- `npm run billing:verify-cron` 验收脚本
+- [V1.0.3_RELEASE.md](docs/V1.0.3_RELEASE.md)、[WEEKLY_OPS_TEMPLATE.md](docs/WEEKLY_OPS_TEMPLATE.md)、[OPERATOR_LEGAL.md](docs/OPERATOR_LEGAL.md)
+
+### 文档与合规
+
+- `BROWSER_LIMITATIONS.md` 与 `indexLimits` / 桌面 2000 对齐
+- `payment.html` / `payment-en.html` 运营主体与 GA 收款说明
+
+### 产品
+
+- 欢迎页 / 设置：国内网络慢或 API 超时提示（`welcome.networkTips`）
+- `useCloudHealth` 慢请求（≥6s）触发网络提示
+
+### 待你在 Vercel 完成
+
+- 配置 `VITE_SENTRY_DSN` 后验收 Sentry 测试事件（见 [OBSERVABILITY.md](docs/OBSERVABILITY.md)）
 
 ## [1.0.2] — 2026-05-26（上线包 · CI + 发布文档）
 

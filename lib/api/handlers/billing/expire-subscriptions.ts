@@ -2,21 +2,13 @@
  * Cron: downgrade subscriptions past period end + grace.
  * Auth: Authorization: Bearer ${BILLING_CRON_SECRET}
  */
+import { isCronAuthorized } from '../../cronAuth'
 import { jsonResponse } from '../../http'
 import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
 import { processExpiredSubscriptions } from '../../../billing/subscriptionExpiry'
 
-function cronAuthorized(request: Request): boolean {
-  const secret =
-    process.env.CRON_SECRET?.trim() || process.env.BILLING_CRON_SECRET?.trim()
-  if (!secret) return false
-  const auth = request.headers.get('authorization') ?? ''
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
-  return token.length > 0 && token === secret
-}
-
 async function runExpire(request: Request): Promise<Response> {
-  if (!cronAuthorized(request)) {
+  if (!isCronAuthorized(request)) {
     return localizedErrorResponse(request, 'api.auth.unauthorized', 401)
   }
 

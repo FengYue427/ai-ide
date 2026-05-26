@@ -1,36 +1,46 @@
-# 当前执行清单 — v1.0.2 已 GA
+# 当前执行清单 — v1.0.3 已交付（代码）
 
-> **全状态**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md)  
-> **下一版**：[ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md) → 建议先做 **v1.0.3 运维**  
+> **全状态**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md)（能力仍以 v1.0.2 为基，运维见 v1.0.3）  
+> **v1.0.3 发布说明**：[V1.0.3_RELEASE.md](./V1.0.3_RELEASE.md)  
+> **下一版开发**：[ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md) → **v1.0.4 块级 Diff**  
 > **站点**：https://ai-ide-flame.vercel.app
 
 ---
 
-## 当前版本状态（v1.0.2）
+## v1.0.3 代码侧 ✅
 
 | 项 | 状态 |
 |----|:----:|
-| 生产 smoke 5/5 | ✅ |
-| 支付宝 Path B | ✅ |
-| 单元测试 197 | ✅ |
-| 桌面 Release v1.0.2 | ✅ |
-| 综合竞品分 | **~2.55** |
+| 双 secret Cron 鉴权 + 单测 | ✅ |
+| `billing:verify-cron` | ✅ |
+| payment 运营主体 | ✅ |
+| BROWSER_LIMITATIONS 对齐 | ✅ |
+| 欢迎页/设置网络提示 | ✅ |
+| 周报模板 | ✅ |
 
 ---
 
-## 立即执行（v1.0.3）
+## 你需在 Vercel / Sentry 完成（约 15 分钟）
 
-见 [ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md) § v1.0.3：
+1. **Sentry**：Production 设置 `VITE_SENTRY_DSN` → Redeploy → 浏览器 `throw new Error('sentry probe')` 验收  
+2. **Cron**：确认项目有 `CRON_SECRET`（Vercel 自动生成）→ `npm run billing:verify-cron`  
+3. **Deploy**：推送 `main` 后等 Vercel 完成
 
-1. `VITE_SENTRY_DSN`  
-2. `payment.html` 主体  
-3. 文档与 `indexLimits` 对齐  
-4. 推广：掘金/V2EX/知乎/CSDN/小红书/B站（[publish/](./publish/)）
+---
+
+## 下一开发：v1.0.4
+
+- 块级 Diff / hunk 接受（`diffHunkService` + Agent UI）
+- 见 [ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md) § v1.0.4
 
 ---
 
 ## 命令
 
 ```powershell
+npm run test:local
 npm run go-live:preflight
+$env:APP_URL="https://ai-ide-flame.vercel.app"
+$env:CRON_SECRET="<Vercel CRON_SECRET>"
+npm run billing:verify-cron
 ```

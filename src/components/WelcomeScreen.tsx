@@ -14,7 +14,7 @@ import {
   Sparkles,
   Terminal,
 } from 'lucide-react'
-import { useCloudHealth } from '../hooks/useCloudHealth'
+import { shouldShowNetworkTips, useCloudHealth } from '../hooks/useCloudHealth'
 import { useI18n } from '../i18n'
 import { isDesktopApp } from '../services/desktopBridge'
 import type { TranslationKey } from '../i18n'
@@ -55,6 +55,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 }) => {
   const { t, locale } = useI18n()
   const cloudHealth = useCloudHealth()
+  const showNetworkTips = shouldShowNetworkTips(cloudHealth, isDesktopApp())
   const legalPrivacy = locale === 'en-US' ? '/legal/privacy-en.html' : '/legal/privacy.html'
   const legalTerms = locale === 'en-US' ? '/legal/terms-en.html' : '/legal/terms.html'
 
@@ -218,6 +219,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             role="status"
           >
             {cloudHealth.status === 'ok' ? t('welcome.cloudOk') : t('welcome.cloudDegraded')}
+          </p>
+        )}
+
+        {showNetworkTips && (
+          <p className="welcome-cloud-banner welcome-cloud-banner--info" role="status">
+            {t('welcome.networkTips')}
           </p>
         )}
 

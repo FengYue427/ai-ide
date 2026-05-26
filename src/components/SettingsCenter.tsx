@@ -429,6 +429,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
 
             {activeTab === 'advanced' && (
               <>
+                <div className="settings-card settings-card--grid">
+                  <div className="settings-row-title">{t('settings.network.title')}</div>
+                  <p className="settings-row-desc">{t('settings.network.desc')}</p>
+                </div>
+
                 <div className="settings-card settings-card--danger settings-card--grid">
                   <div className="settings-danger-title">{t('settings.advanced.caution')}</div>
                   <p className="settings-row-desc">{t('settings.advanced.cautionDesc')}</p>
