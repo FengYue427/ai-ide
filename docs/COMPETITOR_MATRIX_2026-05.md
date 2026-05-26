@@ -14,9 +14,10 @@
 | **Cursor** | VS Code 系 + Composer + Tab++ + 云 Agent | **~3.6** | +1.25 → +1.05 |
 | **Windsurf** | VS Code 系 + Cascade 实时感知 Agent | **~3.45** | +1.10 → +0.90 |
 | **Kiro** | AWS Code OSS 系 + Spec/Hook + Bedrock | **~3.30** | +0.95 → +0.75 |
-| **AI IDE（5-26）** | 浏览器优先 + 国内付费 + BYOK | **~2.35** | — |
-| **AI IDE（4b 目标）** | + 桌面本机终端/大仓 | **~2.55** | — |
-| **AI IDE（IDE-5 目标）** | + 块级 Diff / Tab FIM / 索引 | **~2.75** | — |
+| **AI IDE v1.0.2** | GA + 桌面 + 支付宝 | **~2.55** | — |
+| **AI IDE v1.0.9（目标）** | 智能第二档收官 | **~2.75** | — |
+
+> **详细对比**：[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md) · **版本计划**：[ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md)
 
 **结论**：我们不与三者争「专业 IDE 全替代」；在 **国内 CNY + 浏览器开箱 + BYOK + 工具 Agent** 上保持差异化；桌面版缩小 **终端/大仓** 差距后，智能第二档（IDE-5）对标 **Cascade/Composer 入门**，不追 **Kiro Spec 工程化** 或 **Cursor Tab++**。
 

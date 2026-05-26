@@ -18,6 +18,8 @@
 | **[PLAN_NEXT_2026.md](./PLAN_NEXT_2026.md)** | 下一轮规划（P0' / P1 / P4） | 产品 / 研发 |
 | **[LAUNCH_READINESS.md](./LAUNCH_READINESS.md)** | 真正上市（GA）门禁与 blocker | 产品 / 运维 |
 | **[COMPETITIVE_BENCHMARK_2026.md](./COMPETITIVE_BENCHMARK_2026.md)** | vs Cursor、Kiro 等竞品评分 | 产品 / 市场 |
+| **[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)** | 四竞品逐项真对比（当前） | 产品 / 市场 |
+| **[ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md)** | 七个补丁版具体交付 | 研发排期 |
 | **本文件 ROADMAP.md** | 阶段索引、测试矩阵、文档导航 | 快速查阅 |
 
 **冲突处理**：事实以 `PRODUCT_ANALYSIS` 为准；执行以 `OPTIMIZATION_PLAN` 为准。

@@ -5,6 +5,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### 规划（未开发）
+
+- 版本路线图：[ROADMAP_V1.0.3-V1.0.9.md](docs/ROADMAP_V1.0.3-V1.0.9.md)
+- 状态总览：[V1.0.2_STATUS_SUMMARY.md](docs/V1.0.2_STATUS_SUMMARY.md)
+- 竞品对比：[COMPETITOR_COMPARISON_V1.0.2.md](docs/COMPETITOR_COMPARISON_V1.0.2.md)
+
 ## [1.0.2] — 2026-05-26（上线包 · CI + 发布文档）
 
 ### 发布
