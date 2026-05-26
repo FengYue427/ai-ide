@@ -1,5 +1,17 @@
 # ⚡ AI IDE
 
+AI IDE v1.0 正式上线 🎉
+
+在浏览器里打开就能用 AI 改你电脑上的项目（Chrome/Edge），支持工具 Agent、本机文件夹、@ 代码库。
+
+🇨🇳 专业版 ¥19/月、团队版 ¥49/月，支付宝付款；也可自带 API Key（BYOK）。
+
+👉 https://ai-ide-flame.vercel.app
+
+Windows 桌面便携版（大项目 + 本机终端）：
+https://github.com/FengYue427/ai-ide/releases/latest
+
+反馈：https://github.com/FengYue427/ai-ide/issues
 > 开源 AI 原生轻量 IDE —— 在浏览器里跑完整开发环境
 
 **版本 `v1.0.0-rc.1` · RC 公测** — 见 [CHANGELOG.md](./CHANGELOG.md)
