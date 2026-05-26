@@ -8,12 +8,16 @@ import type { ChatMessage } from './agentChatTypes'
 import { loadAgentSettings } from './agentSettingsService'
 import { detectLanguageFromPath } from './projectIndexService'
 import { normalizeProjectPath } from './localProjectPaths'
+import { countDiffHunks } from './diffHunkService'
+import { workspaceContextService } from './workspaceContextService'
 
 export type AgentActivityEntry = {
   round: number
   tool: AgentToolName
   detail: string
   ok: boolean
+  /** Set when write_file is staged for Diff preview (autoApplyWrites off). */
+  hunkCount?: number
 }
 
 export type AgentRunCallbacks = {
@@ -133,6 +137,8 @@ export async function runAgentLoop(
         if (change && !pendingPaths.has(change.path)) {
           pendingPaths.add(change.path)
           pendingChanges.push(change)
+          const prior = workspaceContextService.getFile(change.path)?.content ?? ''
+          entry.hunkCount = countDiffHunks(prior, change.content)
         }
       }
 

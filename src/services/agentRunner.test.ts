@@ -19,6 +19,12 @@ vi.mock('./agentSettingsService', () => ({
   })),
 }))
 
+vi.mock('./workspaceContextService', () => ({
+  workspaceContextService: {
+    getFile: vi.fn(() => undefined),
+  },
+}))
+
 import { runAgentLoop } from './agentRunner'
 
 describe('runAgentLoop', () => {
@@ -110,6 +116,7 @@ describe('runAgentLoop', () => {
 
     expect(result.pendingChanges).toHaveLength(1)
     expect(result.pendingChanges[0].path).toBe('b.ts')
+    expect(result.activity.some((a) => a.tool === 'write_file' && a.hunkCount != null)).toBe(true)
     expect(executeAgentTool).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'write_file' }),
       { applyWrites: false },

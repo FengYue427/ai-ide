@@ -20,6 +20,9 @@ interface DiffViewerProps {
   enablePartialApply?: boolean
   onApplyPartial?: (mergedContent: string) => void
   partialApplyLabel?: string
+  /** Controlled hunk selection (Agent apply modal). */
+  acceptedHunks?: Set<number>
+  onAcceptedHunksChange?: (next: Set<number>) => void
 }
 
 export const DiffViewer: React.FC<DiffViewerProps> = ({
@@ -34,6 +37,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
   enablePartialApply = false,
   onApplyPartial,
   partialApplyLabel,
+  acceptedHunks: acceptedHunksProp,
+  onAcceptedHunksChange,
 }) => {
   const { t } = useI18n()
   const resolvedOldLabel = oldLabel ?? t('diff.oldLabel')
@@ -44,11 +49,20 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
 
   const diffLines = useMemo(() => computeLineDiff(oldContent, newContent), [oldContent, newContent])
   const hunks = useMemo(() => groupDiffHunks(diffLines), [diffLines])
-  const [acceptedHunks, setAcceptedHunks] = useState(() => defaultAcceptedHunks(diffLines))
+  const [acceptedHunksInternal, setAcceptedHunksInternal] = useState(() => defaultAcceptedHunks(diffLines))
+  const controlled = acceptedHunksProp !== undefined
+  const acceptedHunks = controlled ? acceptedHunksProp : acceptedHunksInternal
+
+  const setAcceptedHunks = (next: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+    const resolved = typeof next === 'function' ? next(acceptedHunks) : next
+    if (controlled) onAcceptedHunksChange?.(resolved)
+    else setAcceptedHunksInternal(resolved)
+  }
 
   useEffect(() => {
-    setAcceptedHunks(defaultAcceptedHunks(diffLines))
-  }, [diffLines])
+    if (controlled) return
+    setAcceptedHunksInternal(defaultAcceptedHunks(diffLines))
+  }, [diffLines, controlled])
 
   const stats = useMemo(() => {
     const added = diffLines.filter((line) => line.type === 'added').length

@@ -7,7 +7,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- 下一版 **v1.0.4** 块级 Diff：[ROADMAP_V1.0.3-V1.0.9.md](docs/ROADMAP_V1.0.3-V1.0.9.md)
+- 下一版 **v1.0.5** Tab FIM：[ROADMAP_V1.0.3-V1.0.9.md](docs/ROADMAP_V1.0.3-V1.0.9.md)
+
+## [1.0.4] — 2026-05-26（块级 Diff MVP）
+
+### 功能
+
+- Agent `write_file` 预览：逐 **变更块** 接受/拒绝（`AgentApplyModal` + `DiffViewer`）
+- 多文件队列：每文件独立块选择；**应用已选块** / **应用整文件** / **跳过本文件** / **应用全部**
+- Agent 活动线：`write_file` 待预览时显示变更块数量
+- 文档：[PHASE_IDE5_DIFF.md](docs/PHASE_IDE5_DIFF.md)
+
+### 技术
+
+- `agentApplyHunks.ts`、`mergeAgentFileContent` / `countDiffHunks`
+- `autoApplyWrites: false`（默认）仍走 Diff 预览
 
 ## [1.0.3] — 2026-05-26（运维与信任）
 

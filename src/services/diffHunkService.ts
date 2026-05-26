@@ -136,3 +136,21 @@ export function defaultAcceptedHunks(diffLines: DiffLine[]): Set<number> {
   const hunks = groupDiffHunks(diffLines)
   return new Set(hunks.map((_, index) => index))
 }
+
+export function countDiffHunks(oldContent: string, newContent: string): number {
+  return groupDiffHunks(computeLineDiff(oldContent, newContent)).length
+}
+
+/** Merge old→new using hunk selection; new files return newContent as-is. */
+export function mergeAgentFileContent(
+  oldContent: string,
+  newContent: string,
+  acceptedHunkIndices: Set<number>,
+): string {
+  if (!oldContent) return newContent
+  const diffLines = computeLineDiff(oldContent, newContent)
+  const total = groupDiffHunks(diffLines).length
+  if (total === 0) return newContent
+  if (acceptedHunkIndices.size >= total) return newContent
+  return applyPartialDiff(oldContent, diffLines, acceptedHunkIndices)
+}

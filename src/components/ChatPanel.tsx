@@ -735,10 +735,16 @@ ${t('ai.chat.prompt')}`
                         key={`${entry.round}-${entry.tool}-${idx}`}
                         className={entry.ok ? 'chat-agent-activity__item' : 'chat-agent-activity__item chat-agent-activity__item--fail'}
                       >
-                        {t(entry.ok ? 'agent.tool.lineOk' : 'agent.tool.lineFail', {
-                          tool: t(`agent.tool.${entry.tool}` as 'agent.tool.read_file'),
-                          detail: entry.detail,
-                        })}
+                        {entry.tool === 'write_file' && entry.ok && entry.hunkCount != null && entry.hunkCount > 0
+                          ? t('agent.tool.writeStaged', {
+                              tool: t('agent.tool.write_file'),
+                              detail: entry.detail,
+                              hunks: entry.hunkCount,
+                            })
+                          : t(entry.ok ? 'agent.tool.lineOk' : 'agent.tool.lineFail', {
+                              tool: t(`agent.tool.${entry.tool}` as 'agent.tool.read_file'),
+                              detail: entry.detail,
+                            })}
                       </li>
                     ))}
                   </ul>

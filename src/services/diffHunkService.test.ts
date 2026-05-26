@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   applyPartialDiff,
   computeLineDiff,
+  countDiffHunks,
   defaultAcceptedHunks,
   groupDiffHunks,
+  mergeAgentFileContent,
 } from './diffHunkService'
 
 describe('diffHunkService', () => {
@@ -28,6 +30,19 @@ describe('diffHunkService', () => {
     const accepted = defaultAcceptedHunks(diff)
 
     expect(applyPartialDiff(oldContent, diff, accepted)).toBe(newContent)
+  })
+
+  it('countDiffHunks returns grouped change regions', () => {
+    expect(countDiffHunks('a\nb', 'a\nB')).toBe(1)
+    expect(countDiffHunks('same', 'same')).toBe(0)
+  })
+
+  it('mergeAgentFileContent uses partial selection', () => {
+    const oldContent = 'keep\nold'
+    const newContent = 'keep\nnew'
+    const diff = computeLineDiff(oldContent, newContent)
+    expect(mergeAgentFileContent(oldContent, newContent, new Set())).toBe(oldContent)
+    expect(mergeAgentFileContent(oldContent, newContent, defaultAcceptedHunks(diff))).toBe(newContent)
   })
 
   it('applyPartialDiff supports insert-only hunks', () => {
