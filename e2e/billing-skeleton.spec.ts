@@ -9,6 +9,7 @@ test.describe('billing skeleton (no real payment)', () => {
     await expect(page.getByText('订阅计划')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText('专业版').first()).toBeVisible()
     await expect(page.getByText('¥19').first()).toBeVisible()
-    await expect(page.getByText(/公测期/)).toBeVisible()
+    // GA: beta note is replaced by live pricing note once CN billing is enabled.
+    await expect(page.getByText(/(公测期|支持.*¥19\/月)/)).toBeVisible()
   })
 })

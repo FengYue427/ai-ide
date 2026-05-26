@@ -123,6 +123,7 @@ jobs:
         run: npm run test:e2e
         env:
           CI: 'true'
+          E2E_TARGET: ui
 
       - name: Upload Playwright report on failure
         if: failure()
@@ -174,6 +175,8 @@ jobs:
 
       - name: E2E tests (full stack)
         run: npm run test:e2e:stack
+        env:
+          E2E_TARGET: fullstack
 
       - name: Upload Playwright report on failure
         if: failure()
