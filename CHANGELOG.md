@@ -5,6 +5,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-05-26（上线包 · CI + 发布文档）
+
+### 发布
+
+- 生产 smoke **5/5**；支付宝 Path B 复验
+- [GO_LIVE_NOW.md](docs/GO_LIVE_NOW.md) 上线清单；`npm run go-live:preflight`
+- GitHub Release **v1.0.2**（桌面 portable + setup）
+
+### 修复
+
+- Playwright `webServer` 顶层配置，CI E2E 不再 `ERR_CONNECTION_REFUSED`
+- E2E 订阅文案兼容 GA 正式收款说明
+
 ### IDE-4b — Desktop (Electron)
 
 - Electron shell: remote production URL + preload native FS / terminal

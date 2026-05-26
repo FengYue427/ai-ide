@@ -15,6 +15,9 @@ AI IDE v1.0 正式上线 🎉
 
 👉 https://ai-ide-flame.vercel.app
 
+Windows 桌面便携版（大项目 + 本机终端）：
+https://github.com/FengYue427/ai-ide/releases/latest
+
 反馈：https://github.com/FengYue427/ai-ide/issues
 ```
 

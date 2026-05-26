@@ -1,7 +1,7 @@
 # GA 上市后 72 小时值班
 
-> **站点**：https://ai-ide-flame.vercel.app · **版本**：v1.0.0  
-> **支付**：支付宝生产 Path B
+> **站点**：https://ai-ide-flame.vercel.app · **版本**：v1.0.2（Web GA + 桌面可选）  
+> **支付**：支付宝生产 Path B · **清单**：[GO_LIVE_NOW.md](./GO_LIVE_NOW.md)
 
 ---
 

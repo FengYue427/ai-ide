@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -59,6 +59,7 @@
     "db:neon": "npm run db:check && npm run prod:db",
     "smoke:production": "node scripts/smoke-production.mjs",
     "smoke:report": "node scripts/smoke-report.mjs https://ai-ide-flame.vercel.app",
+    "go-live:preflight": "npm run test:local && npm run smoke:report",
     "deploy:check": "node scripts/deploy-check.mjs",
     "p0:gate": "npm run test:local && npm run test:integration:local && node scripts/security-baseline.mjs",
     "mlp:preflight": "npm run p0:gate && npm run build && npm run test:smoke",
