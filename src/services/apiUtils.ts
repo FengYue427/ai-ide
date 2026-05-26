@@ -63,6 +63,19 @@ export function formatFetchError(error: unknown, fallback?: string): string {
   return generic
 }
 
+/** API origin for Electron offline build (file:// / app://). Empty = same-origin /api proxy. */
+export function getApiBaseUrl(): string {
+  const configured = import.meta.env.VITE_API_BASE_URL?.trim()
+  if (configured) return configured.replace(/\/$/, '')
+  return ''
+}
+
+function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
+  if (typeof input !== 'string' || !input.startsWith('/')) return input
+  const base = getApiBaseUrl()
+  return base ? `${base}${input}` : input
+}
+
 export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (!headers.has('X-Request-Id')) {
@@ -72,7 +85,8 @@ export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
     headers.set('X-App-Language', getApiLanguage())
   }
   const path = requestPath(input)
-  return fetch(input, { ...init, headers }).then((response) => {
+  const url = resolveApiUrl(input)
+  return fetch(url, { ...init, headers }).then((response) => {
     if (response.status === 401 && shouldNotifyUnauthorized(input)) {
       unauthorizedHandler?.()
     }

@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+release/
 api/index.js.map
 
 # IDE

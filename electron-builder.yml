@@ -1,0 +1,18 @@
+appId: app.aiide.desktop
+productName: AI IDE
+copyright: Copyright © 2026 AI IDE
+directories:
+  output: release
+  buildResources: electron/build
+files:
+  - electron/**/*
+  - package.json
+asar: true
+win:
+  target:
+    - portable
+  artifactName: AI-IDE-${version}-win-portable.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: AI-IDE-${version}-win-setup.${ext}

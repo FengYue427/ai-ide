@@ -9,7 +9,9 @@ import {
   type GitignoreRule,
 } from './gitignoreService'
 import { detectLanguageFromPath } from './projectIndexService'
+import { isDesktopApp, getDesktopApi } from './desktopBridge'
 import { normalizeProjectPath, splitParentAndName } from './localProjectPaths'
+import type { DesktopOpenResult } from '../types/ai-ide-desktop'
 
 const DB_NAME = 'ai-ide-local-project'
 const DB_VERSION = 1
@@ -50,8 +52,32 @@ interface LocalProjectDB extends DBSchema {
 
 let dbPromise: Promise<IDBPDatabase<LocalProjectDB>> | null = null
 let rootHandle: FileSystemDirectoryHandle | null = null
+let electronRootPath: string | null = null
 let rootName: string | null = null
 let cachedEntries: LocalProjectFileEntry[] = []
+
+function useDesktopDisk(): boolean {
+  return isDesktopApp() && Boolean(electronRootPath)
+}
+
+function applyDesktopScan(result: DesktopOpenResult): LocalProjectOpenResult {
+  electronRootPath = result.rootPath
+  rootName = result.rootName
+  rootHandle = null
+  cachedEntries = result.entries
+  return {
+    rootName: result.rootName,
+    imported: result.imported,
+    skipped: result.skipped,
+    capped: result.capped,
+    errors: result.errors,
+    entries: result.entries,
+  }
+}
+
+export function getElectronRootPath(): string | null {
+  return electronRootPath
+}
 
 const DEFAULT_IGNORE_DIRS = new Set([
   'node_modules',
@@ -78,6 +104,7 @@ async function getDb(): Promise<IDBPDatabase<LocalProjectDB>> {
 }
 
 export function supportsLocalProject(): boolean {
+  if (isDesktopApp()) return true
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window
 }
 
@@ -198,14 +225,14 @@ export const localProjectService = {
   getStatus(): LocalProjectStatus {
     return {
       supported: supportsLocalProject(),
-      bound: Boolean(rootHandle),
+      bound: Boolean(rootHandle) || Boolean(electronRootPath),
       rootName,
-      permission: 'unknown',
+      permission: useDesktopDisk() ? 'granted' : 'unknown',
     }
   },
 
   isBound(): boolean {
-    return Boolean(rootHandle)
+    return Boolean(rootHandle) || Boolean(electronRootPath)
   },
 
   getRootName(): string | null {
@@ -215,6 +242,14 @@ export const localProjectService = {
   async openProjectPicker(): Promise<LocalProjectOpenResult> {
     if (!supportsLocalProject()) {
       throw new Error('LOCAL_PROJECT_UNSUPPORTED')
+    }
+
+    if (isDesktopApp()) {
+      const api = getDesktopApi()
+      if (!api) throw new Error('LOCAL_PROJECT_UNSUPPORTED')
+      const picked = await api.pickProjectFolder()
+      if (!picked) throw new Error('LOCAL_PROJECT_CANCELLED')
+      return applyDesktopScan(picked)
     }
 
     const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
@@ -230,6 +265,15 @@ export const localProjectService = {
 
   async restorePersistedProject(): Promise<LocalProjectOpenResult | null> {
     if (!supportsLocalProject()) return null
+
+    if (isDesktopApp()) {
+      const api = getDesktopApi()
+      if (!api) return null
+      const restored = await api.restoreLastProject()
+      if (!restored) return null
+      return applyDesktopScan(restored)
+    }
+
     const handle = await loadPersistedHandle()
     if (!handle) return null
 
@@ -242,6 +286,15 @@ export const localProjectService = {
   },
 
   async scanProject(): Promise<LocalProjectOpenResult> {
+    if (useDesktopDisk() && electronRootPath) {
+      const api = getDesktopApi()
+      if (!api) {
+        return { rootName: '', imported: 0, skipped: 0, capped: false, errors: [], entries: [] }
+      }
+      const scanned = await api.scanProject(electronRootPath)
+      return applyDesktopScan(scanned)
+    }
+
     if (!rootHandle || !rootName) {
       return { rootName: '', imported: 0, skipped: 0, capped: false, errors: [], entries: [] }
     }
@@ -311,6 +364,12 @@ export const localProjectService = {
     const normalized = normalizeProjectPath(path)
     if (!normalized) throw new Error('INVALID_PATH')
 
+    if (useDesktopDisk() && electronRootPath) {
+      const api = getDesktopApi()
+      if (!api) throw new Error('LOCAL_PROJECT_NOT_BOUND')
+      return api.readFile(electronRootPath, normalized, startLine, endLine)
+    }
+
     if (!rootHandle) {
       throw new Error('LOCAL_PROJECT_NOT_BOUND')
     }
@@ -336,6 +395,24 @@ export const localProjectService = {
   async writeFile(path: string, content: string): Promise<void> {
     const normalized = normalizeProjectPath(path)
     if (!normalized) throw new Error('INVALID_PATH')
+
+    if (useDesktopDisk() && electronRootPath) {
+      const api = getDesktopApi()
+      if (!api) throw new Error('LOCAL_PROJECT_NOT_BOUND')
+      await api.writeFile(electronRootPath, normalized, content)
+      const lang = detectLanguageFromPath(normalized)
+      const entry: LocalProjectFileEntry = {
+        path: normalized,
+        content,
+        language: lang,
+        size: new Blob([content]).size,
+      }
+      const existing = cachedEntries.findIndex((e) => e.path === normalized)
+      if (existing >= 0) cachedEntries[existing] = entry
+      else cachedEntries.push(entry)
+      return
+    }
+
     if (!rootHandle) throw new Error('LOCAL_PROJECT_NOT_BOUND')
 
     const ok = await ensurePermission(rootHandle)
@@ -366,6 +443,7 @@ export const localProjectService = {
 
   unbind(): void {
     rootHandle = null
+    electronRootPath = null
     rootName = null
     cachedEntries = []
     void getDb().then((db) => db.delete('handles', HANDLE_KEY))

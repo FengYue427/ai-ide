@@ -4,6 +4,7 @@ import { useBillingReturn } from '../hooks/useBillingReturn'
 import { useBillingSync } from '../hooks/useBillingSync'
 import { usePluginHost } from '../hooks/usePluginHost'
 import { useAppBootstrap } from '../hooks/useAppBootstrap'
+import { useDesktopBootstrap } from '../hooks/useDesktopBootstrap'
 import { useAppShortcuts } from '../hooks/useAppShortcuts'
 import { useEditorActions } from '../hooks/useEditorActions'
 import { useFileActions } from '../hooks/useFileActions'
@@ -92,6 +93,7 @@ export function AppShell() {
   } = useWebContainer()
 
   useAppBootstrap()
+  useDesktopBootstrap()
   useBillingSync()
   useSessionGuard(notify, t)
   useApiErrorFeedback(notify, t)

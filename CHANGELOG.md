@@ -5,6 +5,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### IDE-4b — Desktop (Electron)
+
+- Electron shell: remote production URL + preload native FS / terminal
+- `npm run electron:dev` / `electron:pack` (Windows portable)
+- Up to 2000 local files; index cap 800 on desktop
+
 ## [1.0.0] — 2026-05-26 (D3 GA — 正式版可收款)
 
 ### 上市

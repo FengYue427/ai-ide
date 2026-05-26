@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useCloudHealth } from '../hooks/useCloudHealth'
 import { useI18n } from '../i18n'
+import { isDesktopApp } from '../services/desktopBridge'
 import type { TranslationKey } from '../i18n'
 
 interface RecentProject {
@@ -187,11 +188,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     <Sparkles size={14} />
                     {t('welcome.badge')}
                   </div>
-                  <span className="welcome-rc-badge">
-                    {import.meta.env.VITE_GA_LIVE === 'true'
-                      ? t('welcome.gaBadge')
-                      : t('welcome.rcBadge')}
-                  </span>
+                  {isDesktopApp() ? (
+                    <span className="welcome-rc-badge">{t('welcome.desktopBadge')}</span>
+                  ) : (
+                    <span className="welcome-rc-badge">
+                      {import.meta.env.VITE_GA_LIVE === 'true'
+                        ? t('welcome.gaBadge')
+                        : t('welcome.rcBadge')}
+                    </span>
+                  )}
                 </div>
                 <h1 className="welcome-title">{t('welcome.title')}</h1>
               </div>

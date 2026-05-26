@@ -47,6 +47,7 @@ export const translations = {
     'welcome.badge': 'AI 原生浏览器 IDE',
     'welcome.rcBadge': 'RC 公测',
     'welcome.gaBadge': '正式版',
+    'welcome.desktopBadge': '桌面版',
     'welcome.cloudOk': '云端账号服务正常，可注册并同步工作区。',
     'welcome.cloudDegraded':
       '云端数据库暂不可用：注册/云工作区可能失败。你仍可使用 BYOK 与本地编辑；维护者请检查部署环境变量。',
@@ -1219,6 +1220,7 @@ export const translations = {
     'welcome.badge': 'AI-native browser IDE',
     'welcome.rcBadge': 'RC beta',
     'welcome.gaBadge': 'GA',
+    'welcome.desktopBadge': 'Desktop',
     'welcome.cloudOk': 'Cloud accounts are available — sign in and sync workspaces.',
     'welcome.cloudDegraded':
       'Cloud database is unavailable — sign-in and cloud workspaces may fail. BYOK and local editing still work.',

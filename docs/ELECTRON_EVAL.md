@@ -38,12 +38,11 @@
 - [ ] 浏览器版 MAU/反馈明确需要「打开本地文件夹」
 - [ ] 有 1～2 周专门人力（不与 P1 支付并行抢资源）
 
-## 参考命令（未来）
+## 命令（IDE-4b MVP）
 
-```bash
-# 占位 — 尚未在 package.json 中实现
-npm run electron:dev
-npm run electron:build
+```powershell
+npm run electron:dev      # Vite + Electron 窗口
+npm run electron:start    # 仅 Electron（需 dev 已在 :3000）
 ```
 
-当前阶段：**不阻塞 RC**；以 `docs/BROWSER_LIMITATIONS.md` 说明浏览器能力边界即可。
+详见 [PHASE_IDE4B.md](./PHASE_IDE4B.md)。安装包与 `electron:build` 见 4b-4 待办。

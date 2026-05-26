@@ -2,7 +2,9 @@
   "name": "ai-ide",
   "version": "1.0.0",
   "description": "开源 AI 原生轻量 IDE",
+  "author": "AI IDE",
   "type": "module",
+  "main": "electron/main.mjs",
   "scripts": {
     "dev": "vite",
     "dev:api": "tsx scripts/local-dev-server.ts",
@@ -68,7 +70,14 @@
     "db:push": "prisma db push",
     "db:setup": "npm run db:up && npm run db:push && npm run db:seed",
     "db:seed": "tsx scripts/seed-plans.ts",
-    "db:check": "node scripts/check-db.mjs"
+    "db:check": "node scripts/check-db.mjs",
+    "wait:web": "node scripts/wait-for-http.mjs http://127.0.0.1:3000",
+    "electron:start": "node scripts/electron-launch.mjs",
+    "electron:dev": "concurrently -k -n web,wait,electron -c green,yellow,blue \"npm run dev\" \"npm run wait:web\" \"npm run electron:start\"",
+    "build:electron": "vite build --mode electron",
+    "electron:pack": "node scripts/electron-pack.mjs",
+    "electron:pack:installer": "electron-builder --config electron-builder.yml --win nsis --publish never",
+    "electron:pack:offline": "npm run build:electron && electron-builder --config electron-builder.yml --win portable --publish never"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",
@@ -113,6 +122,8 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^9.2.1",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
     "esbuild": "^0.25.12",
     "fake-indexeddb": "^6.2.5",
     "prisma": "^6.6.0",

@@ -33,7 +33,9 @@
 | P1 | 填 `payment.html` 运营主体；Sentry DSN + 测试事件 |
 | P1 | 每日 [BILLING_RECONCILE_DAILY.md](./BILLING_RECONCILE_DAILY.md)（有订单后） |
 | P2 | 国内访问：考虑**自定义域名**（`vercel.app` 在部分网络不稳） |
-| P2 | **IDE-4b** Electron POC（1～2 天）→ 排期桌面版 |
+| **P1** | **IDE-4b** `npm run electron:pack` 真机验收 — [PHASE_IDE4B.md](./PHASE_IDE4B.md) |
+| P2 | Vercel 部署含 4b 前端后测 remote shell 本机盘 |
+| P2 | 4b-5 自动更新（electron-updater） |
 
 ---
 
