@@ -1,7 +1,7 @@
 # AI IDE 路线图与文档导航
 
-> **版本基线**：`v1.0.0-rc.1`  
-> **最后更新**：2026-05（P3 闭环：@ 上下文、协作 Beta、插件市场；见 [PRODUCT_SUMMARY_2026-05.md](./PRODUCT_SUMMARY_2026-05.md)）  
+> **版本基线**：**v1.0.2**（GA + 桌面 + 生产支付宝）  
+> **大总结**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md) · **竞品**：[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md) · **路线图**：[ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md)  
 > 演示站：[https://ai-ide.vercel.app](https://ai-ide.vercel.app)
 
 ---
