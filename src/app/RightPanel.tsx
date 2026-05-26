@@ -129,6 +129,7 @@ export function RightPanel({ fs, notify, onCloseGit, onCloseChat }: RightPanelPr
             <ChatPanel
               aiConfig={aiConfig}
               currentCode={currentFile?.content || ''}
+              notify={notify}
               onGenerateFiles={(newFiles: { name: string; content: string; language: string }[]) => {
                 const payload = newFiles.map((file) => ({
                   path: file.name,

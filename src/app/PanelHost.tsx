@@ -33,6 +33,12 @@ import {
   extractProjectRules,
   PROJECT_RULES_PATH,
 } from '../services/projectRulesService'
+import {
+  collectTasksSources,
+  extractProjectTasks,
+  getDefaultProjectTasksTemplate,
+  PROJECT_TASKS_PATH,
+} from '../services/projectTasksService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { useI18n } from '../i18n'
 
@@ -156,6 +162,12 @@ export function PanelHost({
 
   const projectRulesPreview = extractProjectRules(
     collectRulesSources(
+      files,
+      workspaceContextService.getAllFiles().map((file) => ({ path: file.path, content: file.content })),
+    ),
+  )
+  const projectTasks = extractProjectTasks(
+    collectTasksSources(
       files,
       workspaceContextService.getAllFiles().map((file) => ({ path: file.path, content: file.content })),
     ),
@@ -359,6 +371,25 @@ export function PanelHost({
                 {
                   name: PROJECT_RULES_PATH,
                   content: getDefaultProjectRulesTemplate(language),
+                  language: 'markdown',
+                },
+              ])
+              setActiveFile(files.length)
+            }
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
+          }}
+          projectTasks={projectTasks}
+          onEditProjectTasks={() => {
+            const index = files.findIndex((file) => file.name === PROJECT_TASKS_PATH)
+            if (index >= 0) {
+              setActiveFile(index)
+            } else {
+              setFiles([
+                ...files,
+                {
+                  name: PROJECT_TASKS_PATH,
+                  content: getDefaultProjectTasksTemplate(language),
                   language: 'markdown',
                 },
               ])

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AgentSettingsSection } from './AgentSettingsSection'
 import { McpSettingsSection } from './McpSettingsSection'
 import { ProjectRulesSection } from './ProjectRulesSection'
+import { ProjectTasksSection } from './ProjectTasksSection'
 import { QuotaIndicator } from './ui/QuotaIndicator'
 import { Toggle } from './ui/Toggle'
 import {
@@ -31,6 +32,7 @@ import {
 } from '../lib/inlineCompletionPrefs'
 import { isSemanticSearchEnabled, setSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
+import type { ProjectTaskItem } from '../services/projectTasksService'
 
 interface SettingsCenterProps {
   aiConfig: AIConfigState
@@ -45,6 +47,8 @@ interface SettingsCenterProps {
   onResetDefaults?: () => void
   onEditProjectRules?: () => void
   projectRulesPreview?: string | null
+  onEditProjectTasks?: () => void
+  projectTasks?: ProjectTaskItem[]
   onClose: () => void
 }
 
@@ -63,6 +67,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onResetDefaults,
   onEditProjectRules,
   projectRulesPreview = null,
+  onEditProjectTasks,
+  projectTasks = [],
   onClose,
 }) => {
   const { t } = useI18n()
@@ -475,6 +481,9 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 ))}
                 {onEditProjectRules ? (
                   <ProjectRulesSection rulesPreview={projectRulesPreview} onEditRules={onEditProjectRules} />
+                ) : null}
+                {onEditProjectTasks ? (
+                  <ProjectTasksSection tasks={projectTasks} onEditTasks={onEditProjectTasks} />
                 ) : null}
                 <AgentSettingsSection onRegisterPersist={(persist) => { persistAgentRef.current = persist }} />
                 <McpSettingsSection onRegisterPersist={(persist) => { persistMcpRef.current = persist }} />

@@ -52,7 +52,7 @@ export const AGENT_TOOL_DEFINITIONS: OpenAIToolDefinition[] = [
     type: 'function',
     function: {
       name: 'search_repo',
-      description: 'Search file paths and symbol names in the project index.',
+      description: 'Search file paths and symbol names in the project index (fast, no file content).',
       parameters: {
         type: 'object',
         properties: {
@@ -66,12 +66,32 @@ export const AGENT_TOOL_DEFINITIONS: OpenAIToolDefinition[] = [
   {
     type: 'function',
     function: {
-      name: 'run_command',
-      description: 'Run a shell command in the WebContainer terminal (e.g. npm test). Not the host OS.',
+      name: 'grep_repo',
+      description:
+        'Search file contents for a text or regex pattern. Returns path:line: snippet. Use search_repo for symbols/paths only.',
       parameters: {
         type: 'object',
         properties: {
-          command: { type: 'string', description: 'Full command line, e.g. npm run build' },
+          pattern: { type: 'string', description: 'Text or regex to find in file contents' },
+          glob: { type: 'string', description: 'Optional path filter, e.g. src/**/*.ts' },
+          limit: { type: 'number', description: 'Max hits (default 40, max 200)' },
+          case_sensitive: { type: 'boolean', description: 'Case-sensitive match (default false)' },
+          regex: { type: 'boolean', description: 'Treat pattern as regex (default false)' },
+        },
+        required: ['pattern'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'run_command',
+      description:
+        'Run a shell command in the project terminal (WebContainer in browser, native shell on desktop). Destructive commands are blocked.',
+      parameters: {
+        type: 'object',
+        properties: {
+          command: { type: 'string', description: 'Full command line, e.g. npm run test' },
         },
         required: ['command'],
       },

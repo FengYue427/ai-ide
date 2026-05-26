@@ -3,6 +3,7 @@ export type AgentToolName =
   | 'read_file'
   | 'write_file'
   | 'search_repo'
+  | 'grep_repo'
   | 'run_command'
 
 export type AgentToolCall = {
@@ -15,6 +16,8 @@ export type AgentToolResult = {
   output: string
   error?: string
   stagedWrite?: { path: string; content: string }
+  /** Tool output exceeded MAX_TOOL_OUTPUT and was clipped. */
+  truncated?: boolean
 }
 
 export type OpenAIToolDefinition = {

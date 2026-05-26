@@ -35,6 +35,12 @@ import {
   collectRulesSources,
   extractProjectRules,
 } from '../services/projectRulesService'
+import {
+  appendOpenTasksToPrompt,
+  collectTasksSources,
+  extractProjectTasks,
+} from '../services/projectTasksService'
+import type { ToastKind } from './FeedbackCenter'
 import { projectIndexManager } from '../services/projectIndexManager'
 import type { IndexSearchHit } from '../services/projectIndexService'
 import { canUseEmbeddings } from '../services/embeddingService'
@@ -53,9 +59,10 @@ interface ChatPanelProps {
   aiConfig: AIConfig
   currentCode: string
   onGenerateFiles?: (files: { name: string; content: string; language: string }[]) => void
+  notify?: (kind: ToastKind, title: string, detail?: string) => void
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerateFiles }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerateFiles, notify }) => {
   const { t, language } = useI18n()
   const currentPlan = useIDEStore((s) => s.currentPlan)
 
@@ -128,6 +135,17 @@ ${t('ai.chat.prompt')}`
     return extractProjectRules(sources)
   }, [editorFiles, workspaceStats.selectedFiles])
 
+  const projectTasks = useMemo(() => {
+    const sources = collectTasksSources(
+      editorFiles,
+      workspaceContextService.getAllFiles().map((file) => ({
+        path: file.path,
+        content: file.content,
+      })),
+    )
+    return extractProjectTasks(sources)
+  }, [editorFiles, workspaceStats.selectedFiles])
+
   useEffect(() => projectIndexManager.subscribe(() => setIndexVersion(projectIndexManager.getVersion())), [])
 
   const refreshMentionHits = useCallback((text: string, cursor: number) => {
@@ -141,8 +159,9 @@ ${t('ai.chat.prompt')}`
   }, [indexVersion])
 
   const applyProjectRules = useCallback(
-    (prompt: string) => appendProjectRules(prompt, projectRules, language),
-    [projectRules, language],
+    (prompt: string) =>
+      appendOpenTasksToPrompt(appendProjectRules(prompt, projectRules, language), projectTasks, language),
+    [projectRules, projectTasks, language],
   )
 
   const augmentWithSemanticContext = useCallback(
@@ -291,6 +310,10 @@ ${t('ai.chat.prompt')}`
     setQuota(currentQuota)
 
     if (!currentQuota.allowed) {
+      notify?.('error', t('notify.quotaExceeded'), t('notify.quotaExceededDetail', {
+        used: currentQuota.used,
+        limit: currentQuota.limit,
+      }))
       appendError(
         t('chat.quotaExceeded', { used: currentQuota.used, limit: currentQuota.limit }),
       )
@@ -520,11 +543,9 @@ ${t('ai.chat.prompt')}`
       }
       refreshQuota()
     } catch (error: any) {
-      appendError(
-        t('chat.requestFailed', {
-          message: error.message || t('chat.unknownError'),
-        }),
-      )
+      const message = error.message || t('chat.unknownError')
+      notify?.('error', t('chat.requestFailed', { message: message.split('\n')[0] }), message)
+      appendError(t('chat.requestFailed', { message }))
     } finally {
       setLoading(false)
     }
@@ -746,10 +767,10 @@ ${t('ai.chat.prompt')}`
                               detail: entry.detail,
                               hunks: entry.hunkCount,
                             })
-                          : t(entry.ok ? 'agent.tool.lineOk' : 'agent.tool.lineFail', {
+                          : `${t(entry.ok ? 'agent.tool.lineOk' : 'agent.tool.lineFail', {
                               tool: t(`agent.tool.${entry.tool}` as 'agent.tool.read_file'),
                               detail: entry.detail,
-                            })}
+                            })}${entry.truncated ? ` ${t('agent.tool.truncated')}` : ''}`}
                       </li>
                     ))}
                   </ul>

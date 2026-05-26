@@ -94,6 +94,7 @@ export const translations = {
     'welcome.footer.terms': '服务条款',
     'welcome.footer.browser': '浏览器能力说明',
     'welcome.footer.aiNote': 'AI 对话与 API Key 由您选择的模型服务商直接处理。',
+    'welcome.appUrl': '当前访问地址：{url}',
     'auth.title.login': '欢迎回来',
     'auth.title.register': '创建账号',
     'auth.title.forgot': '找回密码',
@@ -204,7 +205,7 @@ export const translations = {
     'settings.advanced.experimentalDesc': '为后续迭代预留的入口。等功能成熟后再开放实际开关。',
     'settings.network.title': '网络与访问',
     'settings.network.desc':
-      '若站点打开慢或登录失败，可能是国内访问 vercel.app 不稳定。可换网络重试、使用 BYOK 本地编辑，或安装 Windows 桌面版。自定义域名规划见 1.0.2.6 / 主版本 1.0.3。',
+      '若站点打开慢或登录失败，可能是国内访问 vercel.app 不稳定。可换网络重试、使用 BYOK 本地编辑，或安装 Windows 桌面版。绑定自定义域名见 docs/CUSTOM_DOMAIN.md。',
     'settings.badge.comingSoon': '暂未开放',
     'settings.footer.hint': '保存后立即应用到当前工作区。',
     'settings.saveChanges': '保存更改',
@@ -353,6 +354,12 @@ export const translations = {
     'rules.empty': '尚未检测到规则文件。点击下方按钮在编辑器中创建模板。',
     'rules.open': '在编辑器中打开规则',
     'rules.create': '创建 .aide/rules.md',
+    'tasks.title': '任务清单',
+    'tasks.desc': '编辑 .aide/tasks.md（Markdown 复选框），未完成项会注入 Agent 上下文；下方为预览。',
+    'tasks.empty': '尚未检测到任务文件。点击下方按钮在编辑器中创建模板。',
+    'tasks.open': '在编辑器中打开任务',
+    'tasks.create': '创建 .aide/tasks.md',
+    'tasks.summary': '进度 {done}/{total}（剩余 {open}）',
     'chat.needKey': '请先配置 AI API Key，或者切换到本地 Ollama，再开始对话。',
     'chat.quotaExceeded': '今天的 AI 请求额度已用完（{used}/{limit}）。\n\n免费用户按天限额使用。稍后再试，或者升级套餐以获得更高额度。',
     'chat.needConfig': '请先完成 AI 配置，再开始发消息。',
@@ -408,9 +415,11 @@ export const translations = {
     'agent.tool.read_file': '读取',
     'agent.tool.write_file': '写入',
     'agent.tool.search_repo': '搜索',
+    'agent.tool.grep_repo': '内容搜索',
     'agent.tool.run_command': '运行命令',
     'agent.tool.lineOk': '✓ {tool} {detail}',
     'agent.tool.lineFail': '✗ {tool} {detail}',
+    'agent.tool.truncated': '（输出已截断）',
     'agent.error.toolsUnsupported': '当前模型 ({provider}) 不支持工具循环，已回退 Markdown Agent。',
     'quota.today': '今日 AI 用量',
     'quota.exhausted': '今日额度已用完，请明天再试或升级套餐。',
@@ -556,6 +565,8 @@ export const translations = {
     'notify.subscriptionCanceled': '结账已取消',
     'notify.subscriptionCanceledDetail': '你仍可继续使用当前计划。',
     'notify.subscriptionUpdated': '订阅信息已更新',
+    'notify.quotaExceeded': '今日 AI 额度已用完',
+    'notify.quotaExceededDetail': '已用 {used}/{limit}。稍后再试或升级套餐。',
     'notify.autosaveProjectName': '工作区（{count} 个文件）',
     'wm.title': '工作区管理',
     'wm.hero.title': '保存阶段成果，也给恢复留后路',
@@ -1096,6 +1107,13 @@ export const translations = {
 - 回复用户时使用简洁中文
 `,
     'projectRules.sectionTitle': '项目规则（.aide/rules）',
+    'projectTasks.template': `# 任务清单 (.aide/tasks.md)
+
+- [ ] 实现核心功能
+- [ ] 补充测试
+- [ ] 更新文档
+`,
+    'projectTasks.sectionTitle': '待办任务（.aide/tasks）',
     'workspace.error.unnamed': '未命名工作区',
     'workspace.error.fileTooLarge': '文件 {name} 超过 1MB 限制',
     'workspace.error.totalTooLarge': '工作区总大小超过 10MB 限制',
@@ -1283,6 +1301,7 @@ export const translations = {
     'welcome.footer.terms': 'Terms',
     'welcome.footer.browser': 'Browser capabilities',
     'welcome.footer.aiNote': 'AI chat and API keys are handled by your chosen model provider.',
+    'welcome.appUrl': 'Current URL: {url}',
     'auth.title.login': 'Welcome back',
     'auth.title.register': 'Create account',
     'auth.title.forgot': 'Reset password',
@@ -1393,7 +1412,7 @@ export const translations = {
     'settings.advanced.experimentalDesc': 'Reserved for future toggles when features mature.',
     'settings.network.title': 'Network & access',
     'settings.network.desc':
-      'If the site is slow or sign-in fails, vercel.app may be unstable in your region. Retry on another network, use BYOK locally, or install the Windows desktop build. See the welcome screen tip and docs/BROWSER_LIMITATIONS.md.',
+      'If the site is slow or sign-in fails, vercel.app may be unstable in your region. Retry on another network, use BYOK locally, or install the Windows desktop build. Custom domain: docs/CUSTOM_DOMAIN.md.',
     'settings.badge.comingSoon': 'Coming soon',
     'settings.footer.hint': 'Changes apply to the current workspace after save.',
     'settings.saveChanges': 'Save changes',
@@ -1542,6 +1561,12 @@ export const translations = {
     'rules.empty': 'No rules file detected. Create a template in the editor below.',
     'rules.open': 'Open rules in editor',
     'rules.create': 'Create .aide/rules.md',
+    'tasks.title': 'Task checklist',
+    'tasks.desc': 'Edit .aide/tasks.md (Markdown checkboxes). Open items are injected into Agent context; preview below.',
+    'tasks.empty': 'No task file yet. Click below to create a template in the editor.',
+    'tasks.open': 'Open tasks in editor',
+    'tasks.create': 'Create .aide/tasks.md',
+    'tasks.summary': 'Progress {done}/{total} ({open} open)',
     'chat.needKey': 'Configure an API key or switch to local Ollama before chatting.',
     'chat.quotaExceeded':
       "Today's AI quota is used up ({used}/{limit}).\n\nFree tier is daily. Try later or upgrade for more quota.",
@@ -1602,9 +1627,11 @@ export const translations = {
     'agent.tool.read_file': 'Read',
     'agent.tool.write_file': 'Write',
     'agent.tool.search_repo': 'Search',
+    'agent.tool.grep_repo': 'Grep',
     'agent.tool.run_command': 'Run command',
     'agent.tool.lineOk': '✓ {tool} {detail}',
     'agent.tool.lineFail': '✗ {tool} {detail}',
+    'agent.tool.truncated': '(output truncated)',
     'agent.error.toolsUnsupported': 'Provider ({provider}) does not support tool loop; using Markdown agent.',
     'quota.today': 'AI usage today',
     'quota.exhausted': 'Daily quota used. Try tomorrow or upgrade.',
@@ -1751,6 +1778,8 @@ export const translations = {
     'notify.subscriptionCanceled': 'Checkout canceled',
     'notify.subscriptionCanceledDetail': 'You can keep using your current plan.',
     'notify.subscriptionUpdated': 'Subscription refreshed',
+    'notify.quotaExceeded': 'Daily AI quota used up',
+    'notify.quotaExceededDetail': '{used}/{limit} used. Try later or upgrade.',
     'notify.autosaveProjectName': 'Workspace ({count} files)',
     'wm.title': 'Workspaces',
     'wm.hero.title': 'Save progress and keep a recovery path',
@@ -2293,6 +2322,13 @@ export const translations = {
 - Reply concisely in the user's language
 `,
     'projectRules.sectionTitle': 'Project rules (.aide/rules)',
+    'projectTasks.template': `# Task checklist (.aide/tasks.md)
+
+- [ ] Implement core feature
+- [ ] Add tests
+- [ ] Update docs
+`,
+    'projectTasks.sectionTitle': 'Open tasks (.aide/tasks)',
     'workspace.error.unnamed': 'Untitled workspace',
     'workspace.error.fileTooLarge': 'File {name} exceeds 1MB limit',
     'workspace.error.totalTooLarge': 'Workspace total size exceeds 10MB',

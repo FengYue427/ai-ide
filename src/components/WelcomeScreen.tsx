@@ -15,6 +15,7 @@ import {
   Terminal,
 } from 'lucide-react'
 import { shouldShowNetworkTips, useCloudHealth } from '../hooks/useCloudHealth'
+import { getPublicAppOrigin } from '../lib/appOrigin'
 import { useI18n } from '../i18n'
 import { isDesktopApp } from '../services/desktopBridge'
 import type { TranslationKey } from '../i18n'
@@ -56,6 +57,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const { t, locale } = useI18n()
   const cloudHealth = useCloudHealth()
   const showNetworkTips = shouldShowNetworkTips(cloudHealth, isDesktopApp())
+  const appOrigin = getPublicAppOrigin()
   const legalPrivacy = locale === 'en-US' ? '/legal/privacy-en.html' : '/legal/privacy.html'
   const legalTerms = locale === 'en-US' ? '/legal/terms-en.html' : '/legal/terms.html'
 
@@ -351,6 +353,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </main>
 
         <footer className="welcome-footer">
+          {appOrigin ? <span>{t('welcome.appUrl', { url: appOrigin })}</span> : null}
           <a href={legalPrivacy} target="_blank" rel="noreferrer">
             {t('welcome.footer.privacy')}
           </a>

@@ -18,6 +18,8 @@ export type AgentActivityEntry = {
   ok: boolean
   /** Set when write_file is staged for Diff preview (autoApplyWrites off). */
   hunkCount?: number
+  /** Tool output was clipped at MAX_TOOL_OUTPUT. */
+  truncated?: boolean
 }
 
 export type AgentRunCallbacks = {
@@ -32,11 +34,13 @@ export type AgentRunResult = {
   rounds: number
 }
 
-const AGENT_TOOLS_SYSTEM = `You are an autonomous coding agent in a browser IDE with tools.
-- Use list_files and read_file to understand the project before editing.
-- Use search_repo to find symbols and paths.
+const AGENT_TOOLS_SYSTEM = `You are an autonomous coding agent in AI IDE with tools.
+- Use list_files and read_file to explore before editing.
+- Use search_repo for file paths and symbol names (fast index).
+- Use grep_repo to find text or regex matches inside file contents.
 - Use write_file with the FULL file content for each change (not a diff).
-- Use run_command only when the user needs builds/tests in the WebContainer terminal.
+- Use run_command for builds/tests (WebContainer in browser, native shell on desktop). Destructive commands are blocked.
+- Tool outputs may be truncated at ~32k chars; narrow grep/read scope if needed.
 - When done, reply briefly in plain text summarizing what you changed.
 - Do not output ### filename markdown blocks unless the user asks for a written report only.`
 
@@ -57,6 +61,8 @@ function activityDetail(name: AgentToolName, args: Record<string, unknown>): str
       return String(args.path ?? '')
     case 'search_repo':
       return String(args.query ?? '')
+    case 'grep_repo':
+      return String(args.pattern ?? args.query ?? '').slice(0, 80)
     case 'run_command':
       return String(args.command ?? '').slice(0, 120)
     case 'list_files':
@@ -128,6 +134,7 @@ export async function runAgentLoop(
         tool: name,
         detail: activityDetail(name, args),
         ok: result.ok,
+        truncated: result.truncated,
       }
       activity.push(entry)
       callbacks?.onActivity?.(entry)

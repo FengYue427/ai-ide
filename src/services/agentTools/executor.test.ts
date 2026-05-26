@@ -37,6 +37,10 @@ vi.mock('../terminalBridge', () => ({
   runTerminalCommand: vi.fn(),
 }))
 
+vi.mock('../desktopBridge', () => ({
+  isDesktopApp: vi.fn(() => false),
+}))
+
 import { workspaceContextService } from '../workspaceContextService'
 import { executeAgentTool } from './executor'
 
@@ -80,5 +84,23 @@ describe('executeAgentTool', () => {
     expect(result.ok).toBe(true)
     expect(result.stagedWrite?.path).toBe('staged.ts')
     expect(workspaceContextService.addFile).not.toHaveBeenCalled()
+  })
+
+  it('grep_repo finds content in workspace', async () => {
+    const result = await executeAgentTool({
+      name: 'grep_repo',
+      arguments: { pattern: 'export const x' },
+    })
+    expect(result.ok).toBe(true)
+    expect(result.output).toContain('hello.ts:1:')
+  })
+
+  it('run_command rejects blocked patterns', async () => {
+    const result = await executeAgentTool({
+      name: 'run_command',
+      arguments: { command: 'rm -rf /' },
+    })
+    expect(result.ok).toBe(false)
+    expect(result.output).toContain('COMMAND_BLOCKED')
   })
 })

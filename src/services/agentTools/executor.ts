@@ -6,16 +6,19 @@ import { detectLanguageFromPath } from '../projectIndexService'
 import { syncToLocalDisk } from '../localProjectSync'
 import { runTerminalCommand, isTerminalBridgeReady } from '../terminalBridge'
 import { normalizeProjectPath } from '../localProjectPaths'
+import { isDesktopApp } from '../desktopBridge'
+import { formatGrepHit, grepRepoFromWorkspace } from './grepRepoCore'
+import { isRunCommandBlocked } from './runCommandPolicy'
 import type { AgentToolCall, AgentToolName, AgentToolResult } from './types'
 
-const MAX_READ_CHARS = 48_000
-const MAX_WRITE_CHARS = 512_000
-const MAX_LIST = 200
-const MAX_TOOL_OUTPUT = 32_000
+export const MAX_READ_CHARS = 48_000
+export const MAX_WRITE_CHARS = 512_000
+export const MAX_LIST = 200
+export const MAX_TOOL_OUTPUT = 32_000
 
-function truncate(text: string, max = MAX_TOOL_OUTPUT): string {
-  if (text.length <= max) return text
-  return `${text.slice(0, max)}\n…(truncated)`
+function truncate(text: string, max = MAX_TOOL_OUTPUT): { text: string; truncated: boolean } {
+  if (text.length <= max) return { text, truncated: false }
+  return { text: `${text.slice(0, max)}\n…(truncated)`, truncated: true }
 }
 
 async function readFromWorkspace(path: string, start?: number, end?: number): Promise<string> {
@@ -72,9 +75,16 @@ export async function executeAgentTool(
   try {
     const result = await runTool(call.name, call.arguments, options)
     if (typeof result === 'string') {
-      return { ok: true, output: truncate(result) }
+      const clipped = truncate(result)
+      return { ok: true, output: clipped.text, truncated: clipped.truncated }
     }
-    return { ok: true, output: truncate(result.output), stagedWrite: result.stagedWrite }
+    const clipped = truncate(result.output)
+    return {
+      ok: true,
+      output: clipped.text,
+      stagedWrite: result.stagedWrite,
+      truncated: clipped.truncated,
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return { ok: false, output: message, error: message }
@@ -166,10 +176,31 @@ async function runTool(
         .join('\n')
     }
 
+    case 'grep_repo': {
+      const pattern = String(args.pattern ?? args.query ?? '').trim()
+      const glob = typeof args.glob === 'string' ? args.glob : undefined
+      const limit = typeof args.limit === 'number' ? args.limit : 40
+      const caseSensitive = args.case_sensitive === true
+      const regex = args.regex === true
+
+      const hits = grepRepoFromWorkspace({ pattern, glob, limit, caseSensitive, regex })
+      if (hits.length === 0) return '(no matches)'
+      return hits.map(formatGrepHit).join('\n')
+    }
+
     case 'run_command': {
       const command = String(args.command ?? '').trim()
       if (!command) return '(empty command)'
+
+      const blocked = isRunCommandBlocked(command)
+      if (blocked) {
+        throw new Error(`${blocked}: command rejected by safety policy`)
+      }
+
       if (!isTerminalBridgeReady()) {
+        if (isDesktopApp()) {
+          return 'Terminal not ready. Open a local project folder first.'
+        }
         return 'Terminal not ready. Start WebContainer (npm install / dev stack) first.'
       }
       return await runTerminalCommand(command)

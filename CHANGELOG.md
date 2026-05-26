@@ -7,7 +7,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- 下一附属 **1.0.2.5** Agent 工具链：[ROADMAP_V1.0.2.x.md](docs/ROADMAP_V1.0.2.x.md)
+- 下一附属 **1.0.2.7** macOS 桌面收官：[ROADMAP_V1.0.2.x.md](docs/ROADMAP_V1.0.2.x.md)
+
+## [1.0.2.6] — 2026-05-26（1.0.2 附属 · 任务清单 + 域名 + Toast）
+
+- `.aide/tasks.md` 设置预览；未完成项注入 Agent
+- [CUSTOM_DOMAIN.md](docs/CUSTOM_DOMAIN.md)；欢迎页显示当前访问地址
+- Chat 配额用尽 / 请求失败 toast（L16）
+- 文档：[PHASE_V1.0.2.6_TASKS_DOMAIN.md](docs/PHASE_V1.0.2.6_TASKS_DOMAIN.md)
+
+## [1.0.2.5] — 2026-05-26（1.0.2 附属 · Agent 工具链）
+
+- **`grep_repo`** 内容搜索；`run_command` 安全策略 + 桌面/Web 说明
+- `MAX_TOOL_OUTPUT` 32k 导出；活动行截断标记
+- 文档：[PHASE_V1.0.2.5_AGENT_TOOLS.md](docs/PHASE_V1.0.2.5_AGENT_TOOLS.md)
 
 ## [1.0.2.4] — 2026-05-26（1.0.2 附属 · 索引第二档）
 
