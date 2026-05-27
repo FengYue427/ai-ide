@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Bot, CheckSquare, Code2, FilePlus, FolderOpen, Send, Sparkles, User, Wand2, Zap } from 'lucide-react'
+import { AgentToolPanel } from './AgentToolPanel'
 import { aiAgentService } from '../services/aiAgentService'
 import {
   appendMcpToolsToPrompt,
@@ -792,30 +793,7 @@ ${t('ai.chat.prompt')}`
                   <span className="dot" />
                 </span>
               </div>
-              {agentActivity.length > 0 && (
-                <div className="chat-agent-activity">
-                  <div className="chat-agent-activity__title">{t('chat.agentActivityTitle')}</div>
-                  <ul className="chat-agent-activity__list">
-                    {agentActivity.map((entry, idx) => (
-                      <li
-                        key={`${entry.round}-${entry.tool}-${idx}`}
-                        className={entry.ok ? 'chat-agent-activity__item' : 'chat-agent-activity__item chat-agent-activity__item--fail'}
-                      >
-                        {entry.tool === 'write_file' && entry.ok && entry.hunkCount != null && entry.hunkCount > 0
-                          ? t('agent.tool.writeStaged', {
-                              tool: t('agent.tool.write_file'),
-                              detail: entry.detail,
-                              hunks: entry.hunkCount,
-                            })
-                          : `${t(entry.ok ? 'agent.tool.lineOk' : 'agent.tool.lineFail', {
-                              tool: t(`agent.tool.${entry.tool}` as 'agent.tool.read_file'),
-                              detail: entry.detail,
-                            })}${entry.truncated ? ` ${t('agent.tool.truncated')}` : ''}`}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <AgentToolPanel activity={agentActivity} defaultCollapsed={false} />
             </div>
           </div>
         )}

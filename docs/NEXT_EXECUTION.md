@@ -16,6 +16,8 @@
 
 **本包已合入（1.0.5.1）**：`mcp:smoke`、MCP FAQ、索引 building 时 `@` 禁用、设置页 `#capacity-limits`、欢迎页 Release 链接。
 
+**治理落地**：`npm run governance:report` → `docs/reports/FILE_CLASSIFICATION_LAST.md` + `docs/reports/CODE_MANAGEMENT_LAST.md`（见 [V1.0.5.x_RETROSPECTIVE_AND_GOVERNANCE.md](./V1.0.5.x_RETROSPECTIVE_AND_GOVERNANCE.md)）。
+
 **下一步**：1.0.5.3 RFC 扩写 → 1.0.5.4 收官（live 人工 5 项、Release Notes）。
 
 ---

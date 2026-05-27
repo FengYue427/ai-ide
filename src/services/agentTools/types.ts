@@ -5,6 +5,9 @@ export type AgentToolName =
   | 'search_repo'
   | 'grep_repo'
   | 'run_command'
+  | 'move_file'
+  | 'delete_file'
+  | 'create_dir'
 
 export type AgentToolCall = {
   name: AgentToolName

@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.0.5.1",
+  "version": "1.0.6.1",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -63,6 +63,7 @@
     "go-live:preflight": "npm run test:local && npm run smoke:report",
     "rc:live-spotcheck": "node scripts/rc-live-spotcheck.mjs",
     "mcp:smoke": "node scripts/mcp-smoke.mjs",
+    "governance:report": "node scripts/governance-report.mjs",
     "ops:verify-p1": "node scripts/ops-verify-p1.mjs",
     "deploy:check": "node scripts/deploy-check.mjs",
     "p0:gate": "npm run test:local && npm run test:integration:local && node scripts/security-baseline.mjs",

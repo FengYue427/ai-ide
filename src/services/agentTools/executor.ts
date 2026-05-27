@@ -206,6 +206,72 @@ async function runTool(
       return await runTerminalCommand(command)
     }
 
+    case 'move_file': {
+      const from = normalizeProjectPath(String(args.from ?? ''))
+      const to = normalizeProjectPath(String(args.to ?? ''))
+      if (!from) throw new Error('INVALID_PATH: from')
+      if (!to) throw new Error('INVALID_PATH: to')
+      if (from === to) throw new Error('SAME_PATH: from and to are identical')
+
+      const file = workspaceContextService.getFile(from)
+      if (!file) throw new Error(`FILE_NOT_FOUND: ${from}`)
+
+      // Create at new path, remove old
+      await workspaceContextService.addFile({
+        name: to.split('/').pop() ?? to,
+        path: to,
+        content: file.content,
+        language: detectLanguageFromPath(to),
+        selected: file.selected ?? true,
+      })
+      await workspaceContextService.removeFile(from)
+
+      projectIndexManager.patchFile({ path: to, content: file.content, language: detectLanguageFromPath(to) })
+      projectIndexManager.removeFile(from)
+
+      if (localProjectService.isBound()) {
+        await syncToLocalDisk(to, file.content)
+      }
+
+      return `OK: moved ${from} → ${to}`
+    }
+
+    case 'delete_file': {
+      const path = normalizeProjectPath(String(args.path ?? ''))
+      if (!path) throw new Error('INVALID_PATH')
+
+      const file = workspaceContextService.getFile(path)
+      if (!file) throw new Error(`FILE_NOT_FOUND: ${path}`)
+
+      await workspaceContextService.removeFile(path)
+      projectIndexManager.removeFile(path)
+
+      return `OK: deleted ${path}`
+    }
+
+    case 'create_dir': {
+      const dirPath = normalizeProjectPath(String(args.path ?? ''))
+      if (!dirPath) throw new Error('INVALID_PATH')
+
+      // Workspace is a flat file store; represent the directory via a .gitkeep placeholder
+      const keepPath = `${dirPath}/.gitkeep`
+      const existing = workspaceContextService.getFile(keepPath)
+      if (!existing) {
+        await workspaceContextService.addFile({
+          name: '.gitkeep',
+          path: keepPath,
+          content: '',
+          language: 'plaintext',
+          selected: false,
+        })
+        if (localProjectService.isBound()) {
+          await syncToLocalDisk(keepPath, '')
+        }
+      }
+
+      return `OK: created directory ${dirPath}`
+    }
+
     default:
       throw new Error(`UNKNOWN_TOOL: ${name}`)
   }

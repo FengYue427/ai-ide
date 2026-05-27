@@ -97,4 +97,50 @@ export const AGENT_TOOL_DEFINITIONS: OpenAIToolDefinition[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'move_file',
+      description:
+        'Rename or move a file to a new path within the project. Both paths are relative to project root. Fails if the source does not exist.',
+      parameters: {
+        type: 'object',
+        properties: {
+          from: { type: 'string', description: 'Current relative path, e.g. src/old.ts' },
+          to: { type: 'string', description: 'New relative path, e.g. src/new.ts' },
+        },
+        required: ['from', 'to'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_file',
+      description:
+        'Delete a file from the project. Path is relative to project root. Cannot delete directories.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Relative path of the file to delete' },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_dir',
+      description:
+        'Create a directory (and any missing parents) in the project. Path is relative to project root.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Relative path of the directory to create, e.g. src/utils' },
+        },
+        required: ['path'],
+      },
+    },
+  },
 ]

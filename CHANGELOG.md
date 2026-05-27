@@ -7,8 +7,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- **1.0.5.x** 桥接 → [ROADMAP_V1.0.5.x.md](docs/ROADMAP_V1.0.5.x.md)
+- **1.0.6.x** 可见能力跃升 → [ROADMAP_V1.0.6.x.md](docs/ROADMAP_V1.0.6.x.md)
 - **v1.1** → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
+
+## [1.0.6.1] — 2026-05-27（F4 + F1 · Agent 文件工具 + 工具面板）
+
+### Added — F4 Agent 文件管理工具
+
+- **`move_file`**：Agent 可重命名/移动文件（workspace + 磁盘同步）
+- **`delete_file`**：Agent 可删除文件
+- **`create_dir`**：Agent 可新建目录（`.gitkeep` 占位）
+- `AGENT_TOOL_DEFINITIONS` 更新，系统提示补全三工具说明
+
+### Added — F1 Agent 工具调用面板
+
+- 新组件 `AgentToolPanel`：Agent 运行时在 Chat 内显示可折叠工具调用日志
+- 每条工具记录含：图标 · 工具名 · 摘要 · 成功/失败徽章 · hunk 数 · 输出截断提示
+- 点击可展开原始 detail，替代原有扁平文字活动列表
+
+### Docs
+
+- [V1.0.6_MASTER_PLAN.md](docs/V1.0.6_MASTER_PLAN.md) · [ROADMAP_V1.0.6.x.md](docs/ROADMAP_V1.0.6.x.md) · 各级 EXECUTION
 
 ## [1.0.5.1] — 2026-05-27（B1′ 运维 + MCP · 含部分 B2′）
 
