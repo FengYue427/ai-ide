@@ -18,7 +18,7 @@
 ## 摘要（CSDN「文章摘要」栏，≤256 字）
 
 ```text
-AI IDE 是一款开源的浏览器 AI IDE，当前 **v1.0.4**（体验巩固版）：MCP 官方预置、项目规则注入、Agent 上下文入门（焦点文件/可选终端摘要）。支持工具 Agent、hunk Diff、Tab 补全、@ 索引与支付宝订阅；Win/Mac 桌面版可选。在线 https://ai-ide-flame.vercel.app ，源码 https://github.com/FengYue427/ai-ide 。定位入门 Agent，非 Cursor 替代。
+AI IDE 是一款开源的浏览器 AI IDE，当前 **v1.0.4.4**（1.0.4.x 收官）：MCP 官方预置、项目规则注入、Agent 上下文入门（焦点文件/可选终端摘要），并补齐 @/语义检索引导与索引状态卡片。支持工具 Agent、hunk Diff、Tab 补全、@ 索引与支付宝订阅；Win/Mac 桌面版可选。在线 https://ai-ide-flame.vercel.app ，源码 https://github.com/FengYue427/ai-ide 。定位入门 Agent，非 Cursor 替代。
 ```
 
 ---
@@ -37,7 +37,7 @@ AI IDE, 人工智能, Agent, 开源, 前端, DeepSeek, Cursor, 独立开发
 
 ### 一、项目简介
 
-**AI IDE** 是开源的 AI 原生轻量 IDE，**v1.0.4** 体验巩固版已发布。
+**AI IDE** 是开源的 AI 原生轻量 IDE，**v1.0.4.4**（1.0.4.x 收官）已发布。
 
 - **在线体验**：https://ai-ide-flame.vercel.app  
 - **GitHub**：https://github.com/FengYue427/ai-ide  
@@ -51,11 +51,12 @@ AI IDE, 人工智能, Agent, 开源, 前端, DeepSeek, Cursor, 独立开发
 - **BYOK**：API Key 本地保存  
 - 国内 **支付宝** 订阅（专业版 ¥19/月、团队版 ¥49/月，生产 Path B 已验收）  
 
-**v1.0.4 新增：**
+**v1.0.4.x（至 1.0.4.4）新增：**
 
 - **MCP 官方推荐**：设置里一键添加 Streamable HTTP MCP 并测试连接  
 - **项目规则**：`.aide/rules.md` 在设置中创建/编辑，自动注入 Chat/Agent  
 - **Agent 上下文**：当前打开文件 + 可选「终端最近输出」（非 Cascade 全感知）  
+- **检索体验**：语义检索 onboarding、Chat 首次 `@` 引导、设置页「索引与 @」状态卡片  
 
 ---
 
