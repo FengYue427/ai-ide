@@ -7,8 +7,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- **1.0.6.x** 可见能力跃升 → [ROADMAP_V1.0.6.x.md](docs/ROADMAP_V1.0.6.x.md)
-- **v1.1** → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
+- **1.0.6.3** 插件扩充 → [ROADMAP_V1.0.6.x.md](docs/ROADMAP_V1.0.6.x.md)
+
+## [1.0.6.2] — 2026-05-27（F2 文件管理器增强）
+
+### Added
+
+- 工作区文件树 **右键菜单**：重命名、移动、删除、新建子文件夹
+- **F2** 重命名、**Delete** 删除（选中行后）
+- 工具栏 **新建文件夹** + 行内创建表单
+- `workspaceContextService`：`renamePath` / `createDirectory` / `deletePath`
+- 文件操作后自动 **重建项目索引**
 
 ## [1.0.6.1] — 2026-05-27（F4 + F1 · Agent 文件工具 + 工具面板）
 

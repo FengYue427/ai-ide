@@ -10,6 +10,7 @@ import {
   buildWorkspaceFileCatalog,
   summarizeFileContent,
 } from './workspacePromptUtils'
+import { normalizeProjectPath } from './localProjectPaths'
 
  type WorkspaceChangeListener = () => void
 
@@ -261,12 +262,93 @@ class WorkspaceContextService {
   // 删除文件
   async removeFile(path: string) {
     if (!this.context) return
-    
+
     const index = this.context.files.findIndex(f => f.path === path)
     if (index >= 0) {
       this.context.files.splice(index, 1)
       await this.saveToStorage()
+      this.emitChange()
     }
+  }
+
+  /** Rename a file or all files under a folder prefix. Returns number of paths updated. */
+  async renamePath(oldPath: string, newPath: string): Promise<number> {
+    if (!this.context) return 0
+
+    const from = normalizeProjectPath(oldPath.trim())
+    const to = normalizeProjectPath(newPath.trim())
+    if (!from || !to || from === to) return 0
+
+    const direct = this.getFile(from)
+    const hasChildren = this.context.files.some((f) => f.path.startsWith(`${from}/`))
+
+    if (direct && !hasChildren) {
+      if (this.getFile(to)) throw new Error('TARGET_EXISTS')
+      direct.path = to
+      direct.name = to.split('/').pop() || to
+      direct.language = this.detectLanguage(direct.name)
+      await this.saveToStorage()
+      this.emitChange()
+      return 1
+    }
+
+    const prefix = `${from}/`
+    const affected = this.context.files.filter((f) => f.path === from || f.path.startsWith(prefix))
+    if (affected.length === 0) return 0
+
+    if (this.context.files.some((f) => f.path === to || f.path.startsWith(`${to}/`))) {
+      throw new Error('TARGET_EXISTS')
+    }
+
+    for (const file of affected) {
+      const rel = file.path === from ? '' : file.path.slice(prefix.length)
+      const next = rel ? `${to}/${rel}` : to
+      file.path = next
+      file.name = next.split('/').pop() || next
+      file.language = this.detectLanguage(file.name)
+    }
+
+    await this.saveToStorage()
+    this.emitChange()
+    return affected.length
+  }
+
+  /** Create directory placeholder (.gitkeep) so the folder appears in the tree. */
+  async createDirectory(dirPath: string): Promise<string> {
+    const dir = normalizeProjectPath(dirPath.trim())
+    if (!dir) throw new Error('INVALID_PATH')
+
+    const keepPath = `${dir}/.gitkeep`
+    if (!this.getFile(keepPath)) {
+      await this.addFile({
+        name: '.gitkeep',
+        path: keepPath,
+        content: '',
+        language: 'plaintext',
+        selected: false,
+      })
+      this.emitChange()
+    }
+    return keepPath
+  }
+
+  /** Delete a file or all files under a folder path. */
+  async deletePath(path: string): Promise<number> {
+    if (!this.context) return 0
+
+    const target = normalizeProjectPath(path.trim())
+    if (!target) return 0
+
+    const before = this.context.files.length
+    this.context.files = this.context.files.filter(
+      (f) => f.path !== target && !f.path.startsWith(`${target}/`),
+    )
+    const removed = before - this.context.files.length
+    if (removed > 0) {
+      await this.saveToStorage()
+      this.emitChange()
+    }
+    return removed
   }
 
   // 更新文件内容

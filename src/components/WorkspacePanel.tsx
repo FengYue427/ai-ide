@@ -11,6 +11,7 @@ import {
   FileType,
   Folder,
   FolderOpen,
+  FolderPlus,
   HardDrive,
   RefreshCw,
   Square,
@@ -18,7 +19,9 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import { projectIndexManager } from '../services/projectIndexManager'
 import { workspaceContextService, type WorkspaceFile } from '../services/workspaceContextService'
+import { syncToLocalDisk } from '../services/localProjectSync'
 import {
   localProjectService,
   supportsLocalProject,
@@ -65,18 +68,33 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
   const canLocalDisk = supportsLocalProject()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const hasSyncedFiles = useRef(false)
+  const [focusedPath, setFocusedPath] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    path: string
+    kind: 'file' | 'folder'
+  } | null>(null)
+  const [renamingPath, setRenamingPath] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
+  const [newFolderParent, setNewFolderParent] = useState<string | null>(null)
+  const [newFolderName, setNewFolderName] = useState('')
 
   const refreshFiles = useCallback(() => {
     const allFiles = workspaceContextService.getAllFiles()
     setFiles(allFiles)
     setStats(workspaceContextService.getStats())
 
+    const mapped = allFiles.map((file) => ({
+      name: file.path,
+      content: file.content,
+      language: file.language,
+    }))
+    if (mapped.length > 0) {
+      projectIndexManager.forceRebuildFromWorkspace(mapped)
+    }
     if (onFilesChange) {
-      onFilesChange(allFiles.map((file) => ({
-        name: file.name,
-        content: file.content,
-        language: file.language,
-      })))
+      onFilesChange(mapped)
     }
   }, [onFilesChange])
 
@@ -241,12 +259,6 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
     }
   }, [notify, refreshFiles, t])
 
-  const handleRemoveFile = useCallback((path: string) => {
-    workspaceContextService.removeFile(path)
-    refreshFiles()
-    notify('success', t('wp.notify.removed'), path)
-  }, [notify, refreshFiles, t])
-
   const handleToggleSelect = useCallback((path: string) => {
     workspaceContextService.toggleFileSelection(path)
     refreshFiles()
@@ -280,6 +292,144 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
       return next
     })
   }, [])
+
+  const pathKind = useCallback(
+    (path: string): 'file' | 'folder' => {
+      if (workspaceContextService.getFile(path)) return 'file'
+      return files.some((f) => f.path.startsWith(`${path}/`)) ? 'folder' : 'file'
+    },
+    [files],
+  )
+
+  const startRename = useCallback((path: string) => {
+    setRenamingPath(path)
+    setRenameDraft(path.split('/').pop() ?? path)
+    setContextMenu(null)
+  }, [])
+
+  const commitRename = useCallback(async () => {
+    if (!renamingPath) return
+    const nextName = renameDraft.trim()
+    if (!nextName) {
+      setRenamingPath(null)
+      return
+    }
+    const parent = renamingPath.includes('/') ? renamingPath.slice(0, renamingPath.lastIndexOf('/')) : ''
+    const newPath = parent ? `${parent}/${nextName}` : nextName
+
+    try {
+      const before = workspaceContextService.getFile(renamingPath)
+      const count = await workspaceContextService.renamePath(renamingPath, newPath)
+      if (before && count === 1) {
+        projectIndexManager.removeFile(renamingPath)
+        projectIndexManager.patchFile({ path: newPath, content: before.content, language: before.language })
+        await syncToLocalDisk(newPath, before.content)
+      }
+      setRenamingPath(null)
+      refreshFiles()
+      notify('success', t('wp.notify.renamed'), t('wp.notify.renamedDetail', { count }))
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : ''
+      if (msg === 'TARGET_EXISTS') {
+        notify('error', t('wp.rename.exists'))
+      } else {
+        notify('error', t('wp.rename.failed'))
+      }
+    }
+  }, [renamingPath, renameDraft, refreshFiles, notify, t])
+
+  const handleDeletePath = useCallback(
+    async (path: string) => {
+      const kind = pathKind(path)
+      const confirmed = await requestConfirm({
+        title: kind === 'folder' ? t('wp.confirm.deleteFolder.title') : t('wp.confirm.deleteFile.title'),
+        message:
+          kind === 'folder'
+            ? t('wp.confirm.deleteFolder.message', { path })
+            : t('wp.confirm.deleteFile.message', { path }),
+        confirmText: t('wp.confirm.deleteFile.confirm'),
+        tone: 'danger',
+      })
+      if (!confirmed) return
+
+      const removed = await workspaceContextService.deletePath(path)
+      if (removed > 0) {
+        refreshFiles()
+        notify('success', t('wp.notify.deleted'), t('wp.notify.deletedDetail', { count: removed }))
+      }
+      setContextMenu(null)
+      if (focusedPath === path) setFocusedPath(null)
+    },
+    [focusedPath, notify, pathKind, refreshFiles, requestConfirm, t],
+  )
+
+  const handleMovePath = useCallback(
+    async (path: string) => {
+      setContextMenu(null)
+      const target = window.prompt(t('wp.move.prompt'), path)
+      if (!target?.trim() || target.trim() === path) return
+      try {
+        const before = workspaceContextService.getFile(path)
+        const count = await workspaceContextService.renamePath(path, target.trim())
+        if (before && count === 1) {
+          projectIndexManager.removeFile(path)
+          projectIndexManager.patchFile({
+            path: target.trim(),
+            content: before.content,
+            language: before.language,
+          })
+          await syncToLocalDisk(target.trim(), before.content)
+        }
+        refreshFiles()
+        notify('success', t('wp.notify.moved'), target.trim())
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : ''
+        if (msg === 'TARGET_EXISTS') notify('error', t('wp.rename.exists'))
+        else notify('error', t('wp.rename.failed'))
+      }
+    },
+    [notify, refreshFiles, t],
+  )
+
+  const submitNewFolder = useCallback(async () => {
+    const name = newFolderName.trim()
+    if (!name) return
+    const fullPath = newFolderParent ? `${newFolderParent}/${name}` : name
+    try {
+      await workspaceContextService.createDirectory(fullPath)
+      setExpandedFolders((current) => new Set(current).add(fullPath))
+      setNewFolderParent(null)
+      setNewFolderName('')
+      refreshFiles()
+      notify('success', t('wp.notify.folderCreated'), fullPath)
+    } catch {
+      notify('error', t('wp.newFolder.failed'))
+    }
+  }, [newFolderName, newFolderParent, notify, refreshFiles, t])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (renamingPath || newFolderParent !== null) return
+      if (!focusedPath) return
+      if (event.key === 'F2') {
+        event.preventDefault()
+        startRename(focusedPath)
+      }
+      if (event.key === 'Delete') {
+        event.preventDefault()
+        void handleDeletePath(focusedPath)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [focusedPath, handleDeletePath, newFolderParent, renamingPath, startRename])
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const close = () => setContextMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [contextMenu])
 
   const fileTree = useMemo(() => {
     const root: FileTreeNode[] = []
@@ -341,15 +491,53 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
 
     if (node.type === 'folder') {
       const isExpanded = expandedFolders.has(node.path)
+      const isFocused = focusedPath === node.path
+      const isRenaming = renamingPath === node.path
       return (
         <div key={node.path}>
           <div
-            onClick={() => toggleFolder(node.path)}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', paddingLeft, cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-color)' }}
+            onClick={() => {
+              setFocusedPath(node.path)
+              toggleFolder(node.path)
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setFocusedPath(node.path)
+              setContextMenu({ x: event.clientX, y: event.clientY, path: node.path, kind: 'folder' })
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 12px',
+              paddingLeft,
+              cursor: 'pointer',
+              fontSize: '13px',
+              borderBottom: '1px solid var(--border-color)',
+              background: isFocused ? 'rgba(124, 156, 255, 0.14)' : 'transparent',
+              outline: isFocused ? '1px solid var(--accent-color)' : 'none',
+            }}
           >
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             <Folder size={16} style={{ color: '#fbbf24' }} />
-            <span style={{ flex: 1 }}>{node.name}</span>
+            {isRenaming ? (
+              <input
+                autoFocus
+                value={renameDraft}
+                onChange={(event) => setRenameDraft(event.target.value)}
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => {
+                  event.stopPropagation()
+                  if (event.key === 'Enter') void commitRename()
+                  if (event.key === 'Escape') setRenamingPath(null)
+                }}
+                onBlur={() => void commitRename()}
+                style={{ flex: 1, fontSize: '13px', padding: '2px 6px', borderRadius: '6px', border: '1px solid var(--accent-color)' }}
+              />
+            ) : (
+              <span style={{ flex: 1 }}>{node.name}</span>
+            )}
           </div>
           {isExpanded && node.children?.map((child) => renderTreeNode(child, depth + 1))}
         </div>
@@ -357,9 +545,20 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
     }
 
     const file = node.file!
+    if (file.name === '.gitkeep') return null
+
+    const isFocused = focusedPath === file.path
+    const isRenaming = renamingPath === file.path
     return (
       <div
         key={node.path}
+        onClick={() => setFocusedPath(file.path)}
+        onContextMenu={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          setFocusedPath(file.path)
+          setContextMenu({ x: event.clientX, y: event.clientY, path: file.path, kind: 'file' })
+        }}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -367,16 +566,55 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
           padding: '8px 12px',
           paddingLeft,
           borderBottom: '1px solid var(--border-color)',
-          background: file.selected !== false ? 'rgba(124, 156, 255, 0.10)' : 'transparent',
+          background: isFocused
+            ? 'rgba(124, 156, 255, 0.14)'
+            : file.selected !== false
+              ? 'rgba(124, 156, 255, 0.10)'
+              : 'transparent',
+          outline: isFocused ? '1px solid var(--accent-color)' : 'none',
         }}
       >
-        <button onClick={() => handleToggleSelect(file.path)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }} title={t('wp.toggleSelect')}>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            handleToggleSelect(file.path)
+          }}
+          style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}
+          title={t('wp.toggleSelect')}
+        >
           {file.selected !== false ? <CheckSquare size={16} style={{ color: 'var(--accent-color)' }} /> : <Square size={16} />}
         </button>
         {getFileIcon(file.language)}
-        <span style={{ flex: 1, minWidth: 0, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+        {isRenaming ? (
+          <input
+            autoFocus
+            value={renameDraft}
+            onChange={(event) => setRenameDraft(event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              event.stopPropagation()
+              if (event.key === 'Enter') void commitRename()
+              if (event.key === 'Escape') setRenamingPath(null)
+            }}
+            onBlur={() => void commitRename()}
+            style={{ flex: 1, fontSize: '13px', padding: '2px 6px', borderRadius: '6px', border: '1px solid var(--accent-color)' }}
+          />
+        ) : (
+          <span style={{ flex: 1, minWidth: 0, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {node.name}
+          </span>
+        )}
         <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{formatSize(file.size)}</span>
-        <button onClick={() => handleRemoveFile(file.path)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }} title={t('wp.removeFromContext')}>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            void handleDeletePath(file.path)
+          }}
+          style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}
+          title={t('wp.ctx.delete')}
+        >
           <Trash2 size={14} />
         </button>
       </div>
@@ -480,7 +718,7 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
 
           {files.length > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button className="btn btn-secondary" onClick={() => handleSelectAll(true)}>
                   <CheckSquare size={14} style={{ marginRight: '4px' }} />
                   {t('wp.selectAll')}
@@ -489,10 +727,68 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
                   <Square size={14} style={{ marginRight: '4px' }} />
                   {t('wp.deselectAll')}
                 </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setNewFolderParent('')
+                    setNewFolderName('')
+                  }}
+                >
+                  <FolderPlus size={14} style={{ marginRight: '4px' }} />
+                  {t('wp.newFolder.btn')}
+                </button>
               </div>
               <button className="btn btn-danger" onClick={handleClear}>
                 <Trash2 size={14} style={{ marginRight: '4px' }} />
                 {t('wp.clear')}
+              </button>
+            </div>
+          )}
+
+          {newFolderParent !== null && (
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                alignItems: 'center',
+                marginBottom: '8px',
+                padding: '8px 10px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-secondary)',
+              }}
+            >
+              <FolderPlus size={14} color="var(--accent-color)" />
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                {newFolderParent ? `${newFolderParent}/` : ''}
+              </span>
+              <input
+                autoFocus
+                value={newFolderName}
+                onChange={(event) => setNewFolderName(event.target.value)}
+                placeholder={t('wp.newFolder.placeholder')}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void submitNewFolder()
+                  if (event.key === 'Escape') {
+                    setNewFolderParent(null)
+                    setNewFolderName('')
+                  }
+                }}
+                style={{ flex: 1, fontSize: '13px', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+              />
+              <button type="button" className="btn btn-primary" onClick={() => void submitNewFolder()}>
+                {t('wp.newFolder.create')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setNewFolderParent(null)
+                  setNewFolderName('')
+                }}
+              >
+                {t('wp.newFolder.cancel')}
               </button>
             </div>
           )}
@@ -514,6 +810,65 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
           <button className="btn btn-secondary" onClick={onClose}>{t('wp.close')}</button>
         </div>
       </div>
+
+      {contextMenu ? (
+        <div
+          role="menu"
+          style={{
+            position: 'fixed',
+            left: contextMenu.x,
+            top: contextMenu.y,
+            zIndex: 10000,
+            minWidth: '168px',
+            padding: '6px',
+            borderRadius: '10px',
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-primary)',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {[
+            { key: 'rename', label: t('wp.ctx.rename'), action: () => startRename(contextMenu.path) },
+            { key: 'move', label: t('wp.ctx.move'), action: () => void handleMovePath(contextMenu.path) },
+            ...(contextMenu.kind === 'folder'
+              ? [
+                  {
+                    key: 'newfolder',
+                    label: t('wp.ctx.newFolder'),
+                    action: () => {
+                      setNewFolderParent(contextMenu.path)
+                      setNewFolderName('')
+                      setContextMenu(null)
+                    },
+                  },
+                ]
+              : []),
+            { key: 'delete', label: t('wp.ctx.delete'), action: () => void handleDeletePath(contextMenu.path) },
+          ].map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="menuitem"
+              onClick={item.action}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                padding: '8px 10px',
+                border: 'none',
+                borderRadius: '8px',
+                background: 'transparent',
+                color: item.key === 'delete' ? 'var(--danger-color)' : 'var(--text-primary)',
+                cursor: 'pointer',
+                fontSize: '13px',
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
