@@ -13,6 +13,10 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },
+  // Workers must use ES format when the app build uses code-splitting (manualChunks).
+  worker: {
+    format: 'es',
+  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
