@@ -13,7 +13,7 @@
 | 1.0.2.x 能力 | ✅ | 至 `v1.0.2.7`（Diff/FIM/索引/Agent/桌面） |
 | **1.0.3.x 运营稳定化** | ✅ 代码已发 | **`v1.0.3.4`**（S1～S4） |
 | **1.0.3 主版本 GA** | 🔶 可选 | 对外叙事 `v1.0.3` + `VITE_GA_LIVE=true` 未打 |
-| **1.0.4** | ⏳ 规划 | 本文件 |
+| **1.0.4** | 🔶 **Kickoff** | [V1.0.4_MASTER_PLAN.md](./V1.0.4_MASTER_PLAN.md) |
 
 **1.0.2.x 已交付的「IDE-5」能力**（勿在 1.0.4 重复立项）：块级 Diff、Tab FIM、索引 500/2000、`grep_repo`、tasks.md、Win+Mac 桌面。见 [PLAN_IDE5_AND_COMPETITORS.md](./PLAN_IDE5_AND_COMPETITORS.md)。
 
@@ -96,7 +96,7 @@ gantt
 
 | 周 | 交付 |
 |----|------|
-| W0 | [V1.0.4_MASTER_PLAN.md](./V1.0.4_MASTER_PLAN.md)（待建）+ Kickoff checklist |
+| W0 | [V1.0.4_MASTER_PLAN.md](./V1.0.4_MASTER_PLAN.md) + [V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md) ✅ |
 | W1 | rules UI + MCP 目录 |
 | W2 | 活动行/终端上下文 + RC |
 | W3 | **`v1.0.4`** tag、Release、公告 |
@@ -137,8 +137,8 @@ gantt
 | 文档 | 用途 |
 |------|------|
 | [VERSIONING.md](./VERSIONING.md) | `1.0.4` / `1.0.4.N` 约定 |
-| `V1.0.4_KICKOFF.md` | 执行 checklist（待建） |
-| `ROADMAP_V1.0.4.x.md` | 四级详表（待建） |
+| [V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md) | 执行 checklist |
+| [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md) | 四级详表 |
 | [NEXT_EXECUTION.md](./NEXT_EXECUTION.md) | 当前周任务 |
 
 每附属：`CHANGELOG [1.0.4.N]` + `go-live:preflight` + tag `v1.0.4.N`。

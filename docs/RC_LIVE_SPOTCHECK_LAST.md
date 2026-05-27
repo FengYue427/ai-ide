@@ -1,17 +1,17 @@
 # v1.0.3 RC live spotcheck
 
 - **URL**: https://ai-ide-flame.vercel.app
-- **Time**: 2026-05-27T02:40:44.962Z
-- **Expect version**: 1.0.3.2
+- **Time**: 2026-05-27T03:05:04.528Z
+- **Expect version**: 1.0.3.4
 
 ## Automated
 
-- [x] **health** — ok db=connected version=1.0.0-rc.1
-- [~] **deploy version** — got 1.0.0-rc.1, expect 1.0.3.2 — redeploy then re-run (or --allow-stale-version)
+- [x] **health** — ok db=connected version=1.0.3.4
+- [x] **deploy version** — 1.0.3.4
 - [x] **Chat (API)** — session endpoint OK
 - [x] **Chat (quota)** — anonymous free plan
 - [x] **支付宝 (API)** — billing.alipay=true, wechat=false (1.0.3 决策)
-- [x] **frontend bundle** — 745 KB main chunk
+- [x] **frontend bundle** — 752 KB main chunk
 - [x] **Agent + hunk (bundle)** — 块级 Diff 预览
 - [x] **Tab FIM (bundle)** — 设置 → 编辑器 Tab 补全
 - [x] **@ 索引 (bundle)** — @ 提及与索引上限
@@ -24,4 +24,11 @@
 - [ ] **4. @ 索引** _(manual)_ — 导入 ≥10 文件 → Chat 输入 `@` 选文件 → 确认上下文注入与索引进度
 - [ ] **5. 支付宝** _(manual)_ — 设置 → 查看套餐 → 专业版下单（沙箱或生产 Path B）→ 回调后 plan=pro
 
-**Automated**: pass, 1 warn
+**Automated**: pass
+
+---
+
+## 附录 — 部署收口（2026-05-27）
+
+- Vercel 构建修复（`vite worker.format: es`）+ `/api/health` 版本对齐后，生产 **`health.version=1.0.3.4`**。
+- **阶段 A** 自动验收完成；**阶段 B** 启动 → [V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md)。

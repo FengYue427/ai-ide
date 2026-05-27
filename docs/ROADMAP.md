@@ -1,6 +1,6 @@
 # AI IDE 路线图与文档导航
 
-> **当前稳定**：**v1.0.3.4** · **短规划（→1.0.4.x）**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md) · **长远（v1.1）**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)  
+> **生产稳定**：**v1.0.3.4** ✅ · **开发主线**：**v1.0.4 Kickoff** · **短规划**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md) · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)  
 > **世代**： [ROADMAP_V1.0.2.x](./ROADMAP_V1.0.2.x.md) · [ROADMAP_V1.0.3.x](./ROADMAP_V1.0.3.x.md) ✅ · [ROADMAP_V1.0.4.x](./ROADMAP_V1.0.4.x.md) ⏳  
 > **大总结**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md) · **竞品**：[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)（**2.75**）  
 > 演示站：[https://ai-ide.vercel.app](https://ai-ide.vercel.app)
@@ -27,6 +27,8 @@
 | **[ROADMAP_V1.0.3.md](./ROADMAP_V1.0.3.md)** | 1.0.3 精简路线图 | 产品 |
 | **[ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md)** | **1.0.3.1～1.0.3.4**（**已收官**） | 运维 / 研发 |
 | **[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md)** | **短规划**：1.0.3 收口 → 1.0.4 + 1.0.4.x | 产品 / 全员 |
+| **[V1.0.4_MASTER_PLAN.md](./V1.0.4_MASTER_PLAN.md)** | **1.0.4 主版本** Kickoff | 产品 / 全员 |
+| **[V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md)** | 1.0.4 执行 checklist | 研发 |
 | **[ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)** | **1.0.4.1～1.0.4.4**（规划） | 研发 |
 | **[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)** | **长远规划**：v1.1 世代 | 产品 / 架构 |
 | **[V1.1_RFC_STUB.md](./V1.1_RFC_STUB.md)** | v1.1 RFC 占位 | 产品 |

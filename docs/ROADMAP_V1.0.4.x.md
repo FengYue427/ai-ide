@@ -1,6 +1,6 @@
 # 1.0.4.x 附属路线图（1.0.4.1 → 1.0.4.4）— 规划
 
-> **前置**：主版本 **[v1.0.4 GA](PLAN_SHORT_V1.0.3-V1.0.4.md)**（Kickoff 待启动）  
+> **前置**：主版本 **[v1.0.4 GA](V1.0.4_MASTER_PLAN.md)**（**Kickoff 中**）  
 > **短规划全文**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md) §4  
 > **版本策略**：[VERSIONING.md](./VERSIONING.md)
 
@@ -10,7 +10,7 @@
 
 | 版本 | 代号 | 状态 | 主题 |
 |:----:|------|:----:|------|
-| **1.0.4** | — | ⏳ 规划 | 体验巩固主版本 · 目标竞品 **~2.78** |
+| **1.0.4** | — | 🔶 Kickoff | 体验巩固主版本 · 目标竞品 **~2.78** |
 | **1.0.4.1** | **E1 MCP** | ⏳ | 官方 MCP 预置 + 设置向导 |
 | **1.0.4.2** | **E2 感知** | ⏳ | 活动行 + 终端摘要注入 Chat |
 | **1.0.4.3** | **E3 检索** | ⏳ | 索引重试、语义引导、i18n 补全 |
@@ -26,6 +26,7 @@ Background Agent · VSIX · DAP · Tab++ · Kiro Hooks — 见 [ROADMAP_V1.1.md]
 
 ---
 
-## 待建
+## 文档
 
-- `V1.0.4_MASTER_PLAN.md` · `V1.0.4_KICKOFF.md` · 各 `V1.0.4.N_EXECUTION.md`
+- [V1.0.4_MASTER_PLAN.md](./V1.0.4_MASTER_PLAN.md) · [V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md)
+- 各 `V1.0.4.N_EXECUTION.md`（GA 后按需）
