@@ -21,11 +21,11 @@
 
 | 版本 | 代号 | 状态 | 主题（一句话） | 建议节奏 |
 |:----:|------|:----:|----------------|----------|
-| **1.0.3** | — | 🔶 RC→GA | 稳定版对外 tag、双平台 Release | Master Plan |
+| **1.0.3** | — | 🔶 RC→GA | 稳定版对外 tag、双平台 Release | [V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md) |
 | **1.0.3.1** | **S1 观测** | ✅ 并入 **1.0.3.2** | Sentry / Cron / 生产 health 与版本号对齐 | tag `v1.0.3.2` |
 | **1.0.3.2** | **S2 域名** | ✅ 已发 | 自定义域 + `APP_URL` 全链路 + 403/COOP 回归 | 2026-05-27 |
-| **1.0.3.3** | **S3 计费** | ⏳ 规划 | `billing:verify-cron`、对账/宽限期边缘案例、支付页勘误 | **~1～2 周** |
-| **1.0.3.4** | **S4 收官** | ⏳ 规划 | 发布矩阵、竞品 live 再测入档、关闭 1.0.3.x milestone | **~1 周** |
+| **1.0.3.3** | **S3 计费** | ✅ 并入 **1.0.3.4** | 对账 SOP、法务页、微信文案 | tag `v1.0.3.4` |
+| **1.0.3.4** | **S4 收官** | ✅ 已发 | 发布矩阵、live 复测、milestone、v1.1 RFC | 2026-05-27 |
 
 > **Git tag**：推荐 `v1.0.3.1` … `v1.0.3.4`（与 `package.json` 同步）；Web 与桌面同 tag 发 Release（若有桌面差分再单开 issue）。
 
@@ -111,3 +111,6 @@ npm run rc:live-spotcheck
 | [V1.0.3_RC.md](./V1.0.3_RC.md) | RC 验收 |
 | [GA_POST_LAUNCH_72H.md](./GA_POST_LAUNCH_72H.md) | 上线后观测 |
 | [ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md) | 与中长线并排阅读；**1.0.3 GA 之后的第四段收口以本文为准** |
+| [V1.0.3.3_EXECUTION.md](./V1.0.3.3_EXECUTION.md) | S3 计费与对账 |
+| [V1.0.3.4_EXECUTION.md](./V1.0.3.4_EXECUTION.md) | S4 收官 |
+| [V1.1_RFC_STUB.md](./V1.1_RFC_STUB.md) | v1.1 占位 |

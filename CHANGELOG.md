@@ -8,7 +8,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### 规划
 
 - Phase 3 GA → [V1.0.3_KICKOFF.md](docs/V1.0.3_KICKOFF.md)
-- 下一附属：**1.0.3.3**（计费 SOP）→ [ROADMAP_V1.0.3.x.md](docs/ROADMAP_V1.0.3.x.md)
+- 下一世代：**v1.1 RFC** → [V1.1_RFC_STUB.md](docs/V1.1_RFC_STUB.md)
+
+## [1.0.3.4] — 2026-05-27（1.0.3.x 收官 · S3+S4 合并部署）
+
+### 计费（S3）
+
+- 对账 SOP：[BILLING_RECONCILE_DAILY.md](docs/BILLING_RECONCILE_DAILY.md) · 订阅生命周期：[BILLING_SUBSCRIPTION_LIFECYCLE.md](docs/BILLING_SUBSCRIPTION_LIFECYCLE.md)
+- 法务页 `payment*.html` 版本行与套餐（¥19 / ¥49）对齐
+- 微信 live **仍不接** — [decisions/WECHAT_PAY_v1.0.3.md](docs/decisions/WECHAT_PAY_v1.0.3.md)
+- 执行清单：[V1.0.3.3_EXECUTION.md](docs/V1.0.3.3_EXECUTION.md)（内容并入本 tag）
+
+### 发布收官（S4）
+
+- [publish/](docs/publish/) 矩阵升版指引；live 抽测入档 [RC_LIVE_SPOTCHECK_LAST.md](docs/RC_LIVE_SPOTCHECK_LAST.md)
+- **1.0.3.x 四级完结**；[V1.1_RFC_STUB.md](docs/V1.1_RFC_STUB.md)
+- 执行清单：[V1.0.3.4_EXECUTION.md](docs/V1.0.3.4_EXECUTION.md)
 
 ## [1.0.3.2] — 2026-05-27（1.0.3.x · S1+S2 合并部署）
 

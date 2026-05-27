@@ -18,7 +18,7 @@
 ## 摘要（CSDN「文章摘要」栏，≤256 字）
 
 ```text
-AI IDE 是一款开源的浏览器 AI IDE，v1.0 正式版已上线。支持工具 Agent 多轮读写本机项目、BYOK、增量索引与 Tab 补全；可选 Windows 便携版（约 2000 文件 + 本机终端）。技术栈：React+Vite+Monaco、Vercel Serverless、Prisma、Electron。在线体验 https://ai-ide-flame.vercel.app ，源码 https://github.com/FengYue427/ai-ide 。定位入门 Agent，非 VS Code 替代。
+AI IDE 是一款开源的浏览器 AI IDE，当前稳定运营版 **v1.0.3.4**（1.0.3.x 收官）。支持工具 Agent 多轮读写本机项目、BYOK、增量索引与 Tab 补全；可选 Windows 便携版（约 2000 文件 + 本机终端）。技术栈：React+Vite+Monaco、Vercel Serverless、Prisma、Electron。在线体验 https://ai-ide-flame.vercel.app ，源码 https://github.com/FengYue427/ai-ide 。定位入门 Agent，非 VS Code 替代。
 ```
 
 ---
@@ -37,7 +37,7 @@ AI IDE, 人工智能, Agent, 开源, 前端, DeepSeek, Cursor, 独立开发
 
 ### 一、项目简介
 
-**AI IDE** 是开源的 AI 原生轻量 IDE，**v1.0 正式版**已发布。
+**AI IDE** 是开源的 AI 原生轻量 IDE，**v1.0.3.4**（1.0.3.x 运营稳定化收官）已发布。
 
 - **在线体验**：https://ai-ide-flame.vercel.app  
 - **GitHub**：https://github.com/FengYue427/ai-ide  
