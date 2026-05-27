@@ -28,6 +28,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - 基于 `1.0.4-rc.1`；无破坏性 API 变更
 
+## [1.0.4.3] — 2026-05-27（E3 检索 · onboarding 与索引卡片）
+
+### Added
+
+- 设置页语义检索 onboarding：无 Key/未开启提示（BYOK）
+- Chat 首次 `@` 引导：索引就绪后可 dismiss（注入上下文提示）
+- 设置页「索引与 @」状态卡片：展示索引状态、错误可重试，并链接浏览器能力边界
+
+### Fixed
+
+- 无需重做索引逻辑；仅补齐引导与可见性（保持与现有 `@` 注入/索引重试一致）
+
 ## [1.0.4-rc.1] — 2026-05-27（体验巩固 RC）
 
 ### Added

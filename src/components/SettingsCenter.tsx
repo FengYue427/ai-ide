@@ -31,6 +31,9 @@ import {
   setTabCompletionMaxLines,
 } from '../lib/inlineCompletionPrefs'
 import { isSemanticSearchEnabled, setSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
+import { canUseEmbeddings } from '../services/embeddingService'
+import { projectIndexManager } from '../services/projectIndexManager'
+import { workspaceContextService } from '../services/workspaceContextService'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
 import type { ProjectTaskItem } from '../services/projectTasksService'
 
@@ -162,6 +165,45 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   )
 
   const activeMeta = useMemo(() => tabs.find((tab) => tab.id === activeTab) ?? tabs[0], [activeTab, tabs])
+
+  const [indexStats, setIndexStats] = useState(projectIndexManager.getIndexStats())
+  const [indexBuildState, setIndexBuildState] = useState(projectIndexManager.getBuildState())
+
+  useEffect(() => {
+    return projectIndexManager.subscribe(() => {
+      setIndexStats(projectIndexManager.getIndexStats())
+      setIndexBuildState(projectIndexManager.getBuildState())
+    })
+  }, [])
+
+  const semanticEmbeddingAvailable = useMemo(
+    () => canUseEmbeddings({ provider: aiConfig.provider, apiKey: aiConfig.apiKey, endpoint: aiConfig.endpoint }),
+    [aiConfig.apiKey, aiConfig.endpoint, aiConfig.provider],
+  )
+
+  const indexStatusText = useMemo(() => {
+    if (indexBuildState.status === 'building') {
+      return indexBuildState.progress
+        ? t('chat.indexBuildingProgress', {
+            indexed: indexBuildState.progress.indexed,
+            total: indexBuildState.progress.total,
+          })
+        : t('chat.indexBuilding')
+    }
+
+    if (indexBuildState.status === 'error') {
+      return t('chat.indexError', { message: indexBuildState.lastError ?? '' })
+    }
+
+    if (indexStats.capped) {
+      return t('chat.indexCapped', {
+        indexed: indexStats.indexedFiles,
+        eligible: indexStats.eligibleFiles,
+      })
+    }
+
+    return t('chat.indexOk', { count: indexStats.indexedFiles })
+  }, [indexBuildState.lastError, indexBuildState.progress, indexBuildState.status, indexStats.capped, indexStats.eligibleFiles, indexStats.indexedFiles, t])
 
   const refreshQuota = useCallback(() => {
     void fetchAIQuota(currentPlan, !!currentUser).then(setQuota)
@@ -455,12 +497,61 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   <div>
                     <div className="settings-row-title">{t('settings.feature.semantic.title')}</div>
                     <div className="settings-row-desc">{t('settings.feature.semantic.desc')}</div>
+                    {!semanticEmbeddingAvailable ? (
+                      <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        {t('settings.semantic.onboarding.needKey')}
+                      </div>
+                    ) : !semanticSearchEnabled ? (
+                      <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        {t('settings.semantic.onboarding.enableHint')}
+                      </div>
+                    ) : null}
                   </div>
                   <Toggle
                     checked={semanticSearchEnabled}
-                    onChange={() => setSemanticSearchEnabledState((value) => !value)}
+                    disabled={!semanticEmbeddingAvailable}
+                    onChange={() => {
+                      if (!semanticEmbeddingAvailable) return
+                      setSemanticSearchEnabledState((value) => !value)
+                    }}
                     aria-label={t('settings.feature.semantic.title')}
                   />
+                </div>
+
+                <div className="settings-card settings-card--row" style={{ marginTop: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="settings-row-title">{t('settings.index.card.title')}</div>
+                    <div className="settings-row-desc">{t('settings.index.card.desc')}</div>
+                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {indexStatusText}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px', justifyContent: 'center' }}>
+                    {indexBuildState.status === 'error' ? (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => {
+                          const files = workspaceContextService.getAllFiles().map((f) => ({
+                            name: f.path,
+                            content: f.content,
+                            language: f.language,
+                          }))
+                          projectIndexManager.forceRebuildFromWorkspace(files)
+                        }}
+                      >
+                        {t('settings.index.retry')}
+                      </button>
+                    ) : null}
+                    <a
+                      href="https://github.com/FengYue427/ai-ide/blob/main/docs/BROWSER_LIMITATIONS.md"
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: '11px', color: 'var(--accent-color)' }}
+                    >
+                      {t('settings.index.limitLinkLabel')}
+                    </a>
+                  </div>
                 </div>
                 {featureList.map((feature) => (
                   <div key={feature.name} className="settings-card settings-card--row">

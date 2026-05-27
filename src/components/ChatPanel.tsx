@@ -111,6 +111,14 @@ ${t('ai.chat.prompt')}`
   const [subscriptionExpiredBanner, setSubscriptionExpiredBanner] = useState<string | null>(null)
   const [mentionHits, setMentionHits] = useState<IndexSearchHit[]>([])
   const [mentionIndex, setMentionIndex] = useState(0)
+  const [activeMentionQuery, setActiveMentionQuery] = useState<string | null>(null)
+  const [mentionOnboardingDismissed, setMentionOnboardingDismissed] = useState(() => {
+    try {
+      return typeof localStorage !== 'undefined' && localStorage.getItem('ai-ide:mention-onboarding-dismissed') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [indexVersion, setIndexVersion] = useState(() => projectIndexManager.getVersion())
   const indexStats = useMemo(() => projectIndexManager.getIndexStats(), [indexVersion])
   const indexBuildState = useMemo(() => projectIndexManager.getBuildState(), [indexVersion])
@@ -153,9 +161,11 @@ ${t('ai.chat.prompt')}`
   const refreshMentionHits = useCallback((text: string, cursor: number) => {
     const query = getActiveMentionQuery(text, cursor)
     if (query === null) {
+      setActiveMentionQuery(null)
       setMentionHits([])
       return
     }
+    setActiveMentionQuery(query)
     setMentionHits(projectIndexManager.search(query, 8))
     setMentionIndex(0)
   }, [indexVersion])
@@ -889,6 +899,43 @@ ${t('ai.chat.prompt')}`
             ))}
           </div>
         )}
+
+        {activeMentionQuery !== null &&
+        !mentionOnboardingDismissed &&
+        indexStats.indexedFiles >= 10 &&
+        mentionHits.length === 0 &&
+        indexBuildState.status === 'ready' ? (
+          <div
+            style={{
+              marginBottom: '10px',
+              padding: '10px 12px',
+              borderRadius: '12px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>{t('chat.mentionOnboardingTitle')}</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '10px' }}>
+              {t('chat.mentionOnboardingBody')}
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: '6px 10px' }}
+              onClick={() => {
+                setMentionOnboardingDismissed(true)
+                try {
+                  localStorage.setItem('ai-ide:mention-onboarding-dismissed', 'true')
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              {t('chat.mentionOnboardingDismiss')}
+            </button>
+          </div>
+        ) : null}
 
         <div className="chat-input-row">
           <textarea
