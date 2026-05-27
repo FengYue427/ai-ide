@@ -1,7 +1,7 @@
 # Production smoke report
 
 - **URL**: https://ai-ide-flame.vercel.app
-- **Time**: 2026-05-27T00:00:47.366Z
+- **Time**: 2026-05-27T01:02:31.161Z
 
 - [x] **health** — ok db=connected authSecret=yes prismaRouter=unavailable
 - [x] **session** — HTTP 200

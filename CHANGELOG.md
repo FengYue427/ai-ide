@@ -7,8 +7,35 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- **v1.0.3 Phase 1 运维**：[V1.0.3_PHASE1_OPS.md](docs/V1.0.3_PHASE1_OPS.md) · `npm run ops:verify-p1`
-- Phase 2 RC → GA 见 [V1.0.3_KICKOFF.md](docs/V1.0.3_KICKOFF.md)
+- Phase 3 GA → [V1.0.3_KICKOFF.md](docs/V1.0.3_KICKOFF.md)
+
+## [1.0.3-rc.1] — 2026-05-26（v1.0.3 Phase 2 RC）
+
+### 发布
+
+- 版本 **1.0.3-rc.1**；欢迎页 RC 徽章（`1.0.3 RC`）
+- `npm run rc:live-spotcheck` — 竞品 live 抽测（Chat / Agent+hunk / Tab / @ / 支付宝）
+- 文档：[V1.0.3_RC.md](docs/V1.0.3_RC.md)
+
+### 运维
+
+- Phase 1 封板：`npm run ops:verify-p1` · [V1.0.3_PHASE1_OPS.md](docs/V1.0.3_PHASE1_OPS.md)
+
+## [1.0.3] — TBD（GA 草稿）
+
+> Phase 3 打 tag `v1.0.3` 时启用本节；`VITE_GA_LIVE=true` → 欢迎页「正式版」。
+
+### 发布
+
+- **1.0.2.x 全量能力**稳定叙事：Tab FIM、索引 500/2000、Agent 6 工具 + hunk Diff、tasks.md、Win+Mac 桌面
+- 竞品复评 **2.75** 维持；live 抽测 5 项记录入 [RC_LIVE_SPOTCHECK_LAST.md](docs/RC_LIVE_SPOTCHECK_LAST.md)
+- 微信 live **不接**（仅支付宝 Path B）— [decisions/WECHAT_PAY_v1.0.3.md](docs/decisions/WECHAT_PAY_v1.0.3.md)
+- macOS **unsigned** — [decisions/MACOS_SIGNING_v1.0.3.md](docs/decisions/MACOS_SIGNING_v1.0.3.md)
+- GitHub Release **v1.0.3**（Web + Win + Mac）；Sentry release `ai-ide@1.0.3`
+
+### 非目标（留 v1.1）
+
+- LSP / Tab++ / Background Agent / VSIX / 全语言 DAP
 
 ## [1.0.2.7] — 2026-05-26（1.0.2 附属 · macOS 收官）
 

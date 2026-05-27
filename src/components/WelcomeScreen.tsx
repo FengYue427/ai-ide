@@ -42,6 +42,17 @@ interface WelcomeScreenProps {
   shortcuts?: { key: string; action: string }[]
 }
 
+function getReleaseBadgeLabel(t: (key: TranslationKey) => string): string {
+  if (import.meta.env.VITE_GA_LIVE === 'true') {
+    return t('welcome.gaBadge')
+  }
+  const version = (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim()
+  if (version && /-rc/i.test(version)) {
+    return `${version.replace(/-rc.*/i, '')} RC`
+  }
+  return t('welcome.rcBadge')
+}
+
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   recentProjects = [],
   onNewProject,
@@ -194,11 +205,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   {isDesktopApp() ? (
                     <span className="welcome-rc-badge">{t('welcome.desktopBadge')}</span>
                   ) : (
-                    <span className="welcome-rc-badge">
-                      {import.meta.env.VITE_GA_LIVE === 'true'
-                        ? t('welcome.gaBadge')
-                        : t('welcome.rcBadge')}
-                    </span>
+                    <span className="welcome-rc-badge">{getReleaseBadgeLabel(t)}</span>
                   )}
                 </div>
                 <h1 className="welcome-title">{t('welcome.title')}</h1>

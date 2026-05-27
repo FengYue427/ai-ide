@@ -1,7 +1,7 @@
 # AI IDE 路线图与文档导航
 
-> **主版本**：**1.0.2** GA · **1.0.2.x 收官**：**1.0.2.7** ✅ · **当前**：**v1.0.3 Kickoff**  
-> **附属路线**：[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) · **1.0.3 大规划**：[V1.0.3_MASTER_PLAN.md](./V1.0.3_MASTER_PLAN.md)  
+> **主版本**：**1.0.2** GA · **1.0.2.x 收官**：**1.0.2.7** ✅ · **当前**：**v1.0.3**（RC→GA）  
+> **附属路线**：[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) · **1.0.3 大规划**：[V1.0.3_MASTER_PLAN.md](./V1.0.3_MASTER_PLAN.md) · **1.0.3.x 四级**：[ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md)  
 > **大总结**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md) · **竞品**：[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)（**2.75**）  
 > 演示站：[https://ai-ide.vercel.app](https://ai-ide.vercel.app)
 
@@ -25,6 +25,7 @@
 | **[V1.0.3_PHASE1_OPS.md](./V1.0.3_PHASE1_OPS.md)** | **1.0.3 Phase 1 运维封板** · `ops:verify-p1` | 运维 |
 | **[V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md)** | 1.0.3 执行 checklist | 研发 / 运维 |
 | **[ROADMAP_V1.0.3.md](./ROADMAP_V1.0.3.md)** | 1.0.3 精简路线图 | 产品 |
+| **[ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md)** | **1.0.3.1～1.0.3.4** GA 后稳定化（四级） | 运维 / 研发 |
 | **[VERSIONING.md](./VERSIONING.md)** | 四段版本号策略 | 全员 |
 | **本文件 ROADMAP.md** | 阶段索引、测试矩阵、文档导航 | 快速查阅 |
 

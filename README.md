@@ -2,7 +2,7 @@
 
 > 开源 AI 原生轻量 IDE —— 浏览器开箱，Agent 改你电脑上的项目
 
-**v1.0.2.7 附属收官** · 下一主版本 **[v1.0.3 稳定版](docs/V1.0.3_MASTER_PLAN.md)** · BYOK — 见 [CHANGELOG.md](./CHANGELOG.md)
+**v1.0.3-rc.1** · [RC 说明](docs/V1.0.3_RC.md) · 下一 GA **[v1.0.3](docs/V1.0.3_MASTER_PLAN.md)** · BYOK — 见 [CHANGELOG.md](./CHANGELOG.md)
 
 | | 链接 |
 |--|------|
@@ -78,6 +78,7 @@ npm run test:integration:local
 ```bash
 npm run test:local    # 快速：tsc + 单元测试（无需数据库）
 npm run rc:preflight      # RC：test:local + API 骨架（有 .env.local 时顺带验 env）
+npm run rc:live-spotcheck # v1.0.3：live 竞品抽测（自动 + 人工 5 项）
 npm run s0:gate           # S0：test:local + 骨架 + verify-env --production（路径 A，不要求商户）
 npm run check:release     # 同 verify 习惯；需 .env.local 含 DATABASE_URL / AUTH_SECRET / APP_URL
 npm run check:release:billing  # 路径 B：再加 --require-cn-billing

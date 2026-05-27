@@ -26,7 +26,7 @@
 |----|------|------|
 | M3-1 | 竞品复评 **2.75+** | [COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md) |
 | M3-2 | GitHub Release **v1.0.3** | Web + Win + Mac |
-| M3-3 | 自定义域名 + `APP_URL` 全链路 | [CUSTOM_DOMAIN.md](./CUSTOM_DOMAIN.md) |
+| M3-3 | `APP_URL` 全链路（vercel.app 或自定义域） | [V1.0.3_VERCEL_ENV.md](./V1.0.3_VERCEL_ENV.md) |
 | M3-4 | 微信 live 决策记录 | Issue / docs |
 | M3-5 | `go-live:preflight` + 72h SOP | [GA_POST_LAUNCH_72H.md](./GA_POST_LAUNCH_72H.md) |
 | M3-6 | 对外「稳定版」公告 | publish/ |
@@ -51,5 +51,7 @@ Background Agent · Cascade 全感知 · Kiro Hooks · VSIX · DAP 调试
 npm run go-live:preflight
 git tag v1.0.3 && git push origin v1.0.3
 ```
+
+**GA 后稳定化（第四段四级）**：[ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md)（`1.0.3.1`～`1.0.3.4`）。
 
 **下一世代**：v1.1.0 — [V1.0.3_MASTER_PLAN.md](./V1.0.3_MASTER_PLAN.md) §6
