@@ -22,9 +22,12 @@
 
 ## 3. OAuth / 支付回调
 
-- GitHub / Google OAuth：在对应开发者控制台把 **Authorized redirect URI** 改为  
-  `https://ide.example.com/api/auth/callback/...`（与当前 `APP_URL` 一致）。
+- GitHub OAuth：`https://ide.example.com/api/auth/callback/github`
+- Google OAuth：`https://ide.example.com/api/auth/callback/google`
+- 在 GitHub / Google 开发者控制台把 **Authorized redirect URI** 改为上述 URL（与 `APP_URL` 一致）。
 - Stripe / 支付宝：return URL 由服务端 `APP_URL` 生成，无需硬编码 vercel.app。
+
+**1.0.3 Phase 1 验收**：换域后完成一次 OAuth 登录 + 支付宝 return 页回跳 smoke。
 
 ## 4. CORS 与 API
 

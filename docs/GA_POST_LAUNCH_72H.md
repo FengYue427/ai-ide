@@ -1,29 +1,47 @@
-# GA 上市后 72 小时值班
+# GA / 稳定版 上市后 72 小时值班
 
-> **站点**：https://ai-ide-flame.vercel.app · **版本**：v1.0.2（Web GA + 桌面可选）  
-> **支付**：支付宝生产 Path B · **清单**：[GO_LIVE_NOW.md](./GO_LIVE_NOW.md)
+> **站点**：https://ai-ide-flame.vercel.app · **当前规划**：**v1.0.3 稳定版**  
+> **Phase 1 运维**：[V1.0.3_PHASE1_OPS.md](./V1.0.3_PHASE1_OPS.md) · **清单**：[GO_LIVE_NOW.md](./GO_LIVE_NOW.md)
+
+---
+
+## 发布前（1.0.3 GA）
+
+```powershell
+npm run ops:verify-p1
+# Vercel 填 VITE_SENTRY_DSN → 部署 → Sentry 测试事件 ai-ide@1.0.3
+```
 
 ---
 
 ## D0（发布当天）
 
-- [ ] 发公告（[GA_ANNOUNCEMENT.md](./GA_ANNOUNCEMENT.md) 短版 → GitHub Discussions / Issues 置顶）
-- [ ] 掘金 / V2EX / **知乎 / CSDN** / 小红书 / B站（[docs/publish/](./publish/) 文案 + 封面）
+- [ ] 发公告（GitHub Discussions / [publish/](./publish/)）
 - [ ] Vercel **Logs** 过滤 `payment/alipay/notify` — 无连续 5xx
-- [ ] 自测账号配额仍为 Pro（5000/日 量级）
-- [ ] `payment.html` 运营主体是否已填（未填则尽快补）
+- [ ] `npm run ops:verify-p1` 或 `smoke:report` → **5/5**
+- [ ] `payment.html` 运营主体与版本行已更新
 
 ## D1
 
-- [ ] [BILLING_RECONCILE_DAILY.md](./BILLING_RECONCILE_DAILY.md) — 核对昨日订单与支付宝账单
-- [ ] Sentry（若已配 DSN）看新增 Issues
+- [ ] [BILLING_RECONCILE_DAILY.md](./BILLING_RECONCILE_DAILY.md) — 核对昨日订单
+- [ ] Sentry Issues（若已配 DSN）
 - [ ] 收集首条用户反馈 / 支付失败 Issue
 
 ## D2～D3
 
-- [ ] Cron：`/api/billing/expire-subscriptions` 在 Vercel Cron 执行无 401（**Cron** 页）
+- [ ] Cron：`npm run billing:verify-cron`（需 `CRON_SECRET`）
+- [ ] Vercel Cron 页无 401
 - [ ] 复盘：注册数、付费笔数、notify 失败次数
-- [ ] 定 IDE-4b 启动周（见 [PLAN_STRATEGY_2026_Q3.md](./PLAN_STRATEGY_2026_Q3.md)）
+
+## 常态化（每周，1.0.3 Phase 1 起）
+
+| 频率 | 动作 |
+|------|------|
+| 每周 | `npm run ops:verify-p1`（或至少 `smoke:report`） |
+| 每周 | `billing:verify-cron`（secret 从 Vercel 复制，**勿提交**） |
+| 每月 | 核对 [V1.0.3_VERCEL_ENV.md](./V1.0.3_VERCEL_ENV.md) |
+
+---
 
 ## 事故回滚
 

@@ -22,6 +22,7 @@
 | **[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)** | 四竞品逐项真对比（当前） | 产品 / 市场 |
 | **[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md)** | 1.0.2 附属 1.0.2.1～1.0.2.7（**已收官**） | 研发排期 |
 | **[V1.0.3_MASTER_PLAN.md](./V1.0.3_MASTER_PLAN.md)** | **1.0.3 主版本大规划** | 产品 / 全员 |
+| **[V1.0.3_PHASE1_OPS.md](./V1.0.3_PHASE1_OPS.md)** | **1.0.3 Phase 1 运维封板** · `ops:verify-p1` | 运维 |
 | **[V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md)** | 1.0.3 执行 checklist | 研发 / 运维 |
 | **[ROADMAP_V1.0.3.md](./ROADMAP_V1.0.3.md)** | 1.0.3 精简路线图 | 产品 |
 | **[VERSIONING.md](./VERSIONING.md)** | 四段版本号策略 | 全员 |

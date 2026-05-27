@@ -52,7 +52,7 @@ export const translations = {
     'welcome.cloudDegraded':
       '云端数据库暂不可用：注册/云工作区可能失败。你仍可使用 BYOK 与本地编辑；维护者请检查部署环境变量。',
     'welcome.networkTips':
-      '页面加载慢或 API 超时？国内访问 vercel.app 可能不稳定。可稍后重试、更换网络，或下载 Windows 桌面版。自定义域名规划见 1.0.2.6 / 主版本 1.0.3。',
+      '页面加载慢或 API 超时？国内访问 vercel.app 可能不稳定。可稍后重试、更换网络，或下载 Windows/macOS 桌面版。自定义域名见 docs/CUSTOM_DOMAIN.md。',
     'welcome.title': '更快进入思路，更少消耗在环境上',
     'welcome.lead':
       '打开文件、与 AI 协作、运行代码、管理工作区，全部在一个轻量界面里完成。从下面的入口直接开始工作，不用先穿过一层说明页。',

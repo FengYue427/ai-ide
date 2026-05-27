@@ -7,7 +7,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- **v1.0.3 主版本 Kickoff**：[V1.0.3_MASTER_PLAN.md](docs/V1.0.3_MASTER_PLAN.md) · [V1.0.3_KICKOFF.md](docs/V1.0.3_KICKOFF.md)
+- **v1.0.3 Phase 1 运维**：[V1.0.3_PHASE1_OPS.md](docs/V1.0.3_PHASE1_OPS.md) · `npm run ops:verify-p1`
+- Phase 2 RC → GA 见 [V1.0.3_KICKOFF.md](docs/V1.0.3_KICKOFF.md)
 
 ## [1.0.2.7] — 2026-05-26（1.0.2 附属 · macOS 收官）
 
