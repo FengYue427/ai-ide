@@ -2,7 +2,7 @@
 
 > 开源 AI 原生轻量 IDE —— 浏览器开箱，Agent 改你电脑上的项目
 
-**v1.0.4-rc.1** · [1.0.4 Kickoff](docs/V1.0.4_KICKOFF.md) · [ROADMAP](docs/ROADMAP.md) · BYOK — [CHANGELOG](./CHANGELOG.md)
+**v1.0.4** · [体验巩固 GA](docs/V1.0.4_GA_EXECUTION.md) · [ROADMAP](docs/ROADMAP.md) · 竞品 **~2.80** — [CHANGELOG](./CHANGELOG.md)
 
 | | 链接 |
 |--|------|

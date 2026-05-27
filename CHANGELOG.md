@@ -7,8 +7,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- **v1.0.4** GA → [V1.0.4_KICKOFF.md](docs/V1.0.4_KICKOFF.md)
+- **1.0.4.x** 稳定化 → [ROADMAP_V1.0.4.x.md](docs/ROADMAP_V1.0.4.x.md)
 - **v1.1 RFC** → [V1.1_RFC_STUB.md](docs/V1.1_RFC_STUB.md)
+
+## [1.0.4] — 2026-05-27（体验巩固 · GA）
+
+### Added
+
+- **MCP 官方推荐**（≥3 预置、连接测试）— [MCP_OFFICIAL_CATALOG.md](docs/MCP_OFFICIAL_CATALOG.md)
+- **项目规则** 设置内创建/编辑 `.aide/rules.md`，自动注入 Chat/Agent
+- **Agent 上下文入门**：当前打开文件；可选终端最近输出（设置 → Agent）
+- 欢迎页 **稳定版** 徽章（`1.0.3.x` 补丁位）
+
+### 竞品与文档
+
+- 复评综合分 **~2.80** — [COMPETITOR_COMPARISON_V1.0.2.md](docs/COMPETITOR_COMPARISON_V1.0.2.md) §0.1
+- GA 清单：[V1.0.4_GA_EXECUTION.md](docs/V1.0.4_GA_EXECUTION.md)
+
+### 自 RC
+
+- 基于 `1.0.4-rc.1`；无破坏性 API 变更
 
 ## [1.0.4-rc.1] — 2026-05-27（体验巩固 RC）
 
