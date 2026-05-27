@@ -29,7 +29,8 @@
 | **[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md)** | **短规划**：1.0.3 收口 → 1.0.4 + 1.0.4.x | 产品 / 全员 |
 | **[V1.0.4_MASTER_PLAN.md](./V1.0.4_MASTER_PLAN.md)** | **1.0.4 主版本** Kickoff | 产品 / 全员 |
 | **[V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md)** | 1.0.4 执行 checklist | 研发 |
-| **[ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)** | **1.0.4.1～1.0.4.4**（规划） | 研发 |
+| **[V1.0.4.x_MASTER_PLAN.md](./V1.0.4.x_MASTER_PLAN.md)** | **1.0.4.x 世代总规划** | 产品 / 研发 |
+| **[ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)** | **1.0.4.1～1.0.4.4**（**进行中**） | 研发 |
 | **[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)** | **长远规划**：v1.1 世代 | 产品 / 架构 |
 | **[V1.1_RFC_STUB.md](./V1.1_RFC_STUB.md)** | v1.1 RFC 占位 | 产品 |
 | **[VERSIONING.md](./VERSIONING.md)** | 四段版本号策略 | 全员 |

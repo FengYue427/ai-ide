@@ -14,6 +14,7 @@
 | **1.0.3.x 运营稳定化** | 🔶 **S5 终章** | **`v1.0.3.5`**（[V1.0.3.5_EXECUTION.md](./V1.0.3.5_EXECUTION.md)） |
 | **1.0.3 主版本 GA** | 🔶 可选 | `v1.0.3` + `VITE_GA_LIVE=true` |
 | **1.0.4** | ✅ **GA** | [V1.0.4_GA_EXECUTION.md](./V1.0.4_GA_EXECUTION.md) · 竞品 **~2.80** |
+| **1.0.4.x** | ⏳ **进行中** | [V1.0.4.x_MASTER_PLAN.md](./V1.0.4.x_MASTER_PLAN.md) → **1.0.4.4 收官** |
 
 **1.0.2.x 已交付的「IDE-5」能力**（勿在 1.0.4 重复立项）：块级 Diff、Tab FIM、索引 500/2000、`grep_repo`、tasks.md、Win+Mac 桌面。见 [PLAN_IDE5_AND_COMPETITORS.md](./PLAN_IDE5_AND_COMPETITORS.md)。
 
@@ -105,19 +106,18 @@ gantt
 
 ## 4. 阶段 C — 1.0.4.x 四级附属
 
-> 模式同 [ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md)：第四段 `1.0.4.N`，**小步 Web deploy**，可两两合并 tag。
+> **总规划**：[V1.0.4.x_MASTER_PLAN.md](./V1.0.4.x_MASTER_PLAN.md) · **详表**：[ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)  
+> **说明**：**1.0.4 GA 已并入 E1+E2 主体**；四级剩余为 **深化（.1/.2）+ 检索（.3）+ 收官（.4）**。
 
 | 版本 | 代号 | 主题 | 关键交付 |
 |:----:|------|------|----------|
-| **1.0.4.1** | **E1 MCP** | 工具生态入门 | 官方 MCP 预置、设置向导、`/api/mcp/proxy` 生产 smoke |
-| **1.0.4.2** | **E2 感知** | Agent 上下文 | 活动行增强、终端最近 N 行注入 Chat（可选） |
-| **1.0.4.3** | **E3 检索** | @ 与语义 | 索引失败重试 UI、语义检索引导、i18n 关键路径补全 |
-| **1.0.4.4** | **E4 收官** | 发布与评分 | publish 矩阵、live 复测、竞品 **2.80** 入档、关 1.0.4.x milestone |
+| **1.0.4.1** | **E1′ MCP 深化** | 生产 smoke、FAQ、竞品 MCP 终验 | [V1.0.4.1_EXECUTION.md](./V1.0.4.1_EXECUTION.md) |
+| **1.0.4.2** | **E2′ 感知深化** | 手测、非 Cascade 话术、Agent 说明 | [V1.0.4.2_EXECUTION.md](./V1.0.4.2_EXECUTION.md) |
+| **1.0.4.3** | **E3 检索** | 语义/@ onboarding、索引设置卡片、i18n | [V1.0.4.3_EXECUTION.md](./V1.0.4.3_EXECUTION.md) · [SEMANTIC_SEARCH_ONBOARDING.md](./SEMANTIC_SEARCH_ONBOARDING.md) |
+| **1.0.4.4** | **E4 收官** | publish、live 5/5、milestone、**2.80 终稿** | [V1.0.4.4_EXECUTION.md](./V1.0.4.4_EXECUTION.md) |
 
-**合并部署建议**（与 1.0.3.x 相同习惯）：
-
-- `1.0.4.1` + `1.0.4.2` → 一次 tag **`v1.0.4.2`**  
-- `1.0.4.3` + `1.0.4.4` → 一次 tag **`v1.0.4.4`**
+**合并 tag**：`v1.0.4.2`（.1+.2）· `v1.0.4.4`（.3+.4）  
+**世代结束**：**1.0.4.4** 后 → [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)
 
 ---
 
@@ -125,9 +125,8 @@ gantt
 
 | 时点 | AI IDE 目标分 | 主要拉近 |
 |------|:-------------:|----------|
-| 现在（1.0.3.4） | **2.75** | — |
-| **1.0.4 GA** | **~2.78** | MCP、rules UI、感知入门 |
-| **1.0.4.4 收官** | **~2.80** | 语义/@ 体验、运营文档 |
+| 现在（1.0.4 GA） | **~2.80** | MCP、rules、感知（初评） |
+| **1.0.4.4 收官** | **~2.80 固化** | E3 检索 UX、live 入档 |
 | Cursor（参照） | 3.6 | 仍差 **~0.8** |
 
 ---
