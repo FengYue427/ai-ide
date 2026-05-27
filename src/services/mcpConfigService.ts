@@ -38,12 +38,26 @@ export async function getEnabledMcpServers(): Promise<McpServerConfig[]> {
   return servers.filter((server) => server.enabled && server.url.trim())
 }
 
-export function createMcpServerDraft(name = 'MCP Server'): McpServerConfig {
+export function createMcpServerDraft(name = 'MCP Server', url = ''): McpServerConfig {
   return {
     id: `mcp-${Date.now().toString(36)}`,
     name,
-    url: '',
+    url,
     enabled: true,
+    headers: {},
+  }
+}
+
+export function createMcpServerFromPreset(
+  presetId: string,
+  name: string,
+  url: string,
+): McpServerConfig {
+  return {
+    id: `mcp-preset-${presetId}-${Date.now().toString(36)}`,
+    name,
+    url,
+    enabled: false,
     headers: {},
   }
 }

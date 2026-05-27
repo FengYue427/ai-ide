@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Plus, Server, Trash2, Zap } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { MCP_OFFICIAL_PRESETS } from '../data/mcpOfficialCatalog'
 import {
   createMcpServerDraft,
+  createMcpServerFromPreset,
   loadMcpServers,
   loadMcpSettings,
   saveMcpServers,
@@ -92,6 +94,56 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
           <div>
             <div style={{ fontWeight: 700 }}>{t('mcp.title')}</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t('mcp.desc')}</div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-secondary)' }}>
+            {t('mcp.catalog.title')}
+          </div>
+          <div style={{ display: 'grid', gap: '8px' }}>
+            {MCP_OFFICIAL_PRESETS.map((preset) => (
+              <div
+                key={preset.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: '1px dashed var(--border-color)',
+                  background: 'color-mix(in srgb, var(--bg-primary) 92%, transparent)',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: '13px' }}>{t(preset.nameKey)}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.45, marginTop: '2px' }}>
+                    {t(preset.descKey)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 10px', flexShrink: 0 }}
+                  onClick={() => {
+                    setServers((prev) => [
+                      ...prev,
+                      createMcpServerFromPreset(preset.id, t(preset.nameKey), preset.defaultUrl),
+                    ])
+                  }}
+                >
+                  {t('mcp.catalog.add')}
+                </button>
+                <a
+                  href={preset.docsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: '11px', color: 'var(--accent-color)', alignSelf: 'center', flexShrink: 0 }}
+                >
+                  {t('mcp.catalog.docs')}
+                </a>
+              </div>
+            ))}
           </div>
         </div>
 

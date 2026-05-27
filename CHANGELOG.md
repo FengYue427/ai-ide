@@ -7,10 +7,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- Phase 3 GA → [V1.0.3_KICKOFF.md](docs/V1.0.3_KICKOFF.md)
-- 下一世代：**v1.1 RFC** → [V1.1_RFC_STUB.md](docs/V1.1_RFC_STUB.md)
+- **v1.0.4** Kickoff → [V1.0.4_KICKOFF.md](docs/V1.0.4_KICKOFF.md)
+- **v1.1 RFC** → [V1.1_RFC_STUB.md](docs/V1.1_RFC_STUB.md)
 
-## [1.0.3.4] — 2026-05-27（1.0.3.x 收官 · S3+S4 合并部署）
+## [1.0.3.5] — 2026-05-27（1.0.3.x 终章 · S5 运维收口）
+
+### 运维
+
+- 执行清单：[V1.0.3.5_EXECUTION.md](docs/V1.0.3.5_EXECUTION.md) · 收口 checklist：[V1.0.3.5_OPS_CLOSURE.md](docs/V1.0.3.5_OPS_CLOSURE.md)
+- 欢迎页：非 GA 且无 `-rc` 时显示 **v{version} 稳定版** 徽章
+
+### 1.0.4 前置（代码在 main，版本号仍 1.0.3.5）
+
+- MCP 官方推荐预置（≥3）· [MCP_OFFICIAL_CATALOG.md](docs/MCP_OFFICIAL_CATALOG.md) · [V1.0.4.1_EXECUTION.md](docs/V1.0.4.1_EXECUTION.md)
+
+## [1.0.3.4] — 2026-05-27（S3+S4 合并部署）
 
 ### 计费（S3）
 

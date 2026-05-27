@@ -11,9 +11,9 @@
 | 世代 | 状态 | tag / 版本 |
 |------|:----:|------------|
 | 1.0.2.x 能力 | ✅ | 至 `v1.0.2.7`（Diff/FIM/索引/Agent/桌面） |
-| **1.0.3.x 运营稳定化** | ✅ 代码已发 | **`v1.0.3.4`**（S1～S4） |
-| **1.0.3 主版本 GA** | 🔶 可选 | 对外叙事 `v1.0.3` + `VITE_GA_LIVE=true` 未打 |
-| **1.0.4** | 🔶 **Kickoff** | [V1.0.4_MASTER_PLAN.md](./V1.0.4_MASTER_PLAN.md) |
+| **1.0.3.x 运营稳定化** | 🔶 **S5 终章** | **`v1.0.3.5`**（[V1.0.3.5_EXECUTION.md](./V1.0.3.5_EXECUTION.md)） |
+| **1.0.3 主版本 GA** | 🔶 可选 | `v1.0.3` + `VITE_GA_LIVE=true` |
+| **1.0.4** | 🔶 **Kickoff** | MCP 预置已起步 · [V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md) |
 
 **1.0.2.x 已交付的「IDE-5」能力**（勿在 1.0.4 重复立项）：块级 Diff、Tab FIM、索引 500/2000、`grep_repo`、tasks.md、Win+Mac 桌面。见 [PLAN_IDE5_AND_COMPETITORS.md](./PLAN_IDE5_AND_COMPETITORS.md)。
 
@@ -48,7 +48,7 @@ gantt
 
 | ID | 任务 | 验收 |
 |----|------|------|
-| A-1 | Vercel 部署后 `health.version` = **1.0.3.4** | `npm run rc:live-spotcheck` 无版本 warn |
+| A-1 | Vercel 部署后 `health.version` = **1.0.3.5** | `npm run rc:live-spotcheck` 无版本 warn |
 | A-2 | 人工 5 项 live 抽测勾选 | [RC_LIVE_SPOTCHECK_LAST.md](./RC_LIVE_SPOTCHECK_LAST.md) |
 | A-3 | `VITE_SENTRY_DSN` + `CRON_SECRET` + 对账 1 轮 | `ops:verify-p1` / [BILLING_RECONCILE_DAILY.md](./BILLING_RECONCILE_DAILY.md) |
 | A-4 | 发布 ≥2 渠道 | [publish/README.md](./publish/README.md) |

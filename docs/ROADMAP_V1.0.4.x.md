@@ -11,7 +11,7 @@
 | 版本 | 代号 | 状态 | 主题 |
 |:----:|------|:----:|------|
 | **1.0.4** | — | 🔶 Kickoff | 体验巩固主版本 · 目标竞品 **~2.78** |
-| **1.0.4.1** | **E1 MCP** | ⏳ | 官方 MCP 预置 + 设置向导 |
+| **1.0.4.1** | **E1 MCP** | 🔶 | 官方 MCP 预置 + 设置向导 · [V1.0.4.1_EXECUTION.md](./V1.0.4.1_EXECUTION.md) |
 | **1.0.4.2** | **E2 感知** | ⏳ | 活动行 + 终端摘要注入 Chat |
 | **1.0.4.3** | **E3 检索** | ⏳ | 索引重试、语义引导、i18n 补全 |
 | **1.0.4.4** | **E4 收官** | ⏳ | 发布矩阵 + live 复测 · **~2.80** |
@@ -29,4 +29,5 @@ Background Agent · VSIX · DAP · Tab++ · Kiro Hooks — 见 [ROADMAP_V1.1.md]
 ## 文档
 
 - [V1.0.4_MASTER_PLAN.md](./V1.0.4_MASTER_PLAN.md) · [V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md)
-- 各 `V1.0.4.N_EXECUTION.md`（GA 后按需）
+- [V1.0.4.1_EXECUTION.md](./V1.0.4.1_EXECUTION.md) · [MCP_OFFICIAL_CATALOG.md](./MCP_OFFICIAL_CATALOG.md)
+- `V1.0.4.2`～`V1.0.4.4` 执行清单（GA 后按需）

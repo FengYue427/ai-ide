@@ -1,4 +1,4 @@
-# 1.0.3.x 附属路线图（1.0.3.1 → 1.0.3.4）— GA 后 stabilization
+# 1.0.3.x 附属路线图（1.0.3.1 → 1.0.3.5）— GA 后 stabilization
 
 > **前置**：必须先完成主版本 **[v1.0.3 GA](V1.0.3_KICKOFF.md)**（Phase 3 tag `v1.0.3`）  
 > **版本策略**：第四段补丁位与 [VERSIONING.md](./VERSIONING.md) 一致：`1.0.3.N` = **1.0.3 GA 基础上的第 N 个小包**，**不搞功能大爆炸**。  
@@ -17,17 +17,18 @@
 
 ---
 
-## 1. 四级总览（1.0.3.1 ～ 1.0.3.4）
+## 1. 五级总览（1.0.3.1 ～ 1.0.3.5）
 
 | 版本 | 代号 | 状态 | 主题（一句话） | 建议节奏 |
 |:----:|------|:----:|----------------|----------|
-| **1.0.3** | — | 🔶 RC→GA | 稳定版对外 tag、双平台 Release | [V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md) |
+| **1.0.3** | — | 🔶 可选 GA | 稳定版对外 tag、`VITE_GA_LIVE` | [V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md) |
 | **1.0.3.1** | **S1 观测** | ✅ 并入 **1.0.3.2** | Sentry / Cron / 生产 health 与版本号对齐 | tag `v1.0.3.2` |
 | **1.0.3.2** | **S2 域名** | ✅ 已发 | 自定义域 + `APP_URL` 全链路 + 403/COOP 回归 | 2026-05-27 |
 | **1.0.3.3** | **S3 计费** | ✅ 并入 **1.0.3.4** | 对账 SOP、法务页、微信文案 | tag `v1.0.3.4` |
-| **1.0.3.4** | **S4 收官** | ✅ 已发 | 发布矩阵、live 复测、milestone、v1.1 RFC | 2026-05-27 |
+| **1.0.3.4** | **S4 收官** | ✅ 已发 | 发布矩阵、live 复测、v1.1 RFC | 2026-05-27 |
+| **1.0.3.5** | **S5 运维收口** | 🔶 **当前** | Phase 0 未勾项、milestone 关闭、稳定版徽章 | tag `v1.0.3.5` |
 
-> **Git tag**：推荐 `v1.0.3.1` … `v1.0.3.4`（与 `package.json` 同步）；Web 与桌面同 tag 发 Release（若有桌面差分再单开 issue）。
+> **Git tag**：`v1.0.3.1` … **`v1.0.3.5`**（与 `package.json` 同步）；**1.0.3.x 世代在 1.0.3.5 结束后不再新增第四段**，下一主版本为 **1.0.4**。
 
 ---
 
@@ -77,13 +78,28 @@
 
 ---
 
-## 6. 全局非目标（1.0.3.x 整段不适用）
+## 6. 1.0.3.5 — S5 运维收口（1.0.3.x 终章）
+
+| ID | 交付 | 验收 |
+|----|------|------|
+| 3.5-1 | 生产 `version=1.0.3.5` | `rc:live-spotcheck` |
+| 3.5-2 | 人工 5 项 live 抽测全勾 | [RC_LIVE_SPOTCHECK_LAST.md](./RC_LIVE_SPOTCHECK_LAST.md) |
+| 3.5-3 | Sentry + Cron + 对账 1 轮 | [V1.0.3.5_OPS_CLOSURE.md](./V1.0.3.5_OPS_CLOSURE.md) |
+| 3.5-4 | publish ≥2 渠道 + 关 milestone | [publish/README.md](./publish/README.md) |
+| 3.5-5 | 欢迎页 **稳定版** 徽章（非 RC） | `VITE_GA_LIVE` 未设时显示 `v{version} 稳定版` |
+| 3.5-6 | **可选** `v1.0.3` GA tag | `VITE_GA_LIVE=true` |
+
+**执行**：[V1.0.3.5_EXECUTION.md](./V1.0.3.5_EXECUTION.md)
+
+---
+
+## 7. 全局非目标（1.0.3.x 整段不适用）
 
 Background Agent · Cascade 级全感知 · Kiro Hooks · VSIX · 全语言 DAP · 索引/工具数量大规模扩张 — 一律 **v1.1+**。
 
 ---
 
-## 7. CHANGELOG / 发包习惯
+## 8. CHANGELOG / 发包习惯
 
 - 每一附属：`CHANGELOG.md` 增加 `[1.0.3.N]` 一节（即使仅有运维与文档）。
 - `package.json` `version` 与 `VITE_APP_VERSION`（若使用）对齐。
@@ -91,7 +107,7 @@ Background Agent · Cascade 级全感知 · Kiro Hooks · VSIX · 全语言 DAP 
 
 ---
 
-## 8. 快速命令
+## 9. 快速命令
 
 ```powershell
 npm run test:local
@@ -103,7 +119,7 @@ npm run rc:live-spotcheck
 
 ---
 
-## 9. 文档索引
+## 10. 文档索引
 
 | 文档 | 用途 |
 |------|------|
@@ -113,4 +129,6 @@ npm run rc:live-spotcheck
 | [ROADMAP_V1.0.3-V1.0.9.md](./ROADMAP_V1.0.3-V1.0.9.md) | 与中长线并排阅读；**1.0.3 GA 之后的第四段收口以本文为准** |
 | [V1.0.3.3_EXECUTION.md](./V1.0.3.3_EXECUTION.md) | S3 计费与对账 |
 | [V1.0.3.4_EXECUTION.md](./V1.0.3.4_EXECUTION.md) | S4 收官 |
+| [V1.0.3.5_EXECUTION.md](./V1.0.3.5_EXECUTION.md) | S5 运维收口 · **终章** |
+| [V1.0.3.5_OPS_CLOSURE.md](./V1.0.3.5_OPS_CLOSURE.md) | 运维三项 checklist |
 | [V1.1_RFC_STUB.md](./V1.1_RFC_STUB.md) | v1.1 占位 |

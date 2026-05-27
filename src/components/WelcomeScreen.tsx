@@ -42,6 +42,10 @@ interface WelcomeScreenProps {
   shortcuts?: { key: string; action: string }[]
 }
 
+function interpolate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => vars[key] ?? '')
+}
+
 function getReleaseBadgeLabel(t: (key: TranslationKey) => string): string {
   if (import.meta.env.VITE_GA_LIVE === 'true') {
     return t('welcome.gaBadge')
@@ -49,6 +53,9 @@ function getReleaseBadgeLabel(t: (key: TranslationKey) => string): string {
   const version = (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim()
   if (version && /-rc/i.test(version)) {
     return `${version.replace(/-rc.*/i, '')} RC`
+  }
+  if (version && /^1\.0\.\d+(\.\d+)?$/.test(version)) {
+    return interpolate(t('welcome.stableBadge'), { version })
   }
   return t('welcome.rcBadge')
 }

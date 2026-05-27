@@ -1,51 +1,42 @@
 # 当前执行清单
 
-> **短规划**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md) · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)  
-> **当前主线**：**v1.0.4 Kickoff** → [V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md)
+> **短规划**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md) · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)
 
 ---
 
-## A. 阶段 A — 1.0.3.x 收口（收尾中）
+## A. 1.0.3.5 — S5 运维收口（当前）
 
 | 项 | 状态 |
 |----|:----:|
-| 部署 + `version=1.0.3.4` | ✅ |
-| spotcheck 自动项 | ✅ |
+| 版本 bump + 稳定版徽章 | ✅ |
+| 部署 `version=1.0.3.5` | ☐ |
+| spotcheck 自动项 | ☐ |
 | 人工 5 项 | ☐ |
-| Sentry / Cron / 对账 | ☐ |
-| 发布 ≥2 渠道 | ☐ |
+| [V1.0.3.5_OPS_CLOSURE.md](./V1.0.3.5_OPS_CLOSURE.md) | ☐ |
 | 关 1.0.3.x milestone | ☐ |
 | 可选 `v1.0.3` GA | ☐ |
 
+**执行**：[V1.0.3.5_EXECUTION.md](./V1.0.3.5_EXECUTION.md)
+
 ---
 
-## B. 阶段 B — v1.0.4 主版本（进行中）
+## B. v1.0.4 主版本（并行 Kickoff）
 
-| 文档 | 状态 |
-|------|:----:|
+| 文档 / 交付 | 状态 |
+|-------------|:----:|
 | [V1.0.4_MASTER_PLAN.md](./V1.0.4_MASTER_PLAN.md) | ✅ |
 | [V1.0.4_KICKOFF.md](./V1.0.4_KICKOFF.md) | ✅ |
-| [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md) | ✅ 规划表 |
+| MCP 官方预置 UI | 🔶 已合入 main，待 `1.0.4-rc.1` 验收 |
+| [V1.0.4.1_EXECUTION.md](./V1.0.4.1_EXECUTION.md) | ✅ |
+| 规则编辑流 / Agent 感知 | ☐ |
 
-**本周开发优先级**（见 Kickoff Phase 1）：
-
-1. MCP 官方预置 + 连接测试  
-2. 规则编辑流验收  
-3. Agent 活动行 / 终端摘要（可选）
-
-**目标分**：2.75 → **~2.80**
+**前置**：建议 **1.0.3.5** milestone 关闭后再打 `1.0.4-rc.1`。
 
 ---
 
-## C. 阶段 C — 1.0.4.x（GA 后）
+## C. 1.0.4.x（GA 后）
 
-`1.0.4.1`～`1.0.4.4` · [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)
-
----
-
-## D. 长远 — v1.1（1.0.4.x 收官后）
-
-[ROADMAP_V1.1.md](./ROADMAP_V1.1.md) · 目标分 **~2.90**
+[ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)
 
 ---
 
