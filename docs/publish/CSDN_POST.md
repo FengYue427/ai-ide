@@ -18,7 +18,7 @@
 ## 摘要（CSDN「文章摘要」栏，≤256 字）
 
 ```text
-AI IDE 是一款开源的浏览器 AI IDE，当前 **v1.0.4.4**（1.0.4.x 收官）：MCP 官方预置、项目规则注入、Agent 上下文入门（焦点文件/可选终端摘要），并补齐 @/语义检索引导与索引状态卡片。支持工具 Agent、hunk Diff、Tab 补全、@ 索引与支付宝订阅；Win/Mac 桌面版可选。在线 https://ai-ide-flame.vercel.app ，源码 https://github.com/FengYue427/ai-ide 。定位入门 Agent，非 Cursor 替代。
+AI IDE 是一款开源的浏览器 AI IDE，当前 **v1.0.6.4**（可见能力跃升收官）：Agent 工具调用面板、move/delete/create_dir 文件工具、工作区文件树右键/F2/Delete、官方插件市场 6 款+标签筛选。继承 MCP 预置、项目规则、@ 索引与支付宝订阅；Win/Mac 桌面版可选。在线 https://ai-ide-flame.vercel.app ，源码 https://github.com/FengYue427/ai-ide 。定位入门 Agent，非 Cursor 替代。
 ```
 
 ---
@@ -37,7 +37,7 @@ AI IDE, 人工智能, Agent, 开源, 前端, DeepSeek, Cursor, 独立开发
 
 ### 一、项目简介
 
-**AI IDE** 是开源的 AI 原生轻量 IDE，**v1.0.4.4**（1.0.4.x 收官）已发布。
+**AI IDE** 是开源的 AI 原生轻量 IDE，**v1.0.6.4**（1.0.6.x 可见能力跃升收官）已发布。
 
 - **在线体验**：https://ai-ide-flame.vercel.app  
 - **GitHub**：https://github.com/FengYue427/ai-ide  
@@ -51,12 +51,14 @@ AI IDE, 人工智能, Agent, 开源, 前端, DeepSeek, Cursor, 独立开发
 - **BYOK**：API Key 本地保存  
 - 国内 **支付宝** 订阅（专业版 ¥19/月、团队版 ¥49/月，生产 Path B 已验收）  
 
-**v1.0.4.x（至 1.0.4.4）新增：**
+**v1.0.6.x 新增（用户可见）：**
 
-- **MCP 官方推荐**：设置里一键添加 Streamable HTTP MCP 并测试连接  
-- **项目规则**：`.aide/rules.md` 在设置中创建/编辑，自动注入 Chat/Agent  
-- **Agent 上下文**：当前打开文件 + 可选「终端最近输出」（非 Cascade 全感知）  
-- **检索体验**：语义检索 onboarding、Chat 首次 `@` 引导、设置页「索引与 @」状态卡片  
+- **Agent 工具面板**：Chat 内可折叠查看每轮工具调用（摘要 / 成功失败 / hunk）  
+- **Agent 文件工具**：`move_file` · `delete_file` · `create_dir`  
+- **文件管理器**：工作区树右键重命名/移动/删除/新建文件夹，**F2** / **Delete**  
+- **插件市场**：官方 **6** 款插件 + 标签筛选 + ★ 评分徽章  
+
+**继承 v1.0.4.x**：MCP 预置、项目规则、@ 索引、语义检索引导、支付宝订阅。
 
 ---
 
@@ -115,7 +117,7 @@ AI IDE, 人工智能, Agent, 开源, 前端, DeepSeek, Cursor, 独立开发
 - **数据库**：Prisma + Neon（PostgreSQL）  
 - **支付**：支付宝异步通知 + 订阅生命周期（宽限期 / 到期降级）  
 - **桌面**：Electron remote shell + preload IPC + electron-updater  
-- **质量**：`npm run test:local` **197** 测试；生产 `smoke:report` **5/5**  
+- **质量**：`npm run test:local` **222** 测试；生产 `smoke:report` **5/5**  
 
 ---
 

@@ -24,7 +24,7 @@
 2. **Cursor 等工具是美元订阅，国内支付不方便**
 3. **已有 DeepSeek / 通义 Key，希望 Key 留在自己手里**
 
-所以我们把 **AI IDE** 从 RC 公测推进到了 **v1.0.4.4**（1.0.4.x 收官）：在浏览器里打开就能用，也可以下载 **Windows 便携版** 处理更大的本地仓库。
+所以我们把 **AI IDE** 推进到了 **v1.0.6.4**（可见能力跃升收官）：Agent 工具面板、工作区文件树增强、插件市场 6 款；在浏览器里打开就能用，也可下载 **Windows / macOS 桌面版** 处理更大本地仓库。
 
 - 在线体验：https://ai-ide-flame.vercel.app
 - 开源仓库：https://github.com/FengYue427/ai-ide

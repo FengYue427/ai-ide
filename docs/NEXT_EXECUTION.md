@@ -1,27 +1,39 @@
 # 当前执行清单
 
-> **1.0.6.x**：[V1.0.6_MASTER_PLAN.md](./V1.0.6_MASTER_PLAN.md) · [ROADMAP_V1.0.6.x.md](./ROADMAP_V1.0.6.x.md)
+> **v1.0.6** 已收官 → **v1.1**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md) · [V1.0.6_MASTER_PLAN.md](./V1.0.6_MASTER_PLAN.md)
 
 ---
 
-## 当前：1.0.6.x
+## 当前：v1.1 Kickoff
 
-| 版本 | 代号 | 状态 |
-|------|------|:----:|
-| **1.0.6.1** | F4+F1 Agent | ✅ |
-| **1.0.6.2** | F2 文件管理 | ✅ |
-| **1.0.6.3** | F3 插件 | 🔶 deploy |
-| **1.0.6.4** | 收官 | ⏳ |
+| 阶段 | 状态 |
+|------|:----:|
+| **1.0.6.1–1.0.6.4** | ✅ 代码 + 文档 |
+| **1.0.6.3/6.4 push + live** | 🔶 本机 `git push` + spotcheck |
+| **v1.1 规划落地** | ⏳ |
 
-**下一步**：`v1.0.6.3` spotcheck → **1.0.6.4**（竞品 ~2.90、publish、Release）。
+**建议第一步**：阅读 [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)，确定 1.1.1 首个可见交付（后台 Agent / Tab++ / 协作等择一）。
 
 ---
 
-## 命令
+## 部署（若尚未 push）
 
 ```powershell
 cd C:\Users\18663\IDE\ai-ide
-npm run test:local
-npm run go-live:preflight
+git push origin main
+git push origin v1.0.6.3
+git push origin v1.0.6.4
 npm run rc:live-spotcheck
+```
+
+确认 `health.version` = **1.0.6.4**。
+
+---
+
+## 门禁
+
+```powershell
+npm run test:local
+npm run mcp:smoke
+npm run go-live:preflight
 ```

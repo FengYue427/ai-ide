@@ -1,5 +1,7 @@
 # 对外发布素材
 
+> **当前版本**：**v1.0.6.4**（1.0.6.x 收官）· Release 正文 [RELEASE_NOTES_v1.0.6.4.md](../RELEASE_NOTES_v1.0.6.4.md)
+
 | 平台 | 文案 | 封面 |
 |------|------|------|
 | **掘金** | [JUEJIN_POST.md](./JUEJIN_POST.md) | [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png) |

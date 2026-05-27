@@ -7,7 +7,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- **1.0.6.4** 收官 → [ROADMAP_V1.0.6.x.md](docs/ROADMAP_V1.0.6.x.md)
+- **v1.1** Kickoff → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
+
+## [1.0.6.4] — 2026-05-27（v1.0.6 收官）
+
+### Summary
+
+- **v1.0.6** 四段交付收官：Agent 工具面板 + 文件工具 · 工作区文件树增强 · 插件市场 6 款 + 筛选
+- 竞品复评 **~2.90**（见 [COMPETITOR_COMPARISON_V1.0.2.md](docs/COMPETITOR_COMPARISON_V1.0.2.md) §0.2）
+- 发布稿与 [RELEASE_NOTES_v1.0.6.4.md](docs/RELEASE_NOTES_v1.0.6.4.md) 就绪
 
 ## [1.0.6.3] — 2026-05-27（F3 插件目录扩充）
 
@@ -16,8 +24,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - 官方插件目录 **6 款**（+4）：JSON 格式化、TODO 扫描、行数统计、Markdown 预览+
 - 插件市场 **标签筛选**（全部 / demo / tools / formatter / productivity / markdown / ui）
 - 每款插件 **★ 评分徽章**（官方推荐分）
-
-## [1.0.6.2] — 2026-05-27（F2 文件管理器增强）
 
 ## [1.0.6.2] — 2026-05-27（F2 文件管理器增强）
 
