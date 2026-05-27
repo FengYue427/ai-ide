@@ -63,6 +63,10 @@ git push origin v1.0.3
 | **1.0.3.4** | 发布矩阵 + live 复测入档 + 关闭 milestone |
 
 **详表**： [ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md)
+  
+**第一层可执行清单**： [V1.0.3.1_EXECUTION.md](./V1.0.3.1_EXECUTION.md)
+
+**第二层可执行清单**： [V1.0.3.2_EXECUTION.md](./V1.0.3.2_EXECUTION.md)（可与 1.0.3.1 合并部署 → 直接发 `v1.0.3.2`）
 
 每层发包前：`npm run go-live:preflight` + `CHANGELOG [1.0.3.N]`
 
