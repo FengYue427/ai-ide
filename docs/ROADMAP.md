@@ -1,7 +1,7 @@
 # AI IDE 路线图与文档导航
 
-> **主版本**：**1.0.2** GA · **1.0.3.x 收官**：**1.0.3.4** ✅ · **当前稳定**：**v1.0.3.4** · **下一世代**：[V1.1_RFC_STUB.md](./V1.1_RFC_STUB.md)  
-> **附属路线**：[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) · **1.0.3 大规划**：[V1.0.3_MASTER_PLAN.md](./V1.0.3_MASTER_PLAN.md) · **1.0.3.x**：[ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md)  
+> **当前稳定**：**v1.0.3.4** · **短规划（→1.0.4.x）**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md) · **长远（v1.1）**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)  
+> **世代**： [ROADMAP_V1.0.2.x](./ROADMAP_V1.0.2.x.md) · [ROADMAP_V1.0.3.x](./ROADMAP_V1.0.3.x.md) ✅ · [ROADMAP_V1.0.4.x](./ROADMAP_V1.0.4.x.md) ⏳  
 > **大总结**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md) · **竞品**：[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)（**2.75**）  
 > 演示站：[https://ai-ide.vercel.app](https://ai-ide.vercel.app)
 
@@ -26,7 +26,10 @@
 | **[V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md)** | 1.0.3 执行 checklist | 研发 / 运维 |
 | **[ROADMAP_V1.0.3.md](./ROADMAP_V1.0.3.md)** | 1.0.3 精简路线图 | 产品 |
 | **[ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md)** | **1.0.3.1～1.0.3.4**（**已收官**） | 运维 / 研发 |
-| **[V1.1_RFC_STUB.md](./V1.1_RFC_STUB.md)** | v1.1 草案占位 | 产品 |
+| **[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md)** | **短规划**：1.0.3 收口 → 1.0.4 + 1.0.4.x | 产品 / 全员 |
+| **[ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)** | **1.0.4.1～1.0.4.4**（规划） | 研发 |
+| **[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)** | **长远规划**：v1.1 世代 | 产品 / 架构 |
+| **[V1.1_RFC_STUB.md](./V1.1_RFC_STUB.md)** | v1.1 RFC 占位 | 产品 |
 | **[VERSIONING.md](./VERSIONING.md)** | 四段版本号策略 | 全员 |
 | **本文件 ROADMAP.md** | 阶段索引、测试矩阵、文档导航 | 快速查阅 |
 

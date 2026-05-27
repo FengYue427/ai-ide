@@ -1,42 +1,43 @@
 # 当前执行清单
 
-> **1.0.3.x 四级**：**1.0.3.4 已发** ✅ · 下一世代 **[v1.1 RFC](V1.1_RFC_STUB.md)**  
-> [ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md) · [V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md)（主版本 GA 仍可选）
+> **规划**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md)（短）· [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)（长）  
+> **1.0.3.x**：**1.0.3.4 已发** ✅ · **1.0.4**：⏳ Kickoff 待启动
 
 ---
 
-## A. 1.0.3.x 收官快照（2026-05-27）
+## A. 短规划 — 阶段 A（1.0.3.x 收口，优先）
 
-| 版本 | 状态 | 清单 |
-|------|:----:|------|
-| 1.0.3.1+1.0.3.2 | ✅ `v1.0.3.2` | [V1.0.3.2_EXECUTION.md](./V1.0.3.2_EXECUTION.md) |
-| 1.0.3.3+1.0.3.4 | ✅ `v1.0.3.4` | [V1.0.3.3](./V1.0.3.3_EXECUTION.md) · [V1.0.3.4](./V1.0.3.4_EXECUTION.md) |
+见 [PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md) §2。
 
-- [x] `package.json` → **1.0.3.4** · tag **`v1.0.3.4`** 已推送
-- [ ] Vercel 部署后 `npm run rc:live-spotcheck` → `version=1.0.3.4`
-- [ ] 人工 5 项勾选 → [RC_LIVE_SPOTCHECK_LAST.md](./RC_LIVE_SPOTCHECK_LAST.md)
-- [ ] 周度对账 1 轮 → [BILLING_RECONCILE_DAILY.md](./BILLING_RECONCILE_DAILY.md)
-- [ ] 发布矩阵 ≥2 渠道（CSDN/掘金等）→ [publish/README.md](./publish/README.md)
-- [ ] GitHub 关闭 **1.0.3.x** milestone · 开 v1.1 Discussion
+- [x] tag **`v1.0.3.4`** 已推送
+- [ ] `npm run rc:live-spotcheck` → `version=1.0.3.4`
+- [ ] 人工 5 项 · 对账 1 轮 · 发布 ≥2 渠道
+- [ ] 关闭 **1.0.3.x** milestone
+- [ ] **可选** `v1.0.3` GA + `VITE_GA_LIVE=true` → [V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md)
 
 ---
 
-## B. 仍可选 — 主版本 v1.0.3 GA
+## B. 短规划 — 阶段 B/C（1.0.4 + 1.0.4.x）
 
-若需对外「稳定版」叙事（非 1.0.3.x 补丁号）：
+| 下一步 | 文档 |
+|--------|------|
+| 起草 `V1.0.4_MASTER_PLAN` + Kickoff | [PLAN_SHORT](./PLAN_SHORT_V1.0.3-V1.0.4.md) §3～4 |
+| 四级附属表 | [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md) |
 
-1. `package.json` → `1.0.3` · `VITE_GA_LIVE=true`
-2. `git tag v1.0.3 && git push origin v1.0.3`
-3. GitHub Release Web + Win + Mac
-
-见 [V1.0.3_KICKOFF.md](./V1.0.3_KICKOFF.md) Phase 3。
+**目标分**：2.75 → **~2.80**（1.0.4.4 收官）
 
 ---
 
-## C. 下一世代 v1.1
+## C. 长远规划 — v1.1（1.0.4.x 之后）
 
-- 占位：[V1.1_RFC_STUB.md](./V1.1_RFC_STUB.md)
-- 候选：后台 Agent 队列 · 协作 M1 · AI 网关 · i18n Phase 2
+见 [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)：
+
+- P1 后台 Agent 队列  
+- P2 协作 M1  
+- P3 AI 网关（可选）  
+- P4 i18n Phase 2  
+
+**目标分**：**~2.90**（v1.1.0 GA）
 
 ---
 
