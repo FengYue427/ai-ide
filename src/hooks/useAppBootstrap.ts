@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { modelOptions } from '../services/aiService'
 import { authService } from '../services/authService'
 import { recentFilesService } from '../services/recentFilesService'
 import { getShare } from '../services/shareService'
+import { loadLocalAutosaveFiles } from '../services/workspaceAutosave'
+import { markWorkspaceHydrated, pickRicherFileSet } from '../services/workspaceSession'
 import { useIDEStore } from '../store/ideStore'
 import { unifiedStorage } from '../services/unifiedStorage'
 import type { FileItem } from '../types/file'
@@ -10,6 +12,7 @@ import type { FileItem } from '../types/file'
 export function useAppBootstrap() {
   const authChecked = useIDEStore((s) => s.authChecked)
   const currentUser = useIDEStore((s) => s.currentUser)
+  const initialWorkspaceLoadedRef = useRef(false)
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -41,6 +44,7 @@ export function useAppBootstrap() {
       const shareData = getShare(shareId)
       if (shareData) {
         setFiles(shareData.files)
+        markWorkspaceHydrated()
       }
       window.history.replaceState({}, '', window.location.pathname)
     }
@@ -83,6 +87,8 @@ export function useAppBootstrap() {
 
   useEffect(() => {
     if (!authChecked) return
+    if (initialWorkspaceLoadedRef.current) return
+    initialWorkspaceLoadedRef.current = true
 
     const referrer = document.referrer
     const isFromLandingPage =
@@ -98,36 +104,31 @@ export function useAppBootstrap() {
         return
       }
 
+      const localFiles = await loadLocalAutosaveFiles()
+      let cloudFiles: FileItem[] | null = null
+
       if (currentUser) {
         const cloudData = await authService.loadWorkspace('default')
-        if (cloudData && cloudData.files.length > 0) {
-          setFiles(
-            cloudData.files.map((file) => ({
-              name: file.name,
-              content: file.content,
-              language: file.language,
-            })),
-          )
-          return
+        if (cloudData?.files?.length) {
+          cloudFiles = cloudData.files.map((file) => ({
+            name: file.name,
+            content: file.content,
+            language: file.language || 'plaintext',
+          }))
         }
       }
 
-      const savedFiles = await unifiedStorage.get<FileItem[] | null>('autosave-default', null)
-      if (savedFiles && savedFiles.length > 0) {
-        setFiles(
-          savedFiles.map((file) => ({
-            name: file.name,
-            content: file.content,
-            language: file.language,
-          })),
-        )
+      const best = pickRicherFileSet(localFiles, cloudFiles)
+      if (best && best.length > 0) {
+        setFiles(best)
+        markWorkspaceHydrated()
         return
       }
 
       setShowWelcome(true)
     }
 
-    loadWorkspace()
+    void loadWorkspace()
   }, [authChecked, currentUser])
 
   useEffect(() => {

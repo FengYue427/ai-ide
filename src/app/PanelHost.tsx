@@ -3,6 +3,7 @@ import StatusBar from '../components/StatusBar'
 import WorkspacePanel from '../components/WorkspacePanel'
 import { modelOptions } from '../services/aiService'
 import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
+import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { useIDEStore, type EditorTheme } from '../store/ideStore'
 import {
   AISettingsModal,
@@ -415,6 +416,7 @@ export function PanelHost({
           onLoadWorkspace={(loadedFiles, settings) => {
             setFiles(loadedFiles)
             setActiveFile(0)
+            markWorkspaceHydrated()
             if (settings.theme) setTheme(settings.theme as EditorTheme)
             if (settings.autoSave !== undefined) setAutoSaveEnabled(settings.autoSave)
             notify('success', t('notify.workspaceLoaded'), t('notify.workspaceLoadedDetail', { count: loadedFiles.length }))

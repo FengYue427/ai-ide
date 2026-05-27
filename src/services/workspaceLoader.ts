@@ -3,6 +3,8 @@ import { cloudSyncService } from './cloudSyncService'
 import { listWorkspaceEntries, loadWorkspaceEntry } from './workspaceCatalogService'
 import { authService } from './authService'
 import { normalizeLanguage } from '../lib/language'
+import { loadLocalAutosaveFiles } from './workspaceAutosave'
+import { pickRicherFileSet } from './workspaceSession'
 import { unifiedStorage } from './unifiedStorage'
 import type { FileItem } from '../types/file'
 
@@ -30,6 +32,20 @@ function normalizeFiles(
 
 /** Load a workspace snapshot from local IndexedDB (no server required). */
 export async function loadWorkspaceSnapshot(id: string): Promise<LoadedWorkspace | null> {
+  if (id === 'autosave-default' || id === 'local-autosave') {
+    const localFiles = await loadLocalAutosaveFiles()
+    if (localFiles && localFiles.length > 0) {
+      const appSettings = await unifiedStorage.get<{ autosave?: boolean }>('settings', { autosave: true })
+      const theme = await unifiedStorage.get<'vs-dark' | 'light'>('theme', 'vs-dark')
+      const storedLang = await unifiedStorage.get<string>('language', 'zh-CN')
+      return {
+        files: localFiles,
+        settings: { theme, autoSave: appSettings.autosave, language: normalizeLanguage(storedLang) },
+        name: serviceText('workspace.autosave.name'),
+      }
+    }
+  }
+
   const workspaces = await cloudSyncService.getAllWorkspaces()
   const saved = workspaces.find((workspace) => workspace.id === id)
   if (saved) {
@@ -44,26 +60,12 @@ export async function loadWorkspaceSnapshot(id: string): Promise<LoadedWorkspace
     }
   }
 
-  if (id === 'autosave-default' || id === 'local-autosave') {
-    const autosave = await unifiedStorage.get<
-      Array<{ name: string; content: string; language?: string }> | null
-    >('autosave-default', null)
-    if (autosave && autosave.length > 0) {
-      const appSettings = await unifiedStorage.get<{ autosave?: boolean }>('settings', { autosave: true })
-      const theme = await unifiedStorage.get<'vs-dark' | 'light'>('theme', 'vs-dark')
-      const storedLang = await unifiedStorage.get<string>('language', 'zh-CN')
-      return {
-        files: normalizeFiles(autosave),
-        settings: { theme, autoSave: appSettings.autosave, language: normalizeLanguage(storedLang) },
-        name: serviceText('workspace.autosave.name'),
-      }
-    }
-  }
-
   const autoBackup = await cloudSyncService.getAutoBackup()
   if (autoBackup && (autoBackup.id === id || id === 'auto-backup')) {
+    const localFiles = await loadLocalAutosaveFiles()
+    const files = pickRicherFileSet(normalizeFiles(autoBackup.files), localFiles) ?? normalizeFiles(autoBackup.files)
     return {
-      files: normalizeFiles(autoBackup.files),
+      files,
       settings: {
         theme: autoBackup.settings.theme as 'vs-dark' | 'light',
         autoSave: autoBackup.settings.autoSave,

@@ -29,6 +29,7 @@ import { PanelHost } from './PanelHost'
 import { RightPanel } from './RightPanel'
 import { useAppFeedback } from './useAppFeedback'
 import { loadWorkspaceByRef } from '../services/workspaceLoader'
+import { markWorkspaceHydrated } from '../services/workspaceSession'
 import type { EditorTheme } from '../store/ideStore'
 
 export function AppShell() {
@@ -54,6 +55,7 @@ export function AppShell() {
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
   const setShowWelcome = useIDEStore((s) => s.setShowWelcome)
+  const showWelcome = useIDEStore((s) => s.showWelcome)
 
   const { toasts, confirmRequest, dismissToast, notify, requestConfirm, resolveConfirm } = useAppFeedback()
 
@@ -66,6 +68,7 @@ export function AppShell() {
     }
     setFiles(loaded.files)
     setActiveFile(0)
+    markWorkspaceHydrated()
     if (loaded.settings?.theme) setTheme(loaded.settings.theme as EditorTheme)
     if (loaded.settings?.autoSave !== undefined) setAutoSaveEnabled(loaded.settings.autoSave)
     notify('success', t('notify.projectOpened'), loaded.name || `${loaded.files.length}`)
@@ -111,6 +114,7 @@ export function AppShell() {
     files,
     uiLocale: language,
     theme,
+    showWelcome,
   })
 
   const { handleFileChange } = useFileEditor({ activeFile, setFiles })

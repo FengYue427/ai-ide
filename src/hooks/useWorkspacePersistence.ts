@@ -3,6 +3,7 @@ import { createTranslator, type Language } from '../i18n'
 import { authService, type User as AuthUser } from '../services/authService'
 import { cloudSyncService } from '../services/cloudSyncService'
 import { recentFilesService } from '../services/recentFilesService'
+import { isWorkspaceHydrated } from '../services/workspaceSession'
 import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
 import type { FileItem } from '../types/file'
 
@@ -12,6 +13,7 @@ interface UseWorkspacePersistenceOptions {
   files: FileItem[]
   uiLocale: Language
   theme: 'vs-dark' | 'light'
+  showWelcome: boolean
 }
 
 export function useWorkspacePersistence({
@@ -20,10 +22,14 @@ export function useWorkspacePersistence({
   files,
   uiLocale,
   theme,
+  showWelcome,
 }: UseWorkspacePersistenceOptions) {
   useEffect(() => {
     const t = createTranslator(uiLocale)
     if (!autoSaveEnabled) return
+    // Welcome screen keeps the starter template in memory — do not overwrite real autosave.
+    if (showWelcome) return
+    if (!isWorkspaceHydrated()) return
 
     const timer = setTimeout(async () => {
       const ideFiles = files.map((file, index) => ({
@@ -56,5 +62,5 @@ export function useWorkspacePersistence({
     }, 3000)
 
     return () => clearTimeout(timer)
-  }, [autoSaveEnabled, currentUser, files, theme, uiLocale])
+  }, [autoSaveEnabled, currentUser, files, theme, uiLocale, showWelcome])
 }
