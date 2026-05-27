@@ -98,7 +98,26 @@
   margin-top: 4px;
   font-size: 11px;
   color: var(--text-secondary);
-  text-transform: uppercase;
+  text-transform: none;
+}
+
+.sidebar-tree-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.sidebar-tree-item:hover {
+  background: color-mix(in srgb, var(--bg-tertiary) 88%, transparent);
 }
 
 .sidebar-outline {

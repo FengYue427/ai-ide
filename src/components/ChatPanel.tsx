@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, CheckSquare, Code2, FilePlus, FolderOpen, Send, Sparkles, User, Wand2, Zap } from 'lucide-react'
+import { Bot, CheckSquare, Code2, FilePlus, FolderOpen, Pause, Send, Sparkles, User, Wand2, Zap } from 'lucide-react'
 import { AgentToolPanel } from './AgentToolPanel'
 import { aiAgentService } from '../services/aiAgentService'
 import {
@@ -102,7 +102,14 @@ ${t('ai.chat.prompt')}`
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
   const [mounted, setMounted] = useState(false)
   const [useWorkspaceContext, setUseWorkspaceContext] = useState(false)
-  const [agentMode, setAgentMode] = useState(false)
+  const [agentMode, setAgentMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ai-ide:chat-agent-mode')
+      return saved === null ? true : saved === 'true'
+    } catch {
+      return true
+    }
+  })
   const [workspaceStats, setWorkspaceStats] = useState(workspaceContextService.getStats())
   const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: createWelcomeMessage(aiConfig) }])
   const [input, setInput] = useState('')
@@ -124,6 +131,13 @@ ${t('ai.chat.prompt')}`
   const indexStats = useMemo(() => projectIndexManager.getIndexStats(), [indexVersion])
   const indexBuildState = useMemo(() => projectIndexManager.getBuildState(), [indexVersion])
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const streamAbortRef = useRef<AbortController | null>(null)
+  const stopRequestedRef = useRef(false)
+  const stopGeneration = useCallback(() => {
+    stopRequestedRef.current = true
+    streamAbortRef.current?.abort()
+  }, [])
+
   const [quota, setQuota] = useState<QuotaCheck>({
     allowed: true,
     used: 0,
@@ -364,6 +378,9 @@ ${t('ai.chat.prompt')}`
     setMessages((prev) => [...prev, userMessage])
     if (!customInput) setInput('')
     setLoading(true)
+    stopRequestedRef.current = false
+    streamAbortRef.current?.abort()
+    streamAbortRef.current = new AbortController()
     setAgentActivity([])
 
     try {
@@ -427,6 +444,8 @@ ${t('ai.chat.prompt')}`
               return next
             })
           },
+          shouldStop: () => stopRequestedRef.current,
+          signal: streamAbortRef.current?.signal,
         })
 
         assistantContent = result.finalContent
@@ -531,7 +550,7 @@ ${t('ai.chat.prompt')}`
           }
           return next
         })
-      })
+      }, { signal: streamAbortRef.current?.signal })
 
       if (agentMode) {
         const mcpSettings = await loadMcpSettings()
@@ -559,7 +578,7 @@ ${t('ai.chat.prompt')}`
                 }
                 return next
               })
-            })
+            }, { signal: streamAbortRef.current?.signal })
             return followUpContent
           },
         })
@@ -584,11 +603,16 @@ ${t('ai.chat.prompt')}`
       }
       refreshQuota()
     } catch (error: any) {
+      if (stopRequestedRef.current || error?.name === 'AbortError' || String(error?.message || '').includes(t('ai.error.aborted'))) {
+        appendError(t('ai.error.aborted'))
+        return
+      }
       const message = error.message || t('chat.unknownError')
       notify?.('error', t('chat.requestFailed', { message: message.split('\n')[0] }), message)
       appendError(t('chat.requestFailed', { message }))
     } finally {
       setLoading(false)
+      streamAbortRef.current = null
     }
   }
 
@@ -675,7 +699,17 @@ ${t('ai.chat.prompt')}`
 
           <button
             type="button"
-            onClick={() => setAgentMode((value) => !value)}
+            onClick={() => {
+              setAgentMode((value) => {
+                const next = !value
+                try {
+                  localStorage.setItem('ai-ide:chat-agent-mode', String(next))
+                } catch {
+                  // ignore persistence failure
+                }
+                return next
+              })
+            }}
             className={`chat-mode-btn ${agentMode ? 'chat-mode-btn--active' : ''}`}
             title={t('chat.agentModeTitle')}
           >
@@ -959,10 +993,11 @@ ${t('ai.chat.prompt')}`
           <button
             type="button"
             className="chat-send chat-send--square"
-            onClick={() => handleSend()}
-            disabled={!isConfigured || loading || !input.trim()}
+            onClick={loading ? stopGeneration : () => handleSend()}
+            disabled={!isConfigured || (!loading && !input.trim())}
+            title={loading ? t('chat.stop') : t('chat.sendButton')}
           >
-            <Send size={16} />
+            {loading ? <Pause size={16} /> : <Send size={16} />}
           </button>
         </div>
       </div>

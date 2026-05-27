@@ -109,7 +109,7 @@ export async function sendMessage(
   config: AIConfig,
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
   onStream?: (chunk: string) => void,
-  options?: { skipQuotaCheck?: boolean },
+  options?: { skipQuotaCheck?: boolean; signal?: AbortSignal },
 ): Promise<string> {
   await reserveQuotaBeforeRequest(options?.skipQuotaCheck)
 
@@ -124,16 +124,16 @@ export async function sendMessage(
     case 'zhipu':
     case 'minimax':
     case 'grok':
-      result = await sendOpenAICompatible(endpoint, config.apiKey, model, messages, onStream)
+      result = await sendOpenAICompatible(endpoint, config.apiKey, model, messages, onStream, options?.signal)
       break
     case 'google':
-      result = await sendGoogleGemini(endpoint, config.apiKey, model, messages, onStream)
+      result = await sendGoogleGemini(endpoint, config.apiKey, model, messages, onStream, options?.signal)
       break
     case 'claude':
-      result = await sendClaude(endpoint, config.apiKey, model, messages, onStream)
+      result = await sendClaude(endpoint, config.apiKey, model, messages, onStream, options?.signal)
       break
     case 'ollama':
-      result = await sendOllama(endpoint, model, messages, onStream)
+      result = await sendOllama(endpoint, model, messages, onStream, options?.signal)
       break
     default:
       throw aiServiceError('ai.error.unsupportedProvider', { provider: config.provider })

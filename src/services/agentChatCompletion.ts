@@ -121,6 +121,7 @@ export async function sendChatCompletion(
   options?: {
     tools?: OpenAIToolDefinition[]
     skipQuotaCheck?: boolean
+    signal?: AbortSignal
   },
 ): Promise<ChatCompletionResult> {
   await reserveQuotaBeforeRequest(options?.skipQuotaCheck)
@@ -139,6 +140,7 @@ export async function sendChatCompletion(
       Authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify(body),
+    signal: options?.signal,
   })
 
   if (!response.ok) {

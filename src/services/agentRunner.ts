@@ -25,6 +25,8 @@ export type AgentActivityEntry = {
 export type AgentRunCallbacks = {
   onActivity?: (entry: AgentActivityEntry) => void
   onAssistantText?: (text: string) => void
+  shouldStop?: () => boolean
+  signal?: AbortSignal
 }
 
 export type AgentRunResult = {
@@ -100,9 +102,13 @@ export async function runAgentLoop(
   let rounds = 0
 
   for (let round = 0; round < maxRounds; round++) {
+    if (callbacks?.shouldStop?.() || callbacks?.signal?.aborted) {
+      break
+    }
     rounds = round + 1
     const completion = await sendChatCompletion(config, messages, {
       tools: AGENT_TOOL_DEFINITIONS,
+      signal: callbacks?.signal,
     })
 
     if (completion.content?.trim()) {
@@ -123,6 +129,9 @@ export async function runAgentLoop(
     })
 
     for (const call of toolCalls) {
+      if (callbacks?.shouldStop?.() || callbacks?.signal?.aborted) {
+        break
+      }
       const name = call.function.name as AgentToolName
       const args = parseToolArguments(call.function.arguments)
       const result = await executeAgentTool(
