@@ -51,12 +51,20 @@ import { buildSemanticContextSection } from '../services/semanticSearchService'
 import { collectSearchableFiles } from '../services/searchService'
 import { ChatMessageBody } from './ChatMessageBody'
 import { useI18n } from '../i18n'
+import { trackEvent } from '../lib/observability'
+import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { useIDEStore } from '../store/ideStore'
 import { isPayloadTooLargeError } from '../services/workspaceLimits'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
+}
+
+type SendAction = 'explain' | 'refactor' | 'fix' | 'generate'
+
+type SendOptions = {
+  forceSlim?: boolean
 }
 
 interface ChatPanelProps {
@@ -121,6 +129,13 @@ ${t('ai.chat.prompt')}`
   const [subscriptionExpiredBanner, setSubscriptionExpiredBanner] = useState<string | null>(null)
   const [mentionHits, setMentionHits] = useState<IndexSearchHit[]>([])
   const [mentionIndex, setMentionIndex] = useState(0)
+  const [payloadWarning, setPayloadWarning] = useState<{
+    estimatedBytes: number
+    budgetBytes: number
+    text: string
+    action?: SendAction
+    slimPlan: string[]
+  } | null>(null)
   const [activeMentionQuery, setActiveMentionQuery] = useState<string | null>(null)
   const [mentionOnboardingDismissed, setMentionOnboardingDismissed] = useState(() => {
     try {
@@ -136,9 +151,15 @@ ${t('ai.chat.prompt')}`
   const streamAbortRef = useRef<AbortController | null>(null)
   const stopRequestedRef = useRef(false)
   const stopGeneration = useCallback(() => {
+    trackEvent('chat.abort', {
+      provider: aiConfig.provider,
+      agentMode,
+      workspaceContext: useWorkspaceContext,
+      messageCount: messages.length,
+    })
     stopRequestedRef.current = true
     streamAbortRef.current?.abort()
-  }, [])
+  }, [agentMode, aiConfig.provider, messages.length, useWorkspaceContext])
 
   const [quota, setQuota] = useState<QuotaCheck>({
     allowed: true,
@@ -353,7 +374,7 @@ ${t('ai.chat.prompt')}`
     [onGenerateFiles],
   )
 
-  const handleSend = async (customInput?: string, action?: keyof typeof quickActionLabels) => {
+  const handleSend = async (customInput?: string, action?: SendAction, options?: SendOptions) => {
     const textToSend = customInput || input
     if (!textToSend.trim()) return
 
@@ -375,10 +396,15 @@ ${t('ai.chat.prompt')}`
       appendError(t('chat.needConfig'))
       return
     }
+    const forceSlim = !!options?.forceSlim
+    const effectiveTextToSend = forceSlim ? textToSend.slice(0, 1200) : textToSend
+    const effectiveWorkspaceContext = forceSlim ? false : useWorkspaceContext
+    const historyLimit = forceSlim ? 6 : 20
 
-    const userMessage: Message = { role: 'user', content: textToSend }
+    const userMessage: Message = { role: 'user', content: effectiveTextToSend }
     setMessages((prev) => [...prev, userMessage])
     if (!customInput) setInput('')
+    setPayloadWarning(null)
     setLoading(true)
     stopRequestedRef.current = false
     streamAbortRef.current?.abort()
@@ -388,6 +414,7 @@ ${t('ai.chat.prompt')}`
     try {
       const history = messages
         .slice(1)
+        .slice(-historyLimit)
         .map((message) => ({ role: message.role as 'user' | 'assistant', content: message.content }))
 
       let aiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = []
@@ -397,7 +424,7 @@ ${t('ai.chat.prompt')}`
 
       const buildAgentWorkspaceSummary = async () => {
         const base =
-          useWorkspaceContext && workspaceStats.selectedFiles > 0
+          effectiveWorkspaceContext && workspaceStats.selectedFiles > 0
             ? workspaceContextService.generateSystemPrompt(
                 action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : '',
                 language,
@@ -405,15 +432,17 @@ ${t('ai.chat.prompt')}`
             : t('chat.prompt.editorFile', { code: currentCode })
         const mcpSection = await buildMcpToolsPromptSection()
         let summary = applyAgentContext(
-          await augmentWithSemanticContext(applyProjectRules(base), textToSend),
+          await augmentWithSemanticContext(applyProjectRules(base), effectiveTextToSend),
           agentSettings,
         )
-        const mentionSection = buildMentionContextSection(
-          textToSend,
-          editorFiles,
-          projectIndexManager.getIndex(),
-          language,
-        )
+        const mentionSection = forceSlim
+          ? ''
+          : buildMentionContextSection(
+            effectiveTextToSend,
+            editorFiles,
+            projectIndexManager.getIndex(),
+            language,
+          )
         if (mentionSection) summary = `${summary}\n\n${mentionSection}`
         return appendMcpToolsToPrompt(summary, mcpSection)
       }
@@ -422,7 +451,7 @@ ${t('ai.chat.prompt')}`
 
       if (agentMode && useToolLoop) {
         const workspaceSummary = await buildAgentWorkspaceSummary()
-        const toolMessages = buildAgentToolMessages(workspaceSummary, textToSend, history)
+        const toolMessages = buildAgentToolMessages(workspaceSummary, effectiveTextToSend, history)
 
         const labelActivity = (tool: AgentActivityEntry['tool'], detail: string, ok: boolean) => {
           const toolLabel = t(`agent.tool.${tool}` as 'agent.tool.read_file')
@@ -504,11 +533,11 @@ ${t('ai.chat.prompt')}`
 
       if (agentMode) {
         const workspaceSummary = await buildAgentWorkspaceSummary()
-        aiMessages = aiAgentService.buildMessages(textToSend, workspaceSummary, history)
+        aiMessages = aiAgentService.buildMessages(effectiveTextToSend, workspaceSummary, history)
       } else {
         let systemPrompt: string
 
-        if (useWorkspaceContext && workspaceStats.selectedFiles > 0) {
+        if (effectiveWorkspaceContext && workspaceStats.selectedFiles > 0) {
           const additionalContext = action
             ? t('chat.prompt.userRequest', { action: quickActionLabels[action] })
             : ''
@@ -520,15 +549,17 @@ ${t('ai.chat.prompt')}`
         }
 
         systemPrompt = applyAgentContext(
-          await augmentWithSemanticContext(applyProjectRules(systemPrompt), textToSend),
+          await augmentWithSemanticContext(applyProjectRules(systemPrompt), effectiveTextToSend),
           agentSettings,
         )
-        const mentionSection = buildMentionContextSection(
-          textToSend,
-          editorFiles,
-          projectIndexManager.getIndex(),
-          language,
-        )
+        const mentionSection = forceSlim
+          ? ''
+          : buildMentionContextSection(
+            effectiveTextToSend,
+            editorFiles,
+            projectIndexManager.getIndex(),
+            language,
+          )
         if (mentionSection) {
           systemPrompt = `${systemPrompt}\n\n${mentionSection}`
         }
@@ -536,8 +567,53 @@ ${t('ai.chat.prompt')}`
         aiMessages = [
           { role: 'system' as const, content: systemPrompt },
           ...history,
-          { role: 'user' as const, content: textToSend },
+          { role: 'user' as const, content: effectiveTextToSend },
         ]
+      }
+
+      const estimatedBytes = new Blob([JSON.stringify(aiMessages)]).size
+      const budgetBytes = getPayloadBudget(aiConfig.provider)
+      if (estimatedBytes > budgetBytes) {
+        if (!forceSlim) {
+          trackEvent('chat.payload_preflight_warn', {
+            estimatedBytes,
+            budgetBytes,
+            provider: aiConfig.provider,
+            agentMode,
+            workspaceContext: effectiveWorkspaceContext,
+          })
+          setPayloadWarning({
+            estimatedBytes,
+            budgetBytes,
+            text: textToSend,
+            action,
+            slimPlan: [
+              t('chat.payload.planHistory', { count: historyLimit }),
+              t('chat.payload.planInput', { count: 1200 }),
+              t('chat.payload.planWorkspace'),
+              t('chat.payload.planMention'),
+            ],
+          })
+          if (!customInput) setInput(textToSend)
+          setMessages((prev) => {
+            const next = [...prev]
+            const last = next[next.length - 1]
+            if (last?.role === 'user' && last.content === effectiveTextToSend) next.pop()
+            return next
+          })
+          notify?.(
+            'info',
+            t('chat.payload.preflightWarnTitle'),
+            t('chat.payload.preflightWarnDetail', { estimatedKb: toKb(estimatedBytes), budgetKb: toKb(budgetBytes) }),
+          )
+          return
+        }
+        throw new Error(
+          t('chat.payload.stillTooLarge', {
+            estimatedKb: toKb(estimatedBytes),
+            budgetKb: toKb(budgetBytes),
+          }),
+        )
       }
 
       await sendMessage(aiConfig, aiMessages, (chunk) => {
@@ -611,6 +687,14 @@ ${t('ai.chat.prompt')}`
       }
       const message = error.message || t('chat.unknownError')
       if (isPayloadTooLargeError(message)) {
+        trackEvent('chat.payload_too_large', {
+          provider: aiConfig.provider,
+          agentMode,
+          workspaceContext: useWorkspaceContext,
+          indexFiles: indexStats.indexedFiles,
+          selectedWorkspaceFiles: workspaceStats.selectedFiles,
+          messageCount: messages.length,
+        })
         const tips = `${t('chat.error.payloadTooLarge')}\n\n${t('chat.error.payloadTooLargeTips')}`
         notify?.('error', t('chat.error.payloadTooLarge'), t('chat.error.payloadTooLargeTips'))
         appendError(tips)
@@ -907,6 +991,37 @@ ${t('ai.chat.prompt')}`
       </div>
 
       <div className="chat-input-area chat-input-area--stacked">
+        {payloadWarning ? (
+          <div className="chat-payload-warning" role="status">
+            <div className="chat-payload-warning__text">
+              <strong>{t('chat.payload.preflightWarnTitle')}</strong>
+              <span>
+                {t('chat.payload.preflightWarnDetail', {
+                  estimatedKb: toKb(payloadWarning.estimatedBytes),
+                  budgetKb: toKb(payloadWarning.budgetBytes),
+                })}
+              </span>
+              <span className="chat-payload-warning__plan">
+                {payloadWarning.slimPlan.join(' · ')}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="chat-btn-primary-sm"
+              onClick={() => {
+                trackEvent('chat.payload_slim_retry', {
+                  estimatedBytes: payloadWarning.estimatedBytes,
+                  budgetBytes: payloadWarning.budgetBytes,
+                  provider: aiConfig.provider,
+                })
+                handleSend(payloadWarning.text, payloadWarning.action, { forceSlim: true })
+              }}
+            >
+              {t('chat.payload.slimAndSend')}
+            </button>
+          </div>
+        ) : null}
+
         {activeMentionQuery !== null && mentionBlockedByIndexBuild ? (
           <div
             className="chat-mention-list"

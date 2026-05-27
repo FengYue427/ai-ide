@@ -33,6 +33,7 @@ import {
 import { isSemanticSearchEnabled, setSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { canUseEmbeddings } from '../services/embeddingService'
 import { projectIndexManager } from '../services/projectIndexManager'
+import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
 import type { ProjectTaskItem } from '../services/projectTasksService'
@@ -180,6 +181,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
     () => canUseEmbeddings({ provider: aiConfig.provider, apiKey: aiConfig.apiKey, endpoint: aiConfig.endpoint }),
     [aiConfig.apiKey, aiConfig.endpoint, aiConfig.provider],
   )
+
+  const payloadBudgetKb = useMemo(() => toKb(getPayloadBudget(localAIConfig.provider)), [localAIConfig.provider])
 
   const indexStatusText = useMemo(() => {
     if (indexBuildState.status === 'building') {
@@ -552,6 +555,23 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                       {t('settings.index.limitLinkLabel')}
                     </a>
                   </div>
+                </div>
+
+                <div className="settings-card settings-card--row settings-card--payload">
+                  <div style={{ flex: 1 }}>
+                    <div className="settings-row-title">{t('settings.payload.card.title')}</div>
+                    <div className="settings-row-desc">{t('settings.payload.card.desc')}</div>
+                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {t('settings.payload.card.providerBudget', {
+                        provider: t(modelProviderTranslationKey(localAIConfig.provider, 'name')),
+                        budgetKb: payloadBudgetKb,
+                      })}
+                    </div>
+                    <div style={{ marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {t('settings.payload.card.strategy')}
+                    </div>
+                  </div>
+                  <span className="settings-badge settings-badge--experimental">413 Guard</span>
                 </div>
                 {featureList.map((feature) => (
                   <div key={feature.name} className="settings-card settings-card--row">

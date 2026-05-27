@@ -216,6 +216,11 @@
   gap: var(--space-4);
 }
 
+.settings-card--payload {
+  border-color: color-mix(in srgb, var(--warning-color) 28%, var(--border-color));
+  background: color-mix(in srgb, var(--warning-color) 8%, var(--bg-secondary));
+}
+
 .settings-field {
   display: grid;
   gap: var(--space-2);

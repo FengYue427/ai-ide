@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, FileText, Folder, Plus, Trash2 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import { SymbolOutline } from '../components/SymbolOutline'
 import { WorkspaceCapacityBanner } from '../components/WorkspaceCapacityBanner'
 import { useI18n } from '../i18n'
+import { trackEvent } from '../lib/observability'
 import { useIDEStore } from '../store/ideStore'
 import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
 
@@ -17,6 +18,7 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
   const { t } = useI18n()
   const [outlineCollapsed, setOutlineCollapsed] = useState(false)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const lastLimitTierRef = useRef<'ok' | 'warn' | 'full'>('ok')
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
   const showNewFileInput = useIDEStore((s) => s.showNewFileInput)
@@ -79,6 +81,9 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
     return root
   }, [files])
 
+  const allFolderPaths = useMemo(() => collectFolderPaths(fileTree), [fileTree])
+  const hasFolders = allFolderPaths.length > 0
+
   useEffect(() => {
     if (files.length < 8) return
     setExpandedFolders((prev) => {
@@ -88,8 +93,19 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
     })
   }, [files.length, fileTree])
 
+  useEffect(() => {
+    if (limitSnapshot.tier === lastLimitTierRef.current) return
+    if (limitSnapshot.tier === 'warn' || limitSnapshot.tier === 'full') {
+      trackEvent(`workspace.limit.${limitSnapshot.tier}`, {
+        current: limitSnapshot.current,
+        max: limitSnapshot.max,
+      })
+    }
+    lastLimitTierRef.current = limitSnapshot.tier
+  }, [limitSnapshot.current, limitSnapshot.max, limitSnapshot.tier])
+
   const expandAllFolders = () => {
-    setExpandedFolders(new Set(collectFolderPaths(fileTree)))
+    setExpandedFolders(new Set(allFolderPaths))
   }
 
   const collapseAllFolders = () => {
@@ -170,7 +186,7 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
           {t('sidebar.files')}
         </div>
         <div className="sidebar-header__actions">
-          {files.length > 0 && fileTree.some((n) => n.kind === 'folder') ? (
+          {files.length > 0 && hasFolders ? (
             <>
               <button type="button" className="sidebar-tree-action" onClick={expandAllFolders}>
                 {t('sidebar.expandAll')}

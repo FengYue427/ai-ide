@@ -7,7 +7,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
+- **v1.0.7.x** 附属路线图 → [ROADMAP_V1.0.7.x.md](docs/ROADMAP_V1.0.7.x.md)
 - **v1.1** Kickoff → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
+
+### Changed (in progress)
+
+- `v1.0.7.1` 首批落地：新增 `chat.abort` / `chat.payload_too_large` / `workspace.limit.warn/full` 事件埋点
+- Chat UI v2 窄宽回归修补：`chat-toolbar-row` 在小宽度下改为单列，避免按钮挤压
+- 文件树展开全量路径改为 `useMemo` 缓存，降低重复递归开销
+- `v1.0.7.2` 首批落地：发送前请求体估算、超限预警拦截、`精简后发送` 一键重试
+- `v1.0.7.2` 第二批：设置页新增“上下文预算”卡片；预警条展示精简策略明细
 
 ## [1.0.7] — 2026-05-27（体验抛光 · 8 项）
 
