@@ -23,6 +23,9 @@ export function ProjectRulesSection({ rulesPreview, onEditRules }: ProjectRulesS
         <div>
           <div style={{ fontWeight: 700, marginBottom: '4px' }}>{t('rules.title')}</div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>{t('rules.desc')}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: 1.45 }}>
+            {t('rules.injectedHint')}
+          </div>
         </div>
       </div>
 

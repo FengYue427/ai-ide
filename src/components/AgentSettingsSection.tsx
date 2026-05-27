@@ -84,6 +84,44 @@ export function AgentSettingsSection({ onRegisterPersist }: AgentSettingsSection
         />
       </div>
 
+      <div className="settings-card settings-card--row" style={{ marginBottom: '10px', padding: 0, border: 'none' }}>
+        <div>
+          <div className="settings-row-title">{t('agent.settings.terminalContext')}</div>
+          <div className="settings-row-desc">{t('agent.settings.terminalContextDesc')}</div>
+        </div>
+        <Toggle
+          checked={settings.injectTerminalContext}
+          onChange={() => setSettings((s) => ({ ...s, injectTerminalContext: !s.injectTerminalContext }))}
+          aria-label={t('agent.settings.terminalContext')}
+        />
+      </div>
+
+      {settings.injectTerminalContext ? (
+        <label style={{ display: 'grid', gap: '6px', fontSize: '13px', marginBottom: '10px' }}>
+          <span style={{ fontWeight: 600 }}>{t('agent.settings.terminalLines')}</span>
+          <input
+            type="number"
+            min={4}
+            max={80}
+            value={settings.terminalContextMaxLines}
+            onChange={(e) =>
+              setSettings((s) => ({
+                ...s,
+                terminalContextMaxLines: Math.min(80, Math.max(4, Number(e.target.value) || 24)),
+              }))
+            }
+            style={{
+              width: '80px',
+              padding: '8px 10px',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-primary)',
+              color: 'var(--text-primary)',
+            }}
+          />
+        </label>
+      ) : null}
+
       <label style={{ display: 'grid', gap: '6px', fontSize: '13px' }}>
         <span style={{ fontWeight: 600 }}>{t('agent.settings.maxRounds')}</span>
         <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{t('agent.settings.maxRoundsDesc')}</span>

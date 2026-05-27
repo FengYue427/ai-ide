@@ -17,6 +17,7 @@ import {
   type QuotaCheck,
 } from '../services/aiService'
 import { supportsAgentToolCalling } from '../services/agentChatCompletion'
+import { appendAgentContextSections } from '../services/agentContextService'
 import { loadAgentSettings } from '../services/agentSettingsService'
 import {
   buildAgentToolMessages,
@@ -95,6 +96,7 @@ ${t('ai.chat.prompt')}`
   )
   const currentUser = useIDEStore((s) => s.currentUser)
   const editorFiles = useIDEStore((s) => s.files)
+  const activeFileIndex = useIDEStore((s) => s.activeFile)
   const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
   const [mounted, setMounted] = useState(false)
@@ -158,10 +160,22 @@ ${t('ai.chat.prompt')}`
     setMentionIndex(0)
   }, [indexVersion])
 
+  const activeFilePath = editorFiles[activeFileIndex]?.name ?? null
+
   const applyProjectRules = useCallback(
     (prompt: string) =>
       appendOpenTasksToPrompt(appendProjectRules(prompt, projectRules, language), projectTasks, language),
     [projectRules, projectTasks, language],
+  )
+
+  const applyAgentContext = useCallback(
+    (prompt: string, agentSettings: Awaited<ReturnType<typeof loadAgentSettings>>) =>
+      appendAgentContextSections(prompt, {
+        language,
+        activeFilePath,
+        agentSettings,
+      }),
+    [activeFilePath, language],
   )
 
   const augmentWithSemanticContext = useCallback(
@@ -339,6 +353,8 @@ ${t('ai.chat.prompt')}`
       let aiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = []
       let assistantContent = ''
 
+      const agentSettings = await loadAgentSettings()
+
       const buildAgentWorkspaceSummary = async () => {
         const base =
           useWorkspaceContext && workspaceStats.selectedFiles > 0
@@ -348,7 +364,10 @@ ${t('ai.chat.prompt')}`
               )
             : t('chat.prompt.editorFile', { code: currentCode })
         const mcpSection = await buildMcpToolsPromptSection()
-        let summary = await augmentWithSemanticContext(applyProjectRules(base), textToSend)
+        let summary = applyAgentContext(
+          await augmentWithSemanticContext(applyProjectRules(base), textToSend),
+          agentSettings,
+        )
         const mentionSection = buildMentionContextSection(
           textToSend,
           editorFiles,
@@ -358,8 +377,6 @@ ${t('ai.chat.prompt')}`
         if (mentionSection) summary = `${summary}\n\n${mentionSection}`
         return appendMcpToolsToPrompt(summary, mcpSection)
       }
-
-      const agentSettings = await loadAgentSettings()
       const useToolLoop =
         agentMode && agentSettings.useToolLoop && supportsAgentToolCalling(aiConfig.provider)
 
@@ -460,7 +477,10 @@ ${t('ai.chat.prompt')}`
             : t('chat.system.default', { code: currentCode })
         }
 
-        systemPrompt = await augmentWithSemanticContext(applyProjectRules(systemPrompt), textToSend)
+        systemPrompt = applyAgentContext(
+          await augmentWithSemanticContext(applyProjectRules(systemPrompt), textToSend),
+          agentSettings,
+        )
         const mentionSection = buildMentionContextSection(
           textToSend,
           editorFiles,

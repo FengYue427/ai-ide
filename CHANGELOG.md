@@ -7,8 +7,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- **v1.0.4** Kickoff → [V1.0.4_KICKOFF.md](docs/V1.0.4_KICKOFF.md)
+- **v1.0.4** GA → [V1.0.4_KICKOFF.md](docs/V1.0.4_KICKOFF.md)
 - **v1.1 RFC** → [V1.1_RFC_STUB.md](docs/V1.1_RFC_STUB.md)
+
+## [1.0.4-rc.1] — 2026-05-27（体验巩固 RC）
+
+### Added
+
+- MCP 官方推荐预置（≥3）· [MCP_OFFICIAL_CATALOG.md](docs/MCP_OFFICIAL_CATALOG.md)
+- Agent 上下文：当前打开文件 + 可选终端最近输出（设置 → Agent）
+- 项目规则：设置页说明自动注入 Chat/Agent
+
+### Docs
+
+- [V1.0.4.1_EXECUTION.md](docs/V1.0.4.1_EXECUTION.md) · [V1.0.4.2_EXECUTION.md](docs/V1.0.4.2_EXECUTION.md)
 
 ## [1.0.3.5] — 2026-05-27（1.0.3.x 终章 · S5 运维收口）
 

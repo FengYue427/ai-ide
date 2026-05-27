@@ -17,6 +17,13 @@ export function isTerminalBridgeReady(): boolean {
   return runner !== null
 }
 
+/** Last N lines from the integrated terminal buffer (browser or desktop). */
+export function getRecentTerminalLines(maxLines: number): string[] {
+  if (maxLines <= 0) return []
+  const all = getOutputLines()
+  return all.slice(-maxLines)
+}
+
 function tokenizeCommand(commandLine: string): string[] {
   const trimmed = commandLine.trim()
   if (!trimmed) return []
