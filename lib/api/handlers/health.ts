@@ -7,6 +7,7 @@
 import { neon } from '@neondatabase/serverless'
 import { buildHealthCheck } from '../healthStatus'
 import { jsonResponse } from '../http'
+import { getReleaseVersion } from '../releaseVersion'
 import { getBillingCapabilities } from '../../billing/billingMode'
 import { sanitizeDatabaseUrl, shouldUseNeonAdapter } from '../../../src/lib/dbUrl'
 
@@ -15,7 +16,7 @@ export async function GET(_req: Request) {
   const dbUrl = process.env.DATABASE_URL?.trim()
 
   const { payload, statusCode } = await buildHealthCheck({
-    version: process.env.npm_package_version ?? '1.0.0-rc.1',
+    version: getReleaseVersion(),
     hasDatabaseUrl: Boolean(dbUrl),
     pingDatabase: async () => {
       if (!dbUrl) throw new Error('DATABASE_URL not set')

@@ -1,7 +1,10 @@
 /**
  * GET /api/health — standalone Vercel entry (minimal imports for serverless bundle).
  */
+import { getReleaseVersion } from '../lib/api/releaseVersion.js'
+
 export async function GET() {
+  const version = getReleaseVersion()
   try {
     const dbUrl = process.env.DATABASE_URL?.trim()
     if (!dbUrl) {
@@ -9,7 +12,7 @@ export async function GET() {
         {
           status: 'degraded',
           service: 'ai-ide-api',
-          version: '1.0.0-rc.1',
+          version,
           timestamp: new Date().toISOString(),
           database: 'not_configured',
           checks: {
@@ -51,7 +54,7 @@ export async function GET() {
     return Response.json({
       status: 'ok',
       service: 'ai-ide-api',
-      version: '1.0.0-rc.1',
+      version,
       timestamp: new Date().toISOString(),
       database: 'connected',
       billing: {
@@ -71,6 +74,7 @@ export async function GET() {
       {
         status: 'degraded',
         service: 'ai-ide-api',
+        version,
         timestamp: new Date().toISOString(),
         database: 'unavailable',
         detail: error instanceof Error ? error.message : String(error),
