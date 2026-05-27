@@ -1,0 +1,24 @@
+{
+  "manifest": {
+    "id": "json-formatter",
+    "name": "JSON 格式化",
+    "version": "1.0.0",
+    "description": "将当前编辑器中的 JSON 美化缩进（2 空格）",
+    "author": "AI IDE",
+    "entry": "main.js",
+    "permissions": ["editor", "ui"],
+    "i18n": {
+      "zh-CN": {
+        "toolbar.label": "格式化 JSON",
+        "notify.ok": "JSON 已格式化",
+        "notify.err": "当前内容不是合法 JSON"
+      },
+      "en-US": {
+        "toolbar.label": "Format JSON",
+        "notify.ok": "JSON formatted",
+        "notify.err": "Content is not valid JSON"
+      }
+    }
+  },
+  "source": "function activate(context) {\n  context.ui.addToolbarButton({\n    icon: 'braces',\n    label: context.t('toolbar.label'),\n    onClick: function () {\n      var text = context.editor.getValue();\n      try {\n        var parsed = JSON.parse(text);\n        context.editor.setValue(JSON.stringify(parsed, null, 2));\n        context.ui.showNotification(context.t('notify.ok'), 'success');\n      } catch (e) {\n        context.ui.showNotification(context.t('notify.err'), 'error');\n      }\n    },\n  });\n}"
+}

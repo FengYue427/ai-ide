@@ -7,7 +7,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- **1.0.6.3** 插件扩充 → [ROADMAP_V1.0.6.x.md](docs/ROADMAP_V1.0.6.x.md)
+- **1.0.6.4** 收官 → [ROADMAP_V1.0.6.x.md](docs/ROADMAP_V1.0.6.x.md)
+
+## [1.0.6.3] — 2026-05-27（F3 插件目录扩充）
+
+### Added
+
+- 官方插件目录 **6 款**（+4）：JSON 格式化、TODO 扫描、行数统计、Markdown 预览+
+- 插件市场 **标签筛选**（全部 / demo / tools / formatter / productivity / markdown / ui）
+- 每款插件 **★ 评分徽章**（官方推荐分）
+
+## [1.0.6.2] — 2026-05-27（F2 文件管理器增强）
 
 ## [1.0.6.2] — 2026-05-27（F2 文件管理器增强）
 

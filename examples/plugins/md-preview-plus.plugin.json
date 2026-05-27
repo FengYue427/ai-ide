@@ -1,0 +1,24 @@
+{
+  "manifest": {
+    "id": "md-preview-plus",
+    "name": "Markdown 预览+",
+    "version": "1.0.0",
+    "description": "在弹窗中预览当前 Markdown 文件原文（快速阅读）",
+    "author": "AI IDE",
+    "entry": "main.js",
+    "permissions": ["files", "ui"],
+    "i18n": {
+      "zh-CN": {
+        "toolbar.label": "MD 预览",
+        "modal.title": "Markdown 预览",
+        "notify.notMd": "请先打开 .md / .markdown 文件"
+      },
+      "en-US": {
+        "toolbar.label": "MD preview",
+        "modal.title": "Markdown preview",
+        "notify.notMd": "Open a .md / .markdown file first"
+      }
+    }
+  },
+  "source": "function activate(context) {\n  context.ui.addToolbarButton({\n    icon: 'eye',\n    label: context.t('toolbar.label'),\n    onClick: function () {\n      var active = context.files.getActive();\n      if (!active) {\n        context.ui.showNotification(context.t('notify.notMd'), 'error');\n        return;\n      }\n      var lower = active.name.toLowerCase();\n      if (lower.indexOf('.md') === -1 && lower.indexOf('.markdown') === -1) {\n        context.ui.showNotification(context.t('notify.notMd'), 'error');\n        return;\n      }\n      var body = active.content;\n      if (body.length > 12000) {\n        body = body.slice(0, 12000) + '\\n…(truncated)';\n      }\n      context.ui.showModal(context.t('modal.title'), body);\n    },\n  });\n}"
+}

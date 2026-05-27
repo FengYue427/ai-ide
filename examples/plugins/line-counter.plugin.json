@@ -1,0 +1,22 @@
+{
+  "manifest": {
+    "id": "line-counter",
+    "name": "代码行数统计",
+    "version": "1.0.0",
+    "description": "统计工作区已导入文件的总行数",
+    "author": "AI IDE",
+    "entry": "main.js",
+    "permissions": ["files", "ui"],
+    "i18n": {
+      "zh-CN": {
+        "toolbar.label": "行数统计",
+        "notify.result": "共 {files} 个文件，约 {lines} 行"
+      },
+      "en-US": {
+        "toolbar.label": "Line count",
+        "notify.result": "{files} files, ~{lines} lines"
+      }
+    }
+  },
+  "source": "function activate(context) {\n  context.ui.addToolbarButton({\n    icon: 'hash',\n    label: context.t('toolbar.label'),\n    onClick: function () {\n      var files = context.files.getAll();\n      var total = 0;\n      for (var i = 0; i < files.length; i++) {\n        var parts = files[i].content.split(/\\r?\\n/);\n        total += parts.length;\n      }\n      context.ui.showNotification(\n        context.t('notify.result', { files: files.length, lines: total }),\n        'info'\n      );\n    },\n  });\n}"
+}

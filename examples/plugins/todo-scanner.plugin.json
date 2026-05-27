@@ -1,0 +1,24 @@
+{
+  "manifest": {
+    "id": "todo-scanner",
+    "name": "TODO 扫描",
+    "version": "1.0.0",
+    "description": "扫描工作区文件中的 TODO / FIXME / HACK 标记",
+    "author": "AI IDE",
+    "entry": "main.js",
+    "permissions": ["files", "ui"],
+    "i18n": {
+      "zh-CN": {
+        "toolbar.label": "扫描 TODO",
+        "modal.title": "TODO / FIXME 列表",
+        "notify.empty": "未发现 TODO/FIXME/HACK"
+      },
+      "en-US": {
+        "toolbar.label": "Scan TODOs",
+        "modal.title": "TODO / FIXME list",
+        "notify.empty": "No TODO/FIXME/HACK found"
+      }
+    }
+  },
+  "source": "function activate(context) {\n  context.ui.addToolbarButton({\n    icon: 'list',\n    label: context.t('toolbar.label'),\n    onClick: function () {\n      var files = context.files.getAll();\n      var hits = [];\n      for (var i = 0; i < files.length; i++) {\n        var f = files[i];\n        var lines = f.content.split(/\\r?\\n/);\n        for (var j = 0; j < lines.length; j++) {\n          var line = lines[j];\n          if (/\\b(TODO|FIXME|HACK)\\b/i.test(line)) {\n            hits.push(f.name + ':' + (j + 1) + ' ' + line.trim().slice(0, 100));\n          }\n        }\n      }\n      var body = hits.length ? hits.slice(0, 50).join('\\n') : context.t('notify.empty');\n      context.ui.showModal(context.t('modal.title'), body);\n    },\n  });\n}"
+}

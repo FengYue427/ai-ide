@@ -5,6 +5,7 @@ import {
   installCatalogEntry,
   isPluginInstalled,
   PLUGIN_CATALOG,
+  PLUGIN_CATALOG_TAGS,
 } from '../services/pluginCatalogService'
 import { pluginManager, type Plugin } from '../services/pluginService'
 import { loadInstalledPluginPackages, saveInstalledPluginPackages } from '../services/pluginStorage'
@@ -37,6 +38,12 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
   const [newPluginJson, setNewPluginJson] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [tagFilter, setTagFilter] = useState<string>('all')
+
+  const filteredCatalog = useMemo(() => {
+    if (tagFilter === 'all') return PLUGIN_CATALOG
+    return PLUGIN_CATALOG.filter((entry) => entry.tags.includes(tagFilter))
+  }, [tagFilter])
 
   const refreshState = () => {
     setPlugins(pluginManager.getAllPlugins())
@@ -242,8 +249,36 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       )}
 
       {tab === 'market' && (
-        <div className="plugins-grid">
-          {PLUGIN_CATALOG.map((entry) => {
+        <>
+          <div className="plugins-tag-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            <button
+              type="button"
+              className={`plugins-tab ${tagFilter === 'all' ? 'plugins-tab--active' : ''}`}
+              style={{ padding: '6px 12px', fontSize: '12px' }}
+              onClick={() => setTagFilter('all')}
+            >
+              {t('plugin.filter.all')}
+            </button>
+            {PLUGIN_CATALOG_TAGS.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                className={`plugins-tab ${tagFilter === tag ? 'plugins-tab--active' : ''}`}
+                style={{ padding: '6px 12px', fontSize: '12px' }}
+                onClick={() => setTagFilter(tag)}
+              >
+                {catalogTagLabel(tag, t)}
+              </button>
+            ))}
+          </div>
+
+          <div className="plugins-grid">
+          {filteredCatalog.length === 0 ? (
+            <div className="plugins-panel plugins-card-desc" style={{ textAlign: 'center' }}>
+              {t('plugin.filter.empty')}
+            </div>
+          ) : null}
+          {filteredCatalog.map((entry) => {
             const installed = isPluginInstalled(entry.id, installedIds)
             return (
               <div key={entry.id} className="plugins-panel">
@@ -255,6 +290,13 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                       </span>
                       <span className="plugins-market-badge">{t('plugin.official')}</span>
                       <span className="status-pill">v{entry.version}</span>
+                      <span
+                        className="status-pill"
+                        style={{ color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.35)' }}
+                        title={t('plugin.rating.title')}
+                      >
+                        ★ {entry.rating.toFixed(1)}
+                      </span>
                     </div>
                     <p className="plugins-card-desc">
                       {catalogText(entry.id, 'desc', entry.description, t)}
@@ -292,6 +334,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
             )
           })}
         </div>
+        </>
       )}
 
       {tab === 'manual' && (
