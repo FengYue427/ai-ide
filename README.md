@@ -2,7 +2,7 @@
 
 > 开源 AI 原生轻量 IDE —— 浏览器开箱，Agent 改你电脑上的项目
 
-**v1.0.3-rc.1** · [RC 说明](docs/V1.0.3_RC.md) · 下一 GA **[v1.0.3](docs/V1.0.3_MASTER_PLAN.md)** · BYOK — 见 [CHANGELOG.md](./CHANGELOG.md)
+**v1.0.3.2** · [1.0.3.x 稳定化](docs/ROADMAP_V1.0.3.x.md) · GA 规划 **[v1.0.3](docs/V1.0.3_MASTER_PLAN.md)** · BYOK — 见 [CHANGELOG.md](./CHANGELOG.md)
 
 | | 链接 |
 |--|------|

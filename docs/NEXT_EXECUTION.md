@@ -10,8 +10,10 @@
 ### A0 今日执行快照（2026-05-27）
 
 - [x] `npm run go-live:preflight` 通过（`test:local` + `smoke:report` 5/5）
-- [x] `npm run rc:live-spotcheck` 自动项通过
-- [ ] spotcheck 警告：生产 health `version=1.0.0-rc.1`，与期望 `1.0.3-rc.1` 不一致（需 redeploy 后复跑）
+- [x] **v1.0.3.2** 已 bump + tag 推送（S1+S2 合并部署）
+- [ ] Vercel 部署完成后复跑 `npm run rc:live-spotcheck`（期望 `version=1.0.3.2`）
+- [ ] Vercel 人工：`VITE_SENTRY_DSN`、`CRON_SECRET`（见 [V1.0.3.1_EXECUTION.md](./V1.0.3.1_EXECUTION.md)）
+- [ ] 若换自定义域：按 [V1.0.3.2_EXECUTION.md](./V1.0.3.2_EXECUTION.md) 做 OAuth/支付回归
 
 ### A1 Phase 1 收尾
 

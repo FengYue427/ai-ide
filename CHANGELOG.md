@@ -8,6 +8,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### 规划
 
 - Phase 3 GA → [V1.0.3_KICKOFF.md](docs/V1.0.3_KICKOFF.md)
+- 下一附属：**1.0.3.3**（计费 SOP）→ [ROADMAP_V1.0.3.x.md](docs/ROADMAP_V1.0.3.x.md)
+
+## [1.0.3.2] — 2026-05-27（1.0.3.x · S1+S2 合并部署）
+
+### 运维（S1 观测）
+
+- `getReleaseVersion()` 从 `package.json` 解析，`/api/health` 与发版版本对齐
+- `npm run rc:live-spotcheck` · `npm run ops:verify-p1` 门禁文档
+- 执行清单：[V1.0.3.1_EXECUTION.md](docs/V1.0.3.1_EXECUTION.md)（内容并入本 tag）
+
+### 信任（S2 域名）
+
+- 自定义域 + `APP_URL` 全链路说明与验收：[CUSTOM_DOMAIN.md](docs/CUSTOM_DOMAIN.md)
+- 执行清单：[V1.0.3.2_EXECUTION.md](docs/V1.0.3.2_EXECUTION.md)
+
+### 工程
+
+- 欢迎页 RC 徽章随 `VITE_APP_VERSION` 显示（如 `1.0.3 RC`）
 
 ## [1.0.3-rc.1] — 2026-05-26（v1.0.3 Phase 2 RC）
 
