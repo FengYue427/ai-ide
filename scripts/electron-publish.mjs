@@ -31,10 +31,8 @@ if (!process.env.GH_TOKEN?.trim()) {
 console.log('=== AI IDE desktop publish (GitHub Releases) ===\n')
 
 if (process.platform === 'darwin') {
-  run('npx', [
-    'electron-builder',
-    '--config',
-    'electron-builder.yml',
+  run('node', [
+    'scripts/electron-builder-run.mjs',
     '--mac',
     'dmg',
     'zip',
@@ -42,10 +40,8 @@ if (process.platform === 'darwin') {
     'always',
   ])
 } else if (process.platform === 'win32') {
-  run('npx', [
-    'electron-builder',
-    '--config',
-    'electron-builder.yml',
+  run('node', [
+    'scripts/electron-builder-run.mjs',
     '--win',
     'portable',
     'nsis',
@@ -54,10 +50,8 @@ if (process.platform === 'darwin') {
   ])
 } else {
   console.log('Publishing Windows + macOS from Linux CI is handled by .github/workflows/desktop-release.yml')
-  run('npx', [
-    'electron-builder',
-    '--config',
-    'electron-builder.yml',
+  run('node', [
+    'scripts/electron-builder-run.mjs',
     '--win',
     'portable',
     'nsis',

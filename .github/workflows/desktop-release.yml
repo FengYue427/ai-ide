@@ -30,7 +30,7 @@ jobs:
       - name: Build & publish Windows to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --config electron-builder.yml --win portable nsis --publish always
+        run: node scripts/electron-builder-run.mjs --win portable nsis --publish always
 
   mac-desktop:
     runs-on: macos-latest
@@ -47,4 +47,4 @@ jobs:
       - name: Build & publish macOS to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --config electron-builder.yml --mac dmg zip --publish always
+        run: node scripts/electron-builder-run.mjs --mac dmg zip --publish always

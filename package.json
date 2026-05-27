@@ -82,9 +82,9 @@
     "electron:dev": "concurrently -k -n web,wait,electron -c green,yellow,blue \"npm run dev\" \"npm run wait:web\" \"npm run electron:start\"",
     "build:electron": "vite build --mode electron",
     "electron:pack": "node scripts/electron-pack.mjs",
-    "electron:pack:installer": "electron-builder --config electron-builder.yml --win nsis --publish never",
-    "electron:pack:mac": "electron-builder --config electron-builder.yml --mac dmg zip --publish never",
-    "electron:pack:offline": "npm run build:electron && electron-builder --config electron-builder.yml --win portable --publish never",
+    "electron:pack:installer": "node scripts/electron-builder-run.mjs --win nsis --publish never",
+    "electron:pack:mac": "node scripts/electron-builder-run.mjs --mac dmg zip --publish never",
+    "electron:pack:offline": "npm run build:electron && node scripts/electron-builder-run.mjs --win portable --publish never",
     "electron:publish": "node scripts/electron-publish.mjs"
   },
   "dependencies": {

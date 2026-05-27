@@ -38,5 +38,6 @@
 ## 工程约定
 
 - `package.json` → `version` 与 `VITE_APP_VERSION` / Sentry `ai-ide@<version>` 一致。
+- **Electron / electron-builder** 只接受标准 semver（`MAJOR.MINOR.PATCH`）。第四段附属版构建时由 `scripts/electron-builder-run.mjs` 临时映射，例如 **`1.0.6.4` → `1.0.604`**（`patch×100 + N`）；产物文件名仍用 **`PRODUCT_VERSION`**（如 `AI-IDE-1.0.6.4-mac-arm64.dmg`）。详见 `scripts/electron-semver.mjs`。
 - `CHANGELOG.md`：每附属版一节 `[1.0.2.N]`、`[1.0.3.N]` 或 `[1.0.4.N]`。
 - 路线图：[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) · [ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md) · [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md) · [ROADMAP_V1.0.5.x.md](./ROADMAP_V1.0.5.x.md) · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md) · **短规划**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md)。

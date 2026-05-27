@@ -13,5 +13,5 @@ function run(cmd, args) {
 }
 
 console.log('=== AI IDE desktop pack (remote shell) ===\n')
-run('npx', ['electron-builder', '--config', 'electron-builder.yml', '--win', 'portable', '--publish', 'never'])
+run('node', ['scripts/electron-builder-run.mjs', '--win', 'portable', '--publish', 'never'])
 console.log('\n✅ Output: release/AI-IDE-*-win-portable.exe')

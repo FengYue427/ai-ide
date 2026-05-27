@@ -16,16 +16,16 @@ publish:
 win:
   target:
     - portable
-  artifactName: AI-IDE-${version}-win-portable.${ext}
+  artifactName: AI-IDE-${env.PRODUCT_VERSION}-win-portable.${ext}
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  artifactName: AI-IDE-${version}-win-setup.${ext}
+  artifactName: AI-IDE-${env.PRODUCT_VERSION}-win-setup.${ext}
 mac:
   target:
     - dmg
     - zip
-  artifactName: AI-IDE-${version}-mac-${arch}.${ext}
+  artifactName: AI-IDE-${env.PRODUCT_VERSION}-mac-${arch}.${ext}
   category: public.app-category.developer-tools
   hardenedRuntime: false
   gatekeeperAssess: false
