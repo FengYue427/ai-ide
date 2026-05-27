@@ -19,6 +19,7 @@ import {
 import { useI18n } from '../i18n'
 import { authService } from '../services/authService'
 import { useIDEStore } from '../store/ideStore'
+import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
 import type { ConfirmRequest, ToastKind } from '../components/FeedbackCenter'
 
 interface AppToolbarProps {
@@ -64,6 +65,7 @@ export function AppToolbar({
 }: AppToolbarProps) {
   const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
+  const fileLimit = getWorkspaceLimitSnapshot(files.length)
   const currentUser = useIDEStore((s) => s.currentUser)
   const currentPlan = useIDEStore((s) => s.currentPlan)
   const pluginToolbarButtons = useIDEStore((s) => s.pluginToolbarButtons)
@@ -136,10 +138,14 @@ export function AppToolbar({
           <Activity size={14} />
           <span>{runStatusText}</span>
         </div>
-        <div className="toolbar-chip">
+        <div
+          className={`toolbar-chip ${fileLimit.tier === 'warn' ? 'toolbar-chip--warn' : ''} ${fileLimit.tier === 'full' ? 'toolbar-chip--danger' : ''}`}
+          title={t('toolbar.fileCountHint', { current: fileLimit.current, max: fileLimit.max })}
+        >
           <Save size={14} />
           <span>
-            {t('toolbar.fileCount')} <strong>{files.length}</strong>
+            {t('toolbar.fileCount')} <strong>{fileLimit.current}</strong>
+            <span className="toolbar-chip-muted"> / {fileLimit.max}</span>
           </span>
         </div>
       </div>

@@ -9,6 +9,30 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **v1.1** Kickoff → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
 
+## [1.0.7] — 2026-05-27（体验抛光 · 8 项）
+
+### Summary
+
+- **v1.0.7** 八项「小优化 · 大收获」：聊天可控、侧栏可读、上限可感知、413 可行动
+- 详见 [V1.0.7_MASTER_PLAN.md](docs/V1.0.7_MASTER_PLAN.md) · [RELEASE_NOTES_v1.0.7.md](docs/RELEASE_NOTES_v1.0.7.md)
+
+### Added / Changed
+
+1. **聊天可停止生成** — `AbortController`，生成中发送钮为暂停
+2. **Agent 默认开启并记忆** — `ai-ide:chat-agent-mode` 默认 `true`
+3. **左侧文件树** — 路径分层；语言标签取消全大写
+4. **文件上限可视化** — `WorkspaceCapacityBanner`、工具栏 `当前/上限`（浏览器 500 / 桌面 2000）
+5. **Chat UI v2** — 会话卡层次、消息代码块、`chat-panel--v2` 输入浮层
+6. **413 友好提示** — 识别请求过大并给出缩减上下文步骤
+7. **文件树展开/折叠** — 侧栏按钮；≥8 文件自动展开第一层
+8. **工作区上限与索引对齐** — `workspaceContextService` 使用 `getMaxIndexFiles()`（不再单独 100）
+
+### Added (modules)
+
+- `src/services/workspaceLimits.ts`
+- `src/components/WorkspaceCapacityBanner.tsx`
+- `src/components/ChatMessageBody.tsx`
+
 ## [1.0.6.4] — 2026-05-27（v1.0.6 收官）
 
 ### Summary

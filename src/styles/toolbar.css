@@ -110,6 +110,21 @@
   color: var(--warning-color);
 }
 
+.toolbar-chip--warn {
+  border-color: color-mix(in srgb, var(--warning-color) 45%, var(--border-color));
+  color: var(--warning-color);
+}
+
+.toolbar-chip--danger {
+  border-color: color-mix(in srgb, var(--danger-color) 45%, var(--border-color));
+  color: var(--danger-color);
+}
+
+.toolbar-chip-muted {
+  font-weight: 500;
+  opacity: 0.75;
+}
+
 .toolbar-primary-button {
   background: linear-gradient(135deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 70%, #b682ff));
   color: #fff;

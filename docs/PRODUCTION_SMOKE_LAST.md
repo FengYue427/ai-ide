@@ -1,12 +1,18 @@
 # Production smoke report
 
 - **URL**: https://ai-ide-flame.vercel.app
-- **Time**: 2026-05-27T08:10:45.209Z
+- **Time**: 2026-05-27T09:36:11.245Z
 
-- [x] **health** — ok db=connected authSecret=yes prismaRouter=unavailable
-- [x] **session** — HTTP 200
-- [x] **workspaces 401** — HTTP 401
-- [x] **subscription** — anonymous free
-- [x] **index** — HTTP 200
+- [ ] **health** — fetch failed
+- [ ] **session** — fetch failed
+- [ ] **workspaces 401** — fetch failed
+- [ ] **subscription** — fetch failed
+- [ ] **index** — fetch failed
 
-**Result**: 5/5 passed
+**Result**: 0/5 passed
+
+## Next steps
+
+1. Fix Vercel env — [docs/VERCEL_ENV_PHASE2.md](../docs/VERCEL_ENV_PHASE2.md)
+2. Redeploy
+3. Re-run `npm run smoke:report`

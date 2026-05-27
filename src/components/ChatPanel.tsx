@@ -49,8 +49,10 @@ import { canUseEmbeddings } from '../services/embeddingService'
 import { isSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { buildSemanticContextSection } from '../services/semanticSearchService'
 import { collectSearchableFiles } from '../services/searchService'
+import { ChatMessageBody } from './ChatMessageBody'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
+import { isPayloadTooLargeError } from '../services/workspaceLimits'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -608,6 +610,12 @@ ${t('ai.chat.prompt')}`
         return
       }
       const message = error.message || t('chat.unknownError')
+      if (isPayloadTooLargeError(message)) {
+        const tips = `${t('chat.error.payloadTooLarge')}\n\n${t('chat.error.payloadTooLargeTips')}`
+        notify?.('error', t('chat.error.payloadTooLarge'), t('chat.error.payloadTooLargeTips'))
+        appendError(tips)
+        return
+      }
       notify?.('error', t('chat.requestFailed', { message: message.split('\n')[0] }), message)
       appendError(t('chat.requestFailed', { message }))
     } finally {
@@ -678,7 +686,7 @@ ${t('ai.chat.prompt')}`
   }
 
   return (
-    <div className={`chat-container chat-panel ${mounted ? 'chat-panel--mounted' : ''}`}>
+    <div className={`chat-container chat-panel chat-panel--v2 ${mounted ? 'chat-panel--mounted' : ''}`}>
       <div className="chat-panel-header">
         <div className="chat-session-card">
           <div className="chat-session-card__title">
@@ -799,9 +807,7 @@ ${t('ai.chat.prompt')}`
               )}
 
               <div className={`chat-msg-bubble ${isAssistant ? 'chat-msg-bubble--assistant' : 'chat-msg-bubble--user'}`}>
-                {message.content.split('\n').map((line, lineIndex) => (
-                  <div key={lineIndex}>{line || ' '}</div>
-                ))}
+                <ChatMessageBody content={message.content} variant={message.role} />
               </div>
 
               {!isAssistant && (

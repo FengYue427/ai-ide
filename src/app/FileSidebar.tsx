@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, FileText, Folder, Plus, Trash2 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import { SymbolOutline } from '../components/SymbolOutline'
+import { WorkspaceCapacityBanner } from '../components/WorkspaceCapacityBanner'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
+import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
 
 interface FileSidebarProps {
   onCreateFile: () => void
@@ -29,6 +31,19 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
     kind: 'file' | 'folder'
     fileIndex?: number
     children?: TreeNode[]
+  }
+
+  const limitSnapshot = useMemo(() => getWorkspaceLimitSnapshot(files.length), [files.length])
+
+  const collectFolderPaths = (nodes: TreeNode[]): string[] => {
+    const paths: string[] = []
+    for (const node of nodes) {
+      if (node.kind === 'folder') {
+        paths.push(node.path)
+        if (node.children) paths.push(...collectFolderPaths(node.children))
+      }
+    }
+    return paths
   }
 
   const fileTree = useMemo<TreeNode[]>(() => {
@@ -63,6 +78,23 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
     sortNodes(root)
     return root
   }, [files])
+
+  useEffect(() => {
+    if (files.length < 8) return
+    setExpandedFolders((prev) => {
+      if (prev.size > 0) return prev
+      const firstLevel = fileTree.filter((n) => n.kind === 'folder').map((n) => n.path)
+      return new Set(firstLevel)
+    })
+  }, [files.length, fileTree])
+
+  const expandAllFolders = () => {
+    setExpandedFolders(new Set(collectFolderPaths(fileTree)))
+  }
+
+  const collapseAllFolders = () => {
+    setExpandedFolders(new Set())
+  }
 
   const toggleFolder = (path: string) => {
     setExpandedFolders((prev) => {
@@ -132,27 +164,37 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
 
   return (
     <div className="sidebar">
-      <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Folder size={14} style={{ marginRight: 6 }} />
+      <div className="sidebar-header sidebar-header--files">
+        <div className="sidebar-header__title">
+          <Folder size={14} />
           {t('sidebar.files')}
         </div>
-        <button
-          type="button"
-          onClick={() => setShowNewFileInput(true)}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 4,
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <Plus size={14} />
-        </button>
+        <div className="sidebar-header__actions">
+          {files.length > 0 && fileTree.some((n) => n.kind === 'folder') ? (
+            <>
+              <button type="button" className="sidebar-tree-action" onClick={expandAllFolders}>
+                {t('sidebar.expandAll')}
+              </button>
+              <button type="button" className="sidebar-tree-action" onClick={collapseAllFolders}>
+                {t('sidebar.collapseAll')}
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            className="sidebar-header__icon-btn"
+            onClick={() => setShowNewFileInput(true)}
+            title={t('sidebar.create')}
+          >
+            <Plus size={14} />
+          </button>
+        </div>
       </div>
+      {files.length > 0 ? (
+        <div className="sidebar-capacity-wrap">
+          <WorkspaceCapacityBanner snapshot={limitSnapshot} compact />
+        </div>
+      ) : null}
       <div className="sidebar-section">
         {showNewFileInput && (
           <div className="sidebar-input-row">

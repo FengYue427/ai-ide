@@ -11,6 +11,7 @@ import {
   summarizeFileContent,
 } from './workspacePromptUtils'
 import { normalizeProjectPath } from './localProjectPaths'
+import { getMaxIndexFiles } from './workspaceLimits'
 
  type WorkspaceChangeListener = () => void
 
@@ -35,7 +36,9 @@ export interface WorkspaceContext {
 
 const MAX_FILE_SIZE = 1024 * 1024 // 1MB 单文件限制
 const MAX_TOTAL_SIZE = 10 * 1024 * 1024 // 10MB 总限制
-const MAX_FILES = 100 // 最大文件数
+function getMaxWorkspaceFiles(): number {
+  return getMaxIndexFiles()
+}
 
 class WorkspaceContextService {
   private context: WorkspaceContext | null = null
@@ -129,9 +132,10 @@ class WorkspaceContextService {
       throw new Error(workspaceError('workspace.error.totalTooLarge'))
     }
 
-    // 检查文件数
-    if (this.context!.files.length >= MAX_FILES) {
-      throw new Error(workspaceError('workspace.error.fileCountTooLarge'))
+    // 检查文件数（与索引上限对齐：浏览器 500 / 桌面 2000）
+    const maxFiles = getMaxWorkspaceFiles()
+    if (this.context!.files.length >= maxFiles) {
+      throw new Error(workspaceError('workspace.error.fileCountTooLarge', { max: maxFiles }))
     }
 
     // 检查是否已存在
