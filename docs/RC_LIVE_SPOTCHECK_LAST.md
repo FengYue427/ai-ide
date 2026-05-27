@@ -1,13 +1,13 @@
-# v1.0.3 RC live spotcheck
+# v1.0.4.x E4 live spotcheck
 
 - **URL**: https://ai-ide-flame.vercel.app
-- **Time**: 2026-05-27T06:15:23.272Z
-- **Expect version**: 1.0.4.3
+- **Time**: 2026-05-27T06:33:55.170Z
+- **Expect version**: 1.0.4.4
 
 ## Automated
 
-- [x] **health** — ok db=connected version=1.0.4.3
-- [x] **deploy version** — 1.0.4.3
+- [x] **health** — ok db=connected version=1.0.4.4
+- [x] **deploy version** — 1.0.4.4
 - [x] **Chat (API)** — session endpoint OK
 - [x] **Chat (quota)** — anonymous free plan
 - [x] **支付宝 (API)** — billing.alipay=true, wechat=false (1.0.3 决策)
