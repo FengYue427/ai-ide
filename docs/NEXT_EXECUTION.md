@@ -9,14 +9,14 @@
 | 版本 | 代号 | 状态 | 执行文档 |
 |------|------|:----:|----------|
 | **1.0.5** | 桥接 Kickoff | 🔶 | [V1.0.5_KICKOFF.md](./V1.0.5_KICKOFF.md) |
-| **1.0.5.1** | B1′ 运维+MCP | 🔶 | [V1.0.5.1_EXECUTION.md](./V1.0.5.1_EXECUTION.md) |
+| **1.0.5.1** | B1′ 运维+MCP | ✅ | [V1.0.5.1_EXECUTION.md](./V1.0.5.1_EXECUTION.md) · `v1.0.5.1` live |
 | **1.0.5.2** | B2′ 索引@ | ⏳ | [V1.0.5.2_EXECUTION.md](./V1.0.5.2_EXECUTION.md) |
 | **1.0.5.3** | C1′ v1.1 预备 | ⏳ | [V1.0.5.3_EXECUTION.md](./V1.0.5.3_EXECUTION.md) |
 | **1.0.5.4** | E5 收官 | ⏳ | [V1.0.5.4_EXECUTION.md](./V1.0.5.4_EXECUTION.md) |
 
 **本包已合入（1.0.5.1）**：`mcp:smoke`、MCP FAQ、索引 building 时 `@` 禁用、设置页 `#capacity-limits`、欢迎页 Release 链接。
 
-**下一步**：deploy → `v1.0.5.1` tag → 继续 .3 RFC / .4 收官。
+**下一步**：1.0.5.3 RFC 扩写 → 1.0.5.4 收官（live 人工 5 项、Release Notes）。
 
 ---
 
@@ -25,7 +25,7 @@
 | 项 | 状态 |
 |----|:----:|
 | live 人工 5/5 | ☐ |
-| GitHub Release `v1.0.5.1` | ☐ |
+| GitHub Release `v1.0.5.1` | ☐（tag 已推，Notes 待写） |
 | 关 **1.0.4.x** milestone | ☐ |
 
 ---

@@ -10,8 +10,8 @@
 1. `npm run test:local`
 2. `npm run mcp:smoke`（`MCP_SMOKE_SKIP_LIVE=1` 仅当 API 未起）
 3. `npm run go-live:preflight`
-4. `git commit` + `git push origin main`
-5. `npm run deploy`（`vercel --prod`）
+4. `git commit` + `git push origin main`（**优先**：触发 Vercel Git 自动部署）
+5. 若本机已 `vercel login`：`npm run deploy`（`vercel --prod`）；CLI token 失效时 **仅依赖步骤 4**
 6. 等待 1～3 分钟后 `npm run rc:live-spotcheck`（期望 `health.version` 与 `package.json` 一致）
 7. `git tag v<version>` + `git push origin v<version>`
 8. 更新 [NEXT_EXECUTION.md](./NEXT_EXECUTION.md) 与对应 EXECUTION checklist

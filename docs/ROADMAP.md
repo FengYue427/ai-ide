@@ -1,6 +1,6 @@
 # AI IDE 路线图与文档导航
 
-> **当前开发**：**v1.0.5.1**（1.0.5.x） · **上一稳定**：**v1.0.4.4** · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)  
+> **当前稳定**：**v1.0.5.1**（1.0.5.x） · **上一稳定**：**v1.0.4.4** · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)  
 > **世代**： … [ROADMAP_V1.0.4.x](./ROADMAP_V1.0.4.x.md) ✅ · [ROADMAP_V1.0.5.x](./ROADMAP_V1.0.5.x.md) 🔶  
 > **大总结**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md) · **竞品**：[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)（**2.75**）  
 > 演示站：[https://ai-ide.vercel.app](https://ai-ide.vercel.app)
