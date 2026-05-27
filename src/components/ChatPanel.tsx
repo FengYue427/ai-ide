@@ -158,17 +158,27 @@ ${t('ai.chat.prompt')}`
 
   useEffect(() => projectIndexManager.subscribe(() => setIndexVersion(projectIndexManager.getVersion())), [])
 
-  const refreshMentionHits = useCallback((text: string, cursor: number) => {
-    const query = getActiveMentionQuery(text, cursor)
-    if (query === null) {
-      setActiveMentionQuery(null)
-      setMentionHits([])
-      return
-    }
-    setActiveMentionQuery(query)
-    setMentionHits(projectIndexManager.search(query, 8))
-    setMentionIndex(0)
-  }, [indexVersion])
+  const mentionBlockedByIndexBuild = indexBuildState.status === 'building'
+
+  const refreshMentionHits = useCallback(
+    (text: string, cursor: number) => {
+      const query = getActiveMentionQuery(text, cursor)
+      if (query === null) {
+        setActiveMentionQuery(null)
+        setMentionHits([])
+        return
+      }
+      setActiveMentionQuery(query)
+      if (mentionBlockedByIndexBuild) {
+        setMentionHits([])
+        setMentionIndex(0)
+        return
+      }
+      setMentionHits(projectIndexManager.search(query, 8))
+      setMentionIndex(0)
+    },
+    [indexVersion, mentionBlockedByIndexBuild],
+  )
 
   const activeFilePath = editorFiles[activeFileIndex]?.name ?? null
 
@@ -879,6 +889,24 @@ ${t('ai.chat.prompt')}`
       </div>
 
       <div className="chat-input-area chat-input-area--stacked">
+        {activeMentionQuery !== null && mentionBlockedByIndexBuild ? (
+          <div
+            className="chat-mention-list"
+            style={{
+              padding: '10px 12px',
+              fontSize: '12px',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.5,
+              border: '1px solid var(--border-color)',
+              borderRadius: '12px',
+              marginBottom: '8px',
+            }}
+            role="status"
+          >
+            {t('chat.mentionBuildingBlocked')}
+          </div>
+        ) : null}
+
         {mentionHits.length > 0 && (
           <div className="chat-mention-list">
             {mentionHits.map((hit, index) => (

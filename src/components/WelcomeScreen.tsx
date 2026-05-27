@@ -368,6 +368,19 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
         <footer className="welcome-footer">
           {appOrigin ? <span>{t('welcome.appUrl', { url: appOrigin })}</span> : null}
+          {(() => {
+            const version = (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim()
+            if (!version || !/^1\.0\.\d+(\.\d+)?$/.test(version)) return null
+            return (
+              <a
+                href={`https://github.com/FengYue427/ai-ide/releases/tag/v${version}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t('welcome.footer.release')} (v{version})
+              </a>
+            )
+          })()}
           <a href={legalPrivacy} target="_blank" rel="noreferrer">
             {t('welcome.footer.privacy')}
           </a>

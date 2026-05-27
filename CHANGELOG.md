@@ -7,8 +7,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### 规划
 
-- **1.0.4.x** 稳定化 → [ROADMAP_V1.0.4.x.md](docs/ROADMAP_V1.0.4.x.md)
-- **v1.1 RFC** → [V1.1_RFC_STUB.md](docs/V1.1_RFC_STUB.md)
+- **1.0.5.x** 桥接 → [ROADMAP_V1.0.5.x.md](docs/ROADMAP_V1.0.5.x.md)
+- **v1.1** → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
+
+## [1.0.5.1] — 2026-05-27（B1′ 运维 + MCP · 含部分 B2′）
+
+### Added
+
+- `npm run mcp:smoke` — MCP 预置目录、`/api/mcp/proxy` 与可选在线探测
+- [MCP_OFFICIAL_CATALOG.md](docs/MCP_OFFICIAL_CATALOG.md) §故障 FAQ
+- Chat：索引 **building** 时禁用 `@` 候选列表并提示
+- 设置页索引卡片链至 [BROWSER_LIMITATIONS.md#capacity-limits](docs/BROWSER_LIMITATIONS.md#capacity-limits)
+- 欢迎页 **发行说明** 链至 GitHub Release `v{version}`
+
+### Docs
+
+- [V1.0.5.x_MASTER_PLAN.md](docs/V1.0.5.x_MASTER_PLAN.md) · [ROADMAP_V1.0.5.x.md](docs/ROADMAP_V1.0.5.x.md) · 各级 EXECUTION
 
 ## [1.0.4] — 2026-05-27（体验巩固 · GA）
 

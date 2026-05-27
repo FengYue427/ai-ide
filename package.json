@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.0.4.4",
+  "version": "1.0.5.1",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -62,6 +62,7 @@
     "smoke:report": "node scripts/smoke-report.mjs https://ai-ide-flame.vercel.app",
     "go-live:preflight": "npm run test:local && npm run smoke:report",
     "rc:live-spotcheck": "node scripts/rc-live-spotcheck.mjs",
+    "mcp:smoke": "node scripts/mcp-smoke.mjs",
     "ops:verify-p1": "node scripts/ops-verify-p1.mjs",
     "deploy:check": "node scripts/deploy-check.mjs",
     "p0:gate": "npm run test:local && npm run test:integration:local && node scripts/security-baseline.mjs",

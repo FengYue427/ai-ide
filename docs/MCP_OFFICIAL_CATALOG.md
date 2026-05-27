@@ -38,7 +38,22 @@ npm run dev:stack
 
 ---
 
+## 故障排查（FAQ）
+
+| 现象 | 原因 | 处理 |
+|------|------|------|
+| 测试失败 / 无法连接 localhost | Vercel 生产无法访问本机 | 使用 `npm run dev:stack` 本地测，或改填 **公网 HTTPS** MCP |
+| 浏览器 CORS 报错 | 直连 MCP 被拦 | 必须经 **`/api/mcp/proxy`**（设置内已走代理） |
+| HTTP **401** / 未登录 | 代理需登录 | 先登录账号再测试 |
+| HTTP **400** Invalid URL | URL 非 http(s) 或生产填了 localhost | 检查 URL；生产见 [BROWSER_LIMITATIONS.md](./BROWSER_LIMITATIONS.md) |
+| 上游 **502** | MCP 服务不可达或超时 | 确认 endpoint 在线、防火墙与 30s 超时 |
+
+本地自动化：`npm run mcp:smoke`（可选 `MCP_SMOKE_SKIP_LIVE=1` 跳过在线探测）。
+
+---
+
 ## 相关文档
 
+- [V1.0.5.1_EXECUTION.md](./V1.0.5.1_EXECUTION.md)
 - [V1.0.4.1_EXECUTION.md](./V1.0.4.1_EXECUTION.md)
 - [PHASE_IDE4_CURSOR_PARITY.md](./PHASE_IDE4_CURSOR_PARITY.md)（竞品对照）

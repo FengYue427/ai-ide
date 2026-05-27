@@ -3,7 +3,7 @@
 > 对标桌面 IDE（Cursor / VS Code）时，以下限制来自 **浏览器 + WebContainer** 运行时，而非产品疏漏。  
 > **桌面版（Electron）** 另见下表「桌面」列。实现常量：`src/services/indexLimits.ts`、`localProjectService.ts`、`electron/fsProject.mjs`。
 
-## 容量上限（v1.0.2.1 与代码一致）
+## 容量上限（v1.0.2.1 与代码一致） {#capacity-limits}
 
 | 场景 | 浏览器（Web） | 桌面（Electron） |
 |------|:-------------:|:----------------:|

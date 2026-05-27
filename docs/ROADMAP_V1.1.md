@@ -1,6 +1,6 @@
 # 长远规划 — v1.1 世代（2026 H2 ～ 2027）
 
-> **范围**：**1.0.4.x 收官之后** 至 **v1.1.x 稳定运营**  
+> **范围**：**1.0.5 桥接之后** 至 **v1.1.x 稳定运营**（前置：[V1.0.5_MASTER_PLAN.md](./V1.0.5_MASTER_PLAN.md)）  
 > **短规划**（仅 1.0.3.x～1.0.4.x）：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md)  
 > **草案占位**：[V1.1_RFC_STUB.md](./V1.1_RFC_STUB.md)  
 > **战略背景**：[PLAN_STRATEGY_2026_Q3.md](./PLAN_STRATEGY_2026_Q3.md) · [PLAN_IDE5_AND_COMPETITORS.md](./PLAN_IDE5_AND_COMPETITORS.md)

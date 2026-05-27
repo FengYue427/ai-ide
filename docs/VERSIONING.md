@@ -15,7 +15,9 @@
 - **1.0.3**（下一主版本）：1.0.2.x 清单 **基本做完** 后的一次「大规划」发布——竞品分目标 **~2.75+**、双平台桌面收官、文档/运营封板，再进入 **v1.1** 规划。
 - **1.0.3.N**（第四段附属）：在 **1.0.3 GA** 之后的 **稳定化小包**（观测、域名、计费 SOP、发布矩阵），**不做** IDE-5 级功能扩张。详见 [ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md)。
 - **1.0.4**（下一主版本）：体验巩固（MCP、感知入门、rules UI），竞品 **~2.80**。详见 [PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md)。
-- **1.0.4.N**（第四段附属）：1.0.4 GA 后小步交付。详见 [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)。
+- **1.0.4.N**（第四段附属）：1.0.4 GA 后小步交付。详见 [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)。**1.0.4.4 后不再开 `1.0.4.5`**。
+- **1.0.5**（桥接主版本）：1.0.4.x 收官后的 **Kickoff 叙事**（**非** `1.0.4.5`）。详见 [V1.0.5_MASTER_PLAN.md](./V1.0.5_MASTER_PLAN.md)。
+- **1.0.5.N**（第四段附属）：桥接世代小步交付 **1.0.5.1～1.0.5.4**。详见 [ROADMAP_V1.0.5.x.md](./ROADMAP_V1.0.5.x.md) · [V1.0.5.x_MASTER_PLAN.md](./V1.0.5.x_MASTER_PLAN.md)。
 - **v1.1**：能力第二代际（后台队列、协作 M1、网关）。详见 [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)。
 
 ## 已发布映射（历史改名）
@@ -37,4 +39,4 @@
 
 - `package.json` → `version` 与 `VITE_APP_VERSION` / Sentry `ai-ide@<version>` 一致。
 - `CHANGELOG.md`：每附属版一节 `[1.0.2.N]`、`[1.0.3.N]` 或 `[1.0.4.N]`。
-- 路线图：[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) · [ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md) · [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md) · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md) · **短规划**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md)。
+- 路线图：[ROADMAP_V1.0.2.x.md](./ROADMAP_V1.0.2.x.md) · [ROADMAP_V1.0.3.x.md](./ROADMAP_V1.0.3.x.md) · [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md) · [ROADMAP_V1.0.5.x.md](./ROADMAP_V1.0.5.x.md) · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md) · **短规划**：[PLAN_SHORT_V1.0.3-V1.0.4.md](./PLAN_SHORT_V1.0.3-V1.0.4.md)。

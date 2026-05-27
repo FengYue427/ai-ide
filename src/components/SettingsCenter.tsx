@@ -544,7 +544,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                       </button>
                     ) : null}
                     <a
-                      href="https://github.com/FengYue427/ai-ide/blob/main/docs/BROWSER_LIMITATIONS.md"
+                      href="https://github.com/FengYue427/ai-ide/blob/main/docs/BROWSER_LIMITATIONS.md#capacity-limits"
                       target="_blank"
                       rel="noreferrer"
                       style={{ fontSize: '11px', color: 'var(--accent-color)' }}

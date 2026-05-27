@@ -14,7 +14,8 @@
 | **1.0.3.x 运营稳定化** | 🔶 **S5 终章** | **`v1.0.3.5`**（[V1.0.3.5_EXECUTION.md](./V1.0.3.5_EXECUTION.md)） |
 | **1.0.3 主版本 GA** | 🔶 可选 | `v1.0.3` + `VITE_GA_LIVE=true` |
 | **1.0.4** | ✅ **GA** | [V1.0.4_GA_EXECUTION.md](./V1.0.4_GA_EXECUTION.md) · 竞品 **~2.80** |
-| **1.0.4.x** | ⏳ **进行中** | [V1.0.4.x_MASTER_PLAN.md](./V1.0.4.x_MASTER_PLAN.md) → **1.0.4.4 收官** |
+| **1.0.4.x** | ✅ **收官** | **`v1.0.4.4`** · [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md) |
+| **1.0.5 / 1.0.5.x** | 🔶 **进行中** | [V1.0.5.x_MASTER_PLAN.md](./V1.0.5.x_MASTER_PLAN.md) · 当前 **1.0.5.1** |
 
 **1.0.2.x 已交付的「IDE-5」能力**（勿在 1.0.4 重复立项）：块级 Diff、Tab FIM、索引 500/2000、`grep_repo`、tasks.md、Win+Mac 桌面。见 [PLAN_IDE5_AND_COMPETITORS.md](./PLAN_IDE5_AND_COMPETITORS.md)。
 
@@ -117,7 +118,7 @@ gantt
 | **1.0.4.4** | **E4 收官** | publish、live 5/5、milestone、**2.80 终稿** | [V1.0.4.4_EXECUTION.md](./V1.0.4.4_EXECUTION.md) |
 
 **合并 tag**：`v1.0.4.2`（.1+.2）· `v1.0.4.4`（.3+.4）  
-**世代结束**：**1.0.4.4** 后 → [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)
+**世代结束**：**1.0.4.4** 后 → **1.0.5 桥接** → [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)
 
 ---
 
@@ -146,5 +147,20 @@ gantt
 
 ## 7. 与长规划衔接
 
-**1.0.4.x 收官后** → 进入 [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)（后台 Agent、协作 M1、网关等）。  
-**不要在 1.0.4 主版本塞 v1.1 能力**，避免延期与竞品话术失真。
+**1.0.4.x 收官后** → **[V1.0.5_MASTER_PLAN.md](./V1.0.5_MASTER_PLAN.md)**（运营债 + `mcp:smoke` + v1.1 RFC）→ [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)。  
+**不要在 1.0.4 / 1.0.5 塞 v1.1 实现**，避免延期与竞品话术失真。
+
+---
+
+## 8. 阶段 D — 1.0.5 + 1.0.5.x（1.0.4.x 之后）
+
+> 主版本：[V1.0.5_MASTER_PLAN.md](./V1.0.5_MASTER_PLAN.md) · 附属：[ROADMAP_V1.0.5.x.md](./ROADMAP_V1.0.5.x.md)
+
+| 版本 | 任务 | 状态 |
+|------|------|:----:|
+| **1.0.5.1** | `mcp:smoke`、MCP FAQ、索引 building `@` | 🔶 |
+| **1.0.5.2** | （.1 已合入）可 skip 或 tag 对齐 | — |
+| **1.0.5.3** | v1.1 RFC、欢迎页 Release | ⏳ |
+| **1.0.5.4** | live 5/5、milestone、发布收官 | ⏳ |
+
+**周期（估）**：2～3 周 · **竞品分**：维持 **~2.80**。
