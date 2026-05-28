@@ -146,14 +146,7 @@ ${t('ai.chat.prompt')}`
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
   const [mounted, setMounted] = useState(false)
   const [useWorkspaceContext, setUseWorkspaceContext] = useState(false)
-  const [agentMode, setAgentMode] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ai-ide:chat-agent-mode')
-      return saved === null ? true : saved === 'true'
-    } catch {
-      return true
-    }
-  })
+  const [agentMode, setAgentMode] = useState(true)
   const [planMode, setPlanMode] = useState(() => {
     try {
       return localStorage.getItem('ai-ide:chat-plan-mode') === 'true'
@@ -1017,30 +1010,7 @@ ${t('ai.chat.prompt')}`
         <div className="chat-toolbar-row">
           <QuotaIndicator quota={quota} label={t('chat.quotaToday')} compact showPlan />
 
-          <button
-            type="button"
-            onClick={() => {
-              setAgentMode((value) => {
-                const next = !value
-                try {
-                  localStorage.setItem('ai-ide:chat-agent-mode', String(next))
-                } catch {
-                  // ignore persistence failure
-                }
-                if (next) {
-                  setPlanMode(false)
-                  try {
-                    localStorage.setItem('ai-ide:chat-plan-mode', 'false')
-                  } catch {
-                    // ignore
-                  }
-                }
-                return next
-              })
-            }}
-            className={`chat-mode-btn ${agentMode ? 'chat-mode-btn--active' : ''}`}
-            title={t('chat.agentModeTitle')}
-          >
+          <button type="button" className="chat-mode-btn chat-mode-btn--active" title={t('chat.agentModeTitle')} disabled>
             <Zap size={14} color={agentMode ? 'var(--accent-color)' : 'var(--text-secondary)'} />
             <span>
               {t('chat.agent')}
@@ -1062,9 +1032,8 @@ ${t('ai.chat.prompt')}`
                   // ignore
                 }
                 if (next) {
-                  setAgentMode(false)
                   try {
-                    localStorage.setItem('ai-ide:chat-agent-mode', 'false')
+                    localStorage.setItem('ai-ide:chat-agent-mode', 'true')
                   } catch {
                     // ignore
                   }

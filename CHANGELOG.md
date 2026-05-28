@@ -5,6 +5,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Chat：Agent 模式默认永久开启，不再提供关闭入口（仍可使用 Plan Mode）
+
 ### 规划
 
 - **v1.0.7.x** 附属路线图 → [ROADMAP_V1.0.7.x.md](docs/ROADMAP_V1.0.7.x.md)
