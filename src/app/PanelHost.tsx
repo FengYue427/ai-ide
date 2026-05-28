@@ -45,7 +45,7 @@ import { workspaceContextService } from '../services/workspaceContextService'
 import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
 import { buildPlanExecutionPrompt } from '../services/planExecutionService'
 import { buildPlanCatalog } from '../services/planCatalogService'
-import { appendPlanStepsToSpecTasks, findLatestSpecTasksPath } from '../services/planSpecsBridgeService'
+import { appendPlanStepsToSpecTasks, findLatestSpecTasksPath, listSpecTasksPaths } from '../services/planSpecsBridgeService'
 import { useI18n } from '../i18n'
 
 interface PanelHostProps {
@@ -193,6 +193,7 @@ export function PanelHost({
       })),
     )
   const planItems = buildPlanCatalog(files)
+  const specTaskPaths = listSpecTasksPaths(files)
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAiConfig = useIDEStore((s) => s.setAiConfig)
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
@@ -496,6 +497,7 @@ export function PanelHost({
             openChatPanel()
           }}
           planItems={planItems}
+          specTaskPaths={specTaskPaths}
           onOpenPlan={(path) => {
             const targetIndex = files.findIndex((file) => file.name === path)
             if (targetIndex < 0) return
@@ -530,8 +532,8 @@ export function PanelHost({
               openChatPanel()
             })()
           }}
-          onMapPlanToSpec={(path, steps) => {
-            const targetSpecTasks = findLatestSpecTasksPath(files)
+          onMapPlanToSpec={(path, steps, targetSpecPath) => {
+            const targetSpecTasks = targetSpecPath || findLatestSpecTasksPath(files)
             if (!targetSpecTasks) {
               notify('error', '映射失败', '未找到 Specs tasks 文件，请先创建一个 Spec')
               return

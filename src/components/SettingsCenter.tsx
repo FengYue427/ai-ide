@@ -63,9 +63,10 @@ interface SettingsCenterProps {
   onMarkSpecTaskDone?: (path: string, line: number) => void
   onRunSpecTask?: (path: string, text: string) => void
   planItems?: PlanCatalogItem[]
+  specTaskPaths?: string[]
   onOpenPlan?: (path: string) => void
   onRunPlan?: (path: string, steps: Array<{ text: string; line?: number }>) => void
-  onMapPlanToSpec?: (path: string, steps: Array<{ text: string; line?: number }>) => void
+  onMapPlanToSpec?: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
   onDeletePlan?: (path: string) => void
   onClose: () => void
 }
@@ -93,6 +94,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onMarkSpecTaskDone,
   onRunSpecTask,
   planItems = [],
+  specTaskPaths = [],
   onOpenPlan,
   onRunPlan,
   onMapPlanToSpec,
@@ -633,6 +635,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 {onOpenPlan && onRunPlan && onMapPlanToSpec && onDeletePlan ? (
                   <PlansSection
                     plans={planItems}
+                    specTaskPaths={specTaskPaths}
                     onOpenPlan={onOpenPlan}
                     onRunPlan={onRunPlan}
                     onMapPlanToSpec={onMapPlanToSpec}

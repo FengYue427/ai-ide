@@ -3,10 +3,11 @@ import { filterPlanCatalog, sortPlanCatalog, type PlanCatalogItem, type PlanCata
 
 interface PlansSectionProps {
   plans: PlanCatalogItem[]
+  specTaskPaths: string[]
   onOpenPlan: (path: string) => void
   onDeletePlan: (path: string) => void
   onRunPlan: (path: string, steps: Array<{ text: string; line?: number }>) => void
-  onMapPlanToSpec: (path: string, steps: Array<{ text: string; line?: number }>) => void
+  onMapPlanToSpec: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
 }
 
 function planLabelFromPath(path: string): string {
@@ -15,11 +16,14 @@ function planLabelFromPath(path: string): string {
   return fileName.replace(/\.md$/i, '')
 }
 
-export function PlansSection({ plans, onOpenPlan, onDeletePlan, onRunPlan, onMapPlanToSpec }: PlansSectionProps) {
+export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, onRunPlan, onMapPlanToSpec }: PlansSectionProps) {
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState<PlanCatalogSort>('recent-exec')
+  const [visibleCount, setVisibleCount] = useState(8)
+  const [targetSpecPath, setTargetSpecPath] = useState('')
   const [selectedSteps, setSelectedSteps] = useState<Record<string, Record<string, boolean>>>({})
-  const items = useMemo(() => sortPlanCatalog(filterPlanCatalog(plans, query), sortBy).slice(0, 8), [plans, query, sortBy])
+  const filtered = useMemo(() => sortPlanCatalog(filterPlanCatalog(plans, query), sortBy), [plans, query, sortBy])
+  const items = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
 
   const selectedCount = (path: string) =>
     Object.values(selectedSteps[path] ?? {}).filter(Boolean).length
@@ -49,11 +53,29 @@ export function PlansSection({ plans, onOpenPlan, onDeletePlan, onRunPlan, onMap
           <option value="most-open">按未完成步骤数</option>
           <option value="title">按标题</option>
         </select>
+        {specTaskPaths.length > 0 ? (
+          <select
+            className="settings-select"
+            style={{ minWidth: 280 }}
+            value={targetSpecPath}
+            onChange={(e) => setTargetSpecPath(e.target.value)}
+            title="映射目标 Spec tasks 文件"
+          >
+            <option value="">映射目标：默认最近 Spec</option>
+            {specTaskPaths.map((path) => (
+              <option key={path} value={path}>
+                {path}
+              </option>
+            ))}
+          </select>
+        ) : null}
       </div>
 
       {items.length > 0 ? (
         <div style={{ marginTop: 10, border: '1px solid var(--border-color)', borderRadius: 10, padding: 10 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>最近计划（最多 8 条）</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            已显示 {items.length} / {filtered.length} 条计划
+          </div>
           <div style={{ display: 'grid', gap: 6, maxHeight: 220, overflow: 'auto' }}>
             {items.map((plan) => (
               <div key={plan.path} style={{ display: 'grid', gap: 8, border: '1px solid var(--border-color)', borderRadius: 8, padding: 8 }}>
@@ -118,7 +140,11 @@ export function PlansSection({ plans, onOpenPlan, onDeletePlan, onRunPlan, onMap
                       const selected = plan.stepItems
                         .filter((step) => selectedMap[`${step.line}-${step.text}`])
                         .map((step) => ({ text: step.text, line: step.line }))
-                      onMapPlanToSpec(plan.path, selected.length > 0 ? selected : [{ text: plan.stepItems[0].text, line: plan.stepItems[0].line }])
+                      onMapPlanToSpec(
+                        plan.path,
+                        selected.length > 0 ? selected : [{ text: plan.stepItems[0].text, line: plan.stepItems[0].line }],
+                        targetSpecPath || undefined,
+                      )
                     }}
                   >
                     映射到 Spec
@@ -130,6 +156,13 @@ export function PlansSection({ plans, onOpenPlan, onDeletePlan, onRunPlan, onMap
               </div>
             ))}
           </div>
+          {items.length < filtered.length ? (
+            <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setVisibleCount((count) => count + 8)}>
+                显示更多
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>

@@ -11,9 +11,15 @@ function normalize(text: string): string {
 }
 
 export function findLatestSpecTasksPath(files: FileLike[]): string | null {
-  const matched = files.filter((file) => SPEC_TASKS_RE.test(file.name))
+  const matched = listSpecTasksPaths(files)
   if (matched.length === 0) return null
-  return matched[matched.length - 1].name
+  return matched[matched.length - 1]
+}
+
+export function listSpecTasksPaths(files: FileLike[]): string[] {
+  return files
+    .filter((file) => SPEC_TASKS_RE.test(file.name))
+    .map((file) => file.name)
 }
 
 export function appendPlanStepsToSpecTasks<T extends FileLike>(
