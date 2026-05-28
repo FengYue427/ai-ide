@@ -1,6 +1,6 @@
 /**
  * Lightweight project index (files + symbols) for @-search and AI context.
- * Not a full LSP — regex-based symbol extraction for browser-scale workspaces.
+ * Phase 1: AST-enhanced symbol extraction for TS/JS files.
  */
 
 import {
@@ -9,6 +9,11 @@ import {
   type GitignoreRule,
 } from './gitignoreService'
 import { capIndexSources, type IndexSource } from './indexLimits'
+import {
+  extractSymbolsFromCode,
+  scoreSymbolRelevance,
+  supportsASTExtraction,
+} from './astSymbolExtractor'
 
 export type SymbolKind =
   | 'function'
@@ -16,8 +21,11 @@ export type SymbolKind =
   | 'interface'
   | 'type'
   | 'const'
+  | 'let'
+  | 'var'
   | 'enum'
   | 'method'
+  | 'property'
   | 'unknown'
 
 export interface IndexedSymbol {
@@ -25,6 +33,8 @@ export interface IndexedSymbol {
   kind: SymbolKind
   path: string
   line: number
+  scope?: string    // 父级作用域（如类名）
+  exported?: boolean
 }
 
 export interface IndexedFile {
@@ -101,6 +111,31 @@ export function detectLanguageFromPath(path: string): string {
 }
 
 export function extractSymbolsFromContent(path: string, content: string): IndexedSymbol[] {
+  // Phase 1: TS/JS 文件使用 AST 提取器，更准确
+  if (supportsASTExtraction(path)) {
+    const result = extractSymbolsFromCode(content, path)
+    const seen = new Set<string>()
+    const symbols: IndexedSymbol[] = []
+
+    for (const sym of result.symbols) {
+      // 用 scope.name 作为去重 key，保留方法
+      const key = sym.scope ? `${sym.scope}.${sym.name}` : sym.name
+      if (key.length < 2 || seen.has(key)) continue
+      seen.add(key)
+      symbols.push({
+        name: sym.name,
+        kind: (sym.kind as SymbolKind) ?? 'unknown',
+        path,
+        line: sym.line,
+        scope: sym.scope,
+        exported: sym.exported,
+      })
+    }
+
+    return symbols.slice(0, 300)
+  }
+
+  // 其他文件（Python、Go 等）保留正则提取
   const lines = content.split(/\r?\n/)
   const seen = new Set<string>()
   const symbols: IndexedSymbol[] = []
@@ -205,23 +240,58 @@ export function searchProjectIndex(
   const q = query.trim().replace(/^@+/, '')
   if (!q) return []
 
+  // 支持 Class.method 语法
+  const dotIdx = q.indexOf('.')
+  const scopeFilter = dotIdx > 0 ? q.slice(0, dotIdx).toLowerCase() : null
+  const nameQuery = dotIdx > 0 ? q.slice(dotIdx + 1).toLowerCase() : q.toLowerCase()
+
   const hits: IndexSearchHit[] = []
 
   for (const file of index.files) {
+    // 文件路径匹配
     const fileScore = scoreMatch(q, file.path)
     if (fileScore > 0) {
-      hits.push({ type: 'file', path: file.path, name: file.path.split('/').pop() ?? file.path, score: fileScore })
+      hits.push({
+        type: 'file',
+        path: file.path,
+        name: file.path.split('/').pop() ?? file.path,
+        score: fileScore,
+      })
     }
+
     for (const symbol of file.symbols) {
-      const symbolScore = scoreMatch(q, symbol.name)
+      // scope 过滤（Class.method 语法）
+      if (scopeFilter && symbol.scope?.toLowerCase() !== scopeFilter) continue
+
+      // 使用 AST 评分器（TS/JS 文件）或简单评分（其他文件）
+      let symbolScore: number
+      if (supportsASTExtraction(file.path)) {
+        symbolScore = scoreSymbolRelevance(
+          {
+            name: symbol.name,
+            kind: symbol.kind as import('./astSymbolExtractor').ASTSymbol['kind'],
+            line: symbol.line,
+            column: 0,
+            endLine: symbol.line,
+            scope: symbol.scope,
+            exported: symbol.exported,
+          },
+          nameQuery,
+        )
+      } else {
+        symbolScore = scoreMatch(nameQuery, symbol.name)
+        if (symbolScore > 0) symbolScore += 10
+      }
+
       if (symbolScore > 0) {
+        const displayName = symbol.scope ? `${symbol.scope}.${symbol.name}` : symbol.name
         hits.push({
           type: 'symbol',
           path: file.path,
-          name: symbol.name,
+          name: displayName,
           kind: symbol.kind,
           line: symbol.line,
-          score: symbolScore + 10,
+          score: symbolScore,
         })
       }
     }

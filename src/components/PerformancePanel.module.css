@@ -1,0 +1,261 @@
+/* Performance Panel Container */
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 380px;
+  bottom: 0;
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-color);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Header */
+.header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerIcon {
+  color: var(--accent-color);
+}
+
+.headerTitle {
+  font-weight: 600;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+}
+
+.clearButton {
+  padding: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+
+.clearButton:hover {
+  color: var(--accent-color);
+}
+
+.closeButton {
+  padding: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+
+.closeButton:hover {
+  color: var(--accent-color);
+}
+
+/* Content */
+.content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+/* Current Run */
+.currentRun {
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--accent-color);
+}
+
+.currentRunHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.runningIcon {
+  color: var(--accent-color);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.runningLabel {
+  font-weight: 500;
+}
+
+.currentTime {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--accent-color);
+}
+
+/* Summary Stats */
+.summary {
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.statCard {
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.statHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.statIcon {
+  color: var(--text-secondary);
+}
+
+.statIconFastest {
+  color: #10b981;
+}
+
+.statIconSlowest {
+  color: #f59e0b;
+}
+
+.statLabel {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.statValue {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.statValueFastest {
+  font-size: 18px;
+  font-weight: bold;
+  color: #10b981;
+}
+
+.statValueSlowest {
+  font-size: 18px;
+  font-weight: bold;
+  color: #f59e0b;
+}
+
+/* Run History */
+.history {
+  /* No specific styles needed */
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.emptyIcon {
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: 13px;
+  margin: 0;
+}
+
+.emptyHint {
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Run Item */
+.runItem {
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.runItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.runLabel {
+  font-weight: 500;
+}
+
+.runTime {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.runMetrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.metricItem {
+  /* No specific styles needed */
+}
+
+.metricLabel {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.metricIcon {
+  display: inline;
+  margin-right: 2px;
+}
+
+.metricValue {
+  font-weight: 600;
+}

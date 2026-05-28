@@ -1,0 +1,319 @@
+/* Search Panel Container */
+.panel {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.searchIcon {
+  color: var(--text-secondary);
+}
+
+.searchInput {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  transition: color 0.2s;
+}
+
+.closeButton:hover {
+  color: var(--text-primary);
+}
+
+/* Replace Row */
+.replaceRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.replaceIcon {
+  color: var(--text-secondary);
+  margin-left: 24px;
+}
+
+.replaceInput {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+}
+
+.replaceInput:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+/* Options Row */
+.optionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.optionsGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.optionLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.optionLabel:hover {
+  color: var(--text-primary);
+}
+
+.scopeGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scopeButton {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.scopeButtonActive {
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+}
+
+/* Summary Row */
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.summaryText {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.toggleReplaceButton {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.toggleReplaceIcon {
+  margin-right: 4px;
+}
+
+/* Error Message */
+.errorMessage {
+  margin-top: 8px;
+  color: var(--danger-color);
+  font-size: 12px;
+}
+
+/* Replace Preview Button */
+.replaceAllButton {
+  margin-top: 8px;
+  width: 100%;
+  padding: 7px;
+  font-size: 12px;
+}
+
+/* Replace Preview Card */
+.replacePreviewCard {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.replacePreviewTitle {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.replacePreviewList {
+  max-height: 120px;
+  overflow: auto;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.replacePreviewItem {
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+}
+
+.replacePreviewFile {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.replacePreviewActions {
+  display: flex;
+  gap: 8px;
+}
+
+.replacePreviewButton {
+  flex: 1;
+}
+
+/* Results Area */
+.results {
+  flex: 1;
+  overflow: auto;
+}
+
+/* File Group */
+.fileGroup {
+  /* No specific styles */
+}
+
+.fileGroupHeader {
+  padding: 7px 16px;
+  background: var(--bg-secondary);
+  font-size: 12px;
+  color: var(--accent-color);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fileGroupIcon {
+  /* No specific styles */
+}
+
+/* Result Item */
+.resultItem {
+  padding: 7px 16px 7px 32px;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: background 0.15s;
+}
+
+.resultItem:hover {
+  background: var(--bg-secondary);
+}
+
+.resultItemSelected {
+  background: var(--accent-color);
+  color: #fff;
+}
+
+.resultItemSelected:hover {
+  background: var(--accent-color);
+}
+
+.resultItemContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.resultLineNumber {
+  opacity: 0.6;
+  min-width: 30px;
+}
+
+.resultSnippet {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono, monospace);
+}
+
+.resultSnippetHighlight {
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.resultSnippetHighlightSelected {
+  color: #fff;
+}
+
+.resultSnippetHighlightNormal {
+  color: var(--accent-color);
+}
+
+.replaceButton {
+  padding: 3px 7px;
+  font-size: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.replaceButtonNormal {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.replaceButtonSelected {
+  background: var(--bg-primary);
+  color: var(--accent-color);
+}
+
+/* Empty State */
+.emptyState {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}

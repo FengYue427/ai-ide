@@ -10,8 +10,11 @@ const KIND_LABEL: Record<SymbolKind, string> = {
   interface: 'iface',
   type: 'type',
   const: 'const',
+  let: 'let',
+  var: 'var',
   enum: 'enum',
   method: 'method',
+  property: 'prop',
   unknown: 'sym',
 }
 

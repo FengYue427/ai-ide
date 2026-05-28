@@ -38,9 +38,16 @@ const EMPTY_STATS: IndexBuildStats = {
 const FULL_REBUILD_RATIO = 0.35
 const FULL_REBUILD_MIN_CHANGES = 12
 const WORKER_MIN_SOURCES = 80
+const SYNC_DEBOUNCE_MS = 500
 
 function contentSignature(content: string): string {
-  return `${content.length}:${content.slice(0, 48)}`
+  let hash = 2166136261
+  const step = Math.max(1, Math.floor(content.length / 256))
+  for (let i = 0; i < content.length; i += step) {
+    hash ^= content.charCodeAt(i)
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)
+  }
+  return `${content.length}:${(hash >>> 0).toString(16)}`
 }
 
 function runWhenIdle(fn: () => void): void {
@@ -70,6 +77,7 @@ class ProjectIndexManager {
   private progress: IndexBuildProgress | null = null
   private fileSignatures = new Map<string, string>()
   private syncQueued = false
+  private syncTimer: ReturnType<typeof setTimeout> | null = null
   private buildGeneration = 0
   private worker: Worker | null = null
 
@@ -207,14 +215,16 @@ class ProjectIndexManager {
 
   scheduleSyncFromWorkspace(editorFiles: { name: string; content: string; language?: string }[]): void {
     this.pendingEditorFiles = editorFiles
+    if (this.syncTimer) clearTimeout(this.syncTimer)
     if (this.syncQueued) return
     this.syncQueued = true
-    runWhenIdle(() => {
+    this.syncTimer = setTimeout(() => {
       this.syncQueued = false
+      this.syncTimer = null
       const files = this.pendingEditorFiles
       this.pendingEditorFiles = null
-      if (files) this.syncFromWorkspace(files)
-    })
+      if (files) runWhenIdle(() => this.syncFromWorkspace(files))
+    }, SYNC_DEBOUNCE_MS)
   }
 
   private pendingEditorFiles: { name: string; content: string; language?: string }[] | null = null

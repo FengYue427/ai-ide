@@ -11,6 +11,7 @@ import {
   type ReplacePreviewItem,
   type SearchResult,
 } from '../services/searchService'
+import styles from './SearchPanel.module.css'
 
 interface SearchPanelProps {
   files: { name: string; content: string }[]
@@ -35,15 +36,7 @@ function ResultSnippet({
   const marked = highlightMatchSnippet(line, query, options)
   const parts = marked.split(/(⟦|⟧)/)
   return (
-    <span
-      style={{
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        fontFamily: 'var(--font-mono, monospace)',
-      }}
-      title={line.trim()}
-    >
+    <span className={styles.resultSnippet} title={line.trim()}>
       {parts.map((part, index) => {
         if (part === '⟦' || part === '⟧') return null
         const prev = parts[index - 1]
@@ -51,15 +44,7 @@ function ResultSnippet({
         return (
           <span
             key={`${index}-${part}`}
-            style={
-              highlighted
-                ? {
-                    fontWeight: 800,
-                    textDecoration: 'underline',
-                    color: selected ? '#fff' : 'var(--accent-color)',
-                  }
-                : undefined
-            }
+            className={highlighted ? `${styles.resultSnippetHighlight} ${selected ? styles.resultSnippetHighlightSelected : styles.resultSnippetHighlightNormal}` : ''}
           >
             {part}
           </span>
@@ -196,45 +181,21 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
   }, [results, selectedIndex, onNavigate, onClose, replacePreview])
 
   return (
-    <div
-      className="search-panel"
-      style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'var(--bg-primary)',
-        zIndex: 100,
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <Search size={16} style={{ color: 'var(--text-secondary)' }} />
+    <div className={styles.panel}>
+      <div className={styles.header}>
+        <div className={styles.searchRow}>
+          <Search size={16} className={styles.searchIcon} />
           <input
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={scope === 'workspace' ? t('search.placeholder.workspace') : t('search.placeholder.tabs')}
             autoFocus
-            style={{
-              flex: 1,
-              padding: '8px 10px',
-              fontSize: '13px',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '8px',
-              color: 'var(--text-primary)',
-            }}
+            className={styles.searchInput}
           />
           <button
             onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              display: 'flex',
-            }}
+            className={styles.closeButton}
             title={t('search.closeTitle')}
           >
             <X size={16} />
@@ -242,43 +203,26 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
         </div>
 
         {showReplace && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <ArrowRight size={16} style={{ color: 'var(--text-secondary)', marginLeft: '24px' }} />
+          <div className={styles.replaceRow}>
+            <ArrowRight size={16} className={styles.replaceIcon} />
             <input
               type="text"
               value={replaceQuery}
               onChange={(event) => setReplaceQuery(event.target.value)}
               placeholder={t('search.replacePlaceholder')}
-              style={{
-                flex: 1,
-                padding: '8px 10px',
-                fontSize: '13px',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '8px',
-                color: 'var(--text-primary)',
-              }}
+              className={styles.replaceInput}
             />
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', flexWrap: 'wrap' }}>
+        <div className={styles.optionsRow}>
+          <div className={styles.optionsGroup}>
             {[
               { label: t('search.option.case'), checked: caseSensitive, onChange: setCaseSensitive },
               { label: t('search.option.wholeWord'), checked: wholeWord, onChange: setWholeWord },
               { label: t('search.option.regex'), checked: regex, onChange: setRegex },
             ].map((option) => (
-              <label
-                key={option.label}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)',
-                }}
-              >
+              <label key={option.label} className={styles.optionLabel}>
                 <input
                   type="checkbox"
                   checked={option.checked}
@@ -289,22 +233,13 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
             ))}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className={styles.scopeGroup}>
             {(['tabs', 'workspace'] as const).map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setScope(value)}
-                className="btn btn-secondary"
-                style={{
-                  padding: '4px 8px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  background:
-                    scope === value
-                      ? 'color-mix(in srgb, var(--accent-color) 12%, transparent)'
-                      : undefined,
-                }}
+                className={`btn btn-secondary ${styles.scopeButton} ${scope === value ? styles.scopeButtonActive : ''}`}
               >
                 {value === 'tabs' ? t('search.scope.tabs') : t('search.scope.workspace')}
               </button>
@@ -312,59 +247,40 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '8px',
-            marginTop: '8px',
-          }}
-        >
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <div className={styles.summaryRow}>
+          <span className={styles.summaryText}>
             {t('search.summary', { matches: results.length, files: fileCount })}
             {scope === 'workspace' ? t('search.summary.workspaceFiles', { count: searchableFiles.length }) : ''}
           </span>
           <button
             onClick={() => setShowReplace((value) => !value)}
-            className="btn btn-secondary"
-            style={{ padding: '5px 9px', fontSize: '12px' }}
+            className={`btn btn-secondary ${styles.toggleReplaceButton}`}
           >
-            <Replace size={12} style={{ marginRight: '4px' }} />
+            <Replace size={12} className={styles.toggleReplaceIcon} />
             {showReplace ? t('search.toggleReplaceHide') : t('search.toggleReplaceShow')}
           </button>
         </div>
 
         {searchError && (
-          <div style={{ marginTop: '8px', color: 'var(--danger-color)', fontSize: '12px' }}>{searchError}</div>
+          <div className={styles.errorMessage}>{searchError}</div>
         )}
 
         {showReplace && results.length > 0 && !replacePreview && (
           <button
             onClick={openReplacePreview}
-            className="btn btn-primary"
-            style={{ marginTop: '8px', width: '100%', padding: '7px', fontSize: '12px' }}
+            className={`btn btn-primary ${styles.replaceAllButton}`}
           >
             {t('search.replaceAllPreview', { count: results.length })}
           </button>
         )}
 
         {replacePreview && (
-          <div
-            style={{
-              marginTop: '10px',
-              padding: '12px',
-              borderRadius: '12px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-secondary)',
-            }}
-          >
-            <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>{t('search.replacePreview')}</div>
-            <div style={{ maxHeight: '120px', overflow: 'auto', fontSize: '12px', marginBottom: '10px' }}>
+          <div className={styles.replacePreviewCard}>
+            <div className={styles.replacePreviewTitle}>{t('search.replacePreview')}</div>
+            <div className={styles.replacePreviewList}>
               {replacePreview.map((item) => (
-                <div key={item.file} style={{ marginBottom: '4px', color: 'var(--text-secondary)' }}>
-                  <span style={{ color: 'var(--accent-color)', fontWeight: 600 }}>{item.file}</span>
+                <div key={item.file} className={styles.replacePreviewItem}>
+                  <span className={styles.replacePreviewFile}>{item.file}</span>
                   {' · '}
                   {t('search.replacePreviewMatches', { count: item.matchCount })}
                   {item.sampleLines.length > 0
@@ -373,11 +289,11 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setReplacePreview(null)}>
+            <div className={styles.replacePreviewActions}>
+              <button type="button" className={`btn btn-secondary ${styles.replacePreviewButton}`} onClick={() => setReplacePreview(null)}>
                 {t('common.cancel')}
               </button>
-              <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={handleReplaceAll}>
+              <button type="button" className={`btn btn-primary ${styles.replacePreviewButton}`} onClick={handleReplaceAll}>
                 {t('search.replaceConfirm')}
               </button>
             </div>

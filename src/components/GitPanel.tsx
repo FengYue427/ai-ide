@@ -5,6 +5,7 @@ import type { GitFileSyncUpdate } from '../services/gitService'
 import type { FileItem } from '../types/file'
 import { useI18n } from '../i18n'
 import { workspaceContextService } from '../services/workspaceContextService'
+import styles from './GitPanel.module.css'
 
 interface GitPanelProps {
   fs: any
@@ -163,7 +164,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
 
   if (!fs) {
     return (
-      <div style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.7 }}>
+      <div className={styles.waitRuntime}>
         {t('git.waitRuntime')}
       </div>
     )
@@ -171,14 +172,14 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
 
   if (!isInit) {
     return (
-      <div style={{ padding: '16px', display: 'grid', gap: '14px' }}>
-        <div style={{ padding: '18px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'color-mix(in srgb, var(--bg-secondary) 88%, transparent)' }}>
-          <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>{t('git.notInit.title')}</div>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{t('git.notInit.desc')}</div>
-          {error && <div style={{ marginTop: '10px', color: 'var(--danger-color)', fontSize: '12px' }}>{error}</div>}
+      <div className={styles.notInitContainer}>
+        <div className={styles.notInitCard}>
+          <div className={styles.notInitTitle}>{t('git.notInit.title')}</div>
+          <div className={styles.notInitDesc}>{t('git.notInit.desc')}</div>
+          {error && <div className={styles.notInitError}>{error}</div>}
         </div>
         <button className="btn btn-primary" onClick={handleInit} disabled={isBusy}>
-          <GitBranch size={14} style={{ marginRight: '6px' }} />
+          <GitBranch size={14} className={styles.initButtonIcon} />
           {isBusy ? t('git.initBusy') : t('git.initRepo')}
         </button>
       </div>
@@ -186,34 +187,15 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '10px',
-          padding: '10px 12px',
-          borderBottom: '1px solid var(--border-color)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-          <GitBranch size={14} color="var(--text-secondary)" />
+    <div className={styles.panel}>
+      <div className={styles.header}>
+        <div className={styles.branchSelector}>
+          <GitBranch size={14} className={styles.branchIcon} />
           <select
             value={branch ?? 'main'}
             onChange={(event) => void handleCheckoutBranch(event.target.value)}
             disabled={isBusy}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              padding: '6px 8px',
-              borderRadius: '8px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-primary)',
-              color: 'var(--text-primary)',
-              fontSize: '12px',
-              fontWeight: 700,
-            }}
+            className={styles.branchSelect}
           >
             {(branches.length > 0 ? branches : [branch ?? 'main']).map((name) => (
               <option key={name} value={name}>
@@ -224,39 +206,25 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
         </div>
         <button
           type="button"
-          className="btn btn-secondary"
+          className={`btn btn-secondary ${styles.refreshButton}`}
           onClick={() => void refresh()}
           disabled={isBusy}
-          style={{ padding: '6px 10px', fontSize: '11px' }}
           title={t('git.refreshTitle')}
         >
-          <RefreshCw size={12} style={{ marginRight: '4px' }} />
+          <RefreshCw size={12} className={styles.refreshIcon} />
           {t('git.refresh')}
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px', padding: '12px', borderBottom: '1px solid var(--border-color)' }}>
+      <div className={styles.tabs}>
         {[
-          { id: 'changes' as const, icon: Plus, label: t('git.tab.changes', { count: status.length }) },
+          { id: 'changes' as const, icon: History, label: t('git.tab.changes', { count: status.length }) },
           { id: 'history' as const, icon: History, label: t('git.tab.history', { count: commits.length }) },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              padding: '10px 12px',
-              borderRadius: '12px',
-              border: `1px solid ${activeTab === tab.id ? 'color-mix(in srgb, var(--accent-color) 34%, var(--border-color))' : 'var(--border-color)'}`,
-              background: activeTab === tab.id ? 'color-mix(in srgb, var(--accent-color) 10%, transparent)' : 'var(--bg-primary)',
-              color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 700,
-            }}
+            className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
           >
             <tab.icon size={14} />
             {tab.label}
@@ -265,21 +233,21 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
       </div>
 
       {activeTab === 'changes' && (
-        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '12px', display: 'grid', gap: '14px' }}>
+        <div className={styles.content}>
           {error && (
-            <div style={{ padding: '10px 12px', borderRadius: '12px', border: '1px solid color-mix(in srgb, var(--danger-color) 42%, var(--border-color))', color: 'var(--danger-color)', fontSize: '12px' }}>
+            <div className={styles.errorMessage}>
               {error}
             </div>
           )}
 
           {unstaged.length > 0 && (
-            <section style={{ padding: '14px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 700 }}>{t('git.unstagedLabel')}</div>
-                  <div style={{ fontSize: '16px', fontWeight: 700 }}>{t('git.unstagedCount', { count: unstaged.length })}</div>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <div className={styles.sectionHeaderLeft}>
+                  <div className={styles.sectionLabel}>{t('git.unstagedLabel')}</div>
+                  <div className={styles.sectionCount}>{t('git.unstagedCount', { count: unstaged.length })}</div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className={styles.sectionActions}>
                   <button type="button" className="btn btn-secondary" onClick={handleDiscardAllUnstaged} disabled={isBusy}>
                     {t('git.discardAll')}
                   </button>
@@ -289,44 +257,28 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gap: '8px' }}>
+              <div className={styles.fileList}>
                 {unstaged.map((item) => {
                   const badge = badgeForStatus(item.status)
                   return (
-                    <div
-                      key={item.filepath}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '28px 1fr auto auto auto',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '10px 12px',
-                        borderRadius: '12px',
-                        border: '1px solid var(--border-color)',
-                        background: 'transparent',
-                        color: 'var(--text-primary)',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <span style={{ width: '28px', height: '28px', borderRadius: '10px', background: 'var(--bg-tertiary)', color: badge.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800 }}>
+                    <div key={item.filepath} className={styles.fileItem}>
+                      <span className={styles.fileBadge} style={{ color: badge.color }}>
                         {badge.label}
                       </span>
-                      <span style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.filepath}</span>
+                      <span className={styles.fileName}>{item.filepath}</span>
                       <button
                         type="button"
-                        className="btn btn-secondary"
+                        className={`btn btn-secondary ${styles.fileButton}`}
                         disabled={isBusy}
                         onClick={() => handleShowDiff(item.filepath)}
-                        style={{ padding: '4px 8px', fontSize: '11px' }}
                       >
                         {t('git.diff')}
                       </button>
                       <button
                         type="button"
-                        className="btn btn-secondary"
+                        className={`btn btn-secondary ${styles.fileButton}`}
                         disabled={isBusy}
                         onClick={() => handleDiscard(item)}
-                        style={{ padding: '4px 8px', fontSize: '11px' }}
                         title={t('git.discardFileTitle')}
                       >
                         <RotateCcw size={12} />
@@ -335,10 +287,10 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
                         type="button"
                         disabled={isBusy}
                         onClick={() => handleStage(item.filepath)}
-                        style={{ background: 'none', border: 'none', cursor: isBusy ? 'wait' : 'pointer', padding: 0 }}
+                        className={styles.fileIconButton}
                         title={t('git.stageTitle')}
                       >
-                        <Plus size={14} color="var(--text-secondary)" />
+                        <Plus size={14} />
                       </button>
                     </div>
                   )
@@ -348,28 +300,28 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
           )}
 
           {staged.length > 0 && (
-            <section style={{ padding: '14px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '10px' }}>{t('git.stagedLabel')}</div>
-              <div style={{ display: 'grid', gap: '8px', marginBottom: '12px' }}>
+            <section className={styles.section}>
+              <div className={styles.sectionLabel}>{t('git.stagedLabel')}</div>
+              <div className={styles.fileList} style={{ marginBottom: '12px' }}>
                 {staged.map((item) => (
-                  <div key={item.filepath} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                    <Check size={14} color="#33c58e" />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.filepath}</span>
-                    <button className="btn btn-secondary" onClick={() => handleUnstage(item.filepath)} disabled={isBusy} style={{ padding: '4px 8px', fontSize: '11px' }}>
+                  <div key={item.filepath} className={styles.stagedFileItem}>
+                    <Check size={14} className={styles.stagedCheckIcon} />
+                    <span className={styles.stagedFileName}>{item.filepath}</span>
+                    <button className={`btn btn-secondary ${styles.fileButton}`} onClick={() => handleUnstage(item.filepath)} disabled={isBusy}>
                       {t('git.unstage')}
                     </button>
                   </div>
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gap: '8px' }}>
+              <div className={styles.commitSection}>
                 <input
                   type="text"
                   value={commitMessage}
                   onChange={(event) => setCommitMessage(event.target.value)}
                   onKeyDown={(event) => event.key === 'Enter' && handleCommit()}
                   placeholder={t('git.commitPlaceholder')}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
+                  className={styles.commitInput}
                 />
                 <button className="btn btn-primary" onClick={handleCommit} disabled={!commitMessage.trim() || isBusy}>
                   {isBusy ? t('git.committing') : t('git.commit')}
@@ -379,7 +331,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
           )}
 
           {status.length === 0 && (
-            <div style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+            <div className={styles.emptyState}>
               {t('git.noChanges')}
             </div>
           )}
@@ -387,19 +339,19 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
       )}
 
       {activeTab === 'history' && (
-        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '12px', display: 'grid', gap: '10px' }}>
+        <div className={styles.content}>
           {commits.map((commit) => (
-            <div key={commit.oid} style={{ padding: '14px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
-              <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>{commit.commit.message}</div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '6px' }}>
+            <div key={commit.oid} className={styles.commitItem}>
+              <div className={styles.commitMessage}>{commit.commit.message}</div>
+              <div className={styles.commitMeta}>
                 {commit.commit.author.name} · {new Date(commit.commit.author.timestamp * 1000).toLocaleString()}
               </div>
-              <div style={{ color: 'var(--accent-color)', fontSize: '11px', fontWeight: 700 }}>{commit.oid.slice(0, 7)}</div>
+              <div className={styles.commitOid}>{commit.oid.slice(0, 7)}</div>
             </div>
           ))}
 
           {commits.length === 0 && (
-            <div style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+            <div className={styles.emptyState}>
               {t('git.noCommits')}
             </div>
           )}

@@ -18,6 +18,31 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `v1.0.7.2` 首批落地：发送前请求体估算、超限预警拦截、`精简后发送` 一键重试
 - `v1.0.7.2` 第二批：设置页新增“上下文预算”卡片；预警条展示精简策略明细
 
+## [1.0.8] — 2026-05-28（质量收口：编排/语义/测试/边界）
+
+### Changed
+
+- Chat：抽离会话编排层（状态/队列/runId），统一会话状态语义，降低 `ChatPanel` 复杂度
+- Quota：`aiService` / `agentChatCompletion` 配额预留逻辑收敛到 `usageService`
+- MCP：结构化结果面板提炼可测纯函数（过滤/按 Server 分组），补齐单测
+- Specs：spec 任务执行回填内容生成提炼为独立服务函数并补测试
+- Test：Vitest 增加覆盖率阈值门槛（基础门槛，后续可逐步提高）
+
+## [1.0.7.3] — 2026-05-27（聊天完成度）
+
+### Added
+
+- 聊天消息 **基础 Markdown**（列表、引用、表格、标题、行内代码/链接）
+- 代码块 **一键复制** + 已复制反馈
+- 消息操作：**复制 / 重试 / 继续**
+- 统一失败态文案（网络、认证、配额、413、中止）与气泡样式
+
+### Added (modules)
+
+- `src/lib/chatMarkdownLite.ts`
+- `src/components/ChatMessageActions.tsx`
+- `src/services/chatErrorMessages.ts`
+
 ## [1.0.7] — 2026-05-27（体验抛光 · 8 项）
 
 ### Summary

@@ -164,6 +164,14 @@ export async function ensureAIQuotaFromStore(): Promise<QuotaCheck> {
   return ensureAIQuotaAllowed(state.currentPlan, !!state.currentUser)
 }
 
+export async function reserveAIUsageFromStore(skipQuotaCheck?: boolean): Promise<void> {
+  if (skipQuotaCheck) return
+  const { useIDEStore } = await import('../store/ideStore')
+  const state = useIDEStore.getState()
+  await ensureAIQuotaAllowed(state.currentPlan, !!state.currentUser)
+  await recordAIUsageEvent(!!state.currentUser, state.currentPlan)
+}
+
 export async function recordAIUsageEvent(
   isLoggedIn: boolean,
   currentPlan = 'free',

@@ -2,10 +2,10 @@ import { getTabCompletionMaxLines } from '../lib/inlineCompletionPrefs'
 import { sendMessageWithDebounce, type AIConfig } from './aiService'
 import { fetchFimCompletion, supportsFimApi, trimCompletionToMaxLines } from './fimCompletionService'
 
-const MAX_PREFIX_CHARS = 1600
-const MAX_SUFFIX_CHARS = 600
-const CACHE_MAX = 64
-const DEBOUNCE_MS = 380
+const MAX_PREFIX_CHARS = 2000   // 扩大前缀窗口，提升补全质量
+const MAX_SUFFIX_CHARS = 800    // 扩大后缀窗口
+const CACHE_MAX = 128           // 增大缓存，减少重复请求
+const DEBOUNCE_MS = 220         // 从 380ms 降到 220ms，提升响应感
 
 export interface InlineCompletionRequest {
   prefix: string

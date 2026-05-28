@@ -1,0 +1,307 @@
+/* Code Review Panel Container */
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  bottom: 0;
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-color);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Header */
+.header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerIcon {
+  color: var(--accent-color);
+}
+
+.headerTitle {
+  font-weight: 600;
+}
+
+.closeButton {
+  padding: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+
+.closeButton:hover {
+  color: var(--accent-color);
+}
+
+/* Content */
+.content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+/* Initial State */
+.initialState {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.initialIcon {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.initialText {
+  margin-bottom: 20px;
+  color: var(--text-secondary);
+}
+
+.actionButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.actionButton {
+  justify-content: center;
+}
+
+.buttonIcon {
+  margin-right: 8px;
+}
+
+.spinningIcon {
+  margin-right: 8px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorText {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #ef4444;
+}
+
+.warningText {
+  margin-top: 16px;
+  font-size: 12px;
+  color: #ef4444;
+}
+
+/* Score Display */
+.scoreCard {
+  text-align: center;
+  padding: 24px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.scoreCircle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.scoreIcon {
+  margin-bottom: 8px;
+}
+
+.scoreSummary {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tabActive {
+  border-bottom-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.tabBadge {
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  font-size: 10px;
+}
+
+/* Issues List */
+.issuesList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.emptyIcon {
+  margin-bottom: 8px;
+  color: #10b981;
+}
+
+.emptyText {
+  margin: 0;
+}
+
+/* Issue Item */
+.issueItem {
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid;
+}
+
+.issueItemError {
+  border-left-color: #ef4444;
+}
+
+.issueItemWarning {
+  border-left-color: #f59e0b;
+}
+
+.issueItemSuggestion {
+  border-left-color: #3b82f6;
+}
+
+.issueItemStyle {
+  border-left-color: #10b981;
+}
+
+.issueHeader {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.issueType {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.issueLine {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-left: auto;
+}
+
+.issueMessage {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.issueCode {
+  display: block;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: monospace;
+  margin-bottom: 8px;
+  overflow: auto;
+}
+
+.issueSuggestion {
+  margin: 0;
+  font-size: 12px;
+  color: #10b981;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.suggestionIcon {
+  margin-top: 2px;
+}
+
+/* Action Footer */
+.actionFooter {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.footerButton {
+  flex: 1;
+}
+
+.footerButtonIcon {
+  margin-right: 6px;
+}
+
+/* Issue Type Icons */
+.iconError {
+  color: #ef4444;
+}
+
+.iconWarning {
+  color: #f59e0b;
+}
+
+.iconSuggestion {
+  color: #3b82f6;
+}
+
+.iconStyle {
+  color: #10b981;
+}

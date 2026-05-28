@@ -13,6 +13,9 @@ interface AgentToolPanelProps {
   activity: AgentActivityEntry[]
   /** When true the panel starts collapsed */
   defaultCollapsed?: boolean
+  onSaveRun?: () => void
+  onReplayLastRun?: () => void
+  onExportMarkdown?: () => void
 }
 
 const TOOL_ICONS: Record<string, string> = {
@@ -100,7 +103,13 @@ function ToolRow({ entry }: { entry: AgentActivityEntry }) {
   )
 }
 
-export function AgentToolPanel({ activity, defaultCollapsed = false }: AgentToolPanelProps) {
+export function AgentToolPanel({
+  activity,
+  defaultCollapsed = false,
+  onSaveRun,
+  onReplayLastRun,
+  onExportMarkdown,
+}: AgentToolPanelProps) {
   const { t } = useI18n()
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
 
@@ -149,6 +158,23 @@ export function AgentToolPanel({ activity, defaultCollapsed = false }: AgentTool
 
       {!collapsed && (
         <div style={{ padding: '0 10px 10px' }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+            {onSaveRun ? (
+              <button type="button" className="chat-btn-ghost" onClick={onSaveRun}>
+                保存本次运行
+              </button>
+            ) : null}
+            {onReplayLastRun ? (
+              <button type="button" className="chat-btn-ghost" onClick={onReplayLastRun}>
+                回放最近运行
+              </button>
+            ) : null}
+            {onExportMarkdown ? (
+              <button type="button" className="chat-btn-ghost" onClick={onExportMarkdown}>
+                导出 Markdown
+              </button>
+            ) : null}
+          </div>
           {activity.map((entry, idx) => (
             <ToolRow key={`${entry.round}-${entry.tool}-${idx}`} entry={entry} />
           ))}

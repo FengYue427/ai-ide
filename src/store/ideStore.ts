@@ -93,6 +93,8 @@ export interface IDEState {
   authChecked: boolean
   currentPlan: string
   collaborationRoomId: string | null
+  queuedChatPrompt: string | null
+  queuedSpecBackfill: QueuedSpecBackfill | null
 
   showNewFileInput: boolean
   showTerminal: boolean
@@ -139,6 +141,8 @@ export interface IDEState {
   setAuthChecked: (checked: boolean) => void
   setCurrentPlan: (plan: string) => void
   setCollaborationRoomId: (roomId: string | null) => void
+  setQueuedChatPrompt: (prompt: string | null) => void
+  setQueuedSpecBackfill: (backfill: QueuedSpecBackfill | null) => void
 
   setShowNewFileInput: (show: BooleanUpdater) => void
   setShowTerminal: (show: BooleanUpdater) => void
@@ -173,6 +177,12 @@ export interface IDEState {
   setPluginModal: (modal: PluginModalState | null) => void
 }
 
+export interface QueuedSpecBackfill {
+  taskPath: string
+  taskText: string
+  specAcceptancePath: string
+}
+
 export const useIDEStore = create<IDEState>()((set) => ({
   files: defaultFiles,
   activeFile: 0,
@@ -188,6 +198,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
   authChecked: false,
   currentPlan: 'free',
   collaborationRoomId: null,
+  queuedChatPrompt: null,
+  queuedSpecBackfill: null,
 
   showNewFileInput: false,
   showTerminal: false,
@@ -238,6 +250,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setAuthChecked: (authChecked) => set({ authChecked }),
   setCurrentPlan: (currentPlan) => set({ currentPlan }),
   setCollaborationRoomId: (collaborationRoomId) => set({ collaborationRoomId }),
+  setQueuedChatPrompt: (queuedChatPrompt) => set({ queuedChatPrompt }),
+  setQueuedSpecBackfill: (queuedSpecBackfill) => set({ queuedSpecBackfill }),
 
   setShowNewFileInput: (value) =>
     set((state) => ({ showNewFileInput: resolveBoolean(value, state.showNewFileInput) })),

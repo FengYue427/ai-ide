@@ -4,6 +4,7 @@ import { codeReviewService, type CodeReviewResult, type CodeIssue } from '../ser
 import { testGenerationService } from '../services/testGenerationService'
 import type { AIModel } from '../services/aiService'
 import { useI18n } from '../i18n'
+import styles from './CodeReviewPanel.module.css'
 
 interface CodeReviewPanelProps {
   code: string
@@ -91,13 +92,13 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
   const getIssueIcon = (type: CodeIssue['type']) => {
     switch (type) {
       case 'error':
-        return <AlertCircle size={16} style={{ color: '#ef4444' }} />
+        return <AlertCircle size={16} className={styles.iconError} />
       case 'warning':
-        return <AlertTriangle size={16} style={{ color: '#f59e0b' }} />
+        return <AlertTriangle size={16} className={styles.iconWarning} />
       case 'suggestion':
-        return <Lightbulb size={16} style={{ color: '#3b82f6' }} />
+        return <Lightbulb size={16} className={styles.iconSuggestion} />
       case 'style':
-        return <CheckCircle size={16} style={{ color: '#10b981' }} />
+        return <CheckCircle size={16} className={styles.iconStyle} />
     }
   }
 
@@ -119,89 +120,64 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        width: '400px',
-        bottom: 0,
-        background: 'var(--bg-primary)',
-        borderLeft: '1px solid var(--border-color)',
-        zIndex: 100,
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '-4px 0 20px rgba(0,0,0,0.3)'
-      }}
-    >
+    <div className={styles.panel}>
       {/* Header */}
-      <div
-        style={{
-          padding: '16px',
-          borderBottom: '1px solid var(--border-color)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Shield size={20} style={{ color: 'var(--accent-color)' }} />
-          <span style={{ fontWeight: 600 }}>{t('review.title')}</span>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <Shield size={20} className={styles.headerIcon} />
+          <span className={styles.headerTitle}>{t('review.title')}</span>
         </div>
-        <button onClick={onClose} style={{ padding: '4px' }}>
+        <button onClick={onClose} className={styles.closeButton}>
           <X size={20} />
         </button>
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+      <div className={styles.content}>
         {!result ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <Shield size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
-            <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
+          <div className={styles.initialState}>
+            <Shield size={48} className={styles.initialIcon} />
+            <p className={styles.initialText}>
               {t('review.pickMode')}
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className={styles.actionButtons}>
               <button
                 onClick={runQuickCheck}
-                className="btn btn-secondary"
-                style={{ justifyContent: 'center' }}
+                className={`btn btn-secondary ${styles.actionButton}`}
               >
-                <Zap size={16} style={{ marginRight: '8px' }} />
+                <Zap size={16} className={styles.buttonIcon} />
                 {t('review.quickCheck')}
               </button>
               <button
                 onClick={runReview}
                 disabled={!aiConfig.apiKey || loading}
-                className="btn btn-primary"
-                style={{ justifyContent: 'center' }}
+                className={`btn btn-primary ${styles.actionButton}`}
               >
                 {loading ? (
-                  <RefreshCw size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
+                  <RefreshCw size={16} className={styles.spinningIcon} />
                 ) : (
-                  <Shield size={16} style={{ marginRight: '8px' }} />
+                  <Shield size={16} className={styles.buttonIcon} />
                 )}
                 {loading ? t('review.reviewing') : t('review.aiReview')}
               </button>
               <button
                 onClick={runGenerateTests}
                 disabled={!aiConfig.apiKey || generatingTests || loading}
-                className="btn btn-secondary"
-                style={{ justifyContent: 'center' }}
+                className={`btn btn-secondary ${styles.actionButton}`}
               >
                 {generatingTests ? (
-                  <RefreshCw size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
+                  <RefreshCw size={16} className={styles.spinningIcon} />
                 ) : (
-                  <Award size={16} style={{ marginRight: '8px' }} />
+                  <Award size={16} className={styles.buttonIcon} />
                 )}
                 {generatingTests ? t('review.generatingTests') : t('review.generateTests')}
               </button>
             </div>
             {testError && (
-              <p style={{ marginTop: '12px', fontSize: '12px', color: '#ef4444' }}>{testError}</p>
+              <p className={styles.errorText}>{testError}</p>
             )}
             {!aiConfig.apiKey && (
-              <p style={{ marginTop: '16px', fontSize: '12px', color: '#ef4444' }}>
+              <p className={styles.warningText}>
                 {t('review.needApiKey')}
               </p>
             )}
@@ -209,44 +185,22 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
         ) : (
           <>
             {/* Score */}
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '24px',
-                background: 'var(--bg-secondary)',
-                borderRadius: '12px',
-                marginBottom: '20px'
-              }}
-            >
+            <div className={styles.scoreCard}>
               <div
+                className={styles.scoreCircle}
                 style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
                   border: `4px solid ${getScoreColor(result.score)}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 12px',
-                  fontSize: '24px',
-                  fontWeight: 'bold',
                   color: getScoreColor(result.score)
                 }}
               >
                 {result.score}
               </div>
-              <Award size={20} style={{ marginBottom: '8px', color: getScoreColor(result.score) }} />
-              <p style={{ margin: 0, fontSize: '14px' }}>{result.summary}</p>
+              <Award size={20} className={styles.scoreIcon} style={{ color: getScoreColor(result.score) }} />
+              <p className={styles.scoreSummary}>{result.summary}</p>
             </div>
 
             {/* Tabs */}
-            <div
-              style={{
-                display: 'flex',
-                borderBottom: '1px solid var(--border-color)',
-                marginBottom: '16px'
-              }}
-            >
+            <div className={styles.tabs}>
               {[
                 { key: 'all', label: t('review.filter.all'), count: result.issues.length },
                 { key: 'errors', label: t('review.filter.errors'), count: issueCounts.errors },
@@ -256,31 +210,11 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key as any)}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    fontSize: '12px',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: `2px solid ${activeTab === tab.key ? 'var(--accent-color)' : 'transparent'}`,
-                    color: activeTab === tab.key ? 'var(--accent-color)' : 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px'
-                  }}
+                  className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
                 >
                   {tab.label}
                   {tab.count > 0 && (
-                    <span
-                      style={{
-                        padding: '2px 6px',
-                        borderRadius: '10px',
-                        background: 'var(--bg-tertiary)',
-                        fontSize: '10px'
-                      }}
-                    >
+                    <span className={styles.tabBadge}>
                       {tab.count}
                     </span>
                   )}
@@ -289,73 +223,43 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
             </div>
 
             {/* Issues List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className={styles.issuesList}>
               {filteredIssues.length === 0 ? (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    padding: '40px',
-                    color: 'var(--text-secondary)'
-                  }}
-                >
-                  <CheckCircle size={32} style={{ marginBottom: '8px', color: '#10b981' }} />
-                  <p>{t('review.noIssuesInFilter')}</p>
+                <div className={styles.emptyState}>
+                  <CheckCircle size={32} className={styles.emptyIcon} />
+                  <p className={styles.emptyText}>{t('review.noIssuesInFilter')}</p>
                 </div>
               ) : (
                 filteredIssues.map((issue, index) => (
                   <div
                     key={index}
-                    style={{
-                      padding: '12px',
-                      background: 'var(--bg-secondary)',
-                      borderRadius: '8px',
-                      borderLeft: `3px solid ${
-                        issue.type === 'error' ? '#ef4444' :
-                        issue.type === 'warning' ? '#f59e0b' :
-                        issue.type === 'suggestion' ? '#3b82f6' : '#10b981'
-                      }`
-                    }}
+                    className={`${styles.issueItem} ${
+                      issue.type === 'error' ? styles.issueItemError :
+                      issue.type === 'warning' ? styles.issueItemWarning :
+                      issue.type === 'suggestion' ? styles.issueItemSuggestion :
+                      styles.issueItemStyle
+                    }`}
                   >
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <div className={styles.issueHeader}>
                       {getIssueIcon(issue.type)}
-                      <span style={{ fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>
+                      <span className={styles.issueType}>
                         {issue.type}
                       </span>
                       {issue.line && (
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
+                        <span className={styles.issueLine}>
                           {t('review.line', { line: issue.line })}
                         </span>
                       )}
                     </div>
-                    <p style={{ margin: '0 0 8px', fontSize: '13px' }}>{issue.message}</p>
+                    <p className={styles.issueMessage}>{issue.message}</p>
                     {issue.code && (
-                      <code
-                        style={{
-                          display: 'block',
-                          padding: '8px',
-                          background: 'var(--bg-tertiary)',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontFamily: 'monospace',
-                          marginBottom: '8px',
-                          overflow: 'auto'
-                        }}
-                      >
+                      <code className={styles.issueCode}>
                         {issue.code}
                       </code>
                     )}
                     {issue.suggestion && (
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: '12px',
-                          color: '#10b981',
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '4px'
-                        }}
-                      >
-                        <Lightbulb size={14} style={{ marginTop: '2px' }} />
+                      <p className={styles.issueSuggestion}>
+                        <Lightbulb size={14} className={styles.suggestionIcon} />
                         {issue.suggestion}
                       </p>
                     )}
@@ -365,11 +269,10 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+            <div className={styles.actionFooter}>
               <button
                 onClick={() => setShowQuickCheck(true)}
-                className="btn btn-secondary"
-                style={{ flex: 1 }}
+                className={`btn btn-secondary ${styles.footerButton}`}
               >
                 {t('review.back')}
               </button>
@@ -379,10 +282,9 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
                   runReview()
                 }}
                 disabled={loading}
-                className="btn btn-primary"
-                style={{ flex: 1 }}
+                className={`btn btn-primary ${styles.footerButton}`}
               >
-                <RefreshCw size={14} style={{ marginRight: '6px' }} />
+                <RefreshCw size={14} className={styles.footerButtonIcon} />
                 {t('review.rerun')}
               </button>
             </div>

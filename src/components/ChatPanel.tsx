@@ -50,15 +50,30 @@ import { isSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { buildSemanticContextSection } from '../services/semanticSearchService'
 import { collectSearchableFiles } from '../services/searchService'
 import { ChatMessageBody } from './ChatMessageBody'
+import { ChatMessageActions } from './ChatMessageActions'
+import { McpToolLogPanel } from './McpToolLogPanel'
+import { formatChatErrorMessage } from '../services/chatErrorMessages'
 import { useI18n } from '../i18n'
 import { trackEvent } from '../lib/observability'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { useIDEStore } from '../store/ideStore'
-import { isPayloadTooLargeError } from '../services/workspaceLimits'
+import { appendSpecsContext, collectSpecSources } from '../services/specsService'
+import { loadAgentRunHistory, saveAgentRunHistoryItem } from '../services/agentRunHistoryService'
+import type { McpToolLogEntry } from '../services/mcpAgentBridge'
+import {
+  createInitialChatSessionState,
+  enqueueSend,
+  shiftQueue,
+  startRun,
+  type ChatSessionStatus,
+  type PendingSend,
+} from '../services/chatSessionOrchestrator'
+import { buildSpecExecutionLog } from '../services/specExecutionLog'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
+  isError?: boolean
 }
 
 type SendAction = 'explain' | 'refactor' | 'fix' | 'generate'
@@ -108,6 +123,11 @@ ${t('ai.chat.prompt')}`
   const currentUser = useIDEStore((s) => s.currentUser)
   const editorFiles = useIDEStore((s) => s.files)
   const activeFileIndex = useIDEStore((s) => s.activeFile)
+  const queuedChatPrompt = useIDEStore((s) => s.queuedChatPrompt)
+  const setQueuedChatPrompt = useIDEStore((s) => s.setQueuedChatPrompt)
+  const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
+  const setQueuedSpecBackfill = useIDEStore((s) => s.setQueuedSpecBackfill)
+  const setFiles = useIDEStore((s) => s.setFiles)
   const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
   const [mounted, setMounted] = useState(false)
@@ -123,11 +143,22 @@ ${t('ai.chat.prompt')}`
   const [workspaceStats, setWorkspaceStats] = useState(workspaceContextService.getStats())
   const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: createWelcomeMessage(aiConfig) }])
   const [input, setInput] = useState('')
+  const [sendQueue, setSendQueue] = useState<PendingSend[]>([])
+  const [runId, setRunId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const sessionStatus: ChatSessionStatus = useMemo(() => {
+    if (loading) return 'running'
+    if (sendQueue.length > 0 || queuedChatPrompt) return 'queued'
+    return 'idle'
+  }, [loading, queuedChatPrompt, sendQueue.length])
+
   const [pendingAgentChanges, setPendingAgentChanges] = useState<AgentFileChange[] | null>(null)
   const [agentActivity, setAgentActivity] = useState<AgentActivityEntry[]>([])
+  const [lastRunRounds, setLastRunRounds] = useState(0)
+  const [mcpToolEntries, setMcpToolEntries] = useState<McpToolLogEntry[]>([])
   const [subscriptionExpiredBanner, setSubscriptionExpiredBanner] = useState<string | null>(null)
   const [mentionHits, setMentionHits] = useState<IndexSearchHit[]>([])
+  const [recentMentionHits, setRecentMentionHits] = useState<IndexSearchHit[]>([])
   const [mentionIndex, setMentionIndex] = useState(0)
   const [payloadWarning, setPayloadWarning] = useState<{
     estimatedBytes: number
@@ -194,6 +225,18 @@ ${t('ai.chat.prompt')}`
     return extractProjectTasks(sources)
   }, [editorFiles, workspaceStats.selectedFiles])
 
+  const specSources = useMemo(
+    () =>
+      collectSpecSources(
+        editorFiles,
+        workspaceContextService.getAllFiles().map((file) => ({
+          path: file.path,
+          content: file.content,
+        })),
+      ),
+    [editorFiles, workspaceStats.selectedFiles],
+  )
+
   useEffect(() => projectIndexManager.subscribe(() => setIndexVersion(projectIndexManager.getVersion())), [])
 
   const mentionBlockedByIndexBuild = indexBuildState.status === 'building'
@@ -208,22 +251,28 @@ ${t('ai.chat.prompt')}`
       }
       setActiveMentionQuery(query)
       if (mentionBlockedByIndexBuild) {
-        setMentionHits([])
+        setMentionHits(recentMentionHits)
         setMentionIndex(0)
         return
       }
-      setMentionHits(projectIndexManager.search(query, 8))
+      const hits = projectIndexManager.search(query, 8)
+      setMentionHits(hits)
+      if (hits.length > 0) setRecentMentionHits(hits)
       setMentionIndex(0)
     },
-    [indexVersion, mentionBlockedByIndexBuild],
+    [indexVersion, mentionBlockedByIndexBuild, recentMentionHits],
   )
 
   const activeFilePath = editorFiles[activeFileIndex]?.name ?? null
 
   const applyProjectRules = useCallback(
     (prompt: string) =>
-      appendOpenTasksToPrompt(appendProjectRules(prompt, projectRules, language), projectTasks, language),
-    [projectRules, projectTasks, language],
+      appendSpecsContext(
+        appendOpenTasksToPrompt(appendProjectRules(prompt, projectRules, language), projectTasks, language),
+        specSources,
+        language,
+      ),
+    [projectRules, projectTasks, specSources, language],
   )
 
   const applyAgentContext = useCallback(
@@ -250,8 +299,14 @@ ${t('ai.chat.prompt')}`
         editorFiles.map((file) => ({ name: file.name, content: file.content })),
         workspaceFiles,
       ).map((file) => ({ path: file.name, content: file.content }))
+      const candidatePaths = projectIndexManager
+        .search(query, 16)
+        .map((item) => item.path)
+        .filter((path, index, arr) => arr.indexOf(path) === index)
 
-      const section = await buildSemanticContextSection(query, searchable, aiConfig, language)
+      const section = await buildSemanticContextSection(query, searchable, aiConfig, language, {
+        candidatePaths,
+      })
       return section ? `${basePrompt}${section}` : basePrompt
     },
     [aiConfig, editorFiles, language, useWorkspaceContext],
@@ -320,8 +375,77 @@ ${t('ai.chat.prompt')}`
   }, [messages, loading])
 
   const appendError = (content: string) => {
-    setMessages((prev) => [...prev, { role: 'assistant', content }])
+    setMessages((prev) => [...prev, { role: 'assistant', content, isError: true }])
   }
+
+  const copyMessageText = useCallback(
+    async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text)
+        notify?.('success', t('chat.action.copied'), t('chat.action.copyDetail'))
+      } catch {
+        notify?.('error', t('chat.action.copyFailed'))
+      }
+    },
+    [notify, t],
+  )
+
+  const saveCurrentRun = useCallback(async () => {
+    if (agentActivity.length === 0) return
+    const summary = messages[messages.length - 1]?.content?.slice(0, 120) || 'Agent run'
+    await saveAgentRunHistoryItem({
+      summary,
+      rounds: lastRunRounds,
+      activity: agentActivity,
+      pendingChanges: pendingAgentChanges ?? [],
+    })
+    notify?.('success', '已保存', '本次 Agent 运行记录已保存')
+  }, [agentActivity, lastRunRounds, messages, notify, pendingAgentChanges])
+
+  const replayLastRun = useCallback(async () => {
+    const history = await loadAgentRunHistory()
+    const latest = history[0]
+    if (!latest) {
+      notify?.('error', '无记录', '还没有已保存的 Agent 运行')
+      return
+    }
+    setAgentActivity(latest.activity)
+    setPendingAgentChanges(latest.pendingChanges)
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: `已回放最近一次运行（${latest.activity.length} 条工具活动，${latest.rounds} 轮）`,
+      },
+    ])
+  }, [notify])
+
+  const exportRunMarkdown = useCallback(() => {
+    if (agentActivity.length === 0) return
+    const lines = [
+      '# Agent Run',
+      '',
+      `- Rounds: ${lastRunRounds}`,
+      `- Activities: ${agentActivity.length}`,
+      '',
+      '## Activity',
+      ...agentActivity.map((entry, idx) => `- ${idx + 1}. [${entry.ok ? 'OK' : 'FAIL'}] ${entry.tool} - ${entry.detail}`),
+    ]
+    void copyMessageText(lines.join('\n'))
+  }, [agentActivity, copyMessageText, lastRunRounds])
+
+  const appendExecutionToSpecAcceptance = useCallback(
+    (specAcceptancePath: string, taskText: string, assistantOutput: string) => {
+      const file = editorFiles.find((f) => f.name === specAcceptancePath)
+      if (!file) return
+
+      const addition = buildSpecExecutionLog(taskText, assistantOutput)
+      if (!addition) return
+
+      setFiles((prev) => prev.map((f) => (f.name === specAcceptancePath ? { ...f, content: f.content + addition } : f)))
+    },
+    [editorFiles, setFiles],
+  )
 
   const generateFilesFromResponse = useCallback(
     (assistantContent: string) => {
@@ -377,6 +501,17 @@ ${t('ai.chat.prompt')}`
   const handleSend = async (customInput?: string, action?: SendAction, options?: SendOptions) => {
     const textToSend = customInput || input
     if (!textToSend.trim()) return
+    if (loading) {
+      setSendQueue((prev) =>
+        enqueueSend(
+          { status: 'running', runId, queue: prev },
+          { text: textToSend, action, options },
+        ).queue,
+      )
+      notify?.('info', '已加入队列', `待执行任务 +1（当前 ${sendQueue.length + 1}）`)
+      if (!customInput) setInput('')
+      return
+    }
 
     const currentQuota = await fetchAIQuota(currentPlan, !!currentUser)
     setQuota(currentQuota)
@@ -406,10 +541,13 @@ ${t('ai.chat.prompt')}`
     if (!customInput) setInput('')
     setPayloadWarning(null)
     setLoading(true)
+    const started = startRun(createInitialChatSessionState())
+    setRunId(started.runId)
     stopRequestedRef.current = false
     streamAbortRef.current?.abort()
     streamAbortRef.current = new AbortController()
     setAgentActivity([])
+    setMcpToolEntries([])
 
     try {
       const history = messages
@@ -480,6 +618,7 @@ ${t('ai.chat.prompt')}`
         })
 
         assistantContent = result.finalContent
+        setLastRunRounds(result.rounds)
         if (result.activity.length > 0) {
           const log = formatActivityForChat(result.activity, labelActivity)
           assistantContent = assistantContent
@@ -527,6 +666,13 @@ ${t('ai.chat.prompt')}`
           }
         }
 
+        if (queuedSpecBackfill) {
+          appendExecutionToSpecAcceptance(
+            queuedSpecBackfill.specAcceptancePath,
+            queuedSpecBackfill.taskText,
+            assistantContent,
+          )
+        }
         refreshQuota()
         return
       }
@@ -661,6 +807,7 @@ ${t('ai.chat.prompt')}`
           },
         })
         assistantContent = mcpTurn.content
+        setMcpToolEntries(mcpTurn.toolEntries)
         if (mcpTurn.toolLog.length > 0) {
           assistantContent = `${assistantContent}\n\n${t('chat.mcp.results')}\n${mcpTurn.toolLog.join('\n')}`
         }
@@ -679,14 +826,16 @@ ${t('ai.chat.prompt')}`
         setPendingAgentChanges(null)
         generateFilesFromResponse(assistantContent)
       }
+
+      if (queuedSpecBackfill) {
+        appendExecutionToSpecAcceptance(queuedSpecBackfill.specAcceptancePath, queuedSpecBackfill.taskText, assistantContent)
+      }
       refreshQuota()
     } catch (error: any) {
-      if (stopRequestedRef.current || error?.name === 'AbortError' || String(error?.message || '').includes(t('ai.error.aborted'))) {
-        appendError(t('ai.error.aborted'))
-        return
-      }
       const message = error.message || t('chat.unknownError')
-      if (isPayloadTooLargeError(message)) {
+      const formatted = formatChatErrorMessage(t, message)
+
+      if (formatted.kind === 'payload') {
         trackEvent('chat.payload_too_large', {
           provider: aiConfig.provider,
           agentMode,
@@ -695,18 +844,54 @@ ${t('ai.chat.prompt')}`
           selectedWorkspaceFiles: workspaceStats.selectedFiles,
           messageCount: messages.length,
         })
-        const tips = `${t('chat.error.payloadTooLarge')}\n\n${t('chat.error.payloadTooLargeTips')}`
-        notify?.('error', t('chat.error.payloadTooLarge'), t('chat.error.payloadTooLargeTips'))
-        appendError(tips)
-        return
       }
-      notify?.('error', t('chat.requestFailed', { message: message.split('\n')[0] }), message)
-      appendError(t('chat.requestFailed', { message }))
+
+      if (formatted.kind !== 'aborted') {
+        notify?.('error', t(formatted.kind === 'payload' ? 'chat.error.payloadTooLarge' : 'chat.requestFailed', {
+          message: message.split('\n')[0],
+        }), message)
+      }
+
+      appendError(formatted.content)
     } finally {
       setLoading(false)
+      setRunId(null)
       streamAbortRef.current = null
     }
   }
+
+  useEffect(() => {
+    if (!queuedChatPrompt || loading) return
+    void (async () => {
+      await handleSend(queuedChatPrompt)
+      setQueuedChatPrompt(null)
+      setQueuedSpecBackfill(null)
+    })()
+  }, [queuedChatPrompt, loading, setQueuedChatPrompt, setQueuedSpecBackfill])
+
+  useEffect(() => {
+    if (loading || sendQueue.length === 0) return
+    const shifted = shiftQueue({ status: sessionStatus, runId, queue: sendQueue })
+    if (!shifted.next) return
+    setSendQueue(shifted.state.queue)
+    void handleSend(shifted.next.text, shifted.next.action, shifted.next.options)
+  }, [loading, sendQueue])
+
+  const retryFromMessageIndex = useCallback(
+    (messageIndex: number) => {
+      let userText = ''
+      for (let i = messageIndex - 1; i >= 0; i -= 1) {
+        if (messages[i].role === 'user') {
+          userText = messages[i].content
+          break
+        }
+      }
+      if (!userText || loading) return
+      setMessages((prev) => prev.slice(0, messageIndex))
+      void handleSend(userText)
+    },
+    [handleSend, loading, messages],
+  )
 
   const quickActions = useMemo(
     () => [
@@ -882,23 +1067,55 @@ ${t('ai.chat.prompt')}`
       <div className="chat-messages">
         {messages.map((message, index) => {
           const isAssistant = message.role === 'assistant'
-          return (
-            <div key={index} className={`chat-msg-row ${isAssistant ? '' : 'chat-msg-row--user'}`}>
-              {isAssistant && (
-                <div className="chat-msg-avatar chat-msg-avatar--assistant">
-                  <Bot size={14} color="#c4b5fd" />
-                </div>
-              )}
+          const isWelcome = index === 0 && isAssistant && !message.isError
+          const lastAssistantIndex = messages.reduce(
+            (last, item, itemIndex) => (item.role === 'assistant' ? itemIndex : last),
+            -1,
+          )
+          const canRetry = isAssistant && !isWelcome && !message.isError && index > 0
+          const canContinue =
+            isAssistant && !isWelcome && !message.isError && index === lastAssistantIndex && !loading
 
-              <div className={`chat-msg-bubble ${isAssistant ? 'chat-msg-bubble--assistant' : 'chat-msg-bubble--user'}`}>
-                <ChatMessageBody content={message.content} variant={message.role} />
+          return (
+            <div key={index} className={`chat-msg-stack ${isAssistant ? '' : 'chat-msg-stack--user'}`}>
+              <div className={`chat-msg-row ${isAssistant ? '' : 'chat-msg-row--user'}`}>
+                {isAssistant && (
+                  <div className="chat-msg-avatar chat-msg-avatar--assistant">
+                    <Bot size={14} color="#c4b5fd" />
+                  </div>
+                )}
+
+                <div
+                  className={`chat-msg-bubble ${isAssistant ? 'chat-msg-bubble--assistant' : 'chat-msg-bubble--user'} ${message.isError ? 'chat-msg-bubble--error' : ''}`}
+                >
+                  <ChatMessageBody
+                    content={message.content}
+                    variant={message.role}
+                    isError={message.isError}
+                  />
+                </div>
+
+                {!isAssistant && (
+                  <div className="chat-msg-avatar chat-msg-avatar--user">
+                    <User size={14} color="#5ee9b5" />
+                  </div>
+                )}
               </div>
 
-              {!isAssistant && (
-                <div className="chat-msg-avatar chat-msg-avatar--user">
-                  <User size={14} color="#5ee9b5" />
-                </div>
-              )}
+              {!isWelcome ? (
+                <ChatMessageActions
+                  role={message.role}
+                  canRetry={canRetry}
+                  canContinue={canContinue}
+                  onCopy={() => void copyMessageText(message.content)}
+                  onRetry={canRetry ? () => retryFromMessageIndex(index) : undefined}
+                  onContinue={
+                    canContinue
+                      ? () => void handleSend(t('chat.action.continuePrompt'))
+                      : undefined
+                  }
+                />
+              ) : null}
             </div>
           )
         })}
@@ -917,7 +1134,13 @@ ${t('ai.chat.prompt')}`
                   <span className="dot" />
                 </span>
               </div>
-              <AgentToolPanel activity={agentActivity} defaultCollapsed={false} />
+              <AgentToolPanel
+                activity={agentActivity}
+                defaultCollapsed={false}
+                onSaveRun={() => void saveCurrentRun()}
+                onReplayLastRun={() => void replayLastRun()}
+                onExportMarkdown={exportRunMarkdown}
+              />
             </div>
           </div>
         )}
@@ -989,6 +1212,37 @@ ${t('ai.chat.prompt')}`
           </button>
         ))}
       </div>
+
+      <McpToolLogPanel entries={mcpToolEntries} />
+
+      {(!loading && (queuedChatPrompt || sendQueue.length > 0)) || (loading && sendQueue.length > 0) ? (
+        <div
+          style={{
+            margin: '10px 0',
+            padding: '10px 12px',
+            borderRadius: 12,
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-secondary)',
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: 'var(--text-primary)' }}>任务队列</div>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>
+            会话状态：{sessionStatus}{runId ? ` · ${runId}` : ''}
+          </div>
+          {queuedChatPrompt ? (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
+              等待执行：{queuedChatPrompt.slice(0, 60)}
+              {queuedChatPrompt.length > 60 ? '…' : ''}
+            </div>
+          ) : null}
+          {sendQueue.length > 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              排队中：{sendQueue.slice(0, 3).map((item, idx) => <span key={idx}>[{idx + 1}] {item.text.slice(0, 28)}{item.text.length>28?'…':''}&nbsp;</span>)}
+              {sendQueue.length > 3 ? `+${sendQueue.length - 3} 更多` : ''}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="chat-input-area chat-input-area--stacked">
         {payloadWarning ? (

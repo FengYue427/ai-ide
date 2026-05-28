@@ -8,6 +8,7 @@ import { createTranslator, type TranslationKey } from '../i18n'
 import { getApiLanguage } from '../lib/apiLanguage'
 import type { ChatCompletionResult, ChatMessage } from './agentChatTypes'
 import type { OpenAIToolDefinition } from './agentTools/types'
+import { reserveAIUsageFromStore } from './usageService'
 
 const TOOL_PROVIDERS: AIModel[] = ['openai', 'deepseek', 'grok', 'zhipu', 'minimax']
 
@@ -24,12 +25,7 @@ function aiServiceError(key: TranslationKey, params?: Record<string, string | nu
 }
 
 async function reserveQuotaBeforeRequest(skipQuotaCheck?: boolean): Promise<void> {
-  if (skipQuotaCheck) return
-  const { ensureAIQuotaFromStore, recordAIUsageEvent } = await import('./usageService')
-  const { useIDEStore } = await import('../store/ideStore')
-  await ensureAIQuotaFromStore()
-  const state = useIDEStore.getState()
-  await recordAIUsageEvent(!!state.currentUser, state.currentPlan)
+  await reserveAIUsageFromStore(skipQuotaCheck)
 }
 
 /** Map UI model ids to DeepSeek API ids (V4 chat completions). */

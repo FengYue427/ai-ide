@@ -1,0 +1,331 @@
+/* Git Panel Container */
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Wait Runtime Message */
+.waitRuntime {
+  padding: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* Not Initialized State */
+.notInitContainer {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.notInitCard {
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+}
+
+.notInitTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.notInitDesc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.notInitError {
+  margin-top: 10px;
+  color: var(--danger-color);
+  font-size: 12px;
+}
+
+.initButton {
+  /* Uses btn btn-primary */
+}
+
+.initButtonIcon {
+  margin-right: 6px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.branchSelector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.branchIcon {
+  color: var(--text-secondary);
+}
+
+.branchSelect {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.refreshButton {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.refreshIcon {
+  margin-right: 4px;
+}
+
+/* Tabs */
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  background: var(--bg-secondary);
+}
+
+.tabActive {
+  border-color: color-mix(in srgb, var(--accent-color) 34%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  color: var(--text-primary);
+}
+
+/* Content Area */
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  display: grid;
+  gap: 14px;
+}
+
+/* Error Message */
+.errorMessage {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger-color) 42%, var(--border-color));
+  color: var(--danger-color);
+  font-size: 12px;
+}
+
+/* Section */
+.section {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sectionHeaderLeft {
+  /* No specific styles */
+}
+
+.sectionLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.sectionCount {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sectionActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* File List */
+.fileList {
+  display: grid;
+  gap: 8px;
+}
+
+/* File Item */
+.fileItem {
+  display: grid;
+  grid-template-columns: 28px 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.fileBadge {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fileName {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileButton {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.fileIconButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.fileIconButton:hover {
+  color: var(--text-primary);
+}
+
+.fileIconButton:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+/* Staged File Item */
+.stagedFileItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.stagedFileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stagedCheckIcon {
+  color: #33c58e;
+}
+
+/* Commit Section */
+.commitSection {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.commitInput {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.commitInput:focus {
+  border-color: var(--accent-color);
+}
+
+/* Empty State */
+.emptyState {
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Commit Item */
+.commitItem {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.commitMessage {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.commitMeta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.commitOid {
+  color: var(--accent-color);
+  font-size: 11px;
+  font-weight: 700;
+}

@@ -11,7 +11,7 @@ export interface AIConfig {
 
 import { createTranslator, type Language, type TranslationKey } from '../i18n'
 import { getApiLanguage } from '../lib/apiLanguage'
-import { checkAIQuotaLocal } from './usageService'
+import { checkAIQuotaLocal, reserveAIUsageFromStore } from './usageService'
 
 export interface QuotaCheck {
   allowed: boolean
@@ -28,12 +28,7 @@ export function checkAIQuota(currentPlan: string = 'free'): QuotaCheck {
 
 /** Check quota and reserve one unit before the upstream AI call (prevents parallel overuse). */
 async function reserveQuotaBeforeRequest(skipQuotaCheck?: boolean): Promise<void> {
-  if (skipQuotaCheck) return
-  const { ensureAIQuotaFromStore, recordAIUsageEvent } = await import('./usageService')
-  const { useIDEStore } = await import('../store/ideStore')
-  await ensureAIQuotaFromStore()
-  const state = useIDEStore.getState()
-  await recordAIUsageEvent(!!state.currentUser, state.currentPlan)
+  await reserveAIUsageFromStore(skipQuotaCheck)
 }
 
 // ==================== 模型配置 ====================

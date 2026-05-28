@@ -38,9 +38,11 @@ import {
   collectTasksSources,
   extractProjectTasks,
   getDefaultProjectTasksTemplate,
+  parseProjectTasks,
   PROJECT_TASKS_PATH,
 } from '../services/projectTasksService'
 import { workspaceContextService } from '../services/workspaceContextService'
+import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
 import { useI18n } from '../i18n'
 
 interface PanelHostProps {
@@ -160,6 +162,8 @@ export function PanelHost({
   const setFiles = useIDEStore((s) => s.setFiles)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
+  const setQueuedChatPrompt = useIDEStore((s) => s.setQueuedChatPrompt)
+  const setQueuedSpecBackfill = useIDEStore((s) => s.setQueuedSpecBackfill)
 
   const projectRulesPreview = extractProjectRules(
     collectRulesSources(
@@ -173,6 +177,16 @@ export function PanelHost({
       workspaceContextService.getAllFiles().map((file) => ({ path: file.path, content: file.content })),
     ),
   )
+  const specTaskItems = files
+    .filter((file) => /^\.aide\/specs\/[^/]+\/tasks\.md$/i.test(file.name))
+    .flatMap((file) =>
+      parseProjectTasks(file.content).map((task) => ({
+        path: file.name,
+        text: task.text,
+        done: task.done,
+        line: task.line,
+      })),
+    )
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAiConfig = useIDEStore((s) => s.setAiConfig)
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
@@ -195,19 +209,52 @@ export function PanelHost({
   const setShowWorkspacePanel = useIDEStore((s) => s.setShowWorkspacePanel)
   const setShowThemeSelector = useIDEStore((s) => s.setShowThemeSelector)
 
+  const registryPanels = [
+    {
+      id: 'template',
+      show: showTemplateModal,
+      render: () => <TemplateModal onSelect={onApplyTemplate} onClose={() => setShowTemplateModal(false)} />,
+    },
+    {
+      id: 'share',
+      show: showShareModal,
+      render: () => <ShareModal files={files} onImport={onImportFiles} onClose={() => setShowShareModal(false)} />,
+    },
+    {
+      id: 'ai-settings',
+      show: showAISettings,
+      render: () => <AISettingsModal config={aiConfig} onSave={onSaveAISettings} onClose={() => setShowAISettings(false)} />,
+    },
+    {
+      id: 'subscription',
+      show: showSubscriptionModal,
+      render: () => <SubscriptionModal onClose={() => setShowSubscriptionModal(false)} currentPlan={currentPlan} />,
+    },
+    {
+      id: 'import',
+      show: showImportModal,
+      render: () => <ImportModal onImport={onImportFiles} onClose={() => setShowImportModal(false)} />,
+    },
+    {
+      id: 'collaboration',
+      show: showCollaboration,
+      render: () => <CollaborationPanel onClose={() => setShowCollaboration(false)} />,
+    },
+    {
+      id: 'plugin-manager',
+      show: showPluginManager,
+      render: () => <PluginManager onClose={() => setShowPluginManager(false)} />,
+    },
+    {
+      id: 'drop-zone',
+      show: showDropZone,
+      render: () => <DropZone onFilesDrop={onImportFiles} onClose={() => setShowDropZone(false)} />,
+    },
+  ]
+
   return (
     <>
-      {showTemplateModal && (
-        <TemplateModal onSelect={onApplyTemplate} onClose={() => setShowTemplateModal(false)} />
-      )}
-
-      {showShareModal && (
-        <ShareModal files={files} onImport={onImportFiles} onClose={() => setShowShareModal(false)} />
-      )}
-
-      {showAISettings && (
-        <AISettingsModal config={aiConfig} onSave={onSaveAISettings} onClose={() => setShowAISettings(false)} />
-      )}
+      {registryPanels.map((panel) => (panel.show ? <div key={panel.id}>{panel.render()}</div> : null))}
 
       {showAuthModal && (
         <AuthModal
@@ -219,18 +266,6 @@ export function PanelHost({
           onClose={() => setShowAuthModal(false)}
         />
       )}
-
-      {showSubscriptionModal && (
-        <SubscriptionModal onClose={() => setShowSubscriptionModal(false)} currentPlan={currentPlan} />
-      )}
-
-      {showImportModal && <ImportModal onImport={onImportFiles} onClose={() => setShowImportModal(false)} />}
-
-      {showCollaboration && <CollaborationPanel onClose={() => setShowCollaboration(false)} />}
-
-      {showPluginManager && <PluginManager onClose={() => setShowPluginManager(false)} />}
-
-      {showDropZone && <DropZone onFilesDrop={onImportFiles} onClose={() => setShowDropZone(false)} />}
 
       {showDiff && diffContent && (
         <DiffViewer
@@ -398,6 +433,61 @@ export function PanelHost({
             }
             setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
             closeSettingsPanel()
+          }}
+          onCreateSpec={(name) => {
+            const templates = buildSpecTemplateFiles(name)
+            const nextFiles = [...files]
+            for (const item of templates) {
+              const existingIndex = nextFiles.findIndex((file) => file.name === item.path)
+              if (existingIndex >= 0) {
+                nextFiles[existingIndex] = { ...nextFiles[existingIndex], content: item.content, language: 'markdown' }
+              } else {
+                nextFiles.push({ name: item.path, content: item.content, language: 'markdown' })
+              }
+            }
+            setFiles(nextFiles)
+            const firstSpecIndex = nextFiles.findIndex((file) => file.name === templates[0]?.path)
+            if (firstSpecIndex >= 0) setActiveFile(firstSpecIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
+          }}
+          onOpenSpecsRoot={() => {
+            const targetIndex = files.findIndex((file) => file.name.startsWith(`${SPECS_ROOT}/`))
+            if (targetIndex >= 0) {
+              setActiveFile(targetIndex)
+              setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+              closeSettingsPanel()
+            }
+          }}
+          specTasks={specTaskItems}
+          onMarkSpecTaskDone={(path, line) => {
+            setFiles((prev) =>
+              prev.map((file) => {
+                if (file.name !== path) return file
+                const lines = file.content.split(/\r?\n/)
+                const index = line - 1
+                if (index < 0 || index >= lines.length) return file
+                lines[index] = lines[index].replace(/^(\s*-\s*)\[( |x|X)\]/, '$1[x]')
+                return { ...file, content: lines.join('\n') }
+              }),
+            )
+            const targetIndex = files.findIndex((file) => file.name === path)
+            if (targetIndex >= 0) {
+              setActiveFile(targetIndex)
+              setEditorTarget({ line, column: 1, nonce: Date.now() })
+            }
+          }}
+          onRunSpecTask={(path, text) => {
+            const prompt = `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${path}] ${text}`
+            const acceptancePath = path.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
+            setQueuedChatPrompt(prompt)
+            setQueuedSpecBackfill({
+              taskPath: path,
+              taskText: text,
+              specAcceptancePath: acceptancePath,
+            })
+            closeSettingsPanel()
+            openChatPanel()
           }}
           onClose={closeSettingsPanel}
         />

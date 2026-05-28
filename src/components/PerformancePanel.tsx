@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Activity, Clock, Cpu, MemoryStick, Play, RotateCcw, BarChart3 } from 'lucide-react'
 import { useI18n } from '../i18n'
+import styles from './PerformancePanel.module.css'
 
 interface PerformanceMetrics {
   startTime: number
@@ -83,67 +84,37 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        width: '380px',
-        bottom: 0,
-        background: 'var(--bg-primary)',
-        borderLeft: '1px solid var(--border-color)',
-        zIndex: 100,
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '-4px 0 20px rgba(0,0,0,0.3)'
-      }}
-    >
+    <div className={styles.panel}>
       {/* Header */}
-      <div
-        style={{
-          padding: '16px',
-          borderBottom: '1px solid var(--border-color)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Activity size={20} style={{ color: 'var(--accent-color)' }} />
-          <span style={{ fontWeight: 600 }}>{t('perf.title')}</span>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <Activity size={20} className={styles.headerIcon} />
+          <span className={styles.headerTitle}>{t('perf.title')}</span>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className={styles.headerActions}>
           <button
             onClick={clearHistory}
-            style={{ padding: '6px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+            className={styles.clearButton}
             title={t('perf.clearHistory')}
           >
             <RotateCcw size={16} />
           </button>
-          <button onClick={onClose} style={{ padding: '4px' }}>
+          <button onClick={onClose} className={styles.closeButton}>
             <X size={20} />
           </button>
         </div>
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+      <div className={styles.content}>
         {/* Current Run */}
         {isRunning && currentRun && (
-          <div
-            style={{
-              padding: '16px',
-              background: 'var(--bg-secondary)',
-              borderRadius: '8px',
-              marginBottom: '16px',
-              border: '1px solid var(--accent-color)'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <Play size={16} style={{ color: 'var(--accent-color)', animation: 'pulse 1s infinite' }} />
-              <span style={{ fontWeight: 500 }}>{t('perf.running')}</span>
+          <div className={styles.currentRun}>
+            <div className={styles.currentRunHeader}>
+              <Play size={16} className={styles.runningIcon} />
+              <span className={styles.runningLabel}>{t('perf.running')}</span>
             </div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--accent-color)' }}>
+            <div className={styles.currentTime}>
               {formatTime(performance.now() - currentRun.startTime)}
             </div>
           </div>
@@ -151,95 +122,87 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
 
         {/* Summary Stats */}
         {metrics.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <h4 style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+          <div className={styles.summary}>
+            <h4 className={styles.sectionTitle}>
               {t('perf.overview')}
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <BarChart3 size={14} style={{ color: 'var(--text-secondary)' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('perf.avgTime')}</span>
+            <div className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <div className={styles.statHeader}>
+                  <BarChart3 size={14} className={styles.statIcon} />
+                  <span className={styles.statLabel}>{t('perf.avgTime')}</span>
                 </div>
-                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{formatTime(averageTime)}</span>
+                <span className={styles.statValue}>{formatTime(averageTime)}</span>
               </div>
-              <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <Clock size={14} style={{ color: '#10b981' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('perf.fastest')}</span>
+              <div className={styles.statCard}>
+                <div className={styles.statHeader}>
+                  <Clock size={14} className={styles.statIconFastest} />
+                  <span className={styles.statLabel}>{t('perf.fastest')}</span>
                 </div>
-                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#10b981' }}>{formatTime(fastest)}</span>
+                <span className={styles.statValueFastest}>{formatTime(fastest)}</span>
               </div>
-              <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <Clock size={14} style={{ color: '#f59e0b' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('perf.slowest')}</span>
+              <div className={styles.statCard}>
+                <div className={styles.statHeader}>
+                  <Clock size={14} className={styles.statIconSlowest} />
+                  <span className={styles.statLabel}>{t('perf.slowest')}</span>
                 </div>
-                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#f59e0b' }}>{formatTime(slowest)}</span>
+                <span className={styles.statValueSlowest}>{formatTime(slowest)}</span>
               </div>
-              <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <Activity size={14} style={{ color: 'var(--text-secondary)' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('perf.runCount')}</span>
+              <div className={styles.statCard}>
+                <div className={styles.statHeader}>
+                  <Activity size={14} className={styles.statIcon} />
+                  <span className={styles.statLabel}>{t('perf.runCount')}</span>
                 </div>
-                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{metrics.length}</span>
+                <span className={styles.statValue}>{metrics.length}</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Run History */}
-        <div>
-          <h4 style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+        <div className={styles.history}>
+          <h4 className={styles.sectionTitle}>
             {t('perf.history')}
           </h4>
           
           {metrics.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
-              <Activity size={48} style={{ marginBottom: '12px', opacity: 0.5 }} />
-              <p style={{ fontSize: '13px' }}>{t('perf.noRuns')}</p>
-              <p style={{ fontSize: '12px', marginTop: '4px' }}>{t('perf.noRunsHint')}</p>
+            <div className={styles.emptyState}>
+              <Activity size={48} className={styles.emptyIcon} />
+              <p className={styles.emptyText}>{t('perf.noRuns')}</p>
+              <p className={styles.emptyHint}>{t('perf.noRunsHint')}</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className={styles.historyList}>
               {metrics.map((metric, index) => (
-                <div
-                  key={index}
-                  style={{
-                    padding: '12px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '8px',
-                    fontSize: '13px'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: 500 }}>{t('perf.runLabel', { index: metrics.length - index })}</span>
-                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                <div key={index} className={styles.runItem}>
+                  <div className={styles.runItemHeader}>
+                    <span className={styles.runLabel}>{t('perf.runLabel', { index: metrics.length - index })}</span>
+                    <span className={styles.runTime}>
                       {new Date(metric.endTime || metric.startTime).toLocaleTimeString()}
                     </span>
                   </div>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
-                        <Clock size={10} style={{ display: 'inline', marginRight: '2px' }} />
+                  <div className={styles.runMetrics}>
+                    <div className={styles.metricItem}>
+                      <div className={styles.metricLabel}>
+                        <Clock size={10} className={styles.metricIcon} />
                         {t('perf.execTime')}
                       </div>
-                      <span style={{ fontWeight: 600 }}>{formatTime(metric.executionTime || 0)}</span>
+                      <span className={styles.metricValue}>{formatTime(metric.executionTime || 0)}</span>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
-                        <MemoryStick size={10} style={{ display: 'inline', marginRight: '2px' }} />
+                    <div className={styles.metricItem}>
+                      <div className={styles.metricLabel}>
+                        <MemoryStick size={10} className={styles.metricIcon} />
                         {t('perf.memoryEst')}
                       </div>
-                      <span style={{ fontWeight: 600 }}>{formatBytes(metric.memoryUsage || 0)}</span>
+                      <span className={styles.metricValue}>{formatBytes(metric.memoryUsage || 0)}</span>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
-                        <Cpu size={10} style={{ display: 'inline', marginRight: '2px' }} />
+                    <div className={styles.metricItem}>
+                      <div className={styles.metricLabel}>
+                        <Cpu size={10} className={styles.metricIcon} />
                         {t('perf.outputSize')}
                       </div>
-                      <span style={{ fontWeight: 600 }}>{formatBytes(metric.outputLength)}</span>
+                      <span className={styles.metricValue}>{formatBytes(metric.outputLength)}</span>
                     </div>
                   </div>
                 </div>

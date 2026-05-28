@@ -3,6 +3,8 @@ import { AgentSettingsSection } from './AgentSettingsSection'
 import { McpSettingsSection } from './McpSettingsSection'
 import { ProjectRulesSection } from './ProjectRulesSection'
 import { ProjectTasksSection } from './ProjectTasksSection'
+import { SpecsSection } from './SpecsSection'
+import { McpToolsBrowser } from './McpToolsBrowser'
 import { QuotaIndicator } from './ui/QuotaIndicator'
 import { Toggle } from './ui/Toggle'
 import {
@@ -53,6 +55,11 @@ interface SettingsCenterProps {
   projectRulesPreview?: string | null
   onEditProjectTasks?: () => void
   projectTasks?: ProjectTaskItem[]
+  onCreateSpec?: (name: string, language: Language) => void
+  onOpenSpecsRoot?: () => void
+  specTasks?: Array<{ path: string; text: string; done: boolean; line: number }>
+  onMarkSpecTaskDone?: (path: string, line: number) => void
+  onRunSpecTask?: (path: string, text: string) => void
   onClose: () => void
 }
 
@@ -73,6 +80,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   projectRulesPreview = null,
   onEditProjectTasks,
   projectTasks = [],
+  onCreateSpec,
+  onOpenSpecsRoot,
+  specTasks = [],
+  onMarkSpecTaskDone,
+  onRunSpecTask,
   onClose,
 }) => {
   const { t } = useI18n()
@@ -596,8 +608,19 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 {onEditProjectTasks ? (
                   <ProjectTasksSection tasks={projectTasks} onEditTasks={onEditProjectTasks} />
                 ) : null}
+                {onCreateSpec && onOpenSpecsRoot && onMarkSpecTaskDone && onRunSpecTask ? (
+                  <SpecsSection
+                    language={localLanguage}
+                    onCreateSpec={onCreateSpec}
+                    onOpenSpecsRoot={onOpenSpecsRoot}
+                    tasks={specTasks}
+                    onMarkTaskDone={onMarkSpecTaskDone}
+                    onRunTask={onRunSpecTask}
+                  />
+                ) : null}
                 <AgentSettingsSection onRegisterPersist={(persist) => { persistAgentRef.current = persist }} />
                 <McpSettingsSection onRegisterPersist={(persist) => { persistMcpRef.current = persist }} />
+                <McpToolsBrowser />
               </div>
             )}
 

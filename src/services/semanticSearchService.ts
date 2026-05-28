@@ -75,7 +75,7 @@ export async function findRelevantChunks(
   query: string,
   files: { path: string; content: string }[],
   config: AIConfig,
-  options?: { topK?: number; maxFiles?: number },
+  options?: { topK?: number; maxFiles?: number; candidatePaths?: string[] },
 ): Promise<SemanticChunkHit[]> {
   if (!canUseEmbeddings(config) || !query.trim()) return []
 
@@ -83,10 +83,12 @@ export async function findRelevantChunks(
   const maxFiles = options?.maxFiles ?? MAX_FILES
   const queryVector = await createEmbedding(query, config)
 
+  const candidatePathSet = options?.candidatePaths?.length ? new Set(options.candidatePaths) : null
   const candidates = collectIndexSources(
     files.map((file) => ({ name: file.path, content: file.content })),
   )
     .filter((file) => file.content.trim().length > 0)
+    .filter((file) => (candidatePathSet ? candidatePathSet.has(file.path) : true))
     .slice(0, maxFiles)
     .map((file) => ({ path: file.path, content: file.content }))
 
@@ -133,11 +135,12 @@ export async function buildSemanticContextSection(
   files: { path: string; content: string }[],
   config: AIConfig,
   locale: Language = 'zh-CN',
+  options?: { candidatePaths?: string[] },
 ): Promise<string> {
   if (!isSemanticSearchEnabled()) return ''
 
   try {
-    const hits = await findRelevantChunks(query, files, config)
+    const hits = await findRelevantChunks(query, files, config, { candidatePaths: options?.candidatePaths })
     return formatSemanticContextSection(hits, locale)
   } catch (error) {
     const message =

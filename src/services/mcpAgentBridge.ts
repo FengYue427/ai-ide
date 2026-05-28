@@ -1,6 +1,14 @@
 import { callMcpTool, listMcpTools } from './mcpClientService'
 import { getEnabledMcpServers } from './mcpConfigService'
 import type { McpServerConfig, McpToolCallRequest } from './mcpTypes'
+export interface McpToolLogEntry {
+  serverId: string
+  serverName: string
+  tool: string
+  ok: boolean
+  output: string
+}
+
 
 const MCP_TOOL_BLOCK_RE = /<<<mcp-tool>>>\s*([\s\S]*?)\s*<<<\/mcp-tool>>>/gi
 const MCP_JSON_FENCE_RE = /```(?:json)?\s*(\{[\s\S]*?"serverId"[\s\S]*?"tool"[\s\S]*?\})\s*```/gi
@@ -85,30 +93,56 @@ function stripMcpToolMarkers(content: string): string {
 export async function executeMcpToolCalls(
   calls: McpToolCallRequest[],
   servers: McpServerConfig[],
-): Promise<string[]> {
-  const results: string[] = []
+): Promise<McpToolLogEntry[]> {
+  const results: McpToolLogEntry[] = []
 
   for (const call of calls) {
     const server = servers.find((item) => item.id === call.serverId)
     if (!server) {
-      results.push(`[mcp] unknown serverId: ${call.serverId}`)
+      results.push({
+        serverId: call.serverId,
+        serverName: call.serverId,
+        tool: call.tool,
+        ok: false,
+        output: 'unknown serverId',
+      })
       continue
     }
     try {
       const output = await callMcpTool(server, call.tool, call.arguments ?? {})
-      results.push(`[mcp] ${server.name}/${call.tool}: ${JSON.stringify(output).slice(0, 4000)}`)
+      results.push({
+        serverId: server.id,
+        serverName: server.name,
+        tool: call.tool,
+        ok: true,
+        output: JSON.stringify(output).slice(0, 4000),
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'tool call failed'
-      results.push(`[mcp] ${server.name}/${call.tool} error: ${message}`)
+      results.push({
+        serverId: server.id,
+        serverName: server.name,
+        tool: call.tool,
+        ok: false,
+        output: message,
+      })
     }
   }
 
   return results
 }
 
+export function formatMcpToolLog(entries: McpToolLogEntry[]): string[] {
+  return entries.map((entry) =>
+    entry.ok
+      ? `[mcp] ${entry.serverName}/${entry.tool}: ${entry.output}`
+      : `[mcp] ${entry.serverName}/${entry.tool} error: ${entry.output}`,
+  )
+}
+
 export async function runMcpToolBlocksInContent(content: string): Promise<{
   content: string
-  toolLog: string[]
+  toolLog: McpToolLogEntry[]
 }> {
   const servers = await getEnabledMcpServers()
   if (servers.length === 0) return { content, toolLog: [] }
@@ -131,10 +165,12 @@ export interface McpAgentTurnOptions {
 export async function processAgentMcpTurn(options: McpAgentTurnOptions): Promise<{
   content: string
   toolLog: string[]
+  toolEntries: McpToolLogEntry[]
   followUpRounds: number
 }> {
   let content = options.content
   const allLogs: string[] = []
+  const allEntries: McpToolLogEntry[] = []
   let followUpRounds = 0
 
   while (true) {
@@ -142,13 +178,15 @@ export async function processAgentMcpTurn(options: McpAgentTurnOptions): Promise
     content = stripped
     if (toolLog.length === 0) break
 
-    allLogs.push(...toolLog)
+    allEntries.push(...toolLog)
+    const plainLogs = formatMcpToolLog(toolLog)
+    allLogs.push(...plainLogs)
 
     if (!options.autoFollowUp || followUpRounds >= options.maxFollowUpRounds) break
 
     followUpRounds += 1
-    content = await options.sendFollowUp({ assistantSoFar: content, toolLog })
+    content = await options.sendFollowUp({ assistantSoFar: content, toolLog: plainLogs })
   }
 
-  return { content, toolLog: allLogs, followUpRounds }
+  return { content, toolLog: allLogs, toolEntries: allEntries, followUpRounds }
 }

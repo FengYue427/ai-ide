@@ -11,6 +11,7 @@ const TASK_PATH_PATTERNS = [
   /^\.aide\/tasks$/i,
   /^\.aide\/tasks\.md$/i,
   /^aide\.tasks\.md$/i,
+  /^\.aide\/specs\/[^/]+\/tasks\.md$/i,
 ]
 
 export type ProjectTaskItem = {
