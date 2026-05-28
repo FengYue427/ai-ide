@@ -137,6 +137,10 @@ ${t('ai.chat.prompt')}`
   const setQueuedChatPrompt = useIDEStore((s) => s.setQueuedChatPrompt)
   const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
   const setQueuedSpecBackfill = useIDEStore((s) => s.setQueuedSpecBackfill)
+  const queuedPlanBackfill = useIDEStore((s) => s.queuedPlanBackfill)
+  const setQueuedPlanBackfill = useIDEStore((s) => s.setQueuedPlanBackfill)
+  const queuedPlanExecutions = useIDEStore((s) => s.queuedPlanExecutions)
+  const shiftQueuedPlanExecution = useIDEStore((s) => s.shiftQueuedPlanExecution)
   const setFiles = useIDEStore((s) => s.setFiles)
   const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
@@ -158,7 +162,6 @@ ${t('ai.chat.prompt')}`
     }
   })
   const lastPlanPathRef = useRef<string | null>(null)
-  const lastPlanStepRef = useRef<string | null>(null)
   const [workspaceStats, setWorkspaceStats] = useState(workspaceContextService.getStats())
   const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: createWelcomeMessage(aiConfig) }])
   const [input, setInput] = useState('')
@@ -167,9 +170,9 @@ ${t('ai.chat.prompt')}`
   const [loading, setLoading] = useState(false)
   const sessionStatus: ChatSessionStatus = useMemo(() => {
     if (loading) return 'running'
-    if (sendQueue.length > 0 || queuedChatPrompt) return 'queued'
+    if (sendQueue.length > 0 || queuedChatPrompt || queuedPlanExecutions.length > 0) return 'queued'
     return 'idle'
-  }, [loading, queuedChatPrompt, sendQueue.length])
+  }, [loading, queuedChatPrompt, queuedPlanExecutions.length, sendQueue.length])
 
   const [pendingAgentChanges, setPendingAgentChanges] = useState<AgentFileChange[] | null>(null)
   const [agentActivity, setAgentActivity] = useState<AgentActivityEntry[]>([])
@@ -678,17 +681,19 @@ ${t('ai.chat.prompt')}`
           )
         }
 
-      if (lastPlanPathRef.current && lastPlanStepRef.current) {
-        setFiles((prev) =>
-          appendPlanExecutionBackfill(prev, {
-            planPath: lastPlanPathRef.current!,
-            stepText: lastPlanStepRef.current!,
-            runId: executionRunId,
-            assistantOutput: assistantContent,
-          }),
-        )
-        lastPlanStepRef.current = null
-      }
+        if (queuedPlanBackfill) {
+          setFiles((prev) =>
+            appendPlanExecutionBackfill(prev, {
+              planPath: queuedPlanBackfill.planPath,
+              stepText: queuedPlanBackfill.stepText,
+              runId: executionRunId,
+              provider: aiConfig.provider,
+              model: aiConfig.model || undefined,
+              assistantOutput: assistantContent,
+            }),
+          )
+          setQueuedPlanBackfill(null)
+        }
         refreshQuota()
         return
       }
@@ -829,16 +834,18 @@ ${t('ai.chat.prompt')}`
         )
       }
 
-      if (lastPlanPathRef.current && lastPlanStepRef.current) {
+      if (queuedPlanBackfill) {
         setFiles((prev) =>
           appendPlanExecutionBackfill(prev, {
-            planPath: lastPlanPathRef.current!,
-            stepText: lastPlanStepRef.current!,
+            planPath: queuedPlanBackfill.planPath,
+            stepText: queuedPlanBackfill.stepText,
             runId: executionRunId,
+            provider: aiConfig.provider,
+            model: aiConfig.model || undefined,
             assistantOutput: assistantContent,
           }),
         )
-        lastPlanStepRef.current = null
+        setQueuedPlanBackfill(null)
       }
       refreshQuota()
     } catch (error: any) {
@@ -880,6 +887,14 @@ ${t('ai.chat.prompt')}`
   }, [queuedChatPrompt, loading, setQueuedChatPrompt, setQueuedSpecBackfill])
 
   useEffect(() => {
+    if (loading || queuedPlanExecutions.length === 0) return
+    const next = shiftQueuedPlanExecution()
+    if (!next) return
+    setQueuedPlanBackfill(next.backfill)
+    void handleSend(next.prompt)
+  }, [handleSend, loading, queuedPlanExecutions.length, setQueuedPlanBackfill, shiftQueuedPlanExecution])
+
+  useEffect(() => {
     if (loading || sendQueue.length === 0) return
     const shifted = shiftQueue({ status: sessionStatus, runId, queue: sendQueue })
     if (!shifted.next) return
@@ -916,8 +931,9 @@ ${t('ai.chat.prompt')}`
     if (!latestAssistant) return
     const firstStep = getFirstPlanStep(latestAssistant.content)
     if (!firstStep) return
+    if (!lastPlanPathRef.current) return
     const prompt = buildPlanExecutionPrompt(firstStep)
-    lastPlanStepRef.current = firstStep
+    setQueuedPlanBackfill({ planPath: lastPlanPathRef.current, stepText: firstStep })
 
     setPlanMode(false)
     setAgentMode(true)
@@ -928,7 +944,7 @@ ${t('ai.chat.prompt')}`
       // ignore persistence failure
     }
     void handleSend(prompt)
-  }, [handleSend, loading, messages])
+  }, [handleSend, loading, messages, setQueuedPlanBackfill])
 
   const pickMention = (hit: IndexSearchHit) => {
     const label =
@@ -1288,7 +1304,7 @@ ${t('ai.chat.prompt')}`
 
       <McpToolLogPanel entries={mcpToolEntries} />
 
-      {(!loading && (queuedChatPrompt || sendQueue.length > 0)) || (loading && sendQueue.length > 0) ? (
+      {(!loading && (queuedChatPrompt || queuedPlanExecutions.length > 0 || sendQueue.length > 0)) || (loading && sendQueue.length > 0) ? (
         <div
           style={{
             margin: '10px 0',
@@ -1306,6 +1322,11 @@ ${t('ai.chat.prompt')}`
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
               等待执行：{queuedChatPrompt.slice(0, 60)}
               {queuedChatPrompt.length > 60 ? '…' : ''}
+            </div>
+          ) : null}
+          {queuedPlanExecutions.length > 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
+              计划队列：{queuedPlanExecutions.length} 步待执行
             </div>
           ) : null}
           {sendQueue.length > 0 ? (

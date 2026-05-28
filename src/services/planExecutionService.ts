@@ -1,7 +1,22 @@
+export interface PlanStepItem {
+  text: string
+  line: number
+}
+
+export function listPlanSteps(planText: string): PlanStepItem[] {
+  return planText
+    .split(/\r?\n/)
+    .map((line, index) => ({ line, lineNo: index + 1 }))
+    .filter((item) => /^\s*-\s*\[\s\]\s+.+\s*$/.test(item.line))
+    .map((item) => ({
+      text: item.line.replace(/^\s*-\s*\[\s\]\s+/, '').trim(),
+      line: item.lineNo,
+    }))
+}
+
 export function getFirstPlanStep(planText: string): string | null {
-  const matches = planText.matchAll(/^\s*-\s*\[\s\]\s+(.+)\s*$/gm)
-  const first = matches.next()
-  return first.done ? null : first.value[1].trim()
+  const first = listPlanSteps(planText)[0]
+  return first?.text ?? null
 }
 
 export function buildPlanExecutionPrompt(step: string): string {

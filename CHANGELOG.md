@@ -13,6 +13,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Next
 
 - **v1.0.9**：Plan 模式（先计划、再执行）：计划落盘 `.aide/plans` + 任务提取 `.aide/tasks.md` + 一键执行第一步（v1.0.9.x）
+- **v1.1.x**：计划系统产品化：多计划管理（搜索/排序/摘要）+ 步骤选择执行 + 多步骤队列 + 计划步骤映射 Specs
+
+### Added
+
+- Plan Catalog：新增 `planCatalogService`，支持计划文件目录构建、过滤、排序与状态摘要
+- Plan UI：`PlansSection` 支持搜索、排序、未完成步骤摘要、步骤勾选后执行
+- Plan Queue：`ideStore` 新增 `queuedPlanExecutions` 队列，支持多步骤顺序执行
+- Plan/Specs Bridge：新增 `planSpecsBridgeService`，支持将计划步骤去重追加到最近 Spec `tasks.md`
+
+### Changed
+
+- Plan 执行服务增强：`planExecutionService` 新增 `listPlanSteps`，保留 `getFirstPlanStep` 兼容
+- Plan 回填日志增强：`planBackfillService` 新增 `provider/model/summary` 元信息
 
 ### Changed (in progress)
 

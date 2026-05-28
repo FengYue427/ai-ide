@@ -43,6 +43,9 @@ import {
 } from '../services/projectTasksService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
+import { buildPlanExecutionPrompt } from '../services/planExecutionService'
+import { buildPlanCatalog } from '../services/planCatalogService'
+import { appendPlanStepsToSpecTasks, findLatestSpecTasksPath } from '../services/planSpecsBridgeService'
 import { useI18n } from '../i18n'
 
 interface PanelHostProps {
@@ -164,6 +167,8 @@ export function PanelHost({
   const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
   const setQueuedChatPrompt = useIDEStore((s) => s.setQueuedChatPrompt)
   const setQueuedSpecBackfill = useIDEStore((s) => s.setQueuedSpecBackfill)
+  const setQueuedPlanBackfill = useIDEStore((s) => s.setQueuedPlanBackfill)
+  const setQueuedPlanExecutions = useIDEStore((s) => s.setQueuedPlanExecutions)
 
   const projectRulesPreview = extractProjectRules(
     collectRulesSources(
@@ -187,6 +192,7 @@ export function PanelHost({
         line: task.line,
       })),
     )
+  const planItems = buildPlanCatalog(files)
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAiConfig = useIDEStore((s) => s.setAiConfig)
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
@@ -488,6 +494,63 @@ export function PanelHost({
             })
             closeSettingsPanel()
             openChatPanel()
+          }}
+          planItems={planItems}
+          onOpenPlan={(path) => {
+            const targetIndex = files.findIndex((file) => file.name === path)
+            if (targetIndex < 0) return
+            setActiveFile(targetIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
+          }}
+          onRunPlan={(path, steps) => {
+            const file = files.find((f) => f.name === path)
+            if (!file) return
+            if (steps.length === 0) {
+              notify('error', '无法执行', '该计划里没有可执行的未完成步骤（- [ ]）')
+              return
+            }
+            const queue = steps.map((step) => ({
+              prompt: buildPlanExecutionPrompt(step),
+              backfill: { planPath: path, stepText: step },
+            }))
+            setQueuedPlanExecutions(queue.slice(1))
+            setQueuedPlanBackfill(queue[0].backfill)
+            setQueuedChatPrompt(queue[0].prompt)
+            closeSettingsPanel()
+            openChatPanel()
+          }}
+          onMapPlanToSpec={(path, steps) => {
+            const targetSpecTasks = findLatestSpecTasksPath(files)
+            if (!targetSpecTasks) {
+              notify('error', '映射失败', '未找到 Specs tasks 文件，请先创建一个 Spec')
+              return
+            }
+            const result = appendPlanStepsToSpecTasks(files, targetSpecTasks, steps)
+            if (result.added === 0) {
+              notify('info', '无需映射', '这些步骤已存在于 Spec tasks')
+              return
+            }
+            setFiles(result.files)
+            const index = result.files.findIndex((file) => file.name === targetSpecTasks)
+            if (index >= 0) {
+              setActiveFile(index)
+              setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            }
+            notify('success', '映射完成', `[${path}] 已追加 ${result.added} 条到 ${targetSpecTasks}`)
+          }}
+          onDeletePlan={(path) => {
+            void (async () => {
+              const ok = await requestConfirm({
+                title: '删除计划？',
+                message: `将从工作区移除：${path}`,
+                confirmText: '删除',
+                tone: 'danger',
+              })
+              if (!ok) return
+              setFiles((prev) => prev.filter((f) => f.name !== path))
+              notify('success', '已删除', path)
+            })()
           }}
           onClose={closeSettingsPanel}
         />

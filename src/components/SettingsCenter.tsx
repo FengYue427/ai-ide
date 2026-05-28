@@ -4,6 +4,7 @@ import { McpSettingsSection } from './McpSettingsSection'
 import { ProjectRulesSection } from './ProjectRulesSection'
 import { ProjectTasksSection } from './ProjectTasksSection'
 import { SpecsSection } from './SpecsSection'
+import { PlansSection } from './PlansSection'
 import { McpToolsBrowser } from './McpToolsBrowser'
 import { QuotaIndicator } from './ui/QuotaIndicator'
 import { Toggle } from './ui/Toggle'
@@ -39,6 +40,7 @@ import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
 import type { ProjectTaskItem } from '../services/projectTasksService'
+import type { PlanCatalogItem } from '../services/planCatalogService'
 
 interface SettingsCenterProps {
   aiConfig: AIConfigState
@@ -60,6 +62,11 @@ interface SettingsCenterProps {
   specTasks?: Array<{ path: string; text: string; done: boolean; line: number }>
   onMarkSpecTaskDone?: (path: string, line: number) => void
   onRunSpecTask?: (path: string, text: string) => void
+  planItems?: PlanCatalogItem[]
+  onOpenPlan?: (path: string) => void
+  onRunPlan?: (path: string, steps: string[]) => void
+  onMapPlanToSpec?: (path: string, steps: string[]) => void
+  onDeletePlan?: (path: string) => void
   onClose: () => void
 }
 
@@ -85,6 +92,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   specTasks = [],
   onMarkSpecTaskDone,
   onRunSpecTask,
+  planItems = [],
+  onOpenPlan,
+  onRunPlan,
+  onMapPlanToSpec,
+  onDeletePlan,
   onClose,
 }) => {
   const { t } = useI18n()
@@ -616,6 +628,15 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     tasks={specTasks}
                     onMarkTaskDone={onMarkSpecTaskDone}
                     onRunTask={onRunSpecTask}
+                  />
+                ) : null}
+                {onOpenPlan && onRunPlan && onMapPlanToSpec && onDeletePlan ? (
+                  <PlansSection
+                    plans={planItems}
+                    onOpenPlan={onOpenPlan}
+                    onRunPlan={onRunPlan}
+                    onMapPlanToSpec={onMapPlanToSpec}
+                    onDeletePlan={onDeletePlan}
                   />
                 ) : null}
                 <AgentSettingsSection onRegisterPersist={(persist) => { persistAgentRef.current = persist }} />

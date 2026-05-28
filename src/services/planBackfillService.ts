@@ -9,6 +9,8 @@ export interface PlanExecutionBackfill {
   runId?: string | null
   assistantOutput: string
   now?: Date
+  provider?: string
+  model?: string
 }
 
 export function buildPlanExecutionBackfillMarkdown(input: PlanExecutionBackfill): string {
@@ -16,7 +18,11 @@ export function buildPlanExecutionBackfillMarkdown(input: PlanExecutionBackfill)
   if (!trimmed) return ''
   const date = (input.now ?? new Date()).toISOString()
   const runLine = input.runId ? `- Run ID: ${input.runId}\n` : ''
-  return `\n\n---\n## Plan Step Execution (${date})\n- Step: ${input.stepText}\n${runLine}\n### Assistant Output\n\n${trimmed}\n`
+  const providerLine = input.provider ? `- Provider: ${input.provider}\n` : ''
+  const modelLine = input.model ? `- Model: ${input.model}\n` : ''
+  const summary = trimmed.split(/\r?\n/)[0]?.slice(0, 200) || ''
+  const summaryLine = summary ? `- Summary: ${summary}\n` : ''
+  return `\n\n---\n## Plan Step Execution (${date})\n- Step: ${input.stepText}\n${runLine}${providerLine}${modelLine}${summaryLine}\n### Assistant Output\n\n${trimmed}\n`
 }
 
 export function appendPlanExecutionBackfill<T extends FileLike>(

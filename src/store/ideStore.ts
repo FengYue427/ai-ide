@@ -95,6 +95,8 @@ export interface IDEState {
   collaborationRoomId: string | null
   queuedChatPrompt: string | null
   queuedSpecBackfill: QueuedSpecBackfill | null
+  queuedPlanBackfill: QueuedPlanBackfill | null
+  queuedPlanExecutions: QueuedPlanExecution[]
 
   showNewFileInput: boolean
   showTerminal: boolean
@@ -143,6 +145,9 @@ export interface IDEState {
   setCollaborationRoomId: (roomId: string | null) => void
   setQueuedChatPrompt: (prompt: string | null) => void
   setQueuedSpecBackfill: (backfill: QueuedSpecBackfill | null) => void
+  setQueuedPlanBackfill: (backfill: QueuedPlanBackfill | null) => void
+  setQueuedPlanExecutions: (items: QueuedPlanExecution[]) => void
+  shiftQueuedPlanExecution: () => QueuedPlanExecution | null
 
   setShowNewFileInput: (show: BooleanUpdater) => void
   setShowTerminal: (show: BooleanUpdater) => void
@@ -183,6 +188,16 @@ export interface QueuedSpecBackfill {
   specAcceptancePath: string
 }
 
+export interface QueuedPlanBackfill {
+  planPath: string
+  stepText: string
+}
+
+export interface QueuedPlanExecution {
+  prompt: string
+  backfill: QueuedPlanBackfill
+}
+
 export const useIDEStore = create<IDEState>()((set) => ({
   files: defaultFiles,
   activeFile: 0,
@@ -200,6 +215,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
   collaborationRoomId: null,
   queuedChatPrompt: null,
   queuedSpecBackfill: null,
+  queuedPlanBackfill: null,
+  queuedPlanExecutions: [],
 
   showNewFileInput: false,
   showTerminal: false,
@@ -252,6 +269,18 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setCollaborationRoomId: (collaborationRoomId) => set({ collaborationRoomId }),
   setQueuedChatPrompt: (queuedChatPrompt) => set({ queuedChatPrompt }),
   setQueuedSpecBackfill: (queuedSpecBackfill) => set({ queuedSpecBackfill }),
+  setQueuedPlanBackfill: (queuedPlanBackfill) => set({ queuedPlanBackfill }),
+  setQueuedPlanExecutions: (queuedPlanExecutions) => set({ queuedPlanExecutions }),
+  shiftQueuedPlanExecution: () => {
+    let shifted: QueuedPlanExecution | null = null
+    set((state) => {
+      if (state.queuedPlanExecutions.length === 0) return state
+      const [first, ...rest] = state.queuedPlanExecutions
+      shifted = first
+      return { queuedPlanExecutions: rest }
+    })
+    return shifted
+  },
 
   setShowNewFileInput: (value) =>
     set((state) => ({ showNewFileInput: resolveBoolean(value, state.showNewFileInput) })),

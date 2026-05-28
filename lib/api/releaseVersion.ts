@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const FALLBACK = '1.0.8'
+const FALLBACK = '1.1.0'
 
 let cached: string | null = null
 
