@@ -69,6 +69,15 @@ import {
   type PendingSend,
 } from '../services/chatSessionOrchestrator'
 import { buildSpecExecutionLog } from '../services/specExecutionLog'
+import { buildPromptWithSharedContext } from '../services/chatPromptPipeline'
+import { buildChatHistory } from '../services/chatHistory'
+import { getPayloadWarningData } from '../services/chatPayloadPreflight'
+import { appendToSpecAcceptanceFile } from '../services/specAcceptanceService'
+import { findRetryUserText } from '../services/chatRetry'
+import { buildMcpFollowUpMessages } from '../services/chatMcpFollowUp'
+import { removeTrailingUserMessage, upsertAssistantMessage } from '../services/chatMessageState'
+import { applyPlanArtifacts, buildPlanModeSystemPrompt } from '../services/planModeService'
+import { buildPlanExecutionPrompt, getFirstPlanStep } from '../services/planExecutionService'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -138,6 +147,13 @@ ${t('ai.chat.prompt')}`
       return saved === null ? true : saved === 'true'
     } catch {
       return true
+    }
+  })
+  const [planMode, setPlanMode] = useState(() => {
+    try {
+      return localStorage.getItem('ai-ide:chat-plan-mode') === 'true'
+    } catch {
+      return false
     }
   })
   const [workspaceStats, setWorkspaceStats] = useState(workspaceContextService.getStats())
@@ -435,16 +451,20 @@ ${t('ai.chat.prompt')}`
   }, [agentActivity, copyMessageText, lastRunRounds])
 
   const appendExecutionToSpecAcceptance = useCallback(
-    (specAcceptancePath: string, taskText: string, assistantOutput: string) => {
+    (specAcceptancePath: string, taskText: string, assistantOutput: string, executionRunId?: string | null) => {
       const file = editorFiles.find((f) => f.name === specAcceptancePath)
       if (!file) return
 
-      const addition = buildSpecExecutionLog(taskText, assistantOutput)
+      const addition = buildSpecExecutionLog(taskText, assistantOutput, new Date(), {
+        runId: executionRunId ?? null,
+        provider: aiConfig.provider,
+        model: aiConfig.model || undefined,
+      })
       if (!addition) return
 
-      setFiles((prev) => prev.map((f) => (f.name === specAcceptancePath ? { ...f, content: f.content + addition } : f)))
+      setFiles((prev) => appendToSpecAcceptanceFile(prev, specAcceptancePath, addition))
     },
-    [editorFiles, setFiles],
+    [aiConfig.model, aiConfig.provider, editorFiles, setFiles],
   )
 
   const generateFilesFromResponse = useCallback(
@@ -542,7 +562,8 @@ ${t('ai.chat.prompt')}`
     setPayloadWarning(null)
     setLoading(true)
     const started = startRun(createInitialChatSessionState())
-    setRunId(started.runId)
+    const executionRunId = started.runId
+    setRunId(executionRunId)
     stopRequestedRef.current = false
     streamAbortRef.current?.abort()
     streamAbortRef.current = new AbortController()
@@ -550,10 +571,10 @@ ${t('ai.chat.prompt')}`
     setMcpToolEntries([])
 
     try {
-      const history = messages
-        .slice(1)
-        .slice(-historyLimit)
-        .map((message) => ({ role: message.role as 'user' | 'assistant', content: message.content }))
+      const history = buildChatHistory(
+        messages.map((message) => ({ role: message.role, content: message.content })),
+        historyLimit,
+      )
 
       let aiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = []
       let assistantContent = ''
@@ -569,23 +590,20 @@ ${t('ai.chat.prompt')}`
               )
             : t('chat.prompt.editorFile', { code: currentCode })
         const mcpSection = await buildMcpToolsPromptSection()
-        let summary = applyAgentContext(
-          await augmentWithSemanticContext(applyProjectRules(base), effectiveTextToSend),
-          agentSettings,
-        )
-        const mentionSection = forceSlim
-          ? ''
-          : buildMentionContextSection(
-            effectiveTextToSend,
-            editorFiles,
-            projectIndexManager.getIndex(),
-            language,
-          )
-        if (mentionSection) summary = `${summary}\n\n${mentionSection}`
+        const summary = await buildPromptWithSharedContext({
+          basePrompt: base,
+          query: effectiveTextToSend,
+          forceSlim,
+          applyProjectRules,
+          augmentWithSemanticContext,
+          applyAgentContext: (prompt) => applyAgentContext(prompt, agentSettings),
+          buildMentionSection: (query) =>
+            buildMentionContextSection(query, editorFiles, projectIndexManager.getIndex(), language),
+        })
         return appendMcpToolsToPrompt(summary, mcpSection)
       }
       const useToolLoop =
-        agentMode && agentSettings.useToolLoop && supportsAgentToolCalling(aiConfig.provider)
+        agentMode && !planMode && agentSettings.useToolLoop && supportsAgentToolCalling(aiConfig.provider)
 
       if (agentMode && useToolLoop) {
         const workspaceSummary = await buildAgentWorkspaceSummary()
@@ -602,16 +620,7 @@ ${t('ai.chat.prompt')}`
           },
           onAssistantText: (text) => {
             assistantContent = text
-            setMessages((prev) => {
-              const next = [...prev]
-              const lastMessage = next[next.length - 1]
-              if (lastMessage?.role === 'assistant') {
-                lastMessage.content = text
-              } else {
-                next.push({ role: 'assistant', content: text })
-              }
-              return next
-            })
+            setMessages((prev) => upsertAssistantMessage(prev, text))
           },
           shouldStop: () => stopRequestedRef.current,
           signal: streamAbortRef.current?.signal,
@@ -626,16 +635,7 @@ ${t('ai.chat.prompt')}`
             : log
         }
 
-        setMessages((prev) => {
-          const next = [...prev]
-          const last = next[next.length - 1]
-          if (last?.role === 'assistant') {
-            last.content = assistantContent
-          } else {
-            next.push({ role: 'assistant', content: assistantContent })
-          }
-          return next
-        })
+        setMessages((prev) => upsertAssistantMessage(prev, assistantContent))
 
         if (result.pendingChanges.length > 0) {
           setPendingAgentChanges(result.pendingChanges)
@@ -671,6 +671,7 @@ ${t('ai.chat.prompt')}`
             queuedSpecBackfill.specAcceptancePath,
             queuedSpecBackfill.taskText,
             assistantContent,
+            executionRunId,
           )
         }
         refreshQuota()
@@ -679,7 +680,8 @@ ${t('ai.chat.prompt')}`
 
       if (agentMode) {
         const workspaceSummary = await buildAgentWorkspaceSummary()
-        aiMessages = aiAgentService.buildMessages(effectiveTextToSend, workspaceSummary, history)
+        const finalSummary = planMode ? buildPlanModeSystemPrompt(workspaceSummary) : workspaceSummary
+        aiMessages = aiAgentService.buildMessages(effectiveTextToSend, finalSummary, history)
       } else {
         let systemPrompt: string
 
@@ -694,20 +696,18 @@ ${t('ai.chat.prompt')}`
             : t('chat.system.default', { code: currentCode })
         }
 
-        systemPrompt = applyAgentContext(
-          await augmentWithSemanticContext(applyProjectRules(systemPrompt), effectiveTextToSend),
-          agentSettings,
-        )
-        const mentionSection = forceSlim
-          ? ''
-          : buildMentionContextSection(
-            effectiveTextToSend,
-            editorFiles,
-            projectIndexManager.getIndex(),
-            language,
-          )
-        if (mentionSection) {
-          systemPrompt = `${systemPrompt}\n\n${mentionSection}`
+        systemPrompt = await buildPromptWithSharedContext({
+          basePrompt: systemPrompt,
+          query: effectiveTextToSend,
+          forceSlim,
+          applyProjectRules,
+          augmentWithSemanticContext,
+          applyAgentContext: (prompt) => applyAgentContext(prompt, agentSettings),
+          buildMentionSection: (query) =>
+            buildMentionContextSection(query, editorFiles, projectIndexManager.getIndex(), language),
+        })
+        if (planMode) {
+          systemPrompt = buildPlanModeSystemPrompt(systemPrompt)
         }
 
         aiMessages = [
@@ -719,7 +719,13 @@ ${t('ai.chat.prompt')}`
 
       const estimatedBytes = new Blob([JSON.stringify(aiMessages)]).size
       const budgetBytes = getPayloadBudget(aiConfig.provider)
-      if (estimatedBytes > budgetBytes) {
+      const warning = getPayloadWarningData(estimatedBytes, budgetBytes, textToSend, [
+        t('chat.payload.planHistory', { count: historyLimit }),
+        t('chat.payload.planInput', { count: 1200 }),
+        t('chat.payload.planWorkspace'),
+        t('chat.payload.planMention'),
+      ])
+      if (warning) {
         if (!forceSlim) {
           trackEvent('chat.payload_preflight_warn', {
             estimatedBytes,
@@ -729,24 +735,14 @@ ${t('ai.chat.prompt')}`
             workspaceContext: effectiveWorkspaceContext,
           })
           setPayloadWarning({
-            estimatedBytes,
-            budgetBytes,
-            text: textToSend,
+            estimatedBytes: warning.estimatedBytes,
+            budgetBytes: warning.budgetBytes,
+            text: warning.text,
             action,
-            slimPlan: [
-              t('chat.payload.planHistory', { count: historyLimit }),
-              t('chat.payload.planInput', { count: 1200 }),
-              t('chat.payload.planWorkspace'),
-              t('chat.payload.planMention'),
-            ],
+            slimPlan: warning.slimPlan,
           })
           if (!customInput) setInput(textToSend)
-          setMessages((prev) => {
-            const next = [...prev]
-            const last = next[next.length - 1]
-            if (last?.role === 'user' && last.content === effectiveTextToSend) next.pop()
-            return next
-          })
+          setMessages((prev) => removeTrailingUserMessage(prev, effectiveTextToSend))
           notify?.(
             'info',
             t('chat.payload.preflightWarnTitle'),
@@ -764,16 +760,7 @@ ${t('ai.chat.prompt')}`
 
       await sendMessage(aiConfig, aiMessages, (chunk) => {
         assistantContent += chunk
-        setMessages((prev) => {
-          const next = [...prev]
-          const lastMessage = next[next.length - 1]
-          if (lastMessage?.role === 'assistant') {
-            lastMessage.content = assistantContent
-          } else {
-            next.push({ role: 'assistant', content: assistantContent })
-          }
-          return next
-        })
+        setMessages((prev) => upsertAssistantMessage(prev, assistantContent))
       }, { signal: streamAbortRef.current?.signal })
 
       if (agentMode) {
@@ -784,24 +771,14 @@ ${t('ai.chat.prompt')}`
           maxFollowUpRounds: mcpSettings.maxFollowUpRounds,
           sendFollowUp: async ({ assistantSoFar, toolLog }) => {
             let followUpContent = ''
-            const followUpMessages = [
-              ...aiMessages,
-              { role: 'assistant' as const, content: assistantSoFar },
-              {
-                role: 'user' as const,
-                content: t('chat.mcp.followUp', { log: toolLog.join('\n') }),
-              },
-            ]
+            const followUpMessages = buildMcpFollowUpMessages(
+              aiMessages,
+              assistantSoFar,
+              t('chat.mcp.followUp', { log: toolLog.join('\n') }),
+            )
             await sendMessage(aiConfig, followUpMessages, (chunk) => {
               followUpContent += chunk
-              setMessages((prev) => {
-                const next = [...prev]
-                const last = next[next.length - 1]
-                if (last?.role === 'assistant') {
-                  last.content = `${assistantSoFar}\n\n${followUpContent}`
-                }
-                return next
-              })
+              setMessages((prev) => upsertAssistantMessage(prev, `${assistantSoFar}\n\n${followUpContent}`))
             }, { signal: streamAbortRef.current?.signal })
             return followUpContent
           },
@@ -811,16 +788,13 @@ ${t('ai.chat.prompt')}`
         if (mcpTurn.toolLog.length > 0) {
           assistantContent = `${assistantContent}\n\n${t('chat.mcp.results')}\n${mcpTurn.toolLog.join('\n')}`
         }
-        setMessages((prev) => {
-          const next = [...prev]
-          const last = next[next.length - 1]
-          if (last?.role === 'assistant') last.content = assistantContent
-          return next
-        })
+        setMessages((prev) => upsertAssistantMessage(prev, assistantContent))
       }
 
       const agentChanges = parseAgentFileChanges(assistantContent)
-      if (agentChanges.length > 0) {
+      if (planMode) {
+        setFiles((prev) => applyPlanArtifacts(prev, effectiveTextToSend, assistantContent))
+      } else if (agentChanges.length > 0) {
         setPendingAgentChanges(agentChanges)
       } else {
         setPendingAgentChanges(null)
@@ -828,7 +802,12 @@ ${t('ai.chat.prompt')}`
       }
 
       if (queuedSpecBackfill) {
-        appendExecutionToSpecAcceptance(queuedSpecBackfill.specAcceptancePath, queuedSpecBackfill.taskText, assistantContent)
+        appendExecutionToSpecAcceptance(
+          queuedSpecBackfill.specAcceptancePath,
+          queuedSpecBackfill.taskText,
+          assistantContent,
+          executionRunId,
+        )
       }
       refreshQuota()
     } catch (error: any) {
@@ -879,13 +858,10 @@ ${t('ai.chat.prompt')}`
 
   const retryFromMessageIndex = useCallback(
     (messageIndex: number) => {
-      let userText = ''
-      for (let i = messageIndex - 1; i >= 0; i -= 1) {
-        if (messages[i].role === 'user') {
-          userText = messages[i].content
-          break
-        }
-      }
+      const userText = findRetryUserText(
+        messages.map((message) => ({ role: message.role, content: message.content })),
+        messageIndex,
+      )
       if (!userText || loading) return
       setMessages((prev) => prev.slice(0, messageIndex))
       void handleSend(userText)
@@ -902,6 +878,25 @@ ${t('ai.chat.prompt')}`
     ],
     [t],
   )
+
+  const runFirstPlanStep = useCallback(() => {
+    if (loading) return
+    const latestAssistant = [...messages].reverse().find((message) => message.role === 'assistant' && !message.isError)
+    if (!latestAssistant) return
+    const firstStep = getFirstPlanStep(latestAssistant.content)
+    if (!firstStep) return
+    const prompt = buildPlanExecutionPrompt(firstStep)
+
+    setPlanMode(false)
+    setAgentMode(true)
+    try {
+      localStorage.setItem('ai-ide:chat-plan-mode', 'false')
+      localStorage.setItem('ai-ide:chat-agent-mode', 'true')
+    } catch {
+      // ignore persistence failure
+    }
+    void handleSend(prompt)
+  }, [handleSend, loading, messages])
 
   const pickMention = (hit: IndexSearchHit) => {
     const label =
@@ -984,6 +979,14 @@ ${t('ai.chat.prompt')}`
                 } catch {
                   // ignore persistence failure
                 }
+                if (next) {
+                  setPlanMode(false)
+                  try {
+                    localStorage.setItem('ai-ide:chat-plan-mode', 'false')
+                  } catch {
+                    // ignore
+                  }
+                }
                 return next
               })
             }}
@@ -998,6 +1001,33 @@ ${t('ai.chat.prompt')}`
                 ? ` · ${t('chat.agentToolsActive')}`
                 : ''}
             </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setPlanMode((value) => {
+                const next = !value
+                try {
+                  localStorage.setItem('ai-ide:chat-plan-mode', String(next))
+                } catch {
+                  // ignore
+                }
+                if (next) {
+                  setAgentMode(false)
+                  try {
+                    localStorage.setItem('ai-ide:chat-agent-mode', 'false')
+                  } catch {
+                    // ignore
+                  }
+                }
+                return next
+              })
+            }}
+            className={`chat-mode-btn ${planMode ? 'chat-mode-btn--active' : ''}`}
+            title="Plan Mode"
+          >
+            <span>Plan{planMode ? ' On' : ''}</span>
           </button>
 
           <button
@@ -1211,6 +1241,17 @@ ${t('ai.chat.prompt')}`
             {action.label}
           </button>
         ))}
+        {planMode ? (
+          <button
+            type="button"
+            className="chat-quick-btn"
+            onClick={runFirstPlanStep}
+            disabled={loading}
+            title="执行计划中的第一步"
+          >
+            执行第一步
+          </button>
+        ) : null}
       </div>
 
       <McpToolLogPanel entries={mcpToolEntries} />
