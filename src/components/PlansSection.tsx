@@ -8,6 +8,7 @@ interface PlansSectionProps {
   onDeletePlan: (path: string) => void
   onRunPlan: (path: string, steps: Array<{ text: string; line?: number }>) => void
   onMapPlanToSpec: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
+  onMapPlanToSpecAndRun: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
 }
 
 function planLabelFromPath(path: string): string {
@@ -16,7 +17,7 @@ function planLabelFromPath(path: string): string {
   return fileName.replace(/\.md$/i, '')
 }
 
-export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, onRunPlan, onMapPlanToSpec }: PlansSectionProps) {
+export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, onRunPlan, onMapPlanToSpec, onMapPlanToSpecAndRun }: PlansSectionProps) {
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState<PlanCatalogSort>('recent-exec')
   const [visibleCount, setVisibleCount] = useState(8)
@@ -148,6 +149,24 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
                     }}
                   >
                     映射到 Spec
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={plan.stepItems.length === 0}
+                    onClick={() => {
+                      const selectedMap = selectedSteps[plan.path] ?? {}
+                      const selected = plan.stepItems
+                        .filter((step) => selectedMap[`${step.line}-${step.text}`])
+                        .map((step) => ({ text: step.text, line: step.line }))
+                      onMapPlanToSpecAndRun(
+                        plan.path,
+                        selected.length > 0 ? selected : [{ text: plan.stepItems[0].text, line: plan.stepItems[0].line }],
+                        targetSpecPath || undefined,
+                      )
+                    }}
+                  >
+                    映射并执行
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={() => onDeletePlan(plan.path)}>
                     删除

@@ -23,6 +23,7 @@ describe('planSpecsBridgeService', () => {
     const files = [{ name: '.aide/specs/a/tasks.md', content: '- [ ] existing\n' }]
     const result = appendPlanStepsToSpecTasks(files, '.aide/specs/a/tasks.md', ['existing', 'new step'])
     expect(result.added).toBe(1)
+    expect(result.addedSteps).toEqual(['new step'])
     expect(result.files[0].content).toContain('- [ ] existing')
     expect(result.files[0].content).toContain('- [ ] new step')
   })

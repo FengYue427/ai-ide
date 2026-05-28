@@ -65,6 +65,41 @@ var init_http = __esm({
   }
 });
 
+// lib/api/releaseVersion.ts
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+function getReleaseVersion() {
+  const fromEnv = process.env.APP_VERSION?.trim() || process.env.npm_package_version?.trim();
+  if (fromEnv) return fromEnv;
+  if (cached) return cached;
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const candidates = [
+      join(here, "..", "..", "..", "package.json"),
+      join(here, "..", "package.json")
+    ];
+    for (const pkgPath of candidates) {
+      const raw = readFileSync(pkgPath, "utf8");
+      const ver = JSON.parse(raw)?.version;
+      if (typeof ver === "string" && ver.trim()) {
+        cached = ver.trim();
+        return cached;
+      }
+    }
+  } catch {
+  }
+  return FALLBACK;
+}
+var FALLBACK, cached;
+var init_releaseVersion = __esm({
+  "lib/api/releaseVersion.ts"() {
+    "use strict";
+    FALLBACK = "1.0.8";
+    cached = null;
+  }
+});
+
 // lib/billing/pemKey.ts
 function normalizePemKey(raw, defaultType) {
   const text = raw.replace(/\\n/g, "\n").trim();
@@ -574,7 +609,7 @@ var init_wechatPay = __esm({
 });
 
 // lib/billing/cnPayment.ts
-import { readFileSync } from "node:fs";
+import { readFileSync as readFileSync2 } from "node:fs";
 function isAlipayConfigured() {
   return Boolean(
     process.env.ALIPAY_APP_ID?.trim() && (process.env.ALIPAY_PRIVATE_KEY?.trim() || process.env.ALIPAY_PRIVATE_KEY_PATH?.trim()) && (process.env.ALIPAY_PUBLIC_KEY?.trim() || process.env.ALIPAY_PUBLIC_KEY_PATH?.trim())
@@ -596,7 +631,7 @@ function readKeyFromEnv(inlineKey, pathKey, pemType) {
   if (inlineKey?.trim()) {
     raw = inlineKey;
   } else if (pathKey?.trim()) {
-    raw = readFileSync(pathKey.trim(), "utf8");
+    raw = readFileSync2(pathKey.trim(), "utf8");
   }
   if (!raw) {
     throw new Error(`\u5BC6\u94A5\u672A\u914D\u7F6E\uFF08\u9700\u8981 ${pemType}\uFF09`);
@@ -701,7 +736,7 @@ async function GET(_req) {
   const billing = getBillingCapabilities();
   const dbUrl = process.env.DATABASE_URL?.trim();
   const { payload, statusCode } = await buildHealthCheck({
-    version: process.env.npm_package_version ?? "1.0.0-rc.1",
+    version: getReleaseVersion(),
     hasDatabaseUrl: Boolean(dbUrl),
     pingDatabase: async () => {
       if (!dbUrl) throw new Error("DATABASE_URL not set");
@@ -730,6 +765,7 @@ var init_health = __esm({
     "use strict";
     init_healthStatus();
     init_http();
+    init_releaseVersion();
     init_billingMode();
     init_dbUrl();
   }

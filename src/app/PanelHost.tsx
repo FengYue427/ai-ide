@@ -167,8 +167,12 @@ export function PanelHost({
   const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
   const setQueuedChatPrompt = useIDEStore((s) => s.setQueuedChatPrompt)
   const setQueuedSpecBackfill = useIDEStore((s) => s.setQueuedSpecBackfill)
+  const setQueuedSpecExecutions = useIDEStore((s) => s.setQueuedSpecExecutions)
+  const queuedSpecExecutions = useIDEStore((s) => s.queuedSpecExecutions)
   const setQueuedPlanBackfill = useIDEStore((s) => s.setQueuedPlanBackfill)
   const setQueuedPlanExecutions = useIDEStore((s) => s.setQueuedPlanExecutions)
+  const queuedPlanBackfill = useIDEStore((s) => s.queuedPlanBackfill)
+  const queuedPlanExecutions = useIDEStore((s) => s.queuedPlanExecutions)
 
   const projectRulesPreview = extractProjectRules(
     collectRulesSources(
@@ -512,16 +516,33 @@ export function PanelHost({
               notify('error', '无法执行', '该计划里没有可执行的未完成步骤（- [ ]）')
               return
             }
+            const existing = new Set<string>()
+            if (queuedPlanBackfill?.planPath === path) existing.add(queuedPlanBackfill.stepText.trim().toLowerCase())
+            queuedPlanExecutions.forEach((item) => {
+              if (item.backfill.planPath === path) existing.add(item.backfill.stepText.trim().toLowerCase())
+            })
+            const deduped = steps.filter((step, index, arr) => {
+              const normalized = step.text.trim().toLowerCase()
+              return (
+                normalized &&
+                arr.findIndex((s) => s.text.trim().toLowerCase() === normalized) === index &&
+                !existing.has(normalized)
+              )
+            })
+            if (deduped.length === 0) {
+              notify('info', '无需入队', '这些步骤已在计划执行队列中')
+              return
+            }
             void (async () => {
-              const preview = steps.slice(0, 8).map((s) => `- ${s.text}`).join('\n')
+              const preview = deduped.slice(0, 8).map((s) => `- ${s.text}`).join('\n')
               const ok = await requestConfirm({
                 title: '确认执行计划步骤？',
-                message: `计划：${path}\n步骤数：${steps.length}\n\n${preview}${steps.length > 8 ? '\n- …' : ''}\n\n执行结果会回填到 plan 文件，并自动将对应步骤标记为完成。`,
+                message: `计划：${path}\n步骤数：${deduped.length}\n\n${preview}${deduped.length > 8 ? '\n- …' : ''}\n\n执行结果会回填到 plan 文件，并自动将对应步骤标记为完成。`,
                 confirmText: '开始执行',
               })
               if (!ok) return
 
-              const queue = steps.map((step) => ({
+              const queue = deduped.map((step) => ({
                 prompt: buildPlanExecutionPrompt(step.text),
                 backfill: { planPath: path, stepText: step.text, stepLine: step.line },
               }))
@@ -550,6 +571,46 @@ export function PanelHost({
               setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
             }
             notify('success', '映射完成', `[${path}] 已追加 ${result.added} 条到 ${targetSpecTasks}`)
+          }}
+          onMapPlanToSpecAndRun={(path, steps, targetSpecPath) => {
+            const targetSpecTasks = targetSpecPath || findLatestSpecTasksPath(files)
+            if (!targetSpecTasks) {
+              notify('error', '映射失败', '未找到 Specs tasks 文件，请先创建一个 Spec')
+              return
+            }
+            const result = appendPlanStepsToSpecTasks(files, targetSpecTasks, steps.map((s) => s.text))
+            if (result.added === 0) {
+              notify('info', '无需映射', '这些步骤已存在于 Spec tasks')
+              return
+            }
+            setFiles(result.files)
+            const acceptancePath = targetSpecTasks.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
+            const executionQueue = result.addedSteps.map((taskText) => ({
+              prompt: `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${targetSpecTasks}] ${taskText}`,
+              backfill: {
+                taskPath: targetSpecTasks,
+                taskText,
+                specAcceptancePath: acceptancePath,
+              },
+            }))
+            const [first, ...rest] = executionQueue
+            if (first) {
+              const existing = new Set(
+                queuedSpecExecutions.map((item) => `${item.backfill.taskPath}::${item.backfill.taskText.trim().toLowerCase()}`),
+              )
+              const dedupedRest = rest.filter((item) => {
+                const key = `${item.backfill.taskPath}::${item.backfill.taskText.trim().toLowerCase()}`
+                if (existing.has(key)) return false
+                existing.add(key)
+                return true
+              })
+              setQueuedChatPrompt(first.prompt)
+              setQueuedSpecBackfill(first.backfill)
+              setQueuedSpecExecutions([...queuedSpecExecutions, ...dedupedRest])
+              closeSettingsPanel()
+              openChatPanel()
+            }
+            notify('success', '映射并执行', `[${path}] 已映射 ${result.added} 条到 ${targetSpecTasks}，并已入队顺序执行`)
           }}
           onDeletePlan={(path) => {
             void (async () => {

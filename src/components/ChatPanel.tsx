@@ -80,6 +80,8 @@ import { applyPlanArtifactsWithResult, buildPlanModeSystemPrompt } from '../serv
 import { buildPlanExecutionPrompt, getFirstPlanStep } from '../services/planExecutionService'
 import { appendPlanExecutionBackfill } from '../services/planBackfillService'
 import { markPlanStepDone } from '../services/planStepCompletionService'
+import { loadQueuedPlanExecutions, saveQueuedPlanExecutions } from '../services/planQueuePersistenceService'
+import { loadQueuedSpecExecutions, saveQueuedSpecExecutions } from '../services/specQueuePersistenceService'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -91,6 +93,23 @@ type SendAction = 'explain' | 'refactor' | 'fix' | 'generate'
 
 type SendOptions = {
   forceSlim?: boolean
+}
+
+type FailedPlanExecution = {
+  prompt: string
+  backfill: { planPath: string; stepText: string; stepLine?: number }
+  error: string
+}
+
+type FailedSpecExecution = {
+  prompt: string
+  backfill: { taskPath: string; taskText: string; specAcceptancePath: string }
+  error: string
+}
+
+type QueueDoneItem = {
+  kind: 'plan' | 'spec'
+  text: string
 }
 
 interface ChatPanelProps {
@@ -138,6 +157,9 @@ ${t('ai.chat.prompt')}`
   const setQueuedChatPrompt = useIDEStore((s) => s.setQueuedChatPrompt)
   const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
   const setQueuedSpecBackfill = useIDEStore((s) => s.setQueuedSpecBackfill)
+  const queuedSpecExecutions = useIDEStore((s) => s.queuedSpecExecutions)
+  const setQueuedSpecExecutions = useIDEStore((s) => s.setQueuedSpecExecutions)
+  const shiftQueuedSpecExecution = useIDEStore((s) => s.shiftQueuedSpecExecution)
   const queuedPlanBackfill = useIDEStore((s) => s.queuedPlanBackfill)
   const setQueuedPlanBackfill = useIDEStore((s) => s.setQueuedPlanBackfill)
   const queuedPlanExecutions = useIDEStore((s) => s.queuedPlanExecutions)
@@ -165,9 +187,15 @@ ${t('ai.chat.prompt')}`
   const [loading, setLoading] = useState(false)
   const sessionStatus: ChatSessionStatus = useMemo(() => {
     if (loading) return 'running'
-    if (sendQueue.length > 0 || queuedChatPrompt || queuedPlanExecutions.length > 0) return 'queued'
+    if (sendQueue.length > 0 || queuedChatPrompt || queuedPlanExecutions.length > 0 || queuedSpecExecutions.length > 0) return 'queued'
     return 'idle'
-  }, [loading, queuedChatPrompt, queuedPlanExecutions.length, sendQueue.length])
+  }, [loading, queuedChatPrompt, queuedPlanExecutions.length, queuedSpecExecutions.length, sendQueue.length])
+  const activeQueueTask = useMemo(() => {
+    if (queuedPlanBackfill) return `Plan：${queuedPlanBackfill.stepText}`
+    if (queuedSpecBackfill) return `Spec：${queuedSpecBackfill.taskText}`
+    if (loading) return '正在处理中...'
+    return null
+  }, [loading, queuedPlanBackfill, queuedSpecBackfill])
 
   const [pendingAgentChanges, setPendingAgentChanges] = useState<AgentFileChange[] | null>(null)
   const [agentActivity, setAgentActivity] = useState<AgentActivityEntry[]>([])
@@ -184,6 +212,11 @@ ${t('ai.chat.prompt')}`
     action?: SendAction
     slimPlan: string[]
   } | null>(null)
+  const [failedPlanExecution, setFailedPlanExecution] = useState<FailedPlanExecution | null>(null)
+  const [failedSpecExecution, setFailedSpecExecution] = useState<FailedSpecExecution | null>(null)
+  const [queueFailureStats, setQueueFailureStats] = useState({ plan: 0, spec: 0 })
+  const [queueSuccessStats, setQueueSuccessStats] = useState({ plan: 0, spec: 0 })
+  const [recentDoneQueueItems, setRecentDoneQueueItems] = useState<QueueDoneItem[]>([])
   const [activeMentionQuery, setActiveMentionQuery] = useState<string | null>(null)
   const [mentionOnboardingDismissed, setMentionOnboardingDismissed] = useState(() => {
     try {
@@ -451,6 +484,41 @@ ${t('ai.chat.prompt')}`
     void copyMessageText(lines.join('\n'))
   }, [agentActivity, copyMessageText, lastRunRounds])
 
+  const exportQueueReport = useCallback(() => {
+    const lines = [
+      '# Queue Execution Report',
+      '',
+      `- Status: ${sessionStatus}${runId ? ` (${runId})` : ''}`,
+      `- Success: Plan ${queueSuccessStats.plan}, Spec ${queueSuccessStats.spec}`,
+      `- Failure: Plan ${queueFailureStats.plan}, Spec ${queueFailureStats.spec}`,
+      '',
+      '## Recent Done',
+      ...(recentDoneQueueItems.length > 0
+        ? recentDoneQueueItems.map((item, idx) => `- ${idx + 1}. [${item.kind.toUpperCase()}] ${item.text}`)
+        : ['- None']),
+      '',
+      '## Pending Snapshot',
+      `- Plan queue: ${queuedPlanExecutions.length}`,
+      `- Spec queue: ${queuedSpecExecutions.length}`,
+      `- Send queue: ${sendQueue.length}`,
+    ]
+    void copyMessageText(lines.join('\n'))
+    notify?.('success', '已复制', '队列执行报告已复制到剪贴板')
+  }, [
+    copyMessageText,
+    notify,
+    queueFailureStats.plan,
+    queueFailureStats.spec,
+    queueSuccessStats.plan,
+    queueSuccessStats.spec,
+    queuedPlanExecutions.length,
+    queuedSpecExecutions.length,
+    recentDoneQueueItems,
+    runId,
+    sendQueue.length,
+    sessionStatus,
+  ])
+
   const appendExecutionToSpecAcceptance = useCallback(
     (specAcceptancePath: string, taskText: string, assistantOutput: string, executionRunId?: string | null) => {
       const file = editorFiles.find((f) => f.name === specAcceptancePath)
@@ -674,6 +742,12 @@ ${t('ai.chat.prompt')}`
             assistantContent,
             executionRunId,
           )
+          setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
+          setRecentDoneQueueItems((prev) => [
+            { kind: 'spec' as const, text: queuedSpecBackfill.taskText },
+            ...prev,
+          ].slice(0, 5))
+          setFailedSpecExecution(null)
         }
 
         if (queuedPlanBackfill) {
@@ -682,6 +756,8 @@ ${t('ai.chat.prompt')}`
               appendPlanExecutionBackfill(prev, {
                 planPath: queuedPlanBackfill.planPath,
                 stepText: queuedPlanBackfill.stepText,
+                status: 'success',
+                validation: 'completed',
                 runId: executionRunId,
                 provider: aiConfig.provider,
                 model: aiConfig.model || undefined,
@@ -692,6 +768,12 @@ ${t('ai.chat.prompt')}`
             ),
           )
           setQueuedPlanBackfill(null)
+          setQueueSuccessStats((prev) => ({ ...prev, plan: prev.plan + 1 }))
+          setRecentDoneQueueItems((prev) => [
+            { kind: 'plan' as const, text: queuedPlanBackfill.stepText },
+            ...prev,
+          ].slice(0, 5))
+          setFailedPlanExecution(null)
         }
         refreshQuota()
         return
@@ -831,6 +913,12 @@ ${t('ai.chat.prompt')}`
           assistantContent,
           executionRunId,
         )
+        setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
+        setRecentDoneQueueItems((prev) => [
+          { kind: 'spec' as const, text: queuedSpecBackfill.taskText },
+          ...prev,
+        ].slice(0, 5))
+        setFailedSpecExecution(null)
       }
 
       if (queuedPlanBackfill) {
@@ -839,6 +927,8 @@ ${t('ai.chat.prompt')}`
             appendPlanExecutionBackfill(prev, {
               planPath: queuedPlanBackfill.planPath,
               stepText: queuedPlanBackfill.stepText,
+              status: 'success',
+              validation: 'completed',
               runId: executionRunId,
               provider: aiConfig.provider,
               model: aiConfig.model || undefined,
@@ -849,6 +939,12 @@ ${t('ai.chat.prompt')}`
           ),
         )
         setQueuedPlanBackfill(null)
+        setQueueSuccessStats((prev) => ({ ...prev, plan: prev.plan + 1 }))
+        setRecentDoneQueueItems((prev) => [
+          { kind: 'plan' as const, text: queuedPlanBackfill.stepText },
+          ...prev,
+        ].slice(0, 5))
+        setFailedPlanExecution(null)
       }
       refreshQuota()
     } catch (error: any) {
@@ -872,6 +968,38 @@ ${t('ai.chat.prompt')}`
         }), message)
       }
 
+      if (queuedPlanBackfill) {
+        setFiles((prev) =>
+          appendPlanExecutionBackfill(prev, {
+            planPath: queuedPlanBackfill.planPath,
+            stepText: queuedPlanBackfill.stepText,
+            status: 'failed',
+            validation: 'error',
+            runId,
+            provider: aiConfig.provider,
+            model: aiConfig.model || undefined,
+            assistantOutput: message,
+          }),
+        )
+        setFailedPlanExecution({
+          prompt: buildPlanExecutionPrompt(queuedPlanBackfill.stepText),
+          backfill: queuedPlanBackfill,
+          error: message.split('\n')[0],
+        })
+        setQueueFailureStats((prev) => ({ ...prev, plan: prev.plan + 1 }))
+        setQueuedPlanBackfill(null)
+      }
+
+      if (queuedSpecBackfill) {
+        setFailedSpecExecution({
+          prompt: `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${queuedSpecBackfill.taskPath}] ${queuedSpecBackfill.taskText}`,
+          backfill: queuedSpecBackfill,
+          error: message.split('\n')[0],
+        })
+        setQueueFailureStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
+        setQueuedSpecBackfill(null)
+      }
+
       appendError(formatted.content)
     } finally {
       setLoading(false)
@@ -890,12 +1018,49 @@ ${t('ai.chat.prompt')}`
   }, [queuedChatPrompt, loading, setQueuedChatPrompt, setQueuedSpecBackfill])
 
   useEffect(() => {
-    if (loading || queuedPlanExecutions.length === 0) return
+    if (loading || failedSpecExecution || queuedChatPrompt || queuedSpecBackfill || queuedSpecExecutions.length === 0) return
+    const next = shiftQueuedSpecExecution()
+    if (!next) return
+    setQueuedSpecBackfill(next.backfill)
+    setQueuedChatPrompt(next.prompt)
+  }, [
+    failedSpecExecution,
+    loading,
+    queuedChatPrompt,
+    queuedSpecBackfill,
+    queuedSpecExecutions.length,
+    setQueuedChatPrompt,
+    setQueuedSpecBackfill,
+    shiftQueuedSpecExecution,
+  ])
+
+  useEffect(() => {
+    if (queuedSpecExecutions.length > 0) return
+    const restored = loadQueuedSpecExecutions()
+    if (restored.length > 0) setQueuedSpecExecutions(restored)
+  }, [queuedSpecExecutions.length, setQueuedSpecExecutions])
+
+  useEffect(() => {
+    saveQueuedSpecExecutions(queuedSpecExecutions)
+  }, [queuedSpecExecutions])
+
+  useEffect(() => {
+    if (queuedPlanExecutions.length > 0) return
+    const restored = loadQueuedPlanExecutions()
+    if (restored.length > 0) setQueuedPlanExecutions(restored)
+  }, [queuedPlanExecutions.length, setQueuedPlanExecutions])
+
+  useEffect(() => {
+    saveQueuedPlanExecutions(queuedPlanExecutions)
+  }, [queuedPlanExecutions])
+
+  useEffect(() => {
+    if (loading || failedPlanExecution || queuedPlanExecutions.length === 0) return
     const next = shiftQueuedPlanExecution()
     if (!next) return
     setQueuedPlanBackfill(next.backfill)
     void handleSend(next.prompt)
-  }, [handleSend, loading, queuedPlanExecutions.length, setQueuedPlanBackfill, shiftQueuedPlanExecution])
+  }, [failedPlanExecution, handleSend, loading, queuedPlanExecutions.length, setQueuedPlanBackfill, shiftQueuedPlanExecution])
 
   useEffect(() => {
     if (loading || sendQueue.length === 0) return
@@ -1283,7 +1448,7 @@ ${t('ai.chat.prompt')}`
 
       <McpToolLogPanel entries={mcpToolEntries} />
 
-      {(!loading && (queuedChatPrompt || queuedPlanExecutions.length > 0 || sendQueue.length > 0)) || (loading && sendQueue.length > 0) ? (
+      {(!loading && (queuedChatPrompt || queuedPlanExecutions.length > 0 || queuedSpecExecutions.length > 0 || sendQueue.length > 0)) || (loading && sendQueue.length > 0) ? (
         <div
           style={{
             margin: '10px 0',
@@ -1297,10 +1462,94 @@ ${t('ai.chat.prompt')}`
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>
             会话状态：{sessionStatus}{runId ? ` · ${runId}` : ''}
           </div>
+          <div style={{ marginBottom: 6 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: '4px 8px', fontSize: 11 }}
+              onClick={exportQueueReport}
+            >
+              导出队列报告
+            </button>
+          </div>
+          {activeQueueTask ? (
+            <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 6 }}>
+              当前执行：{activeQueueTask}
+            </div>
+          ) : null}
+          {(queueFailureStats.plan > 0 || queueFailureStats.spec > 0) ? (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: 'var(--danger-color)' }}>
+                失败统计：Plan {queueFailureStats.plan} · Spec {queueFailureStats.spec}
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ padding: '4px 8px', fontSize: 11 }}
+                onClick={() => setQueueFailureStats({ plan: 0, spec: 0 })}
+              >
+                重置统计
+              </button>
+            </div>
+          ) : null}
+          {(queueSuccessStats.plan > 0 || queueSuccessStats.spec > 0) ? (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                成功统计：Plan {queueSuccessStats.plan} · Spec {queueSuccessStats.spec}
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ padding: '4px 8px', fontSize: 11 }}
+                onClick={() => setQueueSuccessStats({ plan: 0, spec: 0 })}
+              >
+                重置成功统计
+              </button>
+            </div>
+          ) : null}
+          {recentDoneQueueItems.length > 0 ? (
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
+              最近完成：
+              {recentDoneQueueItems.slice(0, 3).map((item, index) => (
+                <span key={`done-${index}`}>
+                  {' '}
+                  [{item.kind === 'plan' ? 'Plan' : 'Spec'}]
+                  {item.text.slice(0, 18)}
+                  {item.text.length > 18 ? '…' : ''}
+                </span>
+              ))}
+            </div>
+          ) : null}
           {queuedChatPrompt ? (
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
               等待执行：{queuedChatPrompt.slice(0, 60)}
               {queuedChatPrompt.length > 60 ? '…' : ''}
+            </div>
+          ) : null}
+          {(queuedSpecExecutions.length > 0 || queuedPlanExecutions.length > 0) ? (
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
+              队列预览：
+              {queuedSpecExecutions.slice(0, 2).map((item, index) => (
+                <span key={`spec-${index}`}> [Spec]{item.backfill.taskText.slice(0, 18)}{item.backfill.taskText.length > 18 ? '…' : ''}</span>
+              ))}
+              {queuedPlanExecutions.slice(0, 2).map((item, index) => (
+                <span key={`plan-${index}`}> [Plan]{item.backfill.stepText.slice(0, 18)}{item.backfill.stepText.length > 18 ? '…' : ''}</span>
+              ))}
+            </div>
+          ) : null}
+          {queuedSpecExecutions.length > 0 ? (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Spec 队列：{queuedSpecExecutions.length} 步待执行
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ padding: '4px 8px', fontSize: 11 }}
+                onClick={() => setQueuedSpecExecutions([])}
+              >
+                清空 Spec 队列
+              </button>
             </div>
           ) : null}
           {queuedPlanExecutions.length > 0 ? (
@@ -1316,6 +1565,60 @@ ${t('ai.chat.prompt')}`
               >
                 清空计划队列
               </button>
+            </div>
+          ) : null}
+          {failedPlanExecution ? (
+            <div style={{ marginBottom: 6, fontSize: 12, color: 'var(--danger-color)' }}>
+              执行失败：{failedPlanExecution.backfill.stepText}（{failedPlanExecution.error}）
+              <div style={{ display: 'inline-flex', gap: 8, marginLeft: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: 11 }}
+                  onClick={() => {
+                    setQueuedPlanBackfill(failedPlanExecution.backfill)
+                    setFailedPlanExecution(null)
+                    void handleSend(failedPlanExecution.prompt)
+                  }}
+                >
+                  重试当前步
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: 11 }}
+                  onClick={() => setFailedPlanExecution(null)}
+                >
+                  跳过继续
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {failedSpecExecution ? (
+            <div style={{ marginBottom: 6, fontSize: 12, color: 'var(--danger-color)' }}>
+              Spec 执行失败：{failedSpecExecution.backfill.taskText}（{failedSpecExecution.error}）
+              <div style={{ display: 'inline-flex', gap: 8, marginLeft: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: 11 }}
+                  onClick={() => {
+                    setQueuedSpecBackfill(failedSpecExecution.backfill)
+                    setFailedSpecExecution(null)
+                    void handleSend(failedSpecExecution.prompt)
+                  }}
+                >
+                  重试当前任务
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: 11 }}
+                  onClick={() => setFailedSpecExecution(null)}
+                >
+                  跳过继续
+                </button>
+              </div>
             </div>
           ) : null}
           {sendQueue.length > 0 ? (

@@ -11,12 +11,17 @@ describe('planBackfillService', () => {
       model: 'gpt-4o',
       assistantOutput: 'OK',
       now: new Date('2026-05-28T00:00:00.000Z'),
+      validation: 'tests passed',
+      filesTouched: ['src/a.ts', 'src/b.ts'],
     })
     expect(md).toContain('Plan Step Execution (2026-05-28T00:00:00.000Z)')
     expect(md).toContain('Step: Do x')
     expect(md).toContain('Run ID: run-1')
     expect(md).toContain('Provider: openai')
     expect(md).toContain('Model: gpt-4o')
+    expect(md).toContain('Status: success')
+    expect(md).toContain('Validation: tests passed')
+    expect(md).toContain('Files touched: src/a.ts, src/b.ts')
     expect(md).toContain('Summary: OK')
     expect(md).toContain('OK')
   })

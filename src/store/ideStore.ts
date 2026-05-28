@@ -95,6 +95,7 @@ export interface IDEState {
   collaborationRoomId: string | null
   queuedChatPrompt: string | null
   queuedSpecBackfill: QueuedSpecBackfill | null
+  queuedSpecExecutions: QueuedSpecExecution[]
   queuedPlanBackfill: QueuedPlanBackfill | null
   queuedPlanExecutions: QueuedPlanExecution[]
 
@@ -145,6 +146,8 @@ export interface IDEState {
   setCollaborationRoomId: (roomId: string | null) => void
   setQueuedChatPrompt: (prompt: string | null) => void
   setQueuedSpecBackfill: (backfill: QueuedSpecBackfill | null) => void
+  setQueuedSpecExecutions: (items: QueuedSpecExecution[]) => void
+  shiftQueuedSpecExecution: () => QueuedSpecExecution | null
   setQueuedPlanBackfill: (backfill: QueuedPlanBackfill | null) => void
   setQueuedPlanExecutions: (items: QueuedPlanExecution[]) => void
   shiftQueuedPlanExecution: () => QueuedPlanExecution | null
@@ -188,6 +191,11 @@ export interface QueuedSpecBackfill {
   specAcceptancePath: string
 }
 
+export interface QueuedSpecExecution {
+  prompt: string
+  backfill: QueuedSpecBackfill
+}
+
 export interface QueuedPlanBackfill {
   planPath: string
   stepText: string
@@ -216,6 +224,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   collaborationRoomId: null,
   queuedChatPrompt: null,
   queuedSpecBackfill: null,
+  queuedSpecExecutions: [],
   queuedPlanBackfill: null,
   queuedPlanExecutions: [],
 
@@ -270,6 +279,17 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setCollaborationRoomId: (collaborationRoomId) => set({ collaborationRoomId }),
   setQueuedChatPrompt: (queuedChatPrompt) => set({ queuedChatPrompt }),
   setQueuedSpecBackfill: (queuedSpecBackfill) => set({ queuedSpecBackfill }),
+  setQueuedSpecExecutions: (queuedSpecExecutions) => set({ queuedSpecExecutions }),
+  shiftQueuedSpecExecution: () => {
+    let shifted: QueuedSpecExecution | null = null
+    set((state) => {
+      if (state.queuedSpecExecutions.length === 0) return state
+      const [first, ...rest] = state.queuedSpecExecutions
+      shifted = first
+      return { queuedSpecExecutions: rest }
+    })
+    return shifted
+  },
   setQueuedPlanBackfill: (queuedPlanBackfill) => set({ queuedPlanBackfill }),
   setQueuedPlanExecutions: (queuedPlanExecutions) => set({ queuedPlanExecutions }),
   shiftQueuedPlanExecution: () => {

@@ -36,4 +36,24 @@ describe('ideStore', () => {
     expect(state.showGitPanel).toBe(true)
     expect(state.showChatPanel).toBe(false)
   })
+
+  it('shifts queued spec execution in order', () => {
+    const { setQueuedSpecExecutions, shiftQueuedSpecExecution } = useIDEStore.getState()
+    setQueuedSpecExecutions([
+      {
+        prompt: 'first',
+        backfill: { taskPath: '.aide/specs/a/tasks.md', taskText: 'task 1', specAcceptancePath: '.aide/specs/a/acceptance.md' },
+      },
+      {
+        prompt: 'second',
+        backfill: { taskPath: '.aide/specs/a/tasks.md', taskText: 'task 2', specAcceptancePath: '.aide/specs/a/acceptance.md' },
+      },
+    ])
+    const first = shiftQueuedSpecExecution()
+    const second = shiftQueuedSpecExecution()
+
+    expect(first?.prompt).toBe('first')
+    expect(second?.prompt).toBe('second')
+    expect(useIDEStore.getState().queuedSpecExecutions).toHaveLength(0)
+  })
 })
