@@ -1,15 +1,15 @@
 # 对外发布素材
 
-> **当前版本基线**：**v1.0.8**（质量收口：编排/语义/测试/边界）  
+> **当前版本基线**：**v1.1.0.11**（计划系统产品化：执行队列、回填闭环、可观测与报告导出）  
 > **事实来源**：`package.json` + `CHANGELOG.md` + GitHub tag/release
 
 ## 当前可直发（建议）
 
 | 平台 | 文案 | 封面 |
 |------|------|------|
-| **掘金** | [JUEJIN_POST.md](./JUEJIN_POST.md)（需先替换为 v1.0.8 口径） | [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png) |
+| **掘金** | [JUEJIN_POST.md](./JUEJIN_POST.md)（请按 v1.1.0.11 口径更新） | [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png) |
 | **知乎** | [ZHIHU_POST.md](./ZHIHU_POST.md) | 同掘金封面或截图 |
-| **CSDN** | [CSDN_POST.md](./CSDN_POST.md)（需先替换为 v1.0.8 口径） | 同掘金封面或截图 |
+| **CSDN** | [CSDN_POST.md](./CSDN_POST.md)（请按 v1.1.0.11 口径更新） | 同掘金封面或截图 |
 | **V2EX** | [V2EX_POST.md](./V2EX_POST.md) | — |
 | **小红书** | [XIAOHONGSHU_POST.md](./XIAOHONGSHU_POST.md)（长期模板） | [xiaohongshu-cover-ai-ide-v1.png](./xiaohongshu-cover-ai-ide-v1.png) |
 | **B站** | [BILIBILI_POST.md](./BILIBILI_POST.md) | [bilibili-cover-ai-ide-v1.png](./bilibili-cover-ai-ide-v1.png) |
@@ -39,6 +39,6 @@
 
 发帖后勾选 [GA_POST_LAUNCH_72H.md](../GA_POST_LAUNCH_72H.md)。
 
-## 版本升版（1.0.8）
+## 版本升版（1.1.0.11）
 
-- **当前 GA**：**v1.0.8** — 外部文章建议直接写 1.0.8（质量与稳定性升级）
+- **当前 GA**：**v1.1.0.11** — 外部文章建议统一写 1.1.0.11（计划系统产品化阶段）
