@@ -1,6 +1,6 @@
 # AI IDE 路线图与文档导航
 
-> **当前稳定**：**v1.0.5.1**（1.0.5.x） · **上一稳定**：**v1.0.4.4** · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)  
+> **当前稳定**：**v1.0.8**（质量收口：编排/语义/测试/边界） · **上一稳定**：**v1.0.7.2** · **长远**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md)  
 > **世代**： … [ROADMAP_V1.0.4.x](./ROADMAP_V1.0.4.x.md) ✅ · [ROADMAP_V1.0.5.x](./ROADMAP_V1.0.5.x.md) 🔶  
 > **大总结**：[V1.0.2_STATUS_SUMMARY.md](./V1.0.2_STATUS_SUMMARY.md) · **竞品**：[COMPETITOR_COMPARISON_V1.0.2.md](./COMPETITOR_COMPARISON_V1.0.2.md)（**2.75**）  
 > 演示站：[https://ai-ide.vercel.app](https://ai-ide.vercel.app)
@@ -63,7 +63,7 @@
 
 ## 二、当前阶段
 
-**Phase 2 RC**（2026-05）✅。**正式上市** → **D3 GA**（约 2026-10～11）：[PLAN_D3_LONGTERM.md](./PLAN_D3_LONGTERM.md)。**当前**：[NEXT_EXECUTION.md](./NEXT_EXECUTION.md) Phase 3 + Phase 4 并行。
+**Phase 2 RC**（2026-05）✅。当前已发布 **v1.0.8**（质量收口）。下一步执行见 [NEXT_EXECUTION.md](./NEXT_EXECUTION.md)（v1.0.8.1 文档对齐 + 发布流程模板化）。
 
 **Phase 4 交付清单**：
 

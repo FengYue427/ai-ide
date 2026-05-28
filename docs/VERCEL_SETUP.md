@@ -18,6 +18,16 @@
 
 **不要**在 Production 设置 `VITE_ALLOW_OFFLINE_AUTH`（仅本地演示用）。
 
+### Production 路径说明（与 `verify-env` 对齐）
+
+- **Path A（公测，不接国内商户）**：至少 `DATABASE_URL` + `AUTH_SECRET` + `APP_URL`
+- **Path B（国内收款）**：在 Path A 基础上，至少配置其一：
+  - 支付宝：`ALIPAY_APP_ID`
+  - 微信：`WECHAT_MCH_ID`
+- **D3 GA（正式生产）**：建议额外配置：
+  - `BILLING_CRON_SECRET`（或 `CRON_SECRET`）
+  - `VITE_SENTRY_DSN`（建议）
+
 ---
 
 ## 1. 数据库
@@ -63,6 +73,8 @@ Webhook URL：
 ```text
 https://<your-domain>/api/subscription/webhook
 ```
+
+> 国内收款（Path B）请同时参考 [CN_PAYMENT_SETUP.md](./CN_PAYMENT_SETUP.md)。
 
 ---
 
@@ -113,6 +125,8 @@ npm run verify:env
 npm run verify:env:prod
 npm run predeploy:check
 npm run check:release          # test:local + 生产 env 清单
+npm run check:release:billing  # Path B：要求至少配置支付宝或微信商户变量
+npm run check:release:d3       # D3 GA：额外检查 cron secret 与观测项
 ```
 
 可选错误上报见 [OBSERVABILITY.md](./OBSERVABILITY.md)。

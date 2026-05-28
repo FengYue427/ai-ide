@@ -1,5 +1,7 @@
 # CSDN 发布稿
 
+> ✅ **当前发布口径**：本文按 `v1.0.8`（质量与稳定性收口）维护。
+
 > **形式**：博客 → 发布文章 → **原创**  
 > **分类**：人工智能 / 开发工具（或 开源）  
 > **封面**：复用 [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png)  
@@ -18,7 +20,7 @@
 ## 摘要（CSDN「文章摘要」栏，≤256 字）
 
 ```text
-AI IDE 是一款开源的浏览器 AI IDE，当前 **v1.0.6.4**（可见能力跃升收官）：Agent 工具调用面板、move/delete/create_dir 文件工具、工作区文件树右键/F2/Delete、官方插件市场 6 款+标签筛选。继承 MCP 预置、项目规则、@ 索引与支付宝订阅；Win/Mac 桌面版可选。在线 https://ai-ide-flame.vercel.app ，源码 https://github.com/FengYue427/ai-ide 。定位入门 Agent，非 Cursor 替代。
+AI IDE 是一款开源的浏览器 AI IDE，当前 **v1.0.8**（质量与稳定性收口）：会话编排语义统一、配额入口收敛、MCP 结构化结果可测化，并持续保留 Agent 工具面板、文件树增强与插件能力。在线 https://ai-ide-flame.vercel.app ，源码 https://github.com/FengYue427/ai-ide 。定位入门 Agent，非 Cursor 替代。
 ```
 
 ---
@@ -37,7 +39,7 @@ AI IDE, 人工智能, Agent, 开源, 前端, DeepSeek, Cursor, 独立开发
 
 ### 一、项目简介
 
-**AI IDE** 是开源的 AI 原生轻量 IDE，**v1.0.6.4**（1.0.6.x 可见能力跃升收官）已发布。
+**AI IDE** 是开源的 AI 原生轻量 IDE，**v1.0.8**（质量与稳定性收口）已发布。
 
 - **在线体验**：https://ai-ide-flame.vercel.app  
 - **GitHub**：https://github.com/FengYue427/ai-ide  
@@ -117,7 +119,7 @@ AI IDE, 人工智能, Agent, 开源, 前端, DeepSeek, Cursor, 独立开发
 - **数据库**：Prisma + Neon（PostgreSQL）  
 - **支付**：支付宝异步通知 + 订阅生命周期（宽限期 / 到期降级）  
 - **桌面**：Electron remote shell + preload IPC + electron-updater  
-- **质量**：`npm run test:local` **222** 测试；生产 `smoke:report` **5/5**  
+- **质量**：`npm run test:local` **274** 测试；生产 `smoke:report` **5/5**  
 
 ---
 

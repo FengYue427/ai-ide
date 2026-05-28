@@ -1,5 +1,7 @@
 # 掘金发布稿（复制到编辑器）
 
+> ✅ **当前发布口径**：本文按 `v1.0.8`（质量与稳定性收口）维护。
+
 > **建议分类**：前端 / 开源 / 人工智能  
 > **建议标签**：`AI` `开源` `IDE` `Agent` `DeepSeek` `独立开发`  
 > **封面**：使用同目录 [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png)（16:9，掘金编辑器 → 上传封面）  
@@ -24,7 +26,7 @@
 2. **Cursor 等工具是美元订阅，国内支付不方便**
 3. **已有 DeepSeek / 通义 Key，希望 Key 留在自己手里**
 
-所以我们把 **AI IDE** 推进到了 **v1.0.6.4**（可见能力跃升收官）：Agent 工具面板、工作区文件树增强、插件市场 6 款；在浏览器里打开就能用，也可下载 **Windows / macOS 桌面版** 处理更大本地仓库。
+所以我们把 **AI IDE** 推进到了 **v1.0.8**：在保持可见能力持续增强的同时，重点做了质量收口（会话编排语义、配额入口收敛、MCP 结果可测化、关键测试补齐）。在浏览器里打开就能用，也可下载 **Windows / macOS 桌面版** 处理更大本地仓库。
 
 - 在线体验：https://ai-ide-flame.vercel.app
 - 开源仓库：https://github.com/FengYue427/ai-ide
@@ -86,7 +88,7 @@
 - 后端：Vercel Serverless + Prisma + Neon  
 - 支付：支付宝生产（`billingPath=B`）  
 - 桌面：Electron + remote shell + electron-updater  
-- 测试：`test:local` 197 项 + 生产 smoke 5/5  
+- 测试：`test:local` 274 项 + 生产 smoke 5/5  
 
 欢迎 Star、提 Issue、PR。路线图见仓库 `docs/PLAN_IDE5_AND_COMPETITORS.md`（块级 Diff、Tab FIM 等）。
 
@@ -112,4 +114,4 @@
 
 ---
 
- *本文由项目维护者发布，版本 v1.0.4.4。*
+*本文由项目维护者发布，版本基线 v1.0.8。*

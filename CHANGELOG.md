@@ -10,6 +10,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **v1.0.7.x** 附属路线图 → [ROADMAP_V1.0.7.x.md](docs/ROADMAP_V1.0.7.x.md)
 - **v1.1** Kickoff → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
 
+### Next
+
+- **v1.0.9**：Plan 模式（先计划、再执行）：计划落盘 `.aide/plans` + 任务提取 `.aide/tasks.md` + 一键执行第一步（v1.0.9.x）
+
 ### Changed (in progress)
 
 - `v1.0.7.1` 首批落地：新增 `chat.abort` / `chat.payload_too_large` / `workspace.limit.warn/full` 事件埋点
