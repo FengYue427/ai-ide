@@ -79,6 +79,7 @@ import { removeTrailingUserMessage, upsertAssistantMessage } from '../services/c
 import { applyPlanArtifactsWithResult, buildPlanModeSystemPrompt } from '../services/planModeService'
 import { buildPlanExecutionPrompt, getFirstPlanStep } from '../services/planExecutionService'
 import { appendPlanExecutionBackfill } from '../services/planBackfillService'
+import { markPlanStepDone } from '../services/planStepCompletionService'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -141,6 +142,7 @@ ${t('ai.chat.prompt')}`
   const setQueuedPlanBackfill = useIDEStore((s) => s.setQueuedPlanBackfill)
   const queuedPlanExecutions = useIDEStore((s) => s.queuedPlanExecutions)
   const shiftQueuedPlanExecution = useIDEStore((s) => s.shiftQueuedPlanExecution)
+  const setQueuedPlanExecutions = useIDEStore((s) => s.setQueuedPlanExecutions)
   const setFiles = useIDEStore((s) => s.setFiles)
   const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
@@ -676,14 +678,18 @@ ${t('ai.chat.prompt')}`
 
         if (queuedPlanBackfill) {
           setFiles((prev) =>
-            appendPlanExecutionBackfill(prev, {
-              planPath: queuedPlanBackfill.planPath,
-              stepText: queuedPlanBackfill.stepText,
-              runId: executionRunId,
-              provider: aiConfig.provider,
-              model: aiConfig.model || undefined,
-              assistantOutput: assistantContent,
-            }),
+            markPlanStepDone(
+              appendPlanExecutionBackfill(prev, {
+                planPath: queuedPlanBackfill.planPath,
+                stepText: queuedPlanBackfill.stepText,
+                runId: executionRunId,
+                provider: aiConfig.provider,
+                model: aiConfig.model || undefined,
+                assistantOutput: assistantContent,
+              }),
+              queuedPlanBackfill.planPath,
+              { text: queuedPlanBackfill.stepText, line: queuedPlanBackfill.stepLine },
+            ),
           )
           setQueuedPlanBackfill(null)
         }
@@ -829,14 +835,18 @@ ${t('ai.chat.prompt')}`
 
       if (queuedPlanBackfill) {
         setFiles((prev) =>
-          appendPlanExecutionBackfill(prev, {
-            planPath: queuedPlanBackfill.planPath,
-            stepText: queuedPlanBackfill.stepText,
-            runId: executionRunId,
-            provider: aiConfig.provider,
-            model: aiConfig.model || undefined,
-            assistantOutput: assistantContent,
-          }),
+          markPlanStepDone(
+            appendPlanExecutionBackfill(prev, {
+              planPath: queuedPlanBackfill.planPath,
+              stepText: queuedPlanBackfill.stepText,
+              runId: executionRunId,
+              provider: aiConfig.provider,
+              model: aiConfig.model || undefined,
+              assistantOutput: assistantContent,
+            }),
+            queuedPlanBackfill.planPath,
+            { text: queuedPlanBackfill.stepText, line: queuedPlanBackfill.stepLine },
+          ),
         )
         setQueuedPlanBackfill(null)
       }
@@ -1294,8 +1304,18 @@ ${t('ai.chat.prompt')}`
             </div>
           ) : null}
           {queuedPlanExecutions.length > 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
-              计划队列：{queuedPlanExecutions.length} 步待执行
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                计划队列：{queuedPlanExecutions.length} 步待执行
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ padding: '4px 8px', fontSize: 11 }}
+                onClick={() => setQueuedPlanExecutions([])}
+              >
+                清空计划队列
+              </button>
             </div>
           ) : null}
           {sendQueue.length > 0 ? (

@@ -191,6 +191,7 @@ export interface QueuedSpecBackfill {
 export interface QueuedPlanBackfill {
   planPath: string
   stepText: string
+  stepLine?: number
 }
 
 export interface QueuedPlanExecution {

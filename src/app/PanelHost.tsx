@@ -510,15 +510,25 @@ export function PanelHost({
               notify('error', '无法执行', '该计划里没有可执行的未完成步骤（- [ ]）')
               return
             }
-            const queue = steps.map((step) => ({
-              prompt: buildPlanExecutionPrompt(step),
-              backfill: { planPath: path, stepText: step },
-            }))
-            setQueuedPlanExecutions(queue.slice(1))
-            setQueuedPlanBackfill(queue[0].backfill)
-            setQueuedChatPrompt(queue[0].prompt)
-            closeSettingsPanel()
-            openChatPanel()
+            void (async () => {
+              const preview = steps.slice(0, 8).map((s) => `- ${s.text}`).join('\n')
+              const ok = await requestConfirm({
+                title: '确认执行计划步骤？',
+                message: `计划：${path}\n步骤数：${steps.length}\n\n${preview}${steps.length > 8 ? '\n- …' : ''}\n\n执行结果会回填到 plan 文件，并自动将对应步骤标记为完成。`,
+                confirmText: '开始执行',
+              })
+              if (!ok) return
+
+              const queue = steps.map((step) => ({
+                prompt: buildPlanExecutionPrompt(step.text),
+                backfill: { planPath: path, stepText: step.text, stepLine: step.line },
+              }))
+              setQueuedPlanExecutions(queue.slice(1))
+              setQueuedPlanBackfill(queue[0].backfill)
+              setQueuedChatPrompt(queue[0].prompt)
+              closeSettingsPanel()
+              openChatPanel()
+            })()
           }}
           onMapPlanToSpec={(path, steps) => {
             const targetSpecTasks = findLatestSpecTasksPath(files)
@@ -526,7 +536,7 @@ export function PanelHost({
               notify('error', '映射失败', '未找到 Specs tasks 文件，请先创建一个 Spec')
               return
             }
-            const result = appendPlanStepsToSpecTasks(files, targetSpecTasks, steps)
+            const result = appendPlanStepsToSpecTasks(files, targetSpecTasks, steps.map((s) => s.text))
             if (result.added === 0) {
               notify('info', '无需映射', '这些步骤已存在于 Spec tasks')
               return

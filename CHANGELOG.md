@@ -8,6 +8,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Chat：Agent 模式默认永久开启，不再提供关闭入口（仍可使用 Plan Mode）
+- Plan：执行计划步骤前增加确认；支持清空计划执行队列；执行后自动将对应步骤标记完成（- [ ] → - [x]）
 
 ### 规划
 

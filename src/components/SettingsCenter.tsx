@@ -64,8 +64,8 @@ interface SettingsCenterProps {
   onRunSpecTask?: (path: string, text: string) => void
   planItems?: PlanCatalogItem[]
   onOpenPlan?: (path: string) => void
-  onRunPlan?: (path: string, steps: string[]) => void
-  onMapPlanToSpec?: (path: string, steps: string[]) => void
+  onRunPlan?: (path: string, steps: Array<{ text: string; line?: number }>) => void
+  onMapPlanToSpec?: (path: string, steps: Array<{ text: string; line?: number }>) => void
   onDeletePlan?: (path: string) => void
   onClose: () => void
 }

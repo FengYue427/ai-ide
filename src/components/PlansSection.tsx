@@ -5,8 +5,8 @@ interface PlansSectionProps {
   plans: PlanCatalogItem[]
   onOpenPlan: (path: string) => void
   onDeletePlan: (path: string) => void
-  onRunPlan: (path: string, steps: string[]) => void
-  onMapPlanToSpec: (path: string, steps: string[]) => void
+  onRunPlan: (path: string, steps: Array<{ text: string; line?: number }>) => void
+  onMapPlanToSpec: (path: string, steps: Array<{ text: string; line?: number }>) => void
 }
 
 function planLabelFromPath(path: string): string {
@@ -103,8 +103,8 @@ export function PlansSection({ plans, onOpenPlan, onDeletePlan, onRunPlan, onMap
                       const selectedMap = selectedSteps[plan.path] ?? {}
                       const selected = plan.stepItems
                         .filter((step) => selectedMap[`${step.line}-${step.text}`])
-                        .map((step) => step.text)
-                      onRunPlan(plan.path, selected.length > 0 ? selected : [plan.stepItems[0].text])
+                        .map((step) => ({ text: step.text, line: step.line }))
+                      onRunPlan(plan.path, selected.length > 0 ? selected : [{ text: plan.stepItems[0].text, line: plan.stepItems[0].line }])
                     }}
                   >
                     执行步骤{selectedCount(plan.path) > 0 ? ` (${selectedCount(plan.path)})` : ''}
@@ -117,8 +117,8 @@ export function PlansSection({ plans, onOpenPlan, onDeletePlan, onRunPlan, onMap
                       const selectedMap = selectedSteps[plan.path] ?? {}
                       const selected = plan.stepItems
                         .filter((step) => selectedMap[`${step.line}-${step.text}`])
-                        .map((step) => step.text)
-                      onMapPlanToSpec(plan.path, selected.length > 0 ? selected : [plan.stepItems[0].text])
+                        .map((step) => ({ text: step.text, line: step.line }))
+                      onMapPlanToSpec(plan.path, selected.length > 0 ? selected : [{ text: plan.stepItems[0].text, line: plan.stepItems[0].line }])
                     }}
                   >
                     映射到 Spec
