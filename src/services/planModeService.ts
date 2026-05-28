@@ -76,3 +76,18 @@ export function applyPlanArtifacts<T extends FileLike>(
   }
   return next
 }
+
+export function applyPlanArtifactsWithResult<T extends FileLike>(
+  files: T[],
+  userInput: string,
+  assistantOutput: string,
+  now = new Date(),
+): { files: T[]; planPath: string; tasks: string[] } {
+  const planPath = buildPlanFilePath(now)
+  const tasks = extractChecklistTasks(assistantOutput)
+  return {
+    files: applyPlanArtifacts(files, userInput, assistantOutput, now),
+    planPath,
+    tasks,
+  }
+}

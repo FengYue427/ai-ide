@@ -76,8 +76,9 @@ import { appendToSpecAcceptanceFile } from '../services/specAcceptanceService'
 import { findRetryUserText } from '../services/chatRetry'
 import { buildMcpFollowUpMessages } from '../services/chatMcpFollowUp'
 import { removeTrailingUserMessage, upsertAssistantMessage } from '../services/chatMessageState'
-import { applyPlanArtifacts, buildPlanModeSystemPrompt } from '../services/planModeService'
+import { applyPlanArtifactsWithResult, buildPlanModeSystemPrompt } from '../services/planModeService'
 import { buildPlanExecutionPrompt, getFirstPlanStep } from '../services/planExecutionService'
+import { appendPlanExecutionBackfill } from '../services/planBackfillService'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -156,6 +157,8 @@ ${t('ai.chat.prompt')}`
       return false
     }
   })
+  const lastPlanPathRef = useRef<string | null>(null)
+  const lastPlanStepRef = useRef<string | null>(null)
   const [workspaceStats, setWorkspaceStats] = useState(workspaceContextService.getStats())
   const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: createWelcomeMessage(aiConfig) }])
   const [input, setInput] = useState('')
@@ -674,6 +677,18 @@ ${t('ai.chat.prompt')}`
             executionRunId,
           )
         }
+
+      if (lastPlanPathRef.current && lastPlanStepRef.current) {
+        setFiles((prev) =>
+          appendPlanExecutionBackfill(prev, {
+            planPath: lastPlanPathRef.current!,
+            stepText: lastPlanStepRef.current!,
+            runId: executionRunId,
+            assistantOutput: assistantContent,
+          }),
+        )
+        lastPlanStepRef.current = null
+      }
         refreshQuota()
         return
       }
@@ -793,7 +808,11 @@ ${t('ai.chat.prompt')}`
 
       const agentChanges = parseAgentFileChanges(assistantContent)
       if (planMode) {
-        setFiles((prev) => applyPlanArtifacts(prev, effectiveTextToSend, assistantContent))
+        setFiles((prev) => {
+          const result = applyPlanArtifactsWithResult(prev, effectiveTextToSend, assistantContent)
+          lastPlanPathRef.current = result.planPath
+          return result.files
+        })
       } else if (agentChanges.length > 0) {
         setPendingAgentChanges(agentChanges)
       } else {
@@ -808,6 +827,18 @@ ${t('ai.chat.prompt')}`
           assistantContent,
           executionRunId,
         )
+      }
+
+      if (lastPlanPathRef.current && lastPlanStepRef.current) {
+        setFiles((prev) =>
+          appendPlanExecutionBackfill(prev, {
+            planPath: lastPlanPathRef.current!,
+            stepText: lastPlanStepRef.current!,
+            runId: executionRunId,
+            assistantOutput: assistantContent,
+          }),
+        )
+        lastPlanStepRef.current = null
       }
       refreshQuota()
     } catch (error: any) {
@@ -886,6 +917,7 @@ ${t('ai.chat.prompt')}`
     const firstStep = getFirstPlanStep(latestAssistant.content)
     if (!firstStep) return
     const prompt = buildPlanExecutionPrompt(firstStep)
+    lastPlanStepRef.current = firstStep
 
     setPlanMode(false)
     setAgentMode(true)
