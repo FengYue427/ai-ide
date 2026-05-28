@@ -18,6 +18,7 @@ const skipDbSetup = process.env.SKIP_DB_SETUP === '1'
 
 let apiChild = null
 const apiLogPath = join(root, 'api-server.log')
+let apiLogStream = null
 
 function runNodeScript(scriptName, extraEnv = {}) {
   return new Promise((resolve, reject) => {
@@ -58,10 +59,10 @@ function startApiServer() {
       env: { ...process.env, NODE_ENV: process.env.NODE_ENV || 'development' },
     })
 
-    const logStream = createWriteStream(apiLogPath, { flags: 'a' })
+    apiLogStream = createWriteStream(apiLogPath, { flags: 'a' })
     const tee = (chunk, out) => {
       out.write(chunk)
-      logStream.write(chunk)
+      apiLogStream?.write(chunk)
     }
     apiChild.stdout?.on('data', (chunk) => tee(chunk, process.stdout))
     apiChild.stderr?.on('data', (chunk) => tee(chunk, process.stderr))
@@ -72,6 +73,16 @@ function startApiServer() {
 }
 
 function stopApiServer() {
+  if (apiLogStream) {
+    try {
+      apiLogStream.end()
+    } catch {
+      // ignore
+    } finally {
+      apiLogStream = null
+    }
+  }
+
   if (!apiChild || apiChild.killed) return
 
   try {
