@@ -2,7 +2,7 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.1.2**（后台 Agent MVP）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP](./docs/ROADMAP.md)
+**当前版本：v1.1.3**（协作 M1）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP](./docs/ROADMAP.md)
 
 | 入口 | 链接 |
 |--|--|
@@ -34,6 +34,17 @@ Agent 默认常开；队列与 Chat 草稿支持本地持久化。
 - **运维**：Cron `/api/jobs/process`；本地 `npm run jobs:process`
 
 生产默认关闭后台 Agent UI；启用见 [V1.1_FEATURE_FLAGS.md](./docs/V1.1_FEATURE_FLAGS.md)。
+
+## v1.1.3 协作 M1
+
+邀请队友进入房间，共编云工作区。详见 [docs/RELEASE_NOTES_v1.1.3.md](./docs/RELEASE_NOTES_v1.1.3.md)
+
+- **房间**：登录后创建/加入（`VITE_COLLAB_M1_SIGNAL=true`）
+- **重连**：断网 ≈30s 内自动重连（Yjs + WebRTC）
+- **权限**：host / editor / viewer（只读锁定编辑器）
+- **运维**：`npx prisma migrate deploy`；可选 `LIVEKIT_*` / `COLLAB_SIGNALING_URL`
+
+生产默认关闭协作 M1；启用见 [V1.1.3_ENV.md](./docs/V1.1.3_ENV.md)。
 
 ## 快速开始
 
@@ -95,7 +106,7 @@ npm run check:release
 - Monaco Editor、全局检索、命令面板
 - WebContainer 运行与终端
 - 工作区保存/导入/导出
-- 协作与基础 Git 面板
+- 协作与基础 Git 面板（**v1.1.3**：服务端房间 + 角色权限，特性开关）
 
 ## 部署
 
@@ -115,7 +126,7 @@ npm run deploy
 - 计划系统快速上手：`docs/PLAN_SYSTEM_QUICKSTART.md`
 - v1.1.1 GA 清单：`docs/V1.1.1_GA_EXECUTION.md`
 - v1.1.2 后台 Agent：`docs/BACKGROUND_AGENT_QUICKSTART.md` · `docs/V1.1.2_GA_EXECUTION.md`
-- **v1.1.3（准备中）**：`docs/V1.1.3_KICKOFF.md` · `docs/V1.1.3_MASTER_PLAN.md`
+- v1.1.3 协作 M1：`docs/RELEASE_NOTES_v1.1.3.md` · `docs/V1.1.3_ENV.md`
 - 下一执行阶段：`docs/NEXT_EXECUTION.md`
 - 发布运行手册：`docs/RELEASE_RUNBOOK.md`
 - 对外发布素材：`docs/publish/README.md`

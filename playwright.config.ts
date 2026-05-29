@@ -34,7 +34,7 @@ export default defineConfig({
   projects: [
     {
       name: 'ui',
-      testIgnore: '**/fullstack.spec.ts',
+      testIgnore: ['**/fullstack.spec.ts', '**/collab-smoke.spec.ts'],
       use: {
         ...devices['Desktop Chrome'],
         baseURL: `http://127.0.0.1:${uiPort}`,

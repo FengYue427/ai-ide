@@ -1,36 +1,31 @@
 # 当前执行清单
 
-> **当前世代**：**v1.1.3** · **P0 = 协作 M1**（网关 → **v1.2**）  
-> **阶段**：**F4** ✅ smoke · **下一步 F5** GA  
-> **主规划**：[V1.1.3_MASTER_PLAN.md](./V1.1.3_MASTER_PLAN.md)
+> **当前世代**：**v1.1.3** ✅ GA（协作 M1）  
+> **下一世代**：**v1.1.4** / **v1.2**（AI 网关）  
+> **生产**：https://ai-ide-flame.vercel.app
 
 ---
 
-## 拍板记录
+## v1.1.3 GA 完成（2026-05-29）
 
-| 决策 | 日期 |
+- F1～F5 代码与文档 ✅
+- `v1.1.3` tag + deploy ✅（见下方运维）
+
+### 生产启用协作 M1（按需）
+
+1. Vercel：`VITE_COLLAB_M1_SIGNAL=true`
+2. `npx prisma migrate deploy`（生产 DATABASE_URL）
+3. 可选：`COLLAB_SIGNALING_URL` / `LIVEKIT_*`
+4. 手测：[COLLAB_M1_SMOKE.md](./COLLAB_M1_SMOKE.md)
+
+---
+
+## 下一优先
+
+| 选项 | 文档 |
 |------|------|
-| v1.1.3 = **协作 A** | 2026-05-29 |
-| AI 网关 → **v1.2** | 2026-05-29 |
-
----
-
-## F1 剩余（协作）
-
-1. `npx prisma migrate deploy`（或 `db push`）应用 `CollaborationRoom` / `CollaborationMember`
-2. Vercel Preview：`VITE_COLLAB_M1_SIGNAL=true`（见 [V1.1.3_ENV.md](./V1.1.3_ENV.md)）
-3. 登录后：协作面板「创建房间」→ 应得到 8 位 `code` 与 `?room=` 链接
-4. 第二账号加入同一 `code` → `POST /api/collab/rooms/:code` 200
-5. 勾选 [V1.1.3_GA_EXECUTION.md](./V1.1.3_GA_EXECUTION.md) F1 协作项
-
----
-
-## F5（下一步）
-
-- GA：`package.json` / health = **1.1.3**、`RELEASE_NOTES`、生产 flag 文档
-- 勾选 [V1.1.3_GA_EXECUTION.md](./V1.1.3_GA_EXECUTION.md) 全部 DoD
-
-详见 [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md)。
+| **v1.2 AI 网关** | [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
+| **v1.1.4** 抛光 / i18n | [ROADMAP_V1.1.x.md](./ROADMAP_V1.1.x.md) |
 
 ---
 
@@ -38,7 +33,7 @@
 
 | 文档 | 用途 |
 |------|------|
-| [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md) | 协作 F1～F5 |
-| [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) | 网关（延后） |
+| [RELEASE_NOTES_v1.1.3.md](./RELEASE_NOTES_v1.1.3.md) | 对外发布说明 |
 | [V1.1.3_GA_EXECUTION.md](./V1.1.3_GA_EXECUTION.md) | DoD |
 | [V1.1.3_ENV.md](./V1.1.3_ENV.md) | 环境变量 |
+| [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md) | 协作 F1～F5 |

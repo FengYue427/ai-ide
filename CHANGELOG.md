@@ -5,36 +5,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added (v1.1.3 F1 · 协作)
+---
 
-- **拍板**：v1.1.3 = 协作 M1；AI 网关 → v1.2
-- `CollaborationRoom` / `CollaborationMember` Prisma 模型
-- `GET|POST /api/collab/rooms`、`GET|POST /api/collab/rooms/:code`
+## [1.1.3] — 2026-05-29（协作 M1）
+
+### Added
+
+- **协作 M1**：`CollaborationRoom` / `CollaborationMember`、房间 CRUD + join API
 - `VITE_COLLAB_M1_SIGNAL` + 协作面板对接服务端房间
+- `CollaborationService` 重连状态机、退避重连、`POST …/leave`
+- 可选 Livekit JWT；`COLLAB_SIGNALING_URL(S)` 配置
+- **viewer 只读**、Host 改角色 / 踢人 API
+- 双浏览器 Playwright smoke（`npm run test:e2e:collab`）与 API 集成段
+- 文档：`COLLAB_M1_*`、`RELEASE_NOTES_v1.1.3.md`
 
-### Added (v1.1.3 F2 · 重连)
+### Notes
 
-- `CollaborationService` 连接状态机 + 退避重连（≈30s）+ 保留 Y.Doc
-- `POST /api/collab/rooms/:code/leave`、协作面板离开同步 API
-- 可选 Livekit JWT（`livekit-server-sdk`）；`COLLAB_SIGNALING_URL(S)` 配置
-- 文档：[docs/COLLAB_M1_RECONNECT.md](docs/COLLAB_M1_RECONNECT.md)
-
-### Added (v1.1.3 F3 · 权限)
-
-- **viewer 只读**：Monaco `readOnly`、Yjs 不写、`collaborationMemberRole` 全局状态
-- 加入时选择 **编辑者 / 只读**；Host 可 **改角色 / 移出成员**
-- `PATCH /api/collab/rooms/:code/members/:userId`、`POST …/kick`
-- 文档：[docs/COLLAB_M1_PERMISSIONS.md](docs/COLLAB_M1_PERMISSIONS.md)
-
-### Added (v1.1.3 F4 · smoke)
-
-- 双浏览器 Playwright：`npm run test:e2e:collab`（`dev:stack:collab` + `.env.collab-e2e`）
-- API 协作段：`scripts/integration-api-collab.mjs`（create/join/role/kick）
-- 手工 10min 清单：[docs/COLLAB_M1_SMOKE.md](docs/COLLAB_M1_SMOKE.md)
-
-### Next
-
-- v1.1.3 F5：GA tag、Release Notes、生产 flag → [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
+- AI 网关 → **v1.2**；生产协作开关默认 **off**
 
 ---
 
