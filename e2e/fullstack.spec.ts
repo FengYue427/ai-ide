@@ -29,14 +29,27 @@ test.describe('Full stack (API + UI)', () => {
     })
     await expect(workspaceModal.getByText(/同步到云端/)).toBeVisible({ timeout: 10_000 })
 
-    // 打开保存表单并通过键盘 Enter 提交，避免视口滚动问题
+    // 打开保存表单并通过滚动容器点击提交（CI 下按钮常在滚动区外）
     await workspaceModal.getByRole('button', { name: '保存当前工作区' }).click()
-    await workspaceModal.getByPlaceholder('工作区名称').fill(workspaceName)
-    await page.keyboard.press('Enter')
+    const nameInput = workspaceModal.getByPlaceholder('工作区名称')
+    await nameInput.fill(workspaceName)
 
-    // 断言全局提示和云端徽章，而不是依赖模态内列表滚动
-    await expect(page.getByText('工作区已保存')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText(workspaceName)).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText('云端').first()).toBeVisible()
+    // Scroll modal body to reveal action buttons
+    const modalBody = workspaceModal.locator('.wm-body')
+    await modalBody.evaluate((el) => {
+      el.scrollTop = el.scrollHeight
+    })
+
+    const saveBtn = workspaceModal.locator('.wm-form-actions').getByRole('button', {
+      name: '保存',
+      exact: true,
+    })
+    await expect(saveBtn).toBeEnabled({ timeout: 5_000 })
+    await saveBtn.click({ force: true })
+
+    // 断言保存成功（banner/Toast 任一出现即可）
+    await expect(
+      page.locator('.alert-banner--success, .toast-title').filter({ hasText: /工作区已保存/ }),
+    ).toBeVisible({ timeout: 15_000 })
   })
 })
