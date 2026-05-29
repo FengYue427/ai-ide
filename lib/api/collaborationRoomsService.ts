@@ -1,10 +1,21 @@
 import type { CollaborationMember, CollaborationRoom } from '@prisma/client'
 import { prisma } from '../../src/lib/prisma'
+import { appendLivekitToken } from './collabLivekit'
 import {
   COLLAB_ROOM_CODE_LENGTH,
   type CollabMemberRole,
   type CollabSignalingPayload,
 } from './collabTypes'
+
+const DEFAULT_YJS_SIGNALING = ['wss://signaling.yjs.dev']
+
+function resolveYjsSignalingUrls(): string[] {
+  const custom = process.env.COLLAB_SIGNALING_URL?.trim()
+  if (custom) return [custom]
+  const list = process.env.COLLAB_SIGNALING_URLS?.split(',').map((s) => s.trim()).filter(Boolean)
+  if (list?.length) return list
+  return DEFAULT_YJS_SIGNALING
+}
 
 function randomRoomCode(): string {
   return Math.random()
@@ -34,14 +45,23 @@ export function buildCollabSignaling(room: CollaborationRoom): CollabSignalingPa
       mode: 'livekit',
       roomChannel: room.code,
       livekitUrl,
-      // F2: issue Livekit access token via livekit-server-sdk
+      signalingUrls: resolveYjsSignalingUrls(),
     }
   }
 
   return {
     mode: 'yjs-webrtc',
     roomChannel: `ai-ide-${room.code}`,
+    signalingUrls: resolveYjsSignalingUrls(),
   }
+}
+
+export async function buildCollabSignalingForUser(
+  room: CollaborationRoom,
+  userId: string,
+  displayName?: string,
+): Promise<CollabSignalingPayload> {
+  return appendLivekitToken(buildCollabSignaling(room), userId, displayName)
 }
 
 export function serializeCollabMember(member: CollaborationMember) {
@@ -144,4 +164,24 @@ export async function joinCollaborationRoom(
   if (!refreshed) return { ok: false, reason: 'not_found' }
 
   return { ok: true, room: refreshed, members: refreshed.members }
+}
+
+export async function leaveCollaborationRoom(
+  userId: string,
+  code: string,
+): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'not_member' }> {
+  const room = await getCollaborationRoomByCode(code)
+  if (!room) return { ok: false, reason: 'not_found' }
+
+  const member = await prisma.collaborationMember.findUnique({
+    where: { roomId_userId: { roomId: room.id, userId } },
+  })
+  if (!member) return { ok: false, reason: 'not_member' }
+
+  await prisma.collaborationMember.update({
+    where: { id: member.id },
+    data: { leftAt: new Date() },
+  })
+
+  return { ok: true }
 }

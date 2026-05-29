@@ -1,7 +1,7 @@
 # 当前执行清单
 
 > **当前世代**：**v1.1.3** · **P0 = 协作 M1**（网关 → **v1.2**）  
-> **阶段**：**F1** 房间 API ✅ 骨架 · 待 DB migrate + Preview 开关  
+> **阶段**：**F2** ✅ 重连 + leave · **下一步 F3** viewer 只读  
 > **主规划**：[V1.1.3_MASTER_PLAN.md](./V1.1.3_MASTER_PLAN.md)
 
 ---
@@ -25,11 +25,10 @@
 
 ---
 
-## F2 预览（下一步）
+## F3（下一步）
 
-- `collaborationService` 重连与房间生命周期  
-- 可选 Livekit token（`livekit-server-sdk`）  
-- 权限 UI：viewer 只读（F3 可部分合并）
+- viewer 无法编辑：`useCollaborationSync` / Monaco 只读 + API 写校验  
+- host 踢人（可选）
 
 详见 [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md)。
 

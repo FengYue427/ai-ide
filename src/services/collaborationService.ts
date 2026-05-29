@@ -1,7 +1,11 @@
 import * as Y from 'yjs'
 import { WebrtcProvider } from 'y-webrtc'
+import type { CollabJoinOptions, CollabConnectionStatus, CollabStatusEvent } from './collaborationTypes'
 
 const FILES_MAP_KEY = 'workspace-files'
+const DEFAULT_SIGNALING = ['wss://signaling.yjs.dev']
+/** Backoff steps — sum ≈30s for acceptance「断网 30s 内重连」. */
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 15000]
 
 export interface CollaborationRoom {
   roomId: string
@@ -11,52 +15,208 @@ export interface CollaborationRoom {
   awareness: any
 }
 
+type PersistedSession = {
+  roomId: string
+  userName: string
+  userColor: string
+  signalingUrls: string[]
+  webrtcRoomName: string
+  enableReconnect: boolean
+}
+
 export class CollaborationService {
   private currentRoom: CollaborationRoom | null = null
   private callbacks: Map<string, ((data: unknown) => void)[]> = new Map()
+  private session: PersistedSession | null = null
+  private status: CollabConnectionStatus = 'idle'
+  private reconnectAttempt = 0
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private intentionalLeave = false
+  private statusHandler: ((event: { connected: boolean }) => void) | null = null
+  private awarenessHandler: (() => void) | null = null
 
-  joinRoom(roomId: string, userName: string, userColor: string): CollaborationRoom {
-    if (this.currentRoom?.roomId === roomId) {
+  getConnectionStatus(): CollabConnectionStatus {
+    return this.status
+  }
+
+  getReconnectAttempt(): number {
+    return this.reconnectAttempt
+  }
+
+  joinRoom(
+    roomIdOrOptions: string | CollabJoinOptions,
+    userName?: string,
+    userColor?: string,
+  ): CollaborationRoom {
+    const options: CollabJoinOptions =
+      typeof roomIdOrOptions === 'string'
+        ? {
+            roomId: roomIdOrOptions,
+            userName: userName ?? 'User',
+            userColor: userColor ?? '#58a6ff',
+            enableReconnect: true,
+          }
+        : roomIdOrOptions
+
+    if (this.currentRoom?.roomId === options.roomId && this.status === 'connected') {
       return this.currentRoom
     }
 
-    this.leaveRoom()
+    this.clearReconnectTimer()
+    this.intentionalLeave = false
+    this.teardownProvider()
 
-    const doc = new Y.Doc()
-    const provider = new WebrtcProvider(`ai-ide-${roomId}`, doc, {
-      signaling: ['wss://signaling.yjs.dev'],
+    const signalingUrls =
+      options.signaling?.signalingUrls?.filter(Boolean) ??
+      (import.meta.env.VITE_COLLAB_SIGNALING_URL as string | undefined)?.trim()
+        ? [String(import.meta.env.VITE_COLLAB_SIGNALING_URL).trim()]
+        : DEFAULT_SIGNALING
+
+    const webrtcRoomName =
+      options.signaling?.roomChannel?.trim() || `ai-ide-${options.roomId}`
+
+    this.session = {
+      roomId: options.roomId,
+      userName: options.userName,
+      userColor: options.userColor,
+      signalingUrls,
+      webrtcRoomName,
+      enableReconnect: options.enableReconnect !== false,
+    }
+
+    this.reconnectAttempt = 0
+    this.attachProvider()
+    return this.currentRoom!
+  }
+
+  leaveRoom(): void {
+    this.intentionalLeave = true
+    this.clearReconnectTimer()
+    this.setStatus('disconnected')
+    this.teardownProvider(true)
+    this.session = null
+    this.reconnectAttempt = 0
+  }
+
+  /** Resume signaling after browser online / tab visible (M1 F2). */
+  tryReconnect(): void {
+    if (!this.session || this.intentionalLeave) return
+    if (this.status === 'connected' || this.status === 'connecting') return
+    this.clearReconnectTimer()
+    this.reconnectAttempt = 0
+    this.attachProvider()
+  }
+
+  getCurrentRoom(): CollaborationRoom | null {
+    return this.currentRoom
+  }
+
+  private attachProvider(): void {
+    if (!this.session) return
+
+    this.setStatus(this.reconnectAttempt > 0 ? 'reconnecting' : 'connecting')
+
+    const doc = this.currentRoom?.doc ?? new Y.Doc()
+    const provider = new WebrtcProvider(this.session.webrtcRoomName, doc, {
+      signaling: this.session.signalingUrls,
     })
 
     provider.awareness.setLocalStateField('user', {
-      name: userName,
-      color: userColor,
+      name: this.session.userName,
+      color: this.session.userColor,
       cursor: null,
       selection: null,
     })
 
+    if (this.statusHandler) {
+      provider.off('status', this.statusHandler)
+    }
+    this.statusHandler = (event: { connected: boolean }) => {
+      if (!this.session || this.intentionalLeave) return
+      if (event.connected) {
+        this.reconnectAttempt = 0
+        this.clearReconnectTimer()
+        this.setStatus('connected')
+        return
+      }
+      if (this.status === 'connected' || this.status === 'reconnecting') {
+        this.scheduleReconnect()
+      }
+    }
+    provider.on('status', this.statusHandler)
+
+    if (this.awarenessHandler) {
+      provider.awareness.off('change', this.awarenessHandler)
+    }
+    this.awarenessHandler = () => {
+      this.emit('users', Array.from(provider.awareness.getStates().values()))
+    }
+    provider.awareness.on('change', this.awarenessHandler)
+
     this.currentRoom = {
-      roomId,
+      roomId: this.session.roomId,
       provider,
       doc,
       awareness: provider.awareness,
     }
 
-    provider.awareness.on('change', () => {
-      this.emit('users', Array.from(provider.awareness.getStates().values()))
-    })
-
-    return this.currentRoom
-  }
-
-  leaveRoom(): void {
-    if (this.currentRoom) {
-      this.currentRoom.provider.destroy()
-      this.currentRoom = null
+    if (provider.connected) {
+      this.setStatus('connected')
     }
   }
 
-  getCurrentRoom(): CollaborationRoom | null {
-    return this.currentRoom
+  private scheduleReconnect(): void {
+    if (!this.session?.enableReconnect || this.intentionalLeave) return
+    if (this.reconnectTimer) return
+
+    const delay = RECONNECT_DELAYS_MS[Math.min(this.reconnectAttempt, RECONNECT_DELAYS_MS.length - 1)]
+    this.setStatus('reconnecting')
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+      if (!this.session || this.intentionalLeave) return
+      this.reconnectAttempt++
+      this.teardownProvider()
+      this.attachProvider()
+    }, delay)
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+  }
+
+  private teardownProvider(destroyDoc = false): void {
+    if (this.currentRoom) {
+      if (this.statusHandler) {
+        this.currentRoom.provider.off('status', this.statusHandler)
+        this.statusHandler = null
+      }
+      if (this.awarenessHandler) {
+        this.currentRoom.awareness.off('change', this.awarenessHandler)
+        this.awarenessHandler = null
+      }
+      this.currentRoom.provider.destroy()
+      if (destroyDoc) {
+        this.currentRoom.doc.destroy()
+      }
+      this.currentRoom = null
+    } else if (destroyDoc) {
+      // no-op
+    }
+  }
+
+  private setStatus(next: CollabConnectionStatus): void {
+    if (this.status === next) return
+    this.status = next
+    const payload: CollabStatusEvent = {
+      status: next,
+      roomId: this.session?.roomId ?? null,
+      reconnectAttempt: this.reconnectAttempt,
+    }
+    this.emit('status', payload)
   }
 
   private getFilesMap(): Y.Map<string> {
@@ -66,7 +226,6 @@ export class CollaborationService {
     return this.currentRoom.doc.getMap(FILES_MAP_KEY)
   }
 
-  /** Seed local workspace into the shared Yjs map (on join). */
   pushWorkspaceFiles(files: { name: string; content: string }[]): void {
     if (!this.currentRoom || files.length === 0) return
 
@@ -87,7 +246,6 @@ export class CollaborationService {
     }
   }
 
-  /** Subscribe to all file paths/content in the room. */
   onWorkspaceFilesChange(callback: (snapshot: Record<string, string>) => void): () => void {
     if (!this.currentRoom) return () => {}
 
@@ -107,7 +265,6 @@ export class CollaborationService {
     return () => map.unobserve(emitSnapshot)
   }
 
-  /** @deprecated Use onWorkspaceFilesChange */
   onFileChange(filePath: string, callback: (content: string) => void): () => void {
     if (!this.currentRoom) return () => {}
 
@@ -162,3 +319,12 @@ export class CollaborationService {
 }
 
 export const collaborationService = new CollaborationService()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => collaborationService.tryReconnect())
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      collaborationService.tryReconnect()
+    }
+  })
+}

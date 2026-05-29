@@ -39,6 +39,11 @@ describe('backgroundJobCompletionTracker', () => {
     expect(notify).not.toHaveBeenCalled()
 
     processBackgroundJobsSnapshot([job('1', 'succeeded')], { notify, t })
-    expect(notify).toHaveBeenCalledWith('success', 'backgroundJobs.notifySucceeded', expect.any(String))
+    expect(notify).toHaveBeenCalledWith(
+      'success',
+      'backgroundJobs.notifySucceeded',
+      'task 1',
+      expect.objectContaining({ onClick: expect.any(Function) }),
+    )
   })
 })

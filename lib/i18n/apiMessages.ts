@@ -126,6 +126,8 @@ export const API_MESSAGES = {
     'api.collab.nameTooLong': '房间名称过长',
     'api.collab.notMember': '你不是该房间成员',
     'api.collab.joinForbidden': '无法以该角色加入房间',
+    'api.collab.left': '已离开协作房间',
+    'api.collab.leaveFailed': '离开协作房间失败',
   },
   'en-US': {
     'api.auth.required': 'Email and password are required',
@@ -248,6 +250,8 @@ export const API_MESSAGES = {
     'api.collab.nameTooLong': 'Room name is too long',
     'api.collab.notMember': 'You are not a member of this room',
     'api.collab.joinForbidden': 'Cannot join with that role',
+    'api.collab.left': 'Left collaboration room',
+    'api.collab.leaveFailed': 'Failed to leave collaboration room',
   },
 } as const
 

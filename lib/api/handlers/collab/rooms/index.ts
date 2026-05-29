@@ -6,6 +6,7 @@ import { requireAuth } from '../../../requireAuth'
 import { readJsonWithLimit } from '../../../body'
 import { appendApiMessage, localizedErrorResponse } from '../../../localizedError'
 import {
+  buildCollabSignalingForUser,
   createCollaborationRoom,
   listCollaborationRoomsForUser,
   serializeCollabRoom,
@@ -43,9 +44,14 @@ export async function POST(req: Request) {
     }
 
     const room = await createCollaborationRoom(auth.user.id, name || null)
+    const signaling = await buildCollabSignalingForUser(
+      room,
+      auth.user.id,
+      auth.user.name ?? undefined,
+    )
     return jsonResponse(
       appendApiMessage(req, 'api.collab.roomCreated', {
-        room: serializeCollabRoom(room, room.members),
+        room: serializeCollabRoom(room, room.members, signaling),
       }),
       201,
     )

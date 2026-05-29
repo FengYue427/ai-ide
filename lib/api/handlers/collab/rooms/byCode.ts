@@ -6,6 +6,7 @@ import { requireAuth } from '../../../requireAuth'
 import { readJsonWithLimit } from '../../../body'
 import { appendApiMessage, localizedErrorResponse } from '../../../localizedError'
 import {
+  buildCollabSignalingForUser,
   getCollaborationRoomByCode,
   joinCollaborationRoom,
   serializeCollabRoom,
@@ -34,8 +35,13 @@ export async function GET(req: Request, ctx?: { params: Record<string, string> }
       return localizedErrorResponse(req, 'api.collab.notMember', 403)
     }
 
+    const signaling = await buildCollabSignalingForUser(
+      room,
+      auth.user.id,
+      auth.user.name ?? undefined,
+    )
     return jsonResponse({
-      room: serializeCollabRoom(room, room.members),
+      room: serializeCollabRoom(room, room.members, signaling),
     })
   } catch (error) {
     console.error('[Collab] Get room error:', error)
@@ -71,9 +77,14 @@ export async function POST(req: Request, ctx?: { params: Record<string, string> 
       return localizedErrorResponse(req, 'api.collab.joinForbidden', 403)
     }
 
+    const signaling = await buildCollabSignalingForUser(
+      result.room,
+      auth.user.id,
+      auth.user.name ?? undefined,
+    )
     return jsonResponse(
       appendApiMessage(req, 'api.collab.joined', {
-        room: serializeCollabRoom(result.room, result.members),
+        room: serializeCollabRoom(result.room, result.members, signaling),
       }),
     )
   } catch (error) {

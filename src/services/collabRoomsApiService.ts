@@ -5,6 +5,7 @@ import type { TranslateFn } from '../i18n'
 export type CollabSignalingClient = {
   mode: 'yjs-webrtc' | 'livekit'
   roomChannel: string
+  signalingUrls?: string[]
   livekitUrl?: string
   livekitToken?: string
 }
@@ -43,6 +44,26 @@ export async function createCollabRoom(
     }
   }
   return { room: json?.room }
+}
+
+export async function leaveCollabRoom(
+  code: string,
+  t?: TranslateFn,
+): Promise<{ ok?: boolean; error?: string }> {
+  const response = await apiFetch(`/api/collab/rooms/${encodeURIComponent(code)}/leave`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  const json = await readJsonResponse<{ success?: boolean; message?: string }>(response)
+  if (!response.ok) {
+    return {
+      error:
+        pickApiResponseMessage(json ?? undefined, t) ?? json?.message ?? `HTTP ${response.status}`,
+    }
+  }
+  return { ok: true }
 }
 
 export async function joinCollabRoom(

@@ -3,8 +3,14 @@ import { Check, Copy, Radio, Share2, Users } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { isCollabM1Enabled } from '../lib/collabM1Features'
 import { authService } from '../services/authService'
-import { createCollabRoom, joinCollabRoom } from '../services/collabRoomsApiService'
+import { useCollabConnection } from '../hooks/useCollabConnection'
+import {
+  createCollabRoom,
+  joinCollabRoom,
+  leaveCollabRoom,
+} from '../services/collabRoomsApiService'
 import { collaborationService } from '../services/collaborationService'
+import type { CollabRoomClient } from '../services/collabRoomsApiService'
 import { StorageLayer, unifiedStorage } from '../services/unifiedStorage'
 import { useIDEStore } from '../store/ideStore'
 import { ModalShell } from './ui/ModalShell'
@@ -14,6 +20,16 @@ interface CollaborationPanelProps {
 }
 
 const COLLAB_USERNAME_KEY = 'collab-username'
+
+function collabRoleLabel(
+  role: string,
+  t: (key: 'collab.role.host' | 'collab.role.editor' | 'collab.role.viewer') => string,
+): string {
+  if (role === 'host') return t('collab.role.host')
+  if (role === 'editor') return t('collab.role.editor')
+  if (role === 'viewer') return t('collab.role.viewer')
+  return role
+}
 
 const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const { t } = useI18n()
@@ -26,6 +42,8 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const [error, setError] = useState<string | null>(null)
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const collabM1 = isCollabM1Enabled()
+  const { status: connStatus, reconnectAttempt } = useCollabConnection(joined)
+  const [memberRole, setMemberRole] = useState<string | null>(null)
 
   useEffect(() => {
     unifiedStorage.get<string>(COLLAB_USERNAME_KEY, '').then((saved) => {
@@ -76,11 +94,31 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     setRoomId(Math.random().toString(36).substring(2, 8))
   }
 
+  const connectSignaling = (code: string, room: CollabRoomClient, color: string) => {
+    const me = authService.getCurrentUser()
+    const myMember = room.members.find((m) => m.userId === me?.id)
+    setMemberRole(myMember?.role ?? null)
+
+    collaborationService.joinRoom({
+      roomId: code,
+      userName,
+      userColor: color,
+      signaling: room.signaling,
+      enableReconnect: true,
+    })
+    collaborationService.on('users', (nextUsers) => {
+      setUsers(nextUsers as typeof users)
+    })
+    useIDEStore.getState().setCollaborationRoomId(code)
+    setJoined(true)
+  }
+
   const handleJoin = async () => {
     setError(null)
     const colors = ['#58a6ff', '#33c58e', '#ffb648', '#f778ba', '#a371f7']
     const color = colors[Math.floor(Math.random() * colors.length)]
     let nextRoomId = roomId.trim()
+    let roomPayload: CollabRoomClient | undefined
 
     if (collabM1) {
       if (!authService.getCurrentUser()) {
@@ -95,15 +133,17 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
             setError(created.error ?? t('collab.m1.createFailed'))
             return
           }
+          roomPayload = created.room
           nextRoomId = created.room.code
           setRoomId(nextRoomId)
         } else {
-          const joined = await joinCollabRoom(nextRoomId, { t })
-          if (joined.error || !joined.room) {
-            setError(joined.error ?? t('collab.m1.joinFailed'))
+          const joinedRes = await joinCollabRoom(nextRoomId, { t })
+          if (joinedRes.error || !joinedRes.room) {
+            setError(joinedRes.error ?? t('collab.m1.joinFailed'))
             return
           }
-          nextRoomId = joined.room.code
+          roomPayload = joinedRes.room
+          nextRoomId = joinedRes.room.code
         }
       } finally {
         setBusy(false)
@@ -115,19 +155,43 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
 
     await unifiedStorage.set(COLLAB_USERNAME_KEY, userName, { layer: StorageLayer.LOCAL })
 
-    collaborationService.joinRoom(nextRoomId, userName, color)
-    collaborationService.on('users', (nextUsers) => {
-      setUsers(nextUsers as typeof users)
-    })
-    useIDEStore.getState().setCollaborationRoomId(nextRoomId)
-    setJoined(true)
+    if (collabM1 && roomPayload) {
+      connectSignaling(nextRoomId, roomPayload, color)
+    } else {
+      collaborationService.joinRoom(nextRoomId, userName, color)
+      collaborationService.on('users', (nextUsers) => {
+        setUsers(nextUsers as typeof users)
+      })
+      useIDEStore.getState().setCollaborationRoomId(nextRoomId)
+      setJoined(true)
+    }
   }
 
   const handleLeave = () => {
+    const code = roomId.trim()
+    if (collabM1 && code && authService.getCurrentUser()) {
+      void leaveCollabRoom(code, t)
+    }
     collaborationService.leaveRoom()
     useIDEStore.getState().setCollaborationRoomId(null)
     setJoined(false)
     setUsers([])
+    setMemberRole(null)
+  }
+
+  const connStatusLabel = (): string => {
+    switch (connStatus) {
+      case 'connected':
+        return t('collab.status.connected')
+      case 'connecting':
+        return t('collab.status.connecting')
+      case 'reconnecting':
+        return t('collab.status.reconnecting', { attempt: reconnectAttempt })
+      case 'disconnected':
+        return t('collab.status.disconnected')
+      default:
+        return ''
+    }
   }
 
   const copyRoomLink = async () => {
@@ -222,6 +286,14 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
       ) : (
         <div className="collab-stack">
           <div className="collab-panel">
+            <div className="collab-connection-row">
+              <span className={`collab-connection collab-connection--${connStatus}`}>
+                {connStatusLabel()}
+              </span>
+              {memberRole ? (
+                <span className="collab-role-badge">{collabRoleLabel(memberRole, t)}</span>
+              ) : null}
+            </div>
             <div className="collab-members-title">{t('collab.roomLink')}</div>
             <div className="collab-copy-row">
               <input

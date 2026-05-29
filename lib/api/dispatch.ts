@@ -227,6 +227,15 @@ const routes: RouteEntry[] = [
     export: 'POST',
   },
   {
+    method: 'POST',
+    match: (p) => {
+      const m = p.match(/^\/api\/collab\/rooms\/([^/]+)\/leave$/)
+      return m ? { code: decodeURIComponent(m[1]) } : null
+    },
+    load: () => import('./handlers/collab/rooms/leave'),
+    export: 'POST',
+  },
+  {
     method: 'GET',
     match: (p) => {
       if (!p.startsWith('/api/auth/')) return null

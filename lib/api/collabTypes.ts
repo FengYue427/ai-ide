@@ -10,6 +10,8 @@ export const MAX_COLLAB_ROOM_NAME_CHARS = 120
 export type CollabSignalingPayload = {
   mode: 'yjs-webrtc' | 'livekit'
   roomChannel: string
+  /** y-webrtc signaling servers (M1 may set dedicated WS). */
+  signalingUrls?: string[]
   livekitUrl?: string
   livekitToken?: string
 }

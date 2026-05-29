@@ -12,9 +12,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `GET|POST /api/collab/rooms`、`GET|POST /api/collab/rooms/:code`
 - `VITE_COLLAB_M1_SIGNAL` + 协作面板对接服务端房间
 
+### Added (v1.1.3 F2 · 重连)
+
+- `CollaborationService` 连接状态机 + 退避重连（≈30s）+ 保留 Y.Doc
+- `POST /api/collab/rooms/:code/leave`、协作面板离开同步 API
+- 可选 Livekit JWT（`livekit-server-sdk`）；`COLLAB_SIGNALING_URL(S)` 配置
+- 文档：[docs/COLLAB_M1_RECONNECT.md](docs/COLLAB_M1_RECONNECT.md)
+
 ### Next
 
-- v1.1.3 F2～F5：重连、权限、Livekit 可选 → [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
+- v1.1.3 F3～F5：viewer 只读、双机 smoke、GA → [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
 
 ---
 
