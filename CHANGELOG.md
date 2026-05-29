@@ -21,7 +21,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- `BackgroundJobsPanel` Toggle 与 `t()` 类型导致 `tsc` 失败（阻塞 1.1.2.3 部署）
+- Vercel **Hobby** 部署：`/api/jobs/process` Cron 改为每日 `0 4 * * *`（原 `*/5` 超出 Hobby 限额）
 
 ---
 

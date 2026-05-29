@@ -49,7 +49,7 @@ npx prisma migrate deploy
 | `npm run jobs:process` | 本地处理 queued 任务（同 Cron 逻辑） |
 | `npm run jobs:verify-cron` | 校验 `/api/jobs/process` Bearer 鉴权 |
 
-Vercel Cron：`/api/jobs/process`，`*/5 * * * *`（见 `vercel.json`）。
+Vercel Cron：`/api/jobs/process`，`0 4 * * *`（每日一次；Hobby 计划限制。Pro 可改为 `*/5 * * * *`，见 `vercel.json`）。
 
 ---
 
