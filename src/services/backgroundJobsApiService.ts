@@ -111,6 +111,54 @@ export async function createBackgroundJob(
   return parseJobResponse(response, t)
 }
 
+export type CreateBackgroundJobsBatchResult = {
+  jobs: SerializedBackgroundJob[]
+  created: number
+  skipped?: number
+  requested?: number
+  error?: string
+}
+
+export async function createBackgroundJobsBatch(
+  input: { prompts: string[]; repoKey?: string | null },
+  t?: TranslateFn,
+): Promise<CreateBackgroundJobsBatchResult> {
+  const response = await apiFetch('/api/jobs/batch', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  const json = await readJsonResponse<{
+    jobs?: SerializedBackgroundJob[]
+    created?: number
+    skipped?: number
+    requested?: number
+    error?: string
+    message?: string
+    messageKey?: string
+  }>(response)
+
+  if (!response.ok) {
+    return {
+      jobs: json?.jobs ?? [],
+      created: json?.created ?? 0,
+      skipped: json?.skipped,
+      error:
+        pickApiResponseMessage(json ?? undefined, t) ??
+        json?.error ??
+        `HTTP ${response.status}`,
+    }
+  }
+
+  return {
+    jobs: json?.jobs ?? [],
+    created: json?.created ?? json?.jobs?.length ?? 0,
+    skipped: json?.skipped,
+    requested: json?.requested,
+  }
+}
+
 export async function cancelBackgroundJob(
   id: string,
   t?: TranslateFn,

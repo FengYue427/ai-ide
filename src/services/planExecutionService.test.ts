@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   buildPlanBackgroundJobPrompt,
   buildPlanExecutionPrompt,
+  dedupePlanSteps,
   getFirstPlanStep,
+  isPlanStepQueuedInJobs,
   listPlanSteps,
   parsePlanBackgroundJobPrompt,
 } from './planExecutionService'
@@ -42,5 +44,30 @@ describe('planExecutionService', () => {
       planPath: '.aide/plans/foo.md',
       stepText: 'refactor chat',
     })
+  })
+
+  it('dedupes plan steps by text', () => {
+    expect(
+      dedupePlanSteps([
+        { text: 'A' },
+        { text: 'a' },
+        { text: 'B' },
+      ]),
+    ).toEqual([{ text: 'A' }, { text: 'B' }])
+  })
+
+  it('detects queued plan step in jobs', () => {
+    const planPath = '.aide/plans/foo.md'
+    const prompt = buildPlanBackgroundJobPrompt(planPath, 'step one')
+    expect(
+      isPlanStepQueuedInJobs(
+        [{ prompt, status: 'running' }],
+        planPath,
+        'step one',
+      ),
+    ).toBe(true)
+    expect(isPlanStepQueuedInJobs([{ prompt, status: 'succeeded' }], planPath, 'step one')).toBe(
+      false,
+    )
   })
 })

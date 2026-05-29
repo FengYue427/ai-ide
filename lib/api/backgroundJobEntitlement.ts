@@ -78,3 +78,13 @@ export async function assertCanCreateBackgroundJob(
 
   return { ok: true }
 }
+
+/** How many more jobs the user can create today (0 if at daily cap). */
+export async function remainingBackgroundJobsToday(
+  userId: string,
+  planName: string,
+): Promise<number> {
+  const dailyLimit = backgroundJobDailyLimit(planName)
+  const createdToday = await countBackgroundJobsCreatedToday(userId)
+  return Math.max(0, dailyLimit - createdToday)
+}

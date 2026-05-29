@@ -112,6 +112,8 @@ export const API_MESSAGES = {
     'api.job.dailyLimitUpgrade': '免费版每日后台任务上限为 {limit} 次，请升级专业版',
     'api.job.concurrentLimit': '进行中的后台任务过多（最多 {limit} 个）',
     'api.job.concurrentLimitUpgrade': '免费版同时只能有 {limit} 个后台任务，请等待完成或升级专业版',
+    'api.job.batchEmpty': '批量任务列表为空',
+    'api.job.batchCreated': '已创建 {created}/{requested} 个后台任务',
   },
   'en-US': {
     'api.auth.required': 'Email and password are required',
@@ -220,6 +222,8 @@ export const API_MESSAGES = {
     'api.job.concurrentLimit': 'Too many active background jobs (max {limit})',
     'api.job.concurrentLimitUpgrade':
       'Free plan allows {limit} active background job at a time. Wait or upgrade to Pro.',
+    'api.job.batchEmpty': 'Batch job list is empty',
+    'api.job.batchCreated': 'Created {created}/{requested} background jobs',
   },
 } as const
 

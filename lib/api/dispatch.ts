@@ -144,6 +144,12 @@ const routes: RouteEntry[] = [
   { method: 'GET', match: (p) => (p === '/api/jobs' ? {} : null), load: () => import('./handlers/jobs/index'), export: 'GET' },
   { method: 'POST', match: (p) => (p === '/api/jobs' ? {} : null), load: () => import('./handlers/jobs/index'), export: 'POST' },
   {
+    method: 'POST',
+    match: (p) => (p === '/api/jobs/batch' ? {} : null),
+    load: () => import('./handlers/jobs/batch'),
+    export: 'POST',
+  },
+  {
     method: 'GET',
     match: (p) => (p === '/api/jobs/process' ? {} : null),
     load: () => import('./handlers/jobs/process'),

@@ -15,6 +15,9 @@ export const MAX_JOB_REPO_KEY_CHARS = 256
 export const DEFAULT_JOB_LIST_LIMIT = 50
 export const MAX_JOB_LIST_LIMIT = 100
 
+/** Max jobs created per batch request (v1.1.2.7). */
+export const MAX_BACKGROUND_JOBS_BATCH = 25
+
 /** Hard cap per v1.1.2 MVP (30 minutes). */
 export const MAX_JOB_RUNTIME_MS = 30 * 60 * 1000
 

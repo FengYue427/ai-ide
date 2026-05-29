@@ -8,6 +8,7 @@ export interface ToastMessage {
   kind: ToastKind
   title: string
   detail?: string
+  onClick?: () => void
 }
 
 export interface ConfirmRequest {
@@ -42,18 +43,52 @@ export function FeedbackCenter({
   return (
     <>
       <div className="toast-stack" aria-live="polite">
-        {toasts.map((toast) => (
-          <div key={toast.id} className={`toast toast-${toast.kind}`}>
-            <div className="toast-icon">{toastIcon[toast.kind]}</div>
-            <div className="toast-content">
-              <div className="toast-title">{toast.title}</div>
-              {toast.detail && <div className="toast-detail">{toast.detail}</div>}
+        {toasts.map((toast) => {
+          const clickable = Boolean(toast.onClick)
+          return (
+            <div
+              key={toast.id}
+              className={`toast toast-${toast.kind}${clickable ? ' toast--clickable' : ''}`}
+              role={clickable ? 'button' : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              onClick={
+                clickable
+                  ? () => {
+                      toast.onClick?.()
+                      onDismissToast(toast.id)
+                    }
+                  : undefined
+              }
+              onKeyDown={
+                clickable
+                  ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        toast.onClick?.()
+                        onDismissToast(toast.id)
+                      }
+                    }
+                  : undefined
+              }
+            >
+              <div className="toast-icon">{toastIcon[toast.kind]}</div>
+              <div className="toast-content">
+                <div className="toast-title">{toast.title}</div>
+                {toast.detail && <div className="toast-detail">{toast.detail}</div>}
+              </div>
+              <button
+                className="toast-close"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onDismissToast(toast.id)
+                }}
+                aria-label={t('feedback.closeToast')}
+              >
+                <X size={14} />
+              </button>
             </div>
-            <button className="toast-close" onClick={() => onDismissToast(toast.id)} aria-label={t('feedback.closeToast')}>
-              <X size={14} />
-            </button>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {confirmRequest && (

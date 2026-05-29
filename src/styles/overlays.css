@@ -217,6 +217,14 @@
   color: var(--text-primary);
 }
 
+.toast--clickable {
+  cursor: pointer;
+}
+
+.toast--clickable:hover {
+  border-color: color-mix(in srgb, var(--accent-color) 50%, var(--border-color));
+}
+
 .confirm-overlay {
   position: fixed;
   inset: 0;

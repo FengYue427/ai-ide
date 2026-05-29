@@ -44,9 +44,13 @@ import {
 } from '../services/projectTasksService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
-import { buildPlanBackgroundJobPrompt, buildPlanExecutionPrompt } from '../services/planExecutionService'
+import { buildPlanExecutionPrompt } from '../services/planExecutionService'
+import {
+  preparePlanStepsForBackgroundJobs,
+  queuePlanStepsAsBackgroundJobs,
+} from '../services/planBackgroundJobsService'
+import { listBackgroundJobs } from '../services/backgroundJobsApiService'
 import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
-import { createBackgroundJob } from '../services/backgroundJobsApiService'
 import { buildPlanCatalog } from '../services/planCatalogService'
 import { buildReportCatalog, findLatestReportPath } from '../services/reportCatalogService'
 import {
@@ -708,7 +712,18 @@ export function PanelHost({
                     return
                   }
                   void (async () => {
-                    const preview = steps
+                    const { jobs: existing } = await listBackgroundJobs(100)
+                    const prepared = preparePlanStepsForBackgroundJobs(path, steps, existing)
+                    if (prepared.steps.length === 0) {
+                      notify(
+                        'info',
+                        t('plan.host.runBackgroundAlreadyQueued.title'),
+                        t('plan.host.runBackgroundAlreadyQueued.detail'),
+                      )
+                      return
+                    }
+
+                    const preview = prepared.steps
                       .slice(0, 8)
                       .map((s) => `- ${s.text}`)
                       .join('\n')
@@ -716,37 +731,40 @@ export function PanelHost({
                       title: t('plan.host.runBackgroundConfirm.title'),
                       message: t('plan.host.runBackgroundConfirm.message', {
                         path,
-                        count: steps.length,
+                        count: prepared.steps.length,
                         preview,
-                        more: steps.length > 8 ? t('plan.host.runConfirm.more') : '',
+                        more: prepared.steps.length > 8 ? t('plan.host.runConfirm.more') : '',
                       }),
                       confirmText: t('plan.host.runBackgroundConfirm.confirm'),
                     })
                     if (!ok) return
 
-                    let queued = 0
-                    let lastError: string | undefined
-                    for (const step of steps) {
-                      const prompt = buildPlanBackgroundJobPrompt(path, step.text)
-                      const { job, error } = await createBackgroundJob({ prompt, repoKey: 'default' }, t)
-                      if (error || !job) {
-                        lastError = error
-                        break
-                      }
-                      queued += 1
-                    }
+                    const queued = await queuePlanStepsAsBackgroundJobs(path, steps, {
+                      t,
+                      existingJobs: existing,
+                    })
 
                     closeSettingsPanel()
                     openBackgroundJobsPanel()
-                    if (queued > 0) {
+                    if (queued.created > 0) {
                       notify(
                         'success',
                         t('plan.host.runBackgroundQueued.title'),
-                        t('plan.host.runBackgroundQueued.detail', { count: queued, path }),
+                        t('plan.host.runBackgroundQueued.detail', {
+                          count: queued.created,
+                          path,
+                        }),
                       )
                     }
-                    if (lastError) {
-                      notify('error', t('chat.backgroundRun.failed'), lastError)
+                    if (queued.skippedDuplicate > 0) {
+                      notify(
+                        'info',
+                        t('plan.host.runBackgroundSkipped.title'),
+                        t('plan.host.runBackgroundSkipped.detail', { count: queued.skippedDuplicate }),
+                      )
+                    }
+                    if (queued.error) {
+                      notify('error', t('chat.backgroundRun.failed'), queued.error)
                     }
                   })()
                 }

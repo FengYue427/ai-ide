@@ -11,6 +11,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.2.8] — 2026-05-29
+
+### Added
+
+- 后台任务完成 **Toast / 桌面通知可点击** → 打开「后台任务」Tab
+- 任务详情 **复制 Prompt**
+- 列表项 **快速重试**（失败/已取消）
+
+---
+
+## [1.1.2.7] — 2026-05-29
+
+### Added
+
+- Plan **批量后台**：`POST /api/jobs/batch`、步骤去重、跳过已在队列中的同计划步骤
+- 计划目录 **全部后台运行 ({count})** 按钮
+- `planBackgroundJobsService` 统一排队逻辑
+
+---
+
 ## [1.1.2.6] — 2026-05-29
 
 ### Added

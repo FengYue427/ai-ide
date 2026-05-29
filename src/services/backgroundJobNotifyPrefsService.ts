@@ -34,15 +34,30 @@ export function saveBackgroundJobNotifyPrefs(prefs: BackgroundJobNotifyPrefs): v
   }
 }
 
-export function notifyBackgroundJobDesktop(title: string, body: string): void {
+export function notifyBackgroundJobDesktop(
+  title: string,
+  body: string,
+  onClick?: () => void,
+): void {
   if (typeof Notification === 'undefined') return
+
+  const show = (notification: Notification) => {
+    if (onClick) {
+      notification.onclick = () => {
+        window.focus()
+        onClick()
+        notification.close()
+      }
+    }
+  }
+
   if (Notification.permission === 'granted') {
-    new Notification(title, { body })
+    show(new Notification(title, { body }))
     return
   }
   if (Notification.permission !== 'denied') {
     void Notification.requestPermission().then((perm) => {
-      if (perm === 'granted') new Notification(title, { body })
+      if (perm === 'granted') show(new Notification(title, { body }))
     })
   }
 }

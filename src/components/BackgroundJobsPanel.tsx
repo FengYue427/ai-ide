@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bell, Check, Clock, Eye, Loader2, RefreshCw, RotateCcw, Server, XCircle } from 'lucide-react'
+import { Bell, Check, Clock, Copy, Eye, Loader2, RefreshCw, RotateCcw, Server, XCircle } from 'lucide-react'
 import { useI18n } from '../i18n'
 import type { TranslationKey } from '../i18n/translations'
 import type { ToastKind } from './FeedbackCenter'
@@ -63,6 +63,7 @@ export default function BackgroundJobsPanel({
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [applyingId, setApplyingId] = useState<string | null>(null)
   const [retryingId, setRetryingId] = useState<string | null>(null)
+  const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [listFilter, setListFilter] = useState<JobListFilter>('all')
   const [notifyPrefs, setNotifyPrefs] = useState<BackgroundJobNotifyPrefs>(() => loadBackgroundJobNotifyPrefs())
   const mountedRef = useRef(true)
@@ -183,6 +184,17 @@ export default function BackgroundJobsPanel({
     }
   }
 
+  const handleCopyPrompt = async (prompt: string) => {
+    try {
+      await navigator.clipboard.writeText(prompt)
+      setCopiedPrompt(true)
+      notify?.('success', t('backgroundJobs.copyPromptOk'))
+      window.setTimeout(() => setCopiedPrompt(false), 2000)
+    } catch {
+      notify?.('error', t('backgroundJobs.copyPromptFailed'))
+    }
+  }
+
   const handleRetry = async (job: SerializedBackgroundJob) => {
     setRetryingId(job.id)
     try {
@@ -299,7 +311,7 @@ export default function BackgroundJobsPanel({
         <div className="background-jobs-panel__body">
           <ul className="background-jobs-list" role="list">
             {filteredJobs.map((job) => (
-              <li key={job.id}>
+              <li key={job.id} className="background-jobs-list__row">
                 <button
                   type="button"
                   className={`background-jobs-list__item ${selected?.id === job.id ? 'background-jobs-list__item--active' : ''}`}
@@ -316,6 +328,25 @@ export default function BackgroundJobsPanel({
                     {new Date(job.createdAt).toLocaleString()}
                   </span>
                 </button>
+                {(job.status === 'failed' || job.status === 'cancelled') ? (
+                  <button
+                    type="button"
+                    className="background-jobs-list__retry"
+                    title={t('backgroundJobs.retry')}
+                    disabled={retryingId === job.id}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setSelectedId(job.id)
+                      void handleRetry(job)
+                    }}
+                  >
+                    {retryingId === job.id ? (
+                      <Loader2 size={14} className="spin" />
+                    ) : (
+                      <RotateCcw size={14} />
+                    )}
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -342,7 +373,18 @@ export default function BackgroundJobsPanel({
                 </div>
               ) : null}
 
-              <pre className="background-jobs-detail__prompt">{selected.prompt}</pre>
+              <div className="background-jobs-detail__prompt-row">
+                <pre className="background-jobs-detail__prompt">{selected.prompt}</pre>
+                <button
+                  type="button"
+                  className="chat-btn-ghost"
+                  title={t('backgroundJobs.copyPrompt')}
+                  onClick={() => void handleCopyPrompt(selected.prompt)}
+                >
+                  <Copy size={14} style={{ marginRight: 6 }} />
+                  {copiedPrompt ? t('backgroundJobs.copyPromptOk') : t('backgroundJobs.copyPrompt')}
+                </button>
+              </div>
 
               {selected.result?.summary ? (
                 <div className="background-jobs-detail__result">

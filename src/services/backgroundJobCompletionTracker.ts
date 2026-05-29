@@ -7,12 +7,18 @@ import {
   type BackgroundJobStatus,
   type SerializedBackgroundJob,
 } from './backgroundJobsApiService'
+import { dispatchOpenBackgroundJobsPanel } from '../lib/backgroundJobsPanelEvents'
 import {
   loadBackgroundJobNotifyPrefs,
   notifyBackgroundJobDesktop,
 } from './backgroundJobNotifyPrefsService'
 
-type NotifyFn = (kind: ToastKind, title: string, detail?: string) => void
+type NotifyFn = (
+  kind: ToastKind,
+  title: string,
+  detail?: string,
+  options?: { onClick?: () => void },
+) => void
 
 let lastStatuses = new Map<string, BackgroundJobStatus>()
 
@@ -65,10 +71,16 @@ export function processBackgroundJobsSnapshot(
 
     const snippet = job.prompt.trim().slice(0, 72)
     const detail = snippet + (job.prompt.length > 72 ? '…' : '')
-    ctx.notify?.(next === 'succeeded' ? 'success' : next === 'failed' ? 'error' : 'info', ctx.t(keys.toast), detail)
+    const openPanel = () => dispatchOpenBackgroundJobsPanel()
+    ctx.notify?.(
+      next === 'succeeded' ? 'success' : next === 'failed' ? 'error' : 'info',
+      ctx.t(keys.toast),
+      detail,
+      { onClick: openPanel },
+    )
 
     if (prefs.notifyOnComplete) {
-      notifyBackgroundJobDesktop(ctx.t(keys.desktop), detail)
+      notifyBackgroundJobDesktop(ctx.t(keys.desktop), detail, openPanel)
     }
 
     ctx.onTerminal?.(job)

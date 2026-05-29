@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { FeedbackCenter } from '../components/FeedbackCenter'
 import { PluginModal } from '../components/PluginModal'
 import { useBillingReturn } from '../hooks/useBillingReturn'
@@ -29,6 +30,7 @@ import { SearchPanel } from './lazyPanels'
 import { PanelHost } from './PanelHost'
 import { RightPanel } from './RightPanel'
 import { useAppFeedback } from './useAppFeedback'
+import { OPEN_BACKGROUND_JOBS_PANEL_EVENT } from '../lib/backgroundJobsPanelEvents'
 import { loadWorkspaceByRef } from '../services/workspaceLoader'
 import { markWorkspaceHydrated } from '../services/workspaceSession'
 import type { EditorTheme } from '../store/ideStore'
@@ -164,6 +166,12 @@ export function AppShell() {
     })
 
   const ui = useUIActions()
+
+  useEffect(() => {
+    const openPanel = () => ui.openBackgroundJobsPanel()
+    window.addEventListener(OPEN_BACKGROUND_JOBS_PANEL_EVENT, openPanel)
+    return () => window.removeEventListener(OPEN_BACKGROUND_JOBS_PANEL_EVENT, openPanel)
+  }, [ui.openBackgroundJobsPanel])
 
   useAppShortcuts({
     files,
