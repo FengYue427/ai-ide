@@ -188,6 +188,40 @@ async function run() {
       fail('jobs GET list', e.message)
     }
 
+    // F4: free tier allows only 1 active job — second create must 429 while first is queued
+    try {
+      const { res, json } = await api('/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({ prompt: 'concurrent limit probe' }),
+      })
+      if (res.status === 429 && (json?.messageKey === 'api.job.concurrentLimitUpgrade' || json?.error)) {
+        pass('jobs POST concurrent limit', '429 while first job active')
+      } else {
+        fail('jobs POST concurrent limit', `expected 429, got ${res.status}`)
+      }
+    } catch (e) {
+      fail('jobs POST concurrent limit', e.message)
+    }
+
+    try {
+      const { res, json } = await api(`/api/jobs/${jobId}/cancel`, { method: 'POST', body: '{}' })
+      if (res.ok && json?.job?.status === 'cancelled') {
+        pass('jobs POST cancel', jobId)
+      } else {
+        fail('jobs POST cancel', json?.error || `status=${json?.job?.status}`)
+      }
+    } catch (e) {
+      fail('jobs POST cancel', e.message)
+    }
+
+    try {
+      const { res, json } = await api(`/api/jobs/${jobId}/cancel`, { method: 'POST', body: '{}' })
+      if (res.status === 409) pass('jobs cancel twice', '409 not cancellable')
+      else fail('jobs cancel twice', `expected 409, got ${res.status}`)
+    } catch (e) {
+      fail('jobs cancel twice', e.message)
+    }
+
     let workerJobId = null
     try {
       const { res, json } = await api('/api/jobs', {
@@ -196,8 +230,9 @@ async function run() {
       })
       if (res.status === 201 && json?.job?.status === 'queued' && json.job.id) {
         workerJobId = json.job.id
+        pass('jobs POST worker job', workerJobId)
       } else {
-        fail('jobs POST worker job', json?.error || `HTTP ${res.status}`)
+        fail('jobs POST worker job', json?.error || json?.message || `HTTP ${res.status}`)
       }
     } catch (e) {
       fail('jobs POST worker job', e.message)
@@ -232,25 +267,6 @@ async function run() {
       }
     } else if (workerJobId) {
       pass('jobs worker pipeline', 'skipped (set CRON_SECRET to run cron)')
-    }
-
-    try {
-      const { res, json } = await api(`/api/jobs/${jobId}/cancel`, { method: 'POST', body: '{}' })
-      if (res.ok && json?.job?.status === 'cancelled') {
-        pass('jobs POST cancel', jobId)
-      } else {
-        fail('jobs POST cancel', json?.error || `status=${json?.job?.status}`)
-      }
-    } catch (e) {
-      fail('jobs POST cancel', e.message)
-    }
-
-    try {
-      const { res, json } = await api(`/api/jobs/${jobId}/cancel`, { method: 'POST', body: '{}' })
-      if (res.status === 409) pass('jobs cancel twice', '409 not cancellable')
-      else fail('jobs cancel twice', `expected 409, got ${res.status}`)
-    } catch (e) {
-      fail('jobs cancel twice', e.message)
     }
   }
 
