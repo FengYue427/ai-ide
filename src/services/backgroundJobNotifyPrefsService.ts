@@ -1,11 +1,13 @@
 export interface BackgroundJobNotifyPrefs {
   notifyOnComplete: boolean
+  autoMarkPlanStep: boolean
 }
 
 const STORAGE_KEY = 'ai-ide:background-job-notify'
 
 const DEFAULTS: BackgroundJobNotifyPrefs = {
   notifyOnComplete: true,
+  autoMarkPlanStep: false,
 }
 
 export function loadBackgroundJobNotifyPrefs(): BackgroundJobNotifyPrefs {
@@ -16,6 +18,8 @@ export function loadBackgroundJobNotifyPrefs(): BackgroundJobNotifyPrefs {
     return {
       notifyOnComplete:
         parsed.notifyOnComplete === undefined ? DEFAULTS.notifyOnComplete : Boolean(parsed.notifyOnComplete),
+      autoMarkPlanStep:
+        parsed.autoMarkPlanStep === undefined ? DEFAULTS.autoMarkPlanStep : Boolean(parsed.autoMarkPlanStep),
     }
   } catch {
     return { ...DEFAULTS }

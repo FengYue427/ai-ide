@@ -7,20 +7,12 @@
 | **1.1.2.1** | 后台任务完成通知、工具栏/Tab 徽章 | ✅ |
 | **1.1.2.2** | 一键 **应用到 IDE**（`pendingChanges`） | ✅ |
 | **1.1.2.3** | Plan 目录 **后台运行** → `POST /api/jobs` | ✅ |
+| **1.1.2.4** | 重试、筛选、Plan 步骤回填 | ✅ |
 
 ## 启用
 
 生产需 `VITE_BACKGROUND_AGENT=true`（与 v1.1.2 相同）。见 [BACKGROUND_AGENT_QUICKSTART.md](./BACKGROUND_AGENT_QUICKSTART.md)。
 
-## 发版（可选）
+## 发版
 
-```powershell
-cd C:\Users\18663\IDE\ai-ide
-npm run test:unit
-npm run build:deploy
-git add .
-git commit -m "release: v1.1.2.3 background agent patches"
-git push origin main
-# 按需 tag: v1.1.2.3
-npx vercel --prod --yes
-```
+由 Agent 自动：`npm run build:deploy` → `git push` → `npx vercel --prod --yes`。

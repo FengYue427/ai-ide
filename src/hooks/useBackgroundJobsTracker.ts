@@ -3,7 +3,9 @@ import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
 import type { ToastKind } from '../components/FeedbackCenter'
 import { useI18n } from '../i18n'
 import { processBackgroundJobsSnapshot } from '../services/backgroundJobCompletionTracker'
+import { maybeAutoMarkPlanStepFromJob } from '../services/backgroundJobPlanBackfillService'
 import { listBackgroundJobs } from '../services/backgroundJobsApiService'
+import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { useIDEStore } from '../store/ideStore'
 
 const POLL_MS = 10_000
@@ -27,7 +29,23 @@ export function useBackgroundJobsTracker(
     const tick = async () => {
       const { jobs } = await listBackgroundJobs(50)
       if (cancelled) return
-      const active = processBackgroundJobsSnapshot(jobs, { notify, t })
+      const { files, setFiles } = useIDEStore.getState()
+      const active = processBackgroundJobsSnapshot(jobs, {
+        notify,
+        t,
+        onTerminal: (job) => {
+          maybeAutoMarkPlanStepFromJob(
+            files,
+            job,
+            (nextFiles) => {
+              setFiles(nextFiles)
+              markWorkspaceHydrated()
+            },
+            notify,
+            t,
+          )
+        },
+      })
       setBackgroundJobsActiveCount(active)
     }
 

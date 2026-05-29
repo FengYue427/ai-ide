@@ -1,4 +1,5 @@
 import type { TranslateFn } from '../i18n'
+import type { TranslationKey } from '../i18n/translations'
 import type { ToastKind } from '../components/FeedbackCenter'
 import {
   isActiveBackgroundJobStatus,
@@ -25,7 +26,7 @@ export function countActiveBackgroundJobs(jobs: SerializedBackgroundJob[]): numb
 
 function terminalNotifyKeys(
   status: BackgroundJobStatus,
-): { toast: 'backgroundJobs.notifySucceeded' | 'backgroundJobs.notifyFailed' | 'backgroundJobs.notifyCancelled'; desktop: string } | null {
+): { toast: TranslationKey; desktop: TranslationKey } | null {
   if (status === 'succeeded') {
     return { toast: 'backgroundJobs.notifySucceeded', desktop: 'backgroundJobs.notifyDesktopSucceeded' }
   }
@@ -40,7 +41,11 @@ function terminalNotifyKeys(
 
 export function processBackgroundJobsSnapshot(
   jobs: SerializedBackgroundJob[],
-  ctx: { notify?: NotifyFn; t: TranslateFn },
+  ctx: {
+    notify?: NotifyFn
+    t: TranslateFn
+    onTerminal?: (job: SerializedBackgroundJob) => void
+  },
 ): number {
   const prefs = loadBackgroundJobNotifyPrefs()
   const seen = new Set<string>()
@@ -65,6 +70,8 @@ export function processBackgroundJobsSnapshot(
     if (prefs.notifyOnComplete) {
       notifyBackgroundJobDesktop(ctx.t(keys.desktop), detail)
     }
+
+    ctx.onTerminal?.(job)
   }
 
   for (const id of [...lastStatuses.keys()]) {

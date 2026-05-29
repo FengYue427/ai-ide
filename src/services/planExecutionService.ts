@@ -26,3 +26,12 @@ export function buildPlanExecutionPrompt(step: string): string {
 export function buildPlanBackgroundJobPrompt(planPath: string, step: string): string {
   return `## Plan\nPath: ${planPath}\n\n${buildPlanExecutionPrompt(step)}`
 }
+
+export function parsePlanBackgroundJobPrompt(
+  prompt: string,
+): { planPath: string; stepText: string } | null {
+  const pathMatch = prompt.match(/^## Plan\s*\r?\nPath:\s*(.+)$/m)
+  const stepMatch = prompt.match(/^- \[ \]\s+(.+)$/m)
+  if (!pathMatch?.[1] || !stepMatch?.[1]) return null
+  return { planPath: pathMatch[1].trim(), stepText: stepMatch[1].trim() }
+}

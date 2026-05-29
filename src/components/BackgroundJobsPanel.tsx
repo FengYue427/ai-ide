@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bell, Clock, Eye, Loader2, RefreshCw, Server, XCircle } from 'lucide-react'
+import { Bell, Check, Clock, Eye, Loader2, RefreshCw, RotateCcw, Server, XCircle } from 'lucide-react'
 import { useI18n } from '../i18n'
 import type { TranslationKey } from '../i18n/translations'
 import type { ToastKind } from './FeedbackCenter'
@@ -16,8 +16,11 @@ import {
   saveBackgroundJobNotifyPrefs,
   type BackgroundJobNotifyPrefs,
 } from '../services/backgroundJobNotifyPrefsService'
+import { maybeAutoMarkPlanStepFromJob, tryMarkPlanStepFromBackgroundJob } from '../services/backgroundJobPlanBackfillService'
+import { parsePlanBackgroundJobPrompt } from '../services/planExecutionService'
 import {
   cancelBackgroundJob,
+  createBackgroundJob,
   isActiveBackgroundJobStatus,
   isTerminalBackgroundJobStatus,
   listBackgroundJobs,
@@ -27,6 +30,8 @@ import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { useIDEStore } from '../store/ideStore'
 
 const POLL_MS = 5_000
+
+type JobListFilter = 'all' | 'active' | 'finished'
 
 interface BackgroundJobsPanelProps {
   notify?: (kind: ToastKind, title: string, detail?: string) => void
@@ -57,12 +62,27 @@ export default function BackgroundJobsPanel({
   const [loading, setLoading] = useState(false)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [retryingId, setRetryingId] = useState<string | null>(null)
+  const [listFilter, setListFilter] = useState<JobListFilter>('all')
   const [notifyPrefs, setNotifyPrefs] = useState<BackgroundJobNotifyPrefs>(() => loadBackgroundJobNotifyPrefs())
   const mountedRef = useRef(true)
+  const filesRef = useRef(files)
+  filesRef.current = files
+
+  const filteredJobs = useMemo(() => {
+    if (listFilter === 'active') return jobs.filter((j) => isActiveBackgroundJobStatus(j.status))
+    if (listFilter === 'finished') return jobs.filter((j) => isTerminalBackgroundJobStatus(j.status))
+    return jobs
+  }, [jobs, listFilter])
 
   const selected = useMemo(
-    () => jobs.find((j) => j.id === selectedId) ?? jobs[0] ?? null,
-    [jobs, selectedId],
+    () => filteredJobs.find((j) => j.id === selectedId) ?? filteredJobs[0] ?? null,
+    [filteredJobs, selectedId],
+  )
+
+  const selectedPlanMeta = useMemo(
+    () => (selected ? parsePlanBackgroundJobPrompt(selected.prompt) : null),
+    [selected],
   )
 
   const hasActiveJobs = jobs.some((j) => isActiveBackgroundJobStatus(j.status))
@@ -85,7 +105,22 @@ export default function BackgroundJobsPanel({
         notify?.('error', t('backgroundJobs.loadFailed'), error)
         return
       }
-      const active = processBackgroundJobsSnapshot(next, { notify, t })
+      const active = processBackgroundJobsSnapshot(next, {
+        notify,
+        t,
+        onTerminal: (job) => {
+          maybeAutoMarkPlanStepFromJob(
+            filesRef.current,
+            job,
+            (nextFiles) => {
+              setFiles(nextFiles)
+              markWorkspaceHydrated()
+            },
+            notify,
+            t,
+          )
+        },
+      })
       setBackgroundJobsActiveCount(active)
       setJobs(next)
       setSelectedId((prev) => {
@@ -95,7 +130,7 @@ export default function BackgroundJobsPanel({
     } finally {
       if (mountedRef.current) setLoading(false)
     }
-  }, [isLoggedIn, notify, setBackgroundJobsActiveCount, t])
+  }, [isLoggedIn, notify, setBackgroundJobsActiveCount, setFiles, t])
 
   useEffect(() => {
     mountedRef.current = true
@@ -148,6 +183,40 @@ export default function BackgroundJobsPanel({
     }
   }
 
+  const handleRetry = async (job: SerializedBackgroundJob) => {
+    setRetryingId(job.id)
+    try {
+      const { job: created, error } = await createBackgroundJob(
+        { prompt: job.prompt, repoKey: job.repoKey ?? 'default' },
+        t,
+      )
+      if (error || !created) {
+        notify?.('error', t('backgroundJobs.retryFailed'), error)
+        return
+      }
+      notify?.('success', t('backgroundJobs.retryQueued'))
+      setSelectedId(created.id)
+      void refresh()
+    } finally {
+      setRetryingId(null)
+    }
+  }
+
+  const handleMarkPlanStep = (job: SerializedBackgroundJob) => {
+    const result = tryMarkPlanStepFromBackgroundJob(files, job)
+    if (!result) {
+      notify?.('info', t('backgroundJobs.planStepAlreadyDone'))
+      return
+    }
+    setFiles(result.files)
+    markWorkspaceHydrated()
+    notify?.(
+      'success',
+      t('backgroundJobs.planStepMarked'),
+      t('backgroundJobs.planStepMarkedDetail', { path: result.planPath, step: result.stepText }),
+    )
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="background-jobs-panel background-jobs-panel--empty">
@@ -169,11 +238,23 @@ export default function BackgroundJobsPanel({
           {currentPlan === 'free' ? t('backgroundJobs.hintFree') : t('backgroundJobs.hint')}
         </span>
         <div className="background-jobs-panel__toolbar-actions">
+          <label className="background-jobs-notify-toggle" title={t('backgroundJobs.autoMarkPlanStep')}>
+            <Check size={12} />
+            <Toggle
+              checked={notifyPrefs.autoMarkPlanStep}
+              onChange={() =>
+                setNotifyPrefs((prev) => ({ ...prev, autoMarkPlanStep: !prev.autoMarkPlanStep }))
+              }
+              aria-label={t('backgroundJobs.autoMarkPlanStep')}
+            />
+          </label>
           <label className="background-jobs-notify-toggle" title={t('backgroundJobs.notifyOnComplete')}>
             <Bell size={12} />
             <Toggle
               checked={notifyPrefs.notifyOnComplete}
-              onChange={(checked) => setNotifyPrefs((prev) => ({ ...prev, notifyOnComplete: checked }))}
+              onChange={() =>
+                setNotifyPrefs((prev) => ({ ...prev, notifyOnComplete: !prev.notifyOnComplete }))
+              }
               aria-label={t('backgroundJobs.notifyOnComplete')}
             />
           </label>
@@ -189,15 +270,35 @@ export default function BackgroundJobsPanel({
         </div>
       </div>
 
+      <div className="background-jobs-filter" role="tablist" aria-label={t('backgroundJobs.filterLabel')}>
+        {(['all', 'active', 'finished'] as const).map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            role="tab"
+            aria-selected={listFilter === filter}
+            className={`background-jobs-filter__btn ${listFilter === filter ? 'background-jobs-filter__btn--active' : ''}`}
+            onClick={() => setListFilter(filter)}
+          >
+            {t(`backgroundJobs.filter.${filter}`)}
+          </button>
+        ))}
+      </div>
+
       {jobs.length === 0 ? (
         <div className="background-jobs-panel--empty">
           <Clock size={24} style={{ opacity: 0.45 }} />
           <p>{t('backgroundJobs.empty')}</p>
         </div>
+      ) : filteredJobs.length === 0 ? (
+        <div className="background-jobs-panel--empty">
+          <Clock size={24} style={{ opacity: 0.45 }} />
+          <p>{t('backgroundJobs.filterEmpty')}</p>
+        </div>
       ) : (
         <div className="background-jobs-panel__body">
           <ul className="background-jobs-list" role="list">
-            {jobs.map((job) => (
+            {filteredJobs.map((job) => (
               <li key={job.id}>
                 <button
                   type="button"
@@ -259,6 +360,12 @@ export default function BackgroundJobsPanel({
                 </div>
               ) : null}
 
+              {selected.status === 'succeeded' && selectedPlanMeta ? (
+                <div className="background-jobs-detail__meta">
+                  {t('backgroundJobs.planSource')}: {selectedPlanMeta.planPath}
+                </div>
+              ) : null}
+
               {getJobPendingFileChanges(selected).length > 0 &&
               selected.status === 'succeeded' ? (
                 <div className="background-jobs-detail__actions">
@@ -302,6 +409,37 @@ export default function BackgroundJobsPanel({
                     }}
                   >
                     {t('backgroundJobs.openCloud')}
+                  </button>
+                </div>
+              ) : null}
+
+              {selected.status === 'succeeded' && selectedPlanMeta ? (
+                <div className="background-jobs-detail__actions">
+                  <button
+                    type="button"
+                    className="chat-btn-ghost"
+                    onClick={() => handleMarkPlanStep(selected)}
+                  >
+                    <Check size={14} style={{ marginRight: 6 }} />
+                    {t('backgroundJobs.markPlanStep')}
+                  </button>
+                </div>
+              ) : null}
+
+              {(selected.status === 'failed' || selected.status === 'cancelled') ? (
+                <div className="background-jobs-detail__actions">
+                  <button
+                    type="button"
+                    className="chat-btn-primary-sm"
+                    disabled={retryingId === selected.id}
+                    onClick={() => void handleRetry(selected)}
+                  >
+                    {retryingId === selected.id ? (
+                      <Loader2 size={14} className="spin" style={{ marginRight: 6 }} />
+                    ) : (
+                      <RotateCcw size={14} style={{ marginRight: 6 }} />
+                    )}
+                    {t('backgroundJobs.retry')}
                   </button>
                 </div>
               ) : null}

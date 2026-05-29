@@ -11,6 +11,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.2.4] — 2026-05-29
+
+### Added
+
+- 后台任务 **重试**（失败/已取消 → 同 prompt 重新提交）
+- 列表 **筛选**：全部 / 进行中 / 已结束
+- Plan 任务 **标记步骤完成** + 可选 **完成时自动勾选**（解析 `buildPlanBackgroundJobPrompt`）
+
+### Fixed
+
+- `BackgroundJobsPanel` Toggle 与 `t()` 类型导致 `tsc` 失败（阻塞 1.1.2.3 部署）
+
+---
+
 ## [1.1.2.3] — 2026-05-29
 
 ### Added

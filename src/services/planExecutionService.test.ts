@@ -4,6 +4,7 @@ import {
   buildPlanExecutionPrompt,
   getFirstPlanStep,
   listPlanSteps,
+  parsePlanBackgroundJobPrompt,
 } from './planExecutionService'
 
 describe('planExecutionService', () => {
@@ -33,5 +34,13 @@ describe('planExecutionService', () => {
     const prompt = buildPlanBackgroundJobPrompt('.aide/plans/foo.md', 'refactor chat')
     expect(prompt).toContain('.aide/plans/foo.md')
     expect(prompt).toContain('- [ ] refactor chat')
+  })
+
+  it('parses background job prompt back to plan meta', () => {
+    const prompt = buildPlanBackgroundJobPrompt('.aide/plans/foo.md', 'refactor chat')
+    expect(parsePlanBackgroundJobPrompt(prompt)).toEqual({
+      planPath: '.aide/plans/foo.md',
+      stepText: 'refactor chat',
+    })
   })
 })
