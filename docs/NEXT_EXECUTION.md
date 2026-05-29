@@ -1,43 +1,60 @@
 # 当前执行清单
 
-> **当前稳定**（本地）：**v1.1.1**（计划系统 GA）  
-> **下一 P0**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md) — 后台 Agent 队列 **或** 协作 M1（二选一）  
-> **GA 清单**：[V1.1.1_GA_EXECUTION.md](./V1.1.1_GA_EXECUTION.md) · **发版**：[RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md)
+> **当前版本**：**v1.1.2**（轨道 B · 后台 Agent MVP · **F1～F5 本地完成**）  
+> **发版**：见 [V1.1.2_GA_EXECUTION.md](./V1.1.2_GA_EXECUTION.md) §1（GA2-10～12 需你手工 / push）  
+> **下一世代**：[ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md)
 
 ---
 
-## v1.1.1 计划系统 GA — 状态
+## 双轨一览
 
-| 阶段 | 状态 |
-|------|------|
-| v1.1.0.5～0.20 功能 | ✅ 本地完成 |
-| v1.1.1.1～1.1.1.8 附属 | ✅ 本地完成 |
-| v1.1.1.9 文档收口 | ✅ `V1.1.1_GA_EXECUTION` / Quickstart / README / CHANGELOG |
-| `package.json` = **1.1.1** | ✅ |
-| `npm run test:local` | ✅ 105 files / 339 tests |
-| `git tag` + 生产部署 | ☐ 待用户确认后执行 |
-
----
-
-## 发版（待执行）
-
-```powershell
-cd C:\Users\18663\IDE\ai-ide
-npm run test:local
-npm run build:deploy
-npm run go-live:preflight
-# 手工黄金路径见 V1.1.1_GA_EXECUTION.md §3
-
-git add .
-git commit -m "release: v1.1.1 plan system GA"
-git push origin main
-git tag v1.1.1
-git push origin v1.1.1
-npx vercel --prod --yes   # 网络可达时
+```
+轨道 A   1.1.1.10～.13 ✅ 本地（可与 1.1.2 一并 push）
+轨道 B   v1.1.2 ✅ F1～F5 代码就绪 ──► 待 tag + deploy
 ```
 
 ---
 
-## v1.1.2+（GA 之后）
+## 立即可做（发版）
 
-后台 Agent 队列（P0-A）或协作 M1（P0-B）— **最多同时 1 个 P0**。
+```powershell
+cd C:\Users\18663\IDE\ai-ide
+npx prisma migrate deploy
+npm run test:local
+npm run build:deploy
+# 手工：V1.1.2_MASTER_PLAN §4 黄金路径（VITE_BACKGROUND_AGENT=true）
+
+git add .
+git commit -m "release: v1.1.2 background agent MVP"
+git push origin main
+git tag v1.1.2
+git push origin v1.1.2
+# Vercel：VITE_BACKGROUND_AGENT、CRON_SECRET、migrate
+npx vercel --prod --yes
+npm run smoke:production
+```
+
+---
+
+## v1.1.2 交付摘要
+
+| 阶段 | 内容 |
+|------|------|
+| F1 | `BackgroundJob` + `/api/jobs` |
+| F2 | Worker + Cron + 30min 超时 |
+| F3 | `BackgroundJobsPanel` + Chat 后台运行 |
+| F4 | Pro 配额 + 云回写 + Diff 预览 |
+| F5 | `1.1.2` 版本号、CHANGELOG、README、Quickstart |
+
+文档：[BACKGROUND_AGENT_QUICKSTART.md](./BACKGROUND_AGENT_QUICKSTART.md)
+
+---
+
+## GA 之后（轨道 A 可选）
+
+| patch | 主题 |
+|-------|------|
+| 1.1.2.1 | 后台任务通知、小抛光 |
+| 1.1.2.x | Plan 桥接后台（非 MVP） |
+
+**下一轨道 B 大更新**：v1.1.3（协作 **或** 网关，二选一）。

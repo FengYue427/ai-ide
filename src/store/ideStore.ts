@@ -46,6 +46,8 @@ export interface PluginModalState {
   body: string
 }
 
+export type RightPanelView = 'chat' | 'backgroundJobs'
+
 function buildDefaultFiles(): FileItem[] {
   const t = createTranslator(readStoredApiLanguage())
   return [
@@ -118,6 +120,7 @@ export interface IDEState {
   showSettingsCenter: boolean
   showCommandPalette: boolean
   showChatPanel: boolean
+  rightPanelView: RightPanelView
   showWorkspaceManager: boolean
   showWorkspacePanel: boolean
   showThemeSelector: boolean
@@ -171,6 +174,7 @@ export interface IDEState {
   setShowSettingsCenter: (show: boolean) => void
   setShowCommandPalette: (show: boolean) => void
   setShowChatPanel: (show: boolean) => void
+  setRightPanelView: (view: RightPanelView) => void
   setShowWorkspaceManager: (show: boolean) => void
   setShowWorkspacePanel: (show: boolean) => void
   setShowThemeSelector: (show: boolean) => void
@@ -247,6 +251,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   showSettingsCenter: false,
   showCommandPalette: false,
   showChatPanel: false,
+  rightPanelView: 'chat',
   showWorkspaceManager: false,
   showWorkspacePanel: false,
   showThemeSelector: false,
@@ -325,6 +330,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setShowSettingsCenter: (showSettingsCenter) => set({ showSettingsCenter }),
   setShowCommandPalette: (showCommandPalette) => set({ showCommandPalette }),
   setShowChatPanel: (showChatPanel) => set({ showChatPanel }),
+  setRightPanelView: (rightPanelView) => set({ rightPanelView }),
   setShowWorkspaceManager: (showWorkspaceManager) => set({ showWorkspaceManager }),
   setShowWorkspacePanel: (showWorkspacePanel) => set({ showWorkspacePanel }),
   setShowThemeSelector: (showThemeSelector) => set({ showThemeSelector }),

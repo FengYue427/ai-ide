@@ -11,6 +11,7 @@ import {
   Play,
   Save,
   Search,
+  Server,
   Settings as SettingsIcon,
   Sparkles,
   User,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { authService } from '../services/authService'
+import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
 import { useIDEStore } from '../store/ideStore'
 import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
 import type { ConfirmRequest, ToastKind } from '../components/FeedbackCenter'
@@ -31,6 +33,7 @@ interface AppToolbarProps {
   onOpenNewFile: () => void
   onOpenSearch: () => void
   onOpenChat: () => void
+  onOpenBackgroundJobs?: () => void
   onOpenWorkspace: () => void
   onToggleGit: () => void
   onOpenPreview: () => void
@@ -52,6 +55,7 @@ export function AppToolbar({
   onOpenNewFile,
   onOpenSearch,
   onOpenChat,
+  onOpenBackgroundJobs,
   onOpenWorkspace,
   onToggleGit,
   onOpenPreview,
@@ -102,6 +106,12 @@ export function AppToolbar({
           <Bot size={14} />
           <span>{t('toolbar.ai')}</span>
         </button>
+        {isBackgroundAgentEnabled() && onOpenBackgroundJobs ? (
+          <button type="button" onClick={onOpenBackgroundJobs} title={t('toolbar.backgroundJobs')}>
+            <Server size={14} />
+            <span>{t('toolbar.backgroundJobs')}</span>
+          </button>
+        ) : null}
         <button onClick={onOpenWorkspace}>
           <FolderOpen size={14} />
           <span>{t('toolbar.workspace')}</span>

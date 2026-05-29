@@ -4,6 +4,7 @@ import { useIDEStore } from '../store/ideStore'
 export function useUIActions() {
   const setShowAuthModal = useIDEStore((s) => s.setShowAuthModal)
   const setShowChatPanel = useIDEStore((s) => s.setShowChatPanel)
+  const setRightPanelView = useIDEStore((s) => s.setRightPanelView)
   const setShowCodeReview = useIDEStore((s) => s.setShowCodeReview)
   const setShowCollaboration = useIDEStore((s) => s.setShowCollaboration)
   const setShowCommandPalette = useIDEStore((s) => s.setShowCommandPalette)
@@ -42,7 +43,14 @@ export function useUIActions() {
   const openChatPanel = useCallback(() => {
     setShowGitPanel(false)
     setShowChatPanel(true)
-  }, [setShowChatPanel, setShowGitPanel])
+    setRightPanelView('chat')
+  }, [setRightPanelView, setShowChatPanel, setShowGitPanel])
+
+  const openBackgroundJobsPanel = useCallback(() => {
+    setShowGitPanel(false)
+    setShowChatPanel(true)
+    setRightPanelView('backgroundJobs')
+  }, [setRightPanelView, setShowChatPanel, setShowGitPanel])
   const openCodeReviewPanel = useCallback(() => setShowCodeReview(true), [setShowCodeReview])
   const openCollaborationDialog = useCallback(() => setShowCollaboration(true), [setShowCollaboration])
   const openCommandPalette = useCallback(() => setShowCommandPalette(true), [setShowCommandPalette])
@@ -83,6 +91,7 @@ export function useUIActions() {
     closeWelcomeAnd,
     openAuthDialog,
     openChatPanel,
+    openBackgroundJobsPanel,
     openCodeReviewPanel,
     openCollaborationDialog,
     openCommandPalette,

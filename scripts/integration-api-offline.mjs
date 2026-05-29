@@ -60,6 +60,14 @@ async function run() {
   }
 
   try {
+    const jobs = await fetch(`${apiBase}/api/jobs`, { signal: AbortSignal.timeout(5000) })
+    if (jobs.status === 401) pass('jobs without auth', '401')
+    else fail('jobs without auth', `expected 401, got ${jobs.status}`)
+  } catch (error) {
+    fail('jobs without auth', error instanceof Error ? error.message : String(error))
+  }
+
+  try {
     const subscription = await fetch(`${apiBase}/api/subscription`, { signal: AbortSignal.timeout(5000) })
     if (subscription.ok) {
       const json = await subscription.json()

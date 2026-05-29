@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, CheckSquare, Code2, FilePlus, FolderOpen, Pause, Send, Sparkles, User, Wand2, Zap } from 'lucide-react'
+import { Bot, CheckSquare, Code2, FilePlus, FolderOpen, Pause, Send, Server, Sparkles, User, Wand2, Zap } from 'lucide-react'
 import { AgentToolPanel } from './AgentToolPanel'
 import { aiAgentService } from '../services/aiAgentService'
 import {
@@ -78,6 +78,8 @@ import { buildMcpFollowUpMessages } from '../services/chatMcpFollowUp'
 import { removeTrailingUserMessage, upsertAssistantMessage } from '../services/chatMessageState'
 import { applyPlanArtifactsWithResult, buildPlanModeSystemPrompt } from '../services/planModeService'
 import { buildPlanExecutionPrompt, getFirstPlanStep } from '../services/planExecutionService'
+import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
+import { createBackgroundJob } from '../services/backgroundJobsApiService'
 import { appendPlanExecutionBackfill } from '../services/planBackfillService'
 import { markPlanStepDone } from '../services/planStepCompletionService'
 import {
@@ -105,6 +107,10 @@ import {
   loadQueueAutoReportPrefs,
   notifyQueueComplete,
 } from '../services/queueAutoReportPrefsService'
+import {
+  loadQueueSessionStats,
+  saveQueueSessionStats,
+} from '../services/queueSessionStatsPersistenceService'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -196,6 +202,11 @@ ${t('ai.chat.prompt')}`
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
+  const setRightPanelView = useIDEStore((s) => s.setRightPanelView)
+  const setShowChatPanel = useIDEStore((s) => s.setShowChatPanel)
+  const setShowGitPanel = useIDEStore((s) => s.setShowGitPanel)
+  const backgroundAgentOn = isBackgroundAgentEnabled()
+  const [backgroundSubmitting, setBackgroundSubmitting] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [useWorkspaceContext, setUseWorkspaceContext] = useState(false)
   const [agentMode, setAgentMode] = useState(true)
@@ -262,6 +273,7 @@ ${t('ai.chat.prompt')}`
   const [queueFailureStats, setQueueFailureStats] = useState({ plan: 0, spec: 0 })
   const [queueSuccessStats, setQueueSuccessStats] = useState({ plan: 0, spec: 0 })
   const [recentDoneQueueItems, setRecentDoneQueueItems] = useState<QueueDoneItem[]>([])
+  const [queueSessionStatsHydrated, setQueueSessionStatsHydrated] = useState(false)
   const [activeMentionQuery, setActiveMentionQuery] = useState<string | null>(null)
   const [mentionOnboardingDismissed, setMentionOnboardingDismissed] = useState(() => {
     try {
@@ -295,6 +307,28 @@ ${t('ai.chat.prompt')}`
     plan: currentPlan,
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const loaded = loadQueueSessionStats()
+    if (loaded.stats) {
+      setQueueSuccessStats(loaded.stats.success)
+      setQueueFailureStats(loaded.stats.failure)
+      setRecentDoneQueueItems(loaded.stats.recentDone)
+    }
+    if (loaded.corrupted) {
+      notify?.('info', t('queue.sessionStats.corrupted'), '')
+    }
+    setQueueSessionStatsHydrated(true)
+  }, [notify, t])
+
+  useEffect(() => {
+    if (!queueSessionStatsHydrated) return
+    saveQueueSessionStats({
+      success: queueSuccessStats,
+      failure: queueFailureStats,
+      recentDone: recentDoneQueueItems,
+    })
+  }, [queueSessionStatsHydrated, queueSuccessStats, queueFailureStats, recentDoneQueueItems])
 
   const isConfigured = !!aiConfig.apiKey || aiConfig.provider === 'ollama'
 
@@ -406,6 +440,87 @@ ${t('ai.chat.prompt')}`
     },
     [aiConfig, editorFiles, language, useWorkspaceContext],
   )
+
+  const buildAgentWorkspaceSummary = useCallback(
+    async (userGoal: string, actionLabel?: string, forceSlim = false) => {
+      const agentSettings = await loadAgentSettings()
+      const effectiveWorkspaceContext = forceSlim ? false : useWorkspaceContext
+      const base =
+        effectiveWorkspaceContext && workspaceStats.selectedFiles > 0
+          ? workspaceContextService.generateSystemPrompt(actionLabel ?? '', language)
+          : t('chat.prompt.editorFile', { code: currentCode })
+      const mcpSection = await buildMcpToolsPromptSection()
+      const summary = await buildPromptWithSharedContext({
+        basePrompt: base,
+        query: userGoal,
+        forceSlim,
+        applyProjectRules,
+        augmentWithSemanticContext,
+        applyAgentContext: (prompt) => applyAgentContext(prompt, agentSettings),
+        buildMentionSection: (query) =>
+          buildMentionContextSection(query, editorFiles, projectIndexManager.getIndex(), language),
+      })
+      return appendMcpToolsToPrompt(summary, mcpSection)
+    },
+    [
+      applyAgentContext,
+      applyProjectRules,
+      augmentWithSemanticContext,
+      currentCode,
+      editorFiles,
+      language,
+      t,
+      useWorkspaceContext,
+      workspaceStats.selectedFiles,
+    ],
+  )
+
+  const handleBackgroundRun = useCallback(async () => {
+    const text = input.trim()
+    if (!text || backgroundSubmitting || loading) return
+    if (!currentUser) {
+      notify?.('error', t('backgroundJobs.loginRequired'))
+      return
+    }
+    if (!isConfigured) {
+      notify?.('error', t('chat.needConfig'))
+      return
+    }
+
+    setBackgroundSubmitting(true)
+    try {
+      const workspaceSummary = await buildAgentWorkspaceSummary(text)
+      const prompt = `${workspaceSummary}\n\n---\n\n## ${t('chat.backgroundRun.taskHeading')}\n${text}`
+      const { job, error } = await createBackgroundJob({ prompt, repoKey: 'default' }, t)
+      if (error || !job) {
+        const upgradeHint =
+          error?.includes('升级') || error?.includes('Upgrade') || error?.includes('Pro')
+            ? t('chat.backgroundRun.upgradeHint')
+            : undefined
+        notify?.('error', t('chat.backgroundRun.failed'), upgradeHint ?? error)
+        return
+      }
+      setInput('')
+      setShowGitPanel(false)
+      setShowChatPanel(true)
+      setRightPanelView('backgroundJobs')
+      notify?.('success', t('chat.backgroundRun.queued'), t('chat.backgroundRun.queuedDetail'))
+    } finally {
+      setBackgroundSubmitting(false)
+    }
+  }, [
+    backgroundSubmitting,
+    buildAgentWorkspaceSummary,
+    currentUser,
+    input,
+    isConfigured,
+    loading,
+    notify,
+    setRightPanelView,
+    setShowChatPanel,
+    setShowGitPanel,
+    t,
+  ])
 
   const refreshQuota = useCallback(() => {
     void fetchAIQuota(currentPlan, !!currentUser).then(setQuota)
@@ -890,6 +1005,7 @@ ${t('ai.chat.prompt')}`
     setMcpToolEntries([])
 
     try {
+      const agentSettings = await loadAgentSettings()
       const history = buildChatHistory(
         messages.map((message) => ({ role: message.role, content: message.content })),
         historyLimit,
@@ -898,34 +1014,15 @@ ${t('ai.chat.prompt')}`
       let aiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = []
       let assistantContent = ''
 
-      const agentSettings = await loadAgentSettings()
-
-      const buildAgentWorkspaceSummary = async () => {
-        const base =
-          effectiveWorkspaceContext && workspaceStats.selectedFiles > 0
-            ? workspaceContextService.generateSystemPrompt(
-                action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : '',
-                language,
-              )
-            : t('chat.prompt.editorFile', { code: currentCode })
-        const mcpSection = await buildMcpToolsPromptSection()
-        const summary = await buildPromptWithSharedContext({
-          basePrompt: base,
-          query: effectiveTextToSend,
-          forceSlim,
-          applyProjectRules,
-          augmentWithSemanticContext,
-          applyAgentContext: (prompt) => applyAgentContext(prompt, agentSettings),
-          buildMentionSection: (query) =>
-            buildMentionContextSection(query, editorFiles, projectIndexManager.getIndex(), language),
-        })
-        return appendMcpToolsToPrompt(summary, mcpSection)
-      }
       const useToolLoop =
         agentMode && !planMode && agentSettings.useToolLoop && supportsAgentToolCalling(aiConfig.provider)
 
       if (agentMode && useToolLoop) {
-        const workspaceSummary = await buildAgentWorkspaceSummary()
+        const workspaceSummary = await buildAgentWorkspaceSummary(
+          effectiveTextToSend,
+          action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : undefined,
+          forceSlim,
+        )
         const toolMessages = buildAgentToolMessages(workspaceSummary, effectiveTextToSend, history)
 
         const labelActivity = (tool: AgentActivityEntry['tool'], detail: string, ok: boolean) => {
@@ -1030,7 +1127,11 @@ ${t('ai.chat.prompt')}`
       }
 
       if (agentMode) {
-        const workspaceSummary = await buildAgentWorkspaceSummary()
+        const workspaceSummary = await buildAgentWorkspaceSummary(
+          effectiveTextToSend,
+          action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : undefined,
+          forceSlim,
+        )
         const finalSummary = planMode ? buildPlanModeSystemPrompt(workspaceSummary) : workspaceSummary
         aiMessages = aiAgentService.buildMessages(effectiveTextToSend, finalSummary, history)
       } else {
@@ -1864,6 +1965,17 @@ ${t('ai.chat.prompt')}`
             disabled={!isConfigured || loading}
             rows={1}
           />
+          {backgroundAgentOn && agentMode && !planMode && currentUser ? (
+            <button
+              type="button"
+              className="chat-send chat-send--square"
+              onClick={() => void handleBackgroundRun()}
+              disabled={!isConfigured || loading || backgroundSubmitting || !input.trim()}
+              title={t('chat.backgroundRun.button')}
+            >
+              <Server size={16} />
+            </button>
+          ) : null}
           <button
             type="button"
             className="chat-send chat-send--square"

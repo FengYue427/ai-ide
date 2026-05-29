@@ -141,6 +141,38 @@ const routes: RouteEntry[] = [
   { method: 'GET', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'GET' },
   { method: 'POST', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'POST' },
   { method: 'POST', match: (p) => (p === '/api/mcp/proxy' ? {} : null), load: () => import('./handlers/mcp/proxy'), export: 'POST' },
+  { method: 'GET', match: (p) => (p === '/api/jobs' ? {} : null), load: () => import('./handlers/jobs/index'), export: 'GET' },
+  { method: 'POST', match: (p) => (p === '/api/jobs' ? {} : null), load: () => import('./handlers/jobs/index'), export: 'POST' },
+  {
+    method: 'GET',
+    match: (p) => (p === '/api/jobs/process' ? {} : null),
+    load: () => import('./handlers/jobs/process'),
+    export: 'GET',
+  },
+  {
+    method: 'POST',
+    match: (p) => (p === '/api/jobs/process' ? {} : null),
+    load: () => import('./handlers/jobs/process'),
+    export: 'POST',
+  },
+  {
+    method: 'POST',
+    match: (p) => {
+      const m = p.match(/^\/api\/jobs\/([^/]+)\/cancel$/)
+      return m ? { id: decodeURIComponent(m[1]) } : null
+    },
+    load: () => import('./handlers/jobs/cancel'),
+    export: 'POST',
+  },
+  {
+    method: 'GET',
+    match: (p) => {
+      const m = p.match(/^\/api\/jobs\/([^/]+)$/)
+      return m ? { id: decodeURIComponent(m[1]) } : null
+    },
+    load: () => import('./handlers/jobs/byId'),
+    export: 'GET',
+  },
   {
     method: 'GET',
     match: (p) => {

@@ -8,6 +8,9 @@ interface PlanOverviewSectionProps {
   isQueueRunning: boolean
   latestReportAt: string | null
   onSyncAideToWorkspace?: () => void
+  onOpenLatestReport?: () => void
+  onScrollToPlans?: () => void
+  onScrollToReports?: () => void
 }
 
 function formatTime(value: string | null, fallback: string): string {
@@ -25,6 +28,9 @@ export function PlanOverviewSection({
   isQueueRunning,
   latestReportAt,
   onSyncAideToWorkspace,
+  onOpenLatestReport,
+  onScrollToPlans,
+  onScrollToReports,
 }: PlanOverviewSectionProps) {
   const { t } = useI18n()
   return (
@@ -48,14 +54,33 @@ export function PlanOverviewSection({
           {isQueueRunning ? t('plan.overview.running') : t('plan.overview.idle')}
         </span>
       </div>
-      {onSyncAideToWorkspace ? (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {onOpenLatestReport ? (
+          <button type="button" className="btn btn-secondary" onClick={onOpenLatestReport}>
+            {t('plan.overview.openLatestReport')}
+          </button>
+        ) : null}
+        {onScrollToPlans ? (
+          <button type="button" className="btn btn-secondary" onClick={onScrollToPlans}>
+            {t('plan.overview.goPlans')}
+          </button>
+        ) : null}
+        {onScrollToReports ? (
+          <button type="button" className="btn btn-secondary" onClick={onScrollToReports}>
+            {t('plan.overview.goReports')}
+          </button>
+        ) : null}
+        {onSyncAideToWorkspace ? (
           <button type="button" className="btn btn-secondary" onClick={onSyncAideToWorkspace}>
             {t('plan.overview.syncAide')}
           </button>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t('plan.overview.syncAideHint')}</span>
-        </div>
-      ) : null}
+        ) : null}
+        {onSyncAideToWorkspace ? (
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)', width: '100%' }}>
+            {t('plan.overview.syncAideHint')}
+          </span>
+        ) : null}
+      </div>
     </div>
   )
 }

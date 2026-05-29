@@ -108,6 +108,7 @@ interface SettingsCenterProps {
   onExportReportsZip?: (paths: string[]) => void
   getRestorePreview?: (path: string) => QueueRestorePreview | null
   onRestoreReport?: (path: string) => void
+  onOpenLatestReport?: () => void
   onClose: () => void
 }
 
@@ -162,8 +163,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onExportReportsZip,
   getRestorePreview,
   onRestoreReport,
+  onOpenLatestReport,
   onClose,
 }) => {
+  const planCatalogRef = useRef<HTMLDivElement>(null)
+  const reportCatalogRef = useRef<HTMLDivElement>(null)
   const { t } = useI18n()
   const currentPlan = useIDEStore((s) => s.currentPlan)
   const currentUser = useIDEStore((s) => s.currentUser)
@@ -709,9 +713,15 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     isQueueRunning={planOverview.isQueueRunning}
                     latestReportAt={planOverview.latestReportAt}
                     onSyncAideToWorkspace={onSyncAideToWorkspace}
+                    onOpenLatestReport={onOpenLatestReport}
+                    onScrollToPlans={() => planCatalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    onScrollToReports={() =>
+                      reportCatalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }
                   />
                 ) : null}
                 {onOpenPlan && onRunPlan && onMapPlanToSpec && onMapPlanToSpecAndRun && onDeletePlan ? (
+                  <div ref={planCatalogRef}>
                   <PlansSection
                     plans={planItems}
                     specTaskPaths={specTaskPaths}
@@ -728,8 +738,10 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     onMapPlanToSpecAndRun={onMapPlanToSpecAndRun}
                     onDeletePlan={onDeletePlan}
                   />
+                  </div>
                 ) : null}
                 {onOpenReport && onDeleteReport ? (
+                  <div ref={reportCatalogRef}>
                   <ReportsSection
                     reports={reportItems}
                     onOpenReport={onOpenReport}
@@ -740,6 +752,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     onExportReportsZip={onExportReportsZip}
                     onRestoreReport={onRestoreReport}
                   />
+                  </div>
                 ) : null}
                 <AgentSettingsSection onRegisterPersist={(persist) => { persistAgentRef.current = persist }} />
                 <McpSettingsSection onRegisterPersist={(persist) => { persistMcpRef.current = persist }} />

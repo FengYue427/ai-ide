@@ -18,6 +18,8 @@
 - **1.0.4.N**（第四段附属）：1.0.4 GA 后小步交付。详见 [ROADMAP_V1.0.4.x.md](./ROADMAP_V1.0.4.x.md)。**1.0.4.4 后不再开 `1.0.4.5`**。
 - **1.0.5**（桥接主版本）：1.0.4.x 收官后的 **Kickoff 叙事**（**非** `1.0.4.5`）。详见 [V1.0.5_MASTER_PLAN.md](./V1.0.5_MASTER_PLAN.md)。
 - **1.0.5.N**（第四段附属）：桥接世代小步交付 **1.0.5.1～1.0.5.4**。详见 [ROADMAP_V1.0.5.x.md](./ROADMAP_V1.0.5.x.md) · [V1.0.5.x_MASTER_PLAN.md](./V1.0.5.x_MASTER_PLAN.md)。
+- **v1.1.1.N**（第四段附属）：计划系统 GA **后**小 patch（如 **1.1.1.11**），**可单独 push**。
+- **v1.1.2 / v1.1.3**（主版本位）：**大更新**，本地 F 阶段批完 → **一次** tag/deploy。详见 [V1.1.2_MASTER_PLAN.md](./V1.1.2_MASTER_PLAN.md) · [ROADMAP_V1.1.x.md](./ROADMAP_V1.1.x.md)。
 - **v1.1**：能力第二代际（后台队列、协作 M1、网关）。详见 [ROADMAP_V1.1.md](./ROADMAP_V1.1.md)。
 
 ## 已发布映射（历史改名）

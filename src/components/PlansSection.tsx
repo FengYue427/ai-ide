@@ -221,6 +221,20 @@ export function PlansSection({
                     {t('plan.catalog.runSteps')}
                     {selectedCount(plan.path) > 0 ? ` (${selectedCount(plan.path)})` : ''}
                   </button>
+                  {plan.stepItems.length > 1 ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() =>
+                        onRunPlan(
+                          plan.path,
+                          plan.stepItems.map((step) => ({ text: step.text, line: step.line })),
+                        )
+                      }
+                    >
+                      {t('plan.catalog.queueAllOpen', { count: plan.stepItems.length })}
+                    </button>
+                  ) : null}
                   {onMarkPlanStepsDone ? (
                     <button
                       type="button"

@@ -140,6 +140,120 @@ async function run() {
     fail('workspace LIST', e.message)
   }
 
+  // 6c. Background jobs (v1.1.2 F1)
+  let jobId = null
+  try {
+    const unauth = await fetch(`${apiBase}/api/jobs`)
+    if (unauth.status === 401) pass('jobs without auth', '401')
+    else fail('jobs without auth', `expected 401, got ${unauth.status}`)
+  } catch (e) {
+    fail('jobs without auth', e.message)
+  }
+
+  try {
+    const { res, json } = await api('/api/jobs', {
+      method: 'POST',
+      body: JSON.stringify({ prompt: 'integration smoke task', repoKey: 'default' }),
+    })
+    if (res.status === 201 && json?.job?.status === 'queued' && json.job.id) {
+      jobId = json.job.id
+      pass('jobs POST create', `queued id=${jobId}`)
+    } else {
+      fail('jobs POST create', json?.error || json?.message || `HTTP ${res.status}`)
+    }
+  } catch (e) {
+    fail('jobs POST create', e.message)
+  }
+
+  if (jobId) {
+    try {
+      const { res, json } = await api(`/api/jobs/${jobId}`)
+      if (res.ok && json?.job?.status === 'queued' && json.job.prompt?.includes('integration smoke')) {
+        pass('jobs GET by id', jobId)
+      } else {
+        fail('jobs GET by id', json?.error || `status=${json?.job?.status}`)
+      }
+    } catch (e) {
+      fail('jobs GET by id', e.message)
+    }
+
+    try {
+      const { res, json } = await api('/api/jobs')
+      if (res.ok && Array.isArray(json?.jobs) && json.jobs.some((j) => j.id === jobId)) {
+        pass('jobs GET list', `${json.jobs.length} job(s)`)
+      } else {
+        fail('jobs GET list', `HTTP ${res.status}`)
+      }
+    } catch (e) {
+      fail('jobs GET list', e.message)
+    }
+
+    let workerJobId = null
+    try {
+      const { res, json } = await api('/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({ prompt: 'worker integration smoke' }),
+      })
+      if (res.status === 201 && json?.job?.status === 'queued' && json.job.id) {
+        workerJobId = json.job.id
+      } else {
+        fail('jobs POST worker job', json?.error || `HTTP ${res.status}`)
+      }
+    } catch (e) {
+      fail('jobs POST worker job', e.message)
+    }
+
+    const cronSecret =
+      process.env.CRON_SECRET?.trim() || process.env.BILLING_CRON_SECRET?.trim() || ''
+    if (workerJobId && cronSecret) {
+      try {
+        const processRes = await fetch(`${apiBase}/api/jobs/process`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${cronSecret}` },
+          signal: AbortSignal.timeout(15000),
+        })
+        const processJson = processRes.headers.get('content-type')?.includes('json')
+          ? await processRes.json()
+          : null
+        if (processRes.ok && processJson?.success) {
+          pass('jobs cron process', `processed=${processJson.processed}`)
+        } else {
+          fail('jobs cron process', processJson?.error || `HTTP ${processRes.status}`)
+        }
+
+        const { res, json } = await api(`/api/jobs/${workerJobId}`)
+        if (res.ok && json?.job?.status === 'succeeded' && json.job.result?.mode === 'dummy') {
+          pass('jobs worker succeeded', workerJobId)
+        } else {
+          fail('jobs worker succeeded', `status=${json?.job?.status}`)
+        }
+      } catch (e) {
+        fail('jobs worker pipeline', e.message)
+      }
+    } else if (workerJobId) {
+      pass('jobs worker pipeline', 'skipped (set CRON_SECRET to run cron)')
+    }
+
+    try {
+      const { res, json } = await api(`/api/jobs/${jobId}/cancel`, { method: 'POST', body: '{}' })
+      if (res.ok && json?.job?.status === 'cancelled') {
+        pass('jobs POST cancel', jobId)
+      } else {
+        fail('jobs POST cancel', json?.error || `status=${json?.job?.status}`)
+      }
+    } catch (e) {
+      fail('jobs POST cancel', e.message)
+    }
+
+    try {
+      const { res, json } = await api(`/api/jobs/${jobId}/cancel`, { method: 'POST', body: '{}' })
+      if (res.status === 409) pass('jobs cancel twice', '409 not cancellable')
+      else fail('jobs cancel twice', `expected 409, got ${res.status}`)
+    } catch (e) {
+      fail('jobs cancel twice', e.message)
+    }
+  }
+
   // 6b. Usage quota — free plan hard limit (50/day)
   try {
     const getUsage = await api('/api/usage/ai')

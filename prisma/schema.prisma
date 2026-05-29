@@ -48,11 +48,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts     Account[]
-  sessions     Session[]
-  workspaces    UserWorkspace[]
-  subscription  Subscription?
-  paymentOrders PaymentOrder[]
+  accounts        Account[]
+  sessions        Session[]
+  workspaces      UserWorkspace[]
+  subscription    Subscription?
+  paymentOrders   PaymentOrder[]
+  backgroundJobs  BackgroundJob[]
 }
 
 // 支付宝 / 微信 一次性订阅订单
@@ -136,6 +137,27 @@ model Subscription {
 
   @@index([userId])
   @@index([planId])
+}
+
+// 后台 Agent 任务（v1.1.2）
+model BackgroundJob {
+  id         String    @id @default(cuid())
+  userId     String
+  status     String    @default("queued") // queued | running | succeeded | failed | cancelled
+  repoKey    String?
+  prompt     String    @db.Text
+  progress   Json?
+  result     Json?
+  error      String?
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, status])
+  @@index([status, createdAt])
 }
 
 // AI 使用量记录

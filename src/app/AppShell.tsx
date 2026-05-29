@@ -194,6 +194,7 @@ export function AppShell() {
         onOpenNewFile={ui.openNewFileInput}
         onOpenSearch={ui.openSearchPanel}
         onOpenChat={ui.openChatPanel}
+        onOpenBackgroundJobs={ui.openBackgroundJobsPanel}
         onOpenWorkspace={ui.openWorkspaceManagerModal}
         onToggleGit={ui.toggleGitPanel}
         onOpenPreview={ui.openPreviewPanel}
@@ -239,7 +240,14 @@ export function AppShell() {
           notify={notify}
         />
 
-        <RightPanel fs={fs} notify={notify} onCloseGit={ui.closeGitPanel} onCloseChat={ui.closeChatPanel} />
+        <RightPanel
+          fs={fs}
+          notify={notify}
+          onCloseGit={ui.closeGitPanel}
+          onCloseChat={ui.closeChatPanel}
+          onOpenAuth={ui.openAuthDialog}
+          onOpenSubscription={ui.openSubscriptionDialog}
+        />
       </div>
 
       <PanelHost

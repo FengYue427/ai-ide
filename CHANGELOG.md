@@ -7,7 +7,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Next
 
-- **v1.1.2+**：后台 Agent 队列或协作 M1 → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
+- **v1.1.3+**：协作 M1 或 AI 网关（二选一）→ [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
+
+---
+
+## [1.1.2] — 2026-05-29（后台 Agent MVP）
+
+### Added
+
+- **后台 Agent**：Prisma `BackgroundJob`；`POST/GET /api/jobs`、`/api/jobs/:id/cancel`
+- **Worker**：`GET|POST /api/jobs/process`（Cron `*/5 * * * *`）；dummy 模式可跑通；硬超时 ≤30min
+- **客户端**（`VITE_BACKGROUND_AGENT=true`）：`BackgroundJobsPanel`、右栏 Tab、工具栏入口；Chat **后台运行**
+- **云回写**：任务成功合并 `pendingChanges` 到云工作区；面板 **预览 Diff**
+- **配额**：Free 2/日、1 并发；Pro+ 100/日、5 并发（429 + 升级文案）
+- 脚本：`npm run jobs:process`、`npm run jobs:verify-cron`
+
+### Docs
+
+- [BACKGROUND_AGENT_QUICKSTART.md](docs/BACKGROUND_AGENT_QUICKSTART.md)、[V1.1.2_GA_EXECUTION.md](docs/V1.1.2_GA_EXECUTION.md)、[RELEASE_NOTES_v1.1.2.md](docs/RELEASE_NOTES_v1.1.2.md)
+
+### Known limitations
+
+- 浏览器本机盘无法后台写盘 → 云工作区优先；非 Plan 队列后台化；Worker 默认 dummy
 
 ---
 

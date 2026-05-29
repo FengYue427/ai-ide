@@ -1,0 +1,212 @@
+.background-jobs-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+.background-jobs-panel--empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 24px 16px;
+}
+
+.background-jobs-panel__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.background-jobs-panel__hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.background-jobs-panel__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.background-jobs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 42%;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.background-jobs-list__item {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-primary);
+}
+
+.background-jobs-list__item:last-child {
+  border-bottom: none;
+}
+
+.background-jobs-list__item--active {
+  background: var(--bg-secondary);
+}
+
+.background-jobs-list__prompt {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.background-jobs-list__time {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.background-jobs-status {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  align-self: flex-start;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.background-jobs-status--queued {
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+.background-jobs-status--running {
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+}
+
+.background-jobs-status--succeeded {
+  color: #2e7d32;
+  background: color-mix(in srgb, #2e7d32 12%, transparent);
+}
+
+.background-jobs-status--failed {
+  color: #c62828;
+  background: color-mix(in srgb, #c62828 12%, transparent);
+}
+
+.background-jobs-status--cancelled {
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+.background-jobs-detail {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.background-jobs-detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.background-jobs-detail__meta {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.background-jobs-detail__prompt {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.background-jobs-detail__result p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+.background-jobs-detail__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #c62828;
+}
+
+.background-jobs-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.right-panel-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 8px;
+  flex-shrink: 0;
+}
+
+.right-panel-tab {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.right-panel-tab--active {
+  color: var(--text-primary);
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+.spin {
+  animation: background-jobs-spin 0.8s linear infinite;
+}
+
+@keyframes background-jobs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -95,7 +95,7 @@ var FALLBACK, cached;
 var init_releaseVersion = __esm({
   "lib/api/releaseVersion.ts"() {
     "use strict";
-    FALLBACK = "1.1.0.13";
+    FALLBACK = "1.1.2";
     cached = null;
   }
 });
@@ -1126,7 +1126,25 @@ var init_apiMessages = __esm({
         "api.payment.orderIdRequired": "\u7F3A\u5C11\u8BA2\u5355 ID",
         "api.payment.orderNotFound": "\u8BA2\u5355\u4E0D\u5B58\u5728",
         "api.payment.devOnly": "\u4EC5\u5F00\u53D1\u73AF\u5883\u53EF\u7528",
-        "api.payment.simulateFailed": "\u6A21\u62DF\u652F\u4ED8\u5931\u8D25"
+        "api.payment.simulateFailed": "\u6A21\u62DF\u652F\u4ED8\u5931\u8D25",
+        "api.job.created": "\u540E\u53F0\u4EFB\u52A1\u5DF2\u521B\u5EFA",
+        "api.job.cancelled": "\u540E\u53F0\u4EFB\u52A1\u5DF2\u53D6\u6D88",
+        "api.job.promptRequired": "\u7F3A\u5C11\u4EFB\u52A1\u63D0\u793A\u8BCD",
+        "api.job.promptTooLong": "\u4EFB\u52A1\u63D0\u793A\u8BCD\u8FC7\u957F",
+        "api.job.repoKeyTooLong": "\u5DE5\u4F5C\u533A\u6807\u8BC6\u8FC7\u957F",
+        "api.job.idRequired": "\u7F3A\u5C11\u4EFB\u52A1 ID",
+        "api.job.notFound": "\u4EFB\u52A1\u4E0D\u5B58\u5728",
+        "api.job.notCancellable": "\u4EFB\u52A1\u5F53\u524D\u72B6\u6001\u4E0D\u53EF\u53D6\u6D88",
+        "api.job.listFailed": "\u83B7\u53D6\u4EFB\u52A1\u5217\u8868\u5931\u8D25",
+        "api.job.createFailed": "\u521B\u5EFA\u4EFB\u52A1\u5931\u8D25",
+        "api.job.loadFailed": "\u52A0\u8F7D\u4EFB\u52A1\u5931\u8D25",
+        "api.job.cancelFailed": "\u53D6\u6D88\u4EFB\u52A1\u5931\u8D25",
+        "api.job.processCronOk": "\u5DF2\u5904\u7406\u540E\u53F0\u4EFB\u52A1\uFF08\u6210\u529F {succeeded}/{processed}\uFF0C\u8D85\u65F6\u6E05\u7406 {staleFailed}\uFF09",
+        "api.job.processFailed": "\u5904\u7406\u540E\u53F0\u4EFB\u52A1\u5931\u8D25",
+        "api.job.dailyLimit": "\u4ECA\u65E5\u540E\u53F0\u4EFB\u52A1\u5DF2\u8FBE\u4E0A\u9650\uFF08{limit}\uFF09",
+        "api.job.dailyLimitUpgrade": "\u514D\u8D39\u7248\u6BCF\u65E5\u540E\u53F0\u4EFB\u52A1\u4E0A\u9650\u4E3A {limit} \u6B21\uFF0C\u8BF7\u5347\u7EA7\u4E13\u4E1A\u7248",
+        "api.job.concurrentLimit": "\u8FDB\u884C\u4E2D\u7684\u540E\u53F0\u4EFB\u52A1\u8FC7\u591A\uFF08\u6700\u591A {limit} \u4E2A\uFF09",
+        "api.job.concurrentLimitUpgrade": "\u514D\u8D39\u7248\u540C\u65F6\u53EA\u80FD\u6709 {limit} \u4E2A\u540E\u53F0\u4EFB\u52A1\uFF0C\u8BF7\u7B49\u5F85\u5B8C\u6210\u6216\u5347\u7EA7\u4E13\u4E1A\u7248"
       },
       "en-US": {
         "api.auth.required": "Email and password are required",
@@ -1211,7 +1229,25 @@ var init_apiMessages = __esm({
         "api.payment.orderIdRequired": "Missing order ID",
         "api.payment.orderNotFound": "Order not found",
         "api.payment.devOnly": "Development environment only",
-        "api.payment.simulateFailed": "Payment simulation failed"
+        "api.payment.simulateFailed": "Payment simulation failed",
+        "api.job.created": "Background job created",
+        "api.job.cancelled": "Background job cancelled",
+        "api.job.promptRequired": "Job prompt is required",
+        "api.job.promptTooLong": "Job prompt is too long",
+        "api.job.repoKeyTooLong": "Workspace key is too long",
+        "api.job.idRequired": "Job ID is required",
+        "api.job.notFound": "Job not found",
+        "api.job.notCancellable": "Job cannot be cancelled in its current state",
+        "api.job.listFailed": "Failed to list jobs",
+        "api.job.createFailed": "Failed to create job",
+        "api.job.loadFailed": "Failed to load job",
+        "api.job.cancelFailed": "Failed to cancel job",
+        "api.job.processCronOk": "Processed background jobs ({succeeded}/{processed} succeeded, {staleFailed} stale failed)",
+        "api.job.processFailed": "Failed to process background jobs",
+        "api.job.dailyLimit": "Daily background job limit reached ({limit})",
+        "api.job.dailyLimitUpgrade": "Free plan allows {limit} background jobs per day. Upgrade to Pro.",
+        "api.job.concurrentLimit": "Too many active background jobs (max {limit})",
+        "api.job.concurrentLimitUpgrade": "Free plan allows {limit} active background job at a time. Wait or upgrade to Pro."
       }
     };
   }
@@ -3647,14 +3683,657 @@ var init_proxy = __esm({
   }
 });
 
-// lib/api/handlers/workspaces/byId.ts
+// lib/api/backgroundJobTypes.ts
+function isJobRuntimeExpired(startedAt, nowMs = Date.now()) {
+  if (!startedAt) return false;
+  return nowMs - startedAt.getTime() > MAX_JOB_RUNTIME_MS;
+}
+function resolveBackgroundJobWorkerMode() {
+  const raw = process.env.BACKGROUND_JOB_WORKER_MODE?.trim().toLowerCase();
+  if (raw === "agent") return "agent";
+  return "dummy";
+}
+function validateCreateBackgroundJobInput(input) {
+  const prompt = input.prompt?.trim() ?? "";
+  if (!prompt) return "api.job.promptRequired";
+  if (prompt.length > MAX_JOB_PROMPT_CHARS) return "api.job.promptTooLong";
+  const repoKey = input.repoKey?.trim();
+  if (repoKey && repoKey.length > MAX_JOB_REPO_KEY_CHARS) return "api.job.repoKeyTooLong";
+  return null;
+}
+function normalizeJobListLimit(raw) {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return DEFAULT_JOB_LIST_LIMIT;
+  const n = Math.floor(raw);
+  if (n < 1) return 1;
+  if (n > MAX_JOB_LIST_LIMIT) return MAX_JOB_LIST_LIMIT;
+  return n;
+}
+var MAX_JOB_PROMPT_CHARS, MAX_JOB_REPO_KEY_CHARS, DEFAULT_JOB_LIST_LIMIT, MAX_JOB_LIST_LIMIT, MAX_JOB_RUNTIME_MS, DEFAULT_JOBS_PER_CRON_TICK;
+var init_backgroundJobTypes = __esm({
+  "lib/api/backgroundJobTypes.ts"() {
+    "use strict";
+    MAX_JOB_PROMPT_CHARS = 1e5;
+    MAX_JOB_REPO_KEY_CHARS = 256;
+    DEFAULT_JOB_LIST_LIMIT = 50;
+    MAX_JOB_LIST_LIMIT = 100;
+    MAX_JOB_RUNTIME_MS = 30 * 60 * 1e3;
+    DEFAULT_JOBS_PER_CRON_TICK = 1;
+  }
+});
+
+// lib/api/backgroundJobsService.ts
+function serializeBackgroundJob(job) {
+  return {
+    id: job.id,
+    status: job.status,
+    repoKey: job.repoKey,
+    prompt: job.prompt,
+    progress: job.progress ?? null,
+    result: job.result ?? null,
+    error: job.error,
+    createdAt: job.createdAt.toISOString(),
+    startedAt: job.startedAt?.toISOString() ?? null,
+    finishedAt: job.finishedAt?.toISOString() ?? null
+  };
+}
+async function createBackgroundJob(userId, input) {
+  const prompt = input.prompt.trim();
+  const repoKey = input.repoKey?.trim() || null;
+  return prisma.backgroundJob.create({
+    data: {
+      userId,
+      status: "queued",
+      prompt,
+      repoKey
+    }
+  });
+}
+async function listBackgroundJobs(userId, limit) {
+  return prisma.backgroundJob.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: limit
+  });
+}
+async function getBackgroundJobForUser(userId, jobId) {
+  return prisma.backgroundJob.findFirst({
+    where: { id: jobId, userId }
+  });
+}
+async function cancelBackgroundJobForUser(userId, jobId) {
+  const job = await getBackgroundJobForUser(userId, jobId);
+  if (!job) return { kind: "not_found" };
+  if (job.status !== "queued" && job.status !== "running") {
+    return { kind: "not_cancellable", job };
+  }
+  const updated = await prisma.backgroundJob.update({
+    where: { id: job.id },
+    data: {
+      status: "cancelled",
+      finishedAt: /* @__PURE__ */ new Date()
+    }
+  });
+  return { kind: "cancelled", job: updated };
+}
+async function getBackgroundJobById(jobId) {
+  return prisma.backgroundJob.findUnique({ where: { id: jobId } });
+}
+async function claimNextQueuedBackgroundJob() {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const next = await prisma.backgroundJob.findFirst({
+      where: { status: "queued" },
+      orderBy: { createdAt: "asc" }
+    });
+    if (!next) return null;
+    const claimed = await prisma.backgroundJob.updateMany({
+      where: { id: next.id, status: "queued" },
+      data: { status: "running", startedAt: /* @__PURE__ */ new Date() }
+    });
+    if (claimed.count === 1) {
+      return prisma.backgroundJob.findUnique({ where: { id: next.id } });
+    }
+  }
+  return null;
+}
+async function updateBackgroundJobProgress(jobId, progress) {
+  return prisma.backgroundJob.update({
+    where: { id: jobId },
+    data: { progress }
+  });
+}
+async function finishIfNotCancelled(jobId, data) {
+  const current = await prisma.backgroundJob.findUnique({ where: { id: jobId } });
+  if (!current || current.status === "cancelled") return null;
+  return prisma.backgroundJob.update({
+    where: { id: jobId },
+    data
+  });
+}
+async function completeBackgroundJobSucceeded(jobId, result) {
+  return finishIfNotCancelled(jobId, {
+    status: "succeeded",
+    result,
+    error: null,
+    finishedAt: /* @__PURE__ */ new Date(),
+    progress: {
+      phase: "done",
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  });
+}
+async function completeBackgroundJobFailed(jobId, error) {
+  return finishIfNotCancelled(jobId, {
+    status: "failed",
+    error: error.slice(0, 4e3),
+    finishedAt: /* @__PURE__ */ new Date(),
+    progress: {
+      phase: "failed",
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  });
+}
+async function failStaleRunningBackgroundJobs(now = /* @__PURE__ */ new Date()) {
+  const cutoff = new Date(now.getTime() - MAX_JOB_RUNTIME_MS);
+  const stale = await prisma.backgroundJob.updateMany({
+    where: {
+      status: "running",
+      startedAt: { lt: cutoff }
+    },
+    data: {
+      status: "failed",
+      error: "JOB_TIMEOUT",
+      finishedAt: now
+    }
+  });
+  return stale.count;
+}
+var init_backgroundJobsService = __esm({
+  "lib/api/backgroundJobsService.ts"() {
+    "use strict";
+    init_prisma();
+    init_backgroundJobTypes();
+  }
+});
+
+// lib/api/backgroundJobEntitlement.ts
+function startOfUtcDay2() {
+  const now = /* @__PURE__ */ new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+function isPaidPlan(planName) {
+  return planName === "pro" || planName === "enterprise";
+}
+async function countBackgroundJobsCreatedToday(userId) {
+  const since = startOfUtcDay2();
+  return prisma.backgroundJob.count({
+    where: { userId, createdAt: { gte: since } }
+  });
+}
+async function countActiveBackgroundJobs(userId) {
+  return prisma.backgroundJob.count({
+    where: { userId, status: { in: ["queued", "running"] } }
+  });
+}
+function backgroundJobDailyLimit(planName) {
+  return isPaidPlan(planName) ? PAID_BACKGROUND_JOBS_PER_DAY : FREE_BACKGROUND_JOBS_PER_DAY;
+}
+function backgroundJobMaxActive(planName) {
+  return isPaidPlan(planName) ? PAID_BACKGROUND_JOBS_MAX_ACTIVE : FREE_BACKGROUND_JOBS_MAX_ACTIVE;
+}
+async function assertCanCreateBackgroundJob(userId, planName) {
+  const dailyLimit = backgroundJobDailyLimit(planName);
+  const maxActive = backgroundJobMaxActive(planName);
+  const [createdToday, active] = await Promise.all([
+    countBackgroundJobsCreatedToday(userId),
+    countActiveBackgroundJobs(userId)
+  ]);
+  if (createdToday >= dailyLimit) {
+    return {
+      ok: false,
+      error: {
+        key: isPaidPlan(planName) ? "api.job.dailyLimit" : "api.job.dailyLimitUpgrade",
+        params: { limit: dailyLimit, plan: planName }
+      }
+    };
+  }
+  if (active >= maxActive) {
+    return {
+      ok: false,
+      error: {
+        key: isPaidPlan(planName) ? "api.job.concurrentLimit" : "api.job.concurrentLimitUpgrade",
+        params: { limit: maxActive }
+      }
+    };
+  }
+  return { ok: true };
+}
+var FREE_BACKGROUND_JOBS_PER_DAY, FREE_BACKGROUND_JOBS_MAX_ACTIVE, PAID_BACKGROUND_JOBS_PER_DAY, PAID_BACKGROUND_JOBS_MAX_ACTIVE;
+var init_backgroundJobEntitlement = __esm({
+  "lib/api/backgroundJobEntitlement.ts"() {
+    "use strict";
+    init_prisma();
+    FREE_BACKGROUND_JOBS_PER_DAY = 2;
+    FREE_BACKGROUND_JOBS_MAX_ACTIVE = 1;
+    PAID_BACKGROUND_JOBS_PER_DAY = 100;
+    PAID_BACKGROUND_JOBS_MAX_ACTIVE = 5;
+  }
+});
+
+// lib/api/handlers/jobs/index.ts
+var jobs_exports = {};
+__export(jobs_exports, {
+  GET: () => GET13,
+  POST: () => POST20
+});
+async function GET13(req) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  try {
+    const url = new URL(req.url);
+    const limit = normalizeJobListLimit(
+      url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : DEFAULT_JOB_LIST_LIMIT
+    );
+    const jobs = await listBackgroundJobs(auth.user.id, limit);
+    return jsonResponse({ jobs: jobs.map(serializeBackgroundJob) });
+  } catch (error) {
+    console.error("[Jobs] List error:", error);
+    return localizedErrorResponse(req, "api.job.listFailed", 500);
+  }
+}
+async function POST20(req) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  try {
+    const parsed = await readJsonWithLimit(
+      req,
+      MAX_JOB_BODY_BYTES
+    );
+    if (!parsed.ok) return parsed.response;
+    const prompt = typeof parsed.value.prompt === "string" ? parsed.value.prompt : "";
+    const repoKey = parsed.value.repoKey == null ? null : typeof parsed.value.repoKey === "string" ? parsed.value.repoKey : "";
+    const validationError = validateCreateBackgroundJobInput({ prompt, repoKey });
+    if (validationError) {
+      return localizedErrorResponse(req, validationError, 400);
+    }
+    const planName = await resolveUserPlanName(auth.user.id);
+    const entitlement = await assertCanCreateBackgroundJob(auth.user.id, planName);
+    if (!entitlement.ok) {
+      return localizedErrorResponse(
+        req,
+        entitlement.error.key,
+        429,
+        entitlement.error.params
+      );
+    }
+    const job = await createBackgroundJob(auth.user.id, { prompt, repoKey });
+    return jsonResponse(
+      appendApiMessage(req, "api.job.created", {
+        job: serializeBackgroundJob(job)
+      }),
+      201
+    );
+  } catch (error) {
+    console.error("[Jobs] Create error:", error);
+    return localizedErrorResponse(req, "api.job.createFailed", 500);
+  }
+}
+var MAX_JOB_BODY_BYTES;
+var init_jobs = __esm({
+  "lib/api/handlers/jobs/index.ts"() {
+    "use strict";
+    init_http();
+    init_requireAuth();
+    init_body();
+    init_localizedError();
+    init_backgroundJobsService();
+    init_backgroundJobEntitlement();
+    init_backgroundJobTypes();
+    init_usageDb();
+    MAX_JOB_BODY_BYTES = 256e3;
+  }
+});
+
+// lib/api/backgroundJobCloudWriteback.ts
+function normalizeWorkspacePath(path) {
+  return path.replace(/\\/g, "/").replace(/^\/+/, "").trim();
+}
+function parseWorkspaceFilesJson(filesJson) {
+  try {
+    const parsed = JSON.parse(filesJson);
+    if (!Array.isArray(parsed)) return [];
+    const out = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") continue;
+      const name = item.name;
+      const content = item.content;
+      if (typeof name !== "string" || !name.trim()) continue;
+      if (typeof content !== "string") continue;
+      out.push({
+        name: normalizeWorkspacePath(name),
+        content,
+        language: typeof item.language === "string" ? item.language : void 0
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+function mergePendingChangesIntoWorkspaceFiles(files, changes) {
+  const map = /* @__PURE__ */ new Map();
+  for (const file of files) {
+    map.set(normalizeWorkspacePath(file.name), file);
+  }
+  for (const change of changes) {
+    const name = normalizeWorkspacePath(change.path);
+    if (!name) continue;
+    map.set(name, {
+      name,
+      content: change.content,
+      language: change.language ?? map.get(name)?.language ?? "plaintext"
+    });
+  }
+  return [...map.values()];
+}
+async function applyBackgroundJobResultToCloudWorkspace(userId, repoKey, pendingChanges) {
+  const workspaceName = (repoKey?.trim() || "default").slice(0, 256);
+  if (pendingChanges.length === 0) {
+    return { applied: false, workspace: workspaceName, paths: [] };
+  }
+  try {
+    let workspace = await getWorkspaceByName(userId, workspaceName);
+    if (!workspace && workspaceName === "default") {
+      workspace = await ensureDefaultWorkspace(userId);
+    }
+    if (!workspace) {
+      return {
+        applied: false,
+        workspace: workspaceName,
+        paths: [],
+        error: "WORKSPACE_NOT_FOUND"
+      };
+    }
+    const files = parseWorkspaceFilesJson(workspace.files);
+    const merged = mergePendingChangesIntoWorkspaceFiles(files, pendingChanges);
+    const paths = pendingChanges.map((c) => normalizeWorkspacePath(c.path)).filter(Boolean);
+    await upsertWorkspace(
+      userId,
+      workspaceName,
+      JSON.stringify(merged),
+      workspace.settings ?? "{}"
+    );
+    return { applied: true, workspace: workspaceName, paths };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { applied: false, workspace: workspaceName, paths: [], error: message };
+  }
+}
+async function enrichResultWithCloudWriteback(userId, repoKey, result) {
+  const changes = result.pendingChanges?.filter(
+    (c) => typeof c.path === "string" && typeof c.content === "string"
+  ) ?? [];
+  if (changes.length === 0) return result;
+  const writeback = await applyBackgroundJobResultToCloudWorkspace(userId, repoKey, changes);
+  return {
+    ...result,
+    cloudWriteback: writeback,
+    pendingChanges: changes.map((c) => ({ path: c.path, content: c.content, language: c.language }))
+  };
+}
+var init_backgroundJobCloudWriteback = __esm({
+  "lib/api/backgroundJobCloudWriteback.ts"() {
+    "use strict";
+    init_workspacesService();
+  }
+});
+
+// lib/api/backgroundJobRunner.ts
+function promptPreview(prompt, max = 200) {
+  const trimmed = prompt.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max)}\u2026`;
+}
+async function runDummyBackgroundJob(job, ctx) {
+  await ctx.setProgress({ phase: "dummy:start", updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
+  if (await ctx.isCancelled()) return { kind: "cancelled" };
+  if (isJobRuntimeExpired(ctx.startedAt)) return { kind: "timeout" };
+  await ctx.setProgress({ phase: "dummy:execute", round: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
+  if (await ctx.isCancelled()) return { kind: "cancelled" };
+  const summary = `Dummy worker completed (${promptPreview(job.prompt, 120)})`;
+  const stamp = (/* @__PURE__ */ new Date()).toISOString();
+  const markerPath = `.aide/background-jobs/${job.id}.md`;
+  const markerContent = [
+    "# Background job result",
+    "",
+    `- **Completed**: ${stamp}`,
+    `- **Job**: ${job.id}`,
+    "",
+    "## Prompt excerpt",
+    "",
+    promptPreview(job.prompt, 800),
+    ""
+  ].join("\n");
+  return {
+    kind: "succeeded",
+    result: {
+      mode: "dummy",
+      summary,
+      rounds: 1,
+      pendingChanges: [
+        {
+          path: markerPath,
+          content: markerContent,
+          language: "markdown"
+        }
+      ]
+    }
+  };
+}
+async function runAgentBackgroundJob(_job, _ctx) {
+  return {
+    kind: "failed",
+    error: "AGENT_WORKER_NOT_IMPLEMENTED"
+  };
+}
+async function runBackgroundJobWorker(job, ctx, mode = resolveBackgroundJobWorkerMode()) {
+  if (mode === "agent") return runAgentBackgroundJob(job, ctx);
+  return runDummyBackgroundJob(job, ctx);
+}
+async function executeBackgroundJob(job) {
+  const startedAt = job.startedAt ?? /* @__PURE__ */ new Date();
+  const ctx = {
+    startedAt,
+    setProgress: async (progress) => {
+      await updateBackgroundJobProgress(job.id, progress);
+    },
+    isCancelled: async () => {
+      const current = await getBackgroundJobById(job.id);
+      return current?.status === "cancelled";
+    }
+  };
+  const mode = resolveBackgroundJobWorkerMode();
+  const outcome = await runBackgroundJobWorker(job, ctx, mode);
+  switch (outcome.kind) {
+    case "succeeded": {
+      let result = outcome.result;
+      try {
+        result = await enrichResultWithCloudWriteback(job.userId, job.repoKey, result);
+      } catch (error) {
+        console.error("[Jobs] Cloud writeback failed:", error);
+      }
+      const updated = await completeBackgroundJobSucceeded(job.id, result);
+      return { jobId: job.id, outcome: updated ? "succeeded" : "cancelled" };
+    }
+    case "failed": {
+      await completeBackgroundJobFailed(job.id, outcome.error);
+      return { jobId: job.id, outcome: "failed" };
+    }
+    case "timeout": {
+      await completeBackgroundJobFailed(job.id, "JOB_TIMEOUT");
+      return { jobId: job.id, outcome: "failed" };
+    }
+    case "cancelled":
+      return { jobId: job.id, outcome: "cancelled" };
+    default:
+      return { jobId: job.id, outcome: "failed" };
+  }
+}
+var init_backgroundJobRunner = __esm({
+  "lib/api/backgroundJobRunner.ts"() {
+    "use strict";
+    init_backgroundJobTypes();
+    init_backgroundJobCloudWriteback();
+    init_backgroundJobsService();
+  }
+});
+
+// lib/api/backgroundJobProcessor.ts
+async function processBackgroundJobs(options = {}) {
+  const limit = options.limit ?? DEFAULT_JOBS_PER_CRON_TICK;
+  const staleFailed = await failStaleRunningBackgroundJobs();
+  const result = {
+    staleFailed,
+    processed: 0,
+    succeeded: 0,
+    failed: 0,
+    cancelled: 0,
+    jobIds: []
+  };
+  for (let i = 0; i < limit; i++) {
+    const job = await claimNextQueuedBackgroundJob();
+    if (!job) break;
+    result.processed++;
+    result.jobIds.push(job.id);
+    const run = await executeBackgroundJob(job);
+    if (run.outcome === "succeeded") result.succeeded++;
+    else if (run.outcome === "cancelled") result.cancelled++;
+    else result.failed++;
+  }
+  return result;
+}
+var init_backgroundJobProcessor = __esm({
+  "lib/api/backgroundJobProcessor.ts"() {
+    "use strict";
+    init_backgroundJobTypes();
+    init_backgroundJobsService();
+    init_backgroundJobRunner();
+  }
+});
+
+// lib/api/handlers/jobs/process.ts
+var process_exports = {};
+__export(process_exports, {
+  GET: () => GET14,
+  POST: () => POST21
+});
+async function runProcess(request) {
+  if (!isCronAuthorized(request)) {
+    return localizedErrorResponse(request, "api.auth.unauthorized", 401);
+  }
+  try {
+    const result = await processBackgroundJobs();
+    return jsonResponse(
+      appendApiMessage(request, "api.job.processCronOk", {
+        success: true,
+        ...result
+      })
+    );
+  } catch (error) {
+    console.error("[Jobs process cron] error:", error);
+    return localizedErrorResponse(request, "api.job.processFailed", 500);
+  }
+}
+async function GET14(request) {
+  return runProcess(request);
+}
+async function POST21(request) {
+  return runProcess(request);
+}
+var init_process = __esm({
+  "lib/api/handlers/jobs/process.ts"() {
+    "use strict";
+    init_cronAuth();
+    init_http();
+    init_localizedError();
+    init_backgroundJobProcessor();
+  }
+});
+
+// lib/api/handlers/jobs/cancel.ts
+var cancel_exports2 = {};
+__export(cancel_exports2, {
+  POST: () => POST22
+});
+async function POST22(req, ctx) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  const id = ctx?.params?.id;
+  if (!id) return localizedErrorResponse(req, "api.job.idRequired", 400);
+  try {
+    const result = await cancelBackgroundJobForUser(auth.user.id, id);
+    if (result.kind === "not_found") {
+      return localizedErrorResponse(req, "api.job.notFound", 404);
+    }
+    if (result.kind === "not_cancellable") {
+      return localizedErrorResponse(req, "api.job.notCancellable", 409);
+    }
+    return jsonResponse(
+      appendApiMessage(req, "api.job.cancelled", {
+        job: serializeBackgroundJob(result.job)
+      })
+    );
+  } catch (error) {
+    console.error("[Jobs] Cancel error:", error);
+    return localizedErrorResponse(req, "api.job.cancelFailed", 500);
+  }
+}
+var init_cancel2 = __esm({
+  "lib/api/handlers/jobs/cancel.ts"() {
+    "use strict";
+    init_http();
+    init_requireAuth();
+    init_localizedError();
+    init_backgroundJobsService();
+  }
+});
+
+// lib/api/handlers/jobs/byId.ts
 var byId_exports2 = {};
 __export(byId_exports2, {
+  GET: () => GET15
+});
+async function GET15(req, ctx) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  const id = ctx?.params?.id;
+  if (!id) return localizedErrorResponse(req, "api.job.idRequired", 400);
+  try {
+    const job = await getBackgroundJobForUser(auth.user.id, id);
+    if (!job) return localizedErrorResponse(req, "api.job.notFound", 404);
+    return jsonResponse({ job: serializeBackgroundJob(job) });
+  } catch (error) {
+    console.error("[Jobs] Get error:", error);
+    return localizedErrorResponse(req, "api.job.loadFailed", 500);
+  }
+}
+var init_byId2 = __esm({
+  "lib/api/handlers/jobs/byId.ts"() {
+    "use strict";
+    init_http();
+    init_requireAuth();
+    init_localizedError();
+    init_backgroundJobsService();
+  }
+});
+
+// lib/api/handlers/workspaces/byId.ts
+var byId_exports3 = {};
+__export(byId_exports3, {
   DELETE: () => DELETE,
-  GET: () => GET13,
+  GET: () => GET16,
   PUT: () => PUT
 });
-async function GET13(req, ctx) {
+async function GET16(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -3734,7 +4413,7 @@ async function DELETE(req, ctx) {
   }
 }
 var MAX_WORKSPACE_BODY_BYTES3;
-var init_byId2 = __esm({
+var init_byId3 = __esm({
   "lib/api/handlers/workspaces/byId.ts"() {
     "use strict";
     init_http();
@@ -3753,10 +4432,10 @@ var init_byId2 = __esm({
 // lib/api/handlers/auth/authCatchAll.ts
 var authCatchAll_exports = {};
 __export(authCatchAll_exports, {
-  GET: () => GET14
+  GET: () => GET17
 });
 import { randomBytes as randomBytes2 } from "crypto";
-async function GET14(req) {
+async function GET17(req) {
   const url = new URL(req.url);
   const pathname = url.pathname;
   if (pathname.includes("providers")) {
@@ -3907,13 +4586,45 @@ var routes = [
   { method: "GET", match: (p) => p === "/api/usage/ai" ? {} : null, load: () => Promise.resolve().then(() => (init_ai(), ai_exports)), export: "GET" },
   { method: "POST", match: (p) => p === "/api/usage/ai" ? {} : null, load: () => Promise.resolve().then(() => (init_ai(), ai_exports)), export: "POST" },
   { method: "POST", match: (p) => p === "/api/mcp/proxy" ? {} : null, load: () => Promise.resolve().then(() => (init_proxy(), proxy_exports)), export: "POST" },
+  { method: "GET", match: (p) => p === "/api/jobs" ? {} : null, load: () => Promise.resolve().then(() => (init_jobs(), jobs_exports)), export: "GET" },
+  { method: "POST", match: (p) => p === "/api/jobs" ? {} : null, load: () => Promise.resolve().then(() => (init_jobs(), jobs_exports)), export: "POST" },
+  {
+    method: "GET",
+    match: (p) => p === "/api/jobs/process" ? {} : null,
+    load: () => Promise.resolve().then(() => (init_process(), process_exports)),
+    export: "GET"
+  },
+  {
+    method: "POST",
+    match: (p) => p === "/api/jobs/process" ? {} : null,
+    load: () => Promise.resolve().then(() => (init_process(), process_exports)),
+    export: "POST"
+  },
+  {
+    method: "POST",
+    match: (p) => {
+      const m = p.match(/^\/api\/jobs\/([^/]+)\/cancel$/);
+      return m ? { id: decodeURIComponent(m[1]) } : null;
+    },
+    load: () => Promise.resolve().then(() => (init_cancel2(), cancel_exports2)),
+    export: "POST"
+  },
+  {
+    method: "GET",
+    match: (p) => {
+      const m = p.match(/^\/api\/jobs\/([^/]+)$/);
+      return m ? { id: decodeURIComponent(m[1]) } : null;
+    },
+    load: () => Promise.resolve().then(() => (init_byId2(), byId_exports2)),
+    export: "GET"
+  },
   {
     method: "GET",
     match: (p) => {
       const m = p.match(/^\/api\/workspaces\/([^/]+)$/);
       return m ? { id: decodeURIComponent(m[1]) } : null;
     },
-    load: () => Promise.resolve().then(() => (init_byId2(), byId_exports2)),
+    load: () => Promise.resolve().then(() => (init_byId3(), byId_exports3)),
     export: "GET"
   },
   {
@@ -3922,7 +4633,7 @@ var routes = [
       const m = p.match(/^\/api\/workspaces\/([^/]+)$/);
       return m ? { id: decodeURIComponent(m[1]) } : null;
     },
-    load: () => Promise.resolve().then(() => (init_byId2(), byId_exports2)),
+    load: () => Promise.resolve().then(() => (init_byId3(), byId_exports3)),
     export: "PUT"
   },
   {
@@ -3931,7 +4642,7 @@ var routes = [
       const m = p.match(/^\/api\/workspaces\/([^/]+)$/);
       return m ? { id: decodeURIComponent(m[1]) } : null;
     },
-    load: () => Promise.resolve().then(() => (init_byId2(), byId_exports2)),
+    load: () => Promise.resolve().then(() => (init_byId3(), byId_exports3)),
     export: "DELETE"
   },
   {
@@ -4062,18 +4773,18 @@ async function handle(request) {
     );
   }
 }
-var GET15 = handle;
-var POST20 = handle;
+var GET18 = handle;
+var POST23 = handle;
 var PUT2 = handle;
 var DELETE2 = handle;
 var PATCH = handle;
 var OPTIONS = handle;
 export {
   DELETE2 as DELETE,
-  GET15 as GET,
+  GET18 as GET,
   OPTIONS,
   PATCH,
-  POST20 as POST,
+  POST23 as POST,
   PUT2 as PUT
 };
 //# sourceMappingURL=index.js.map

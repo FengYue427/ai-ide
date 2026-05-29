@@ -2,7 +2,7 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.1.1**（计划系统 GA）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP](./docs/ROADMAP.md)
+**当前版本：v1.1.2**（后台 Agent MVP）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP](./docs/ROADMAP.md)
 
 | 入口 | 链接 |
 |--|--|
@@ -23,6 +23,17 @@
 - **工作区**：`.aide` 一键同步到 AI 索引（缓解编辑器与索引不一致）
 
 Agent 默认常开；队列与 Chat 草稿支持本地持久化。
+
+## v1.1.2 后台 Agent（MVP）
+
+关页后服务端继续执行 Agent 任务。快速上手：[docs/BACKGROUND_AGENT_QUICKSTART.md](./docs/BACKGROUND_AGENT_QUICKSTART.md)
+
+- **提交**：Chat Agent 模式 → **后台运行**（需登录 + `VITE_BACKGROUND_AGENT=true`）
+- **查看**：右栏 **后台任务** Tab（轮询、取消、预览 Diff）
+- **结果**：写入**云工作区**（默认 `default`）；Free 2 次/日，Pro 更高配额
+- **运维**：Cron `/api/jobs/process`；本地 `npm run jobs:process`
+
+生产默认关闭后台 Agent UI；启用见 [V1.1_FEATURE_FLAGS.md](./docs/V1.1_FEATURE_FLAGS.md)。
 
 ## 快速开始
 
@@ -69,6 +80,7 @@ npm run check:release
 - 多模型 BYOK 对话
 - Workspace 上下文 + `@` 引用
 - Agent 多文件编辑与差异应用
+- **后台 Agent**（v1.1.2）：服务端任务 + 云工作区回写（特性开关）
 - Plan Mode（先计划后执行）
 - MCP 工具桥接与后续回合
 
@@ -102,6 +114,7 @@ npm run deploy
 - 路线图：`docs/ROADMAP.md`
 - 计划系统快速上手：`docs/PLAN_SYSTEM_QUICKSTART.md`
 - v1.1.1 GA 清单：`docs/V1.1.1_GA_EXECUTION.md`
+- v1.1.2 后台 Agent：`docs/BACKGROUND_AGENT_QUICKSTART.md` · `docs/V1.1.2_GA_EXECUTION.md`
 - 下一执行阶段：`docs/NEXT_EXECUTION.md`
 - 发布运行手册：`docs/RELEASE_RUNBOOK.md`
 - 对外发布素材：`docs/publish/README.md`

@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import DropZone from '../components/DropZone'
 import StatusBar from '../components/StatusBar'
 import WorkspacePanel from '../components/WorkspacePanel'
@@ -45,7 +46,7 @@ import { workspaceContextService } from '../services/workspaceContextService'
 import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
 import { buildPlanExecutionPrompt } from '../services/planExecutionService'
 import { buildPlanCatalog } from '../services/planCatalogService'
-import { buildReportCatalog } from '../services/reportCatalogService'
+import { buildReportCatalog, findLatestReportPath } from '../services/reportCatalogService'
 import {
   buildReportsZipBlob,
   downloadBlob,
@@ -62,7 +63,7 @@ import {
   upsertPlanSpecLinksFile,
 } from '../services/planSpecLinkService'
 import { markPlanStepDone } from '../services/planStepCompletionService'
-import { listAideEditorFiles, syncAideFilesToWorkspace } from '../services/aideWorkspaceSyncService'
+import { offerSyncAideAfterPlanWrite, runAideWorkspaceSyncWithNotify, type PlanHostTranslateFn } from '../services/planAideSyncPromptService'
 import {
   buildQueueRestoreFromReport,
   mergePlanRestoreItems,
@@ -162,6 +163,10 @@ export function PanelHost({
   gitModified = 0,
 }: PanelHostProps) {
   const { language, setLanguage, t } = useI18n()
+  const planT: PlanHostTranslateFn = useCallback(
+    (key, params) => (t as PlanHostTranslateFn)(key, params),
+    [t],
+  )
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
   const theme = useIDEStore((s) => s.theme)
@@ -241,6 +246,14 @@ export function PanelHost({
     .filter((item): item is string => !!item)
     .sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null
   const specTaskPaths = listSpecTasksPaths(files)
+  const syncAideWorkspace = useCallback(
+    (fileList: typeof files) => runAideWorkspaceSyncWithNotify(fileList, notify, planT),
+    [notify, planT],
+  )
+  const promptSyncAideAfterPlanWrite = useCallback(
+    (fileList: typeof files) => offerSyncAideAfterPlanWrite(fileList, requestConfirm, notify, planT),
+    [notify, planT, requestConfirm],
+  )
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAiConfig = useIDEStore((s) => s.setAiConfig)
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
@@ -525,23 +538,7 @@ export function PanelHost({
             closeSettingsPanel()
           }}
           onSyncAideToWorkspace={() => {
-            void (async () => {
-              const aideFiles = listAideEditorFiles(files)
-              if (aideFiles.length === 0) {
-                notify('info', '无可同步文件', '编辑器中没有 .aide/ 下的文件')
-                return
-              }
-              const result = await syncAideFilesToWorkspace(files)
-              if (result.synced === 0) {
-                notify('error', '同步失败', result.errors[0] ?? '请检查工作区容量限制')
-                return
-              }
-              notify(
-                'success',
-                '已同步到工作区索引',
-                `成功 ${result.synced} 个${result.failed > 0 ? `，失败 ${result.failed} 个` : ''}`,
-              )
-            })()
+            void syncAideWorkspace(files)
           }}
           planOverview={{
             planCount: planItems.length,
@@ -577,7 +574,7 @@ export function PanelHost({
             if (!file) return
             const first = parseProjectTasks(file.content).find((t) => !t.done)
             if (!first) {
-              notify('info', '无待执行', '该 Spec 没有未完成任务')
+              notify('info', t('spec.host.noOpenTask.title'), t('spec.host.noOpenTask.detail'))
               return
             }
             const prompt = `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${tasksPath}] ${first.text}`
@@ -597,14 +594,15 @@ export function PanelHost({
           onCreatePlanFromTemplate={(templateId, planTitle) => {
             const result = createPlanFromTemplate(files, templateId, planTitle)
             if (!result) {
-              notify('error', '创建失败', '未找到所选计划模板')
+              notify('error', t('plan.host.createFailed.title'), t('plan.host.createFailed.detail'))
               return
             }
             setFiles(result.files)
             setActiveFile(result.index)
             markWorkspaceHydrated()
             closeSettingsPanel()
-            notify('success', '计划已创建', result.path)
+            notify('success', t('plan.host.created.title'), t('plan.host.created.detail', { path: result.path }))
+            void promptSyncAideAfterPlanWrite(result.files)
           }}
           specTaskPaths={specTaskPaths}
           onOpenPlan={(path) => {
@@ -630,24 +628,25 @@ export function PanelHost({
             }
             setFiles(nextFiles)
             markWorkspaceHydrated()
-            notify('success', '已标记完成', `${path} · ${steps.length} 个步骤`)
+            notify('success', t('plan.host.markDone.title'), t('plan.host.markDone.detail', { path, count: steps.length }))
           }}
           onDuplicatePlan={(path) => {
             const result = duplicatePlanFile(files, path)
             if (!result) {
-              notify('error', '复制失败', '未找到可复制的计划文件')
+              notify('error', t('plan.host.duplicateFailed.title'), t('plan.host.duplicateFailed.detail'))
               return
             }
             setFiles(result.files)
             setActiveFile(result.index)
             markWorkspaceHydrated()
-            notify('success', '计划已复制', result.path)
+            notify('success', t('plan.host.duplicated.title'), t('plan.host.duplicated.detail', { path: result.path }))
+            void promptSyncAideAfterPlanWrite(result.files)
           }}
           onRunPlan={(path, steps) => {
             const file = files.find((f) => f.name === path)
             if (!file) return
             if (steps.length === 0) {
-              notify('error', '无法执行', '该计划里没有可执行的未完成步骤（- [ ]）')
+              notify('error', t('plan.host.runNoSteps.title'), t('plan.host.runNoSteps.detail'))
               return
             }
             const existing = new Set<string>()
@@ -664,15 +663,20 @@ export function PanelHost({
               )
             })
             if (deduped.length === 0) {
-              notify('info', '无需入队', '这些步骤已在计划执行队列中')
+              notify('info', t('plan.host.runAlreadyQueued.title'), t('plan.host.runAlreadyQueued.detail'))
               return
             }
             void (async () => {
               const preview = deduped.slice(0, 8).map((s) => `- ${s.text}`).join('\n')
               const ok = await requestConfirm({
-                title: '确认执行计划步骤？',
-                message: `计划：${path}\n步骤数：${deduped.length}\n\n${preview}${deduped.length > 8 ? '\n- …' : ''}\n\n执行结果会回填到 plan 文件，并自动将对应步骤标记为完成。`,
-                confirmText: '开始执行',
+                title: t('plan.host.runConfirm.title'),
+                message: t('plan.host.runConfirm.message', {
+                  path,
+                  count: deduped.length,
+                  preview,
+                  more: deduped.length > 8 ? t('plan.host.runConfirm.more') : '',
+                }),
+                confirmText: t('plan.host.runConfirm.confirm'),
               })
               if (!ok) return
 
@@ -690,12 +694,12 @@ export function PanelHost({
           onMapPlanToSpec={(path, steps, targetSpecPath) => {
             const targetSpecTasks = targetSpecPath || findLatestSpecTasksPath(files)
             if (!targetSpecTasks) {
-              notify('error', '映射失败', '未找到 Specs tasks 文件，请先创建一个 Spec')
+              notify('error', t('plan.host.mapFailed.title'), t('plan.host.mapFailed.detail'))
               return
             }
             const result = appendPlanStepsToSpecTasks(files, targetSpecTasks, steps.map((s) => s.text))
             if (result.added === 0) {
-              notify('info', '无需映射', '这些步骤已存在于 Spec tasks')
+              notify('info', t('plan.host.mapNothing.title'), t('plan.host.mapNothing.detail'))
               return
             }
             const linkInput = result.addedSteps.map((taskText) => {
@@ -715,17 +719,21 @@ export function PanelHost({
               setActiveFile(index)
               setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
             }
-            notify('success', '映射完成', `[${path}] 已追加 ${result.added} 条到 ${targetSpecTasks}`)
+            notify(
+              'success',
+              t('plan.host.mapSuccess.title'),
+              t('plan.host.mapSuccess.detail', { path, added: result.added, target: targetSpecTasks }),
+            )
           }}
           onMapPlanToSpecAndRun={(path, steps, targetSpecPath) => {
             const targetSpecTasks = targetSpecPath || findLatestSpecTasksPath(files)
             if (!targetSpecTasks) {
-              notify('error', '映射失败', '未找到 Specs tasks 文件，请先创建一个 Spec')
+              notify('error', t('plan.host.mapFailed.title'), t('plan.host.mapFailed.detail'))
               return
             }
             const result = appendPlanStepsToSpecTasks(files, targetSpecTasks, steps.map((s) => s.text))
             if (result.added === 0) {
-              notify('info', '无需映射', '这些步骤已存在于 Spec tasks')
+              notify('info', t('plan.host.mapNothing.title'), t('plan.host.mapNothing.detail'))
               return
             }
             const linkInput = result.addedSteps.map((taskText) => {
@@ -766,20 +774,39 @@ export function PanelHost({
               closeSettingsPanel()
               openChatPanel()
             }
-            notify('success', '映射并执行', `[${path}] 已映射 ${result.added} 条到 ${targetSpecTasks}，并已入队顺序执行`)
+            notify(
+              'success',
+              t('plan.host.mapRunSuccess.title'),
+              t('plan.host.mapRunSuccess.detail', { path, added: result.added, target: targetSpecTasks }),
+            )
           }}
           onDeletePlan={(path) => {
             void (async () => {
               const ok = await requestConfirm({
-                title: '删除计划？',
-                message: `将从工作区移除：${path}`,
-                confirmText: '删除',
+                title: t('plan.host.deleteConfirm.title'),
+                message: t('plan.host.deleteConfirm.message', { path }),
+                confirmText: t('plan.host.deleteConfirm.confirm'),
                 tone: 'danger',
               })
               if (!ok) return
               setFiles((prev) => prev.filter((f) => f.name !== path))
-              notify('success', '已删除', path)
+              notify('success', t('plan.host.deleted.title'), t('plan.host.deleted.detail', { path }))
             })()
+          }}
+          onOpenLatestReport={() => {
+            const path = findLatestReportPath(files.map((f) => ({ name: f.name, content: f.content })))
+            if (!path) {
+              notify('info', t('report.host.noReports.title'), t('report.host.noReports.detail'))
+              return
+            }
+            const targetIndex = files.findIndex((file) => file.name === path)
+            if (targetIndex < 0) {
+              notify('error', t('report.host.openFailed.title'), t('report.host.openFailed.detail', { path }))
+              return
+            }
+            setActiveFile(targetIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
           }}
           reportItems={reportItems}
           onOpenReport={(path) => {
@@ -792,14 +819,14 @@ export function PanelHost({
           onDeleteReport={(path) => {
             void (async () => {
               const ok = await requestConfirm({
-                title: '删除报告？',
-                message: `将从工作区移除：${path}`,
-                confirmText: '删除',
+                title: t('report.host.deleteConfirm.title'),
+                message: t('report.host.deleteConfirm.message', { path }),
+                confirmText: t('report.host.deleteConfirm.confirm'),
                 tone: 'danger',
               })
               if (!ok) return
               setFiles((prev) => prev.filter((f) => f.name !== path))
-              notify('success', '已删除', path)
+              notify('success', t('report.host.deleted.title'), t('report.host.deleted.detail', { path }))
             })()
           }}
           onDeleteReports={(paths) => {
@@ -807,33 +834,50 @@ export function PanelHost({
             void (async () => {
               const preview = paths.slice(0, 6).join('\n')
               const ok = await requestConfirm({
-                title: '批量删除报告？',
-                message: `将删除 ${paths.length} 份报告：\n\n${preview}${paths.length > 6 ? '\n…' : ''}`,
-                confirmText: '删除',
+                title: t('report.host.bulkDeleteConfirm.title'),
+                message: t('report.host.bulkDeleteConfirm.message', {
+                  count: paths.length,
+                  preview,
+                  more: paths.length > 6 ? t('report.host.previewMore') : '',
+                }),
+                confirmText: t('report.host.deleteConfirm.confirm'),
                 tone: 'danger',
               })
               if (!ok) return
               setFiles((prev) => removeReportsFromFiles(prev, paths))
-              notify('success', '已批量删除', `共 ${paths.length} 份报告`)
+              notify(
+                'success',
+                t('report.host.bulkDeleted.title'),
+                t('report.host.bulkDeleted.detail', { count: paths.length }),
+              )
             })()
           }}
           onPruneReports={(keepRecent) => {
             const toDelete = pickReportPathsToPrune(reportItems, keepRecent)
             if (toDelete.length === 0) {
-              notify('info', '无需清理', `当前报告数 ≤ ${keepRecent}，没有可删除项`)
+              notify('info', t('report.host.pruneNothing.title'), t('report.host.pruneNothing.detail', { keepRecent }))
               return
             }
             void (async () => {
               const preview = toDelete.slice(0, 6).join('\n')
               const ok = await requestConfirm({
-                title: '清理旧报告？',
-                message: `将保留最近 ${keepRecent} 份，删除 ${toDelete.length} 份：\n\n${preview}${toDelete.length > 6 ? '\n…' : ''}`,
-                confirmText: '清理',
+                title: t('report.host.pruneConfirm.title'),
+                message: t('report.host.pruneConfirm.message', {
+                  keepRecent,
+                  count: toDelete.length,
+                  preview,
+                  more: toDelete.length > 6 ? t('report.host.previewMore') : '',
+                }),
+                confirmText: t('report.host.pruneConfirm.confirm'),
                 tone: 'danger',
               })
               if (!ok) return
               setFiles((prev) => removeReportsFromFiles(prev, toDelete))
-              notify('success', '清理完成', `已删除 ${toDelete.length} 份，保留最近 ${keepRecent} 份`)
+              notify(
+                'success',
+                t('report.host.pruneDone.title'),
+                t('report.host.pruneDone.detail', { deleted: toDelete.length, keepRecent }),
+              )
             })()
           }}
           onExportReportsZip={(paths) => {
@@ -842,9 +886,13 @@ export function PanelHost({
               try {
                 const blob = await buildReportsZipBlob(files, paths)
                 downloadBlob(blob, `aide-reports-${Date.now()}.zip`)
-                notify('success', 'ZIP 已导出', `已打包 ${paths.length} 份报告`)
+                notify('success', t('report.host.zipExported.title'), t('report.host.zipExported.detail', { count: paths.length }))
               } catch (error) {
-                notify('error', '导出失败', error instanceof Error ? error.message : '打包失败')
+                notify(
+                  'error',
+                  t('report.host.zipFailed.title'),
+                  error instanceof Error ? error.message : t('report.host.zipFailed.detail'),
+                )
               }
             })()
           }}
@@ -865,15 +913,17 @@ export function PanelHost({
               if (!hasQueueRestoreItems(preview)) {
                 notify(
                   'info',
-                  '无可恢复项',
-                  preview.unresolved.length ? preview.unresolved.join('；') : '报告中没有可匹配的待执行项',
+                  t('report.host.restoreNothing.title'),
+                  preview.unresolved.length
+                    ? preview.unresolved.join('；')
+                    : t('report.host.restoreNothing.detail'),
                 )
                 return
               }
               const ok = await requestConfirm({
-                title: '从报告恢复队列？',
+                title: t('report.host.restoreConfirm.title'),
                 message: formatQueueRestorePreview(preview),
-                confirmText: '恢复入队',
+                confirmText: t('report.host.restoreConfirm.confirm'),
               })
               if (!ok) return
               const result = buildQueueRestoreFromReport(file.content, fileLikes)
@@ -896,8 +946,16 @@ export function PanelHost({
               openChatPanel()
               notify(
                 'success',
-                '已恢复队列',
-                `Plan ${result.planItems.length} · Spec ${result.specItems.length}${result.unresolved.length ? ` · 未匹配 ${result.unresolved.length}` : ''}`,
+                t('report.host.restoreDone.title'),
+                t('report.host.restoreDone.detail', {
+                  plan: result.planItems.length,
+                  spec: result.specItems.length,
+                  unresolved: result.unresolved.length,
+                  unresolvedSuffix:
+                    result.unresolved.length > 0
+                      ? t('report.host.restoreDone.unresolvedSuffix', { count: result.unresolved.length })
+                      : '',
+                }),
               )
             })()
           }}

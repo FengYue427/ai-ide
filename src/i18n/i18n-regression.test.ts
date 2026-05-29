@@ -69,6 +69,8 @@ const API_SUCCESS_CASES: Array<{
   { key: 'api.workspace.created', en: 'Workspace created', zh: '工作区已创建' },
   { key: 'api.workspace.deleted', en: 'Workspace deleted', zh: '工作区已删除' },
   { key: 'api.payment.simulateOk', en: /Payment simulated/i, zh: /模拟支付成功/ },
+  { key: 'api.job.created', en: 'Background job created', zh: '后台任务已创建' },
+  { key: 'api.job.cancelled', en: 'Background job cancelled', zh: '后台任务已取消' },
 ]
 
 describe('i18n regression', () => {
