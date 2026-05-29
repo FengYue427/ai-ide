@@ -29,8 +29,11 @@ test.describe('Full stack (API + UI)', () => {
     await expect(page.getByText(/同步到云端/)).toBeVisible({ timeout: 10_000 })
 
     await page.getByRole('button', { name: '保存当前工作区' }).click()
-    await page.getByPlaceholder('工作区名称').fill(workspaceName)
-    await page.getByRole('button', { name: '保存' }).click()
+    const saveForm = page.locator('.wm-form-grid').filter({
+      has: page.getByPlaceholder('工作区名称'),
+    })
+    await saveForm.getByPlaceholder('工作区名称').fill(workspaceName)
+    await saveForm.getByRole('button', { name: '保存', exact: true }).click()
 
     await expect(page.getByText('工作区已保存')).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText(workspaceName)).toBeVisible({ timeout: 15_000 })
