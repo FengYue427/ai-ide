@@ -115,6 +115,7 @@ npm run deploy
 - 计划系统快速上手：`docs/PLAN_SYSTEM_QUICKSTART.md`
 - v1.1.1 GA 清单：`docs/V1.1.1_GA_EXECUTION.md`
 - v1.1.2 后台 Agent：`docs/BACKGROUND_AGENT_QUICKSTART.md` · `docs/V1.1.2_GA_EXECUTION.md`
+- **v1.1.3（准备中）**：`docs/V1.1.3_KICKOFF.md` · `docs/V1.1.3_MASTER_PLAN.md`
 - 下一执行阶段：`docs/NEXT_EXECUTION.md`
 - 发布运行手册：`docs/RELEASE_RUNBOOK.md`
 - 对外发布素材：`docs/publish/README.md`
