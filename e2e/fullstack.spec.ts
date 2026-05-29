@@ -45,11 +45,13 @@ test.describe('Full stack (API + UI)', () => {
       exact: true,
     })
     await expect(saveBtn).toBeEnabled({ timeout: 5_000 })
-    await saveBtn.click({ force: true })
+    // Playwright click can still fail when button stays outside viewport in CI;
+    // invoke native click directly to trigger onClick handler reliably.
+    await saveBtn.evaluate((btn) => (btn as HTMLButtonElement).click())
 
-    // 断言保存成功（banner/Toast 任一出现即可）
+    // 仅断言工作区管理器内的成功条，避免 toast + banner 双匹配导致 strict mode
     await expect(
-      page.locator('.alert-banner--success, .toast-title').filter({ hasText: /工作区已保存/ }),
+      workspaceModal.locator('.wm-flash-row.alert-banner--success').filter({ hasText: '工作区已保存' }),
     ).toBeVisible({ timeout: 15_000 })
   })
 })
