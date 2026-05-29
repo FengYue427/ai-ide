@@ -1,0 +1,16 @@
+node_modules
+release
+.git
+test-results
+playwright-report
+api-server.log
+*.log
+.env
+.env.*
+secrets
+electron
+docs
+playwright-report
+coverage
+.cache
+*.tsbuildinfo
