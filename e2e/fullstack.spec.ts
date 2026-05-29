@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { gotoApp } from './helpers'
 
 /**
  * Requires dev:stack (Vite :3000 + API :3001) and Postgres (see npm run db:setup).
@@ -10,7 +11,7 @@ test.describe('Full stack (API + UI)', () => {
     const password = 'TestPass123!'
     const workspaceName = `e2e-ws-${Date.now().toString(36)}`
 
-    await page.goto('/')
+    await gotoApp(page)
 
     await page.getByRole('button', { name: '登录' }).click()
     await page.getByText('立即注册').click()
@@ -21,8 +22,10 @@ test.describe('Full stack (API + UI)', () => {
 
     await expect(page.locator(`button[title="${email}"]`)).toBeVisible({ timeout: 30_000 })
 
-    await page.getByRole('button', { name: '工作区' }).click()
-    await expect(page.getByText('工作区管理')).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('button', { name: '工作区管理' }).click()
+    await expect(page.locator('.modal-title').filter({ hasText: '工作区管理' })).toBeVisible({
+      timeout: 15_000,
+    })
     await expect(page.getByText(/同步到云端/)).toBeVisible({ timeout: 10_000 })
 
     await page.getByRole('button', { name: '保存当前工作区' }).click()
