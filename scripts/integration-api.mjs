@@ -4,6 +4,8 @@
  * Usage:
  *   API_BASE=http://localhost:3000 node scripts/integration-api.mjs
  */
+import { runCollabIntegrationSmoke } from './integration-api-collab.mjs'
+
 const apiBase = (process.env.API_BASE || 'http://localhost:3000').replace(/\/$/, '')
 const testEmail = `test-${Date.now()}@ai-ide.local`
 const testPassword = 'TestPass123!'
@@ -461,6 +463,22 @@ async function run() {
     }
   } catch (e) {
     fail('subscription immediate downgrade', e.message)
+  }
+
+  // 7. Collaboration rooms (v1.1.3 F4)
+  try {
+    await runCollabIntegrationSmoke({
+      apiBase,
+      getCookieA: () => cookie,
+      setCookieA: (next) => {
+        cookie = next
+      },
+      pass,
+      fail,
+      api,
+    })
+  } catch (e) {
+    fail('collab integration block', e.message)
   }
 
   // 8. Login with credentials (fresh cookie)

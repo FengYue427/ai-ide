@@ -17,9 +17,10 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   webServer:
-    e2eTarget === 'fullstack'
+    e2eTarget === 'fullstack' || e2eTarget === 'collab'
       ? {
-          command: 'npm run dev:stack',
+          command:
+            e2eTarget === 'collab' ? 'npm run dev:stack:collab' : 'npm run dev:stack',
           url: `http://127.0.0.1:${stackPort}`,
           reuseExistingServer: !isCi,
           timeout: 180_000,
@@ -42,6 +43,15 @@ export default defineConfig({
     {
       name: 'fullstack',
       testMatch: '**/fullstack.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: `http://127.0.0.1:${stackPort}`,
+      },
+    },
+    {
+      name: 'collab',
+      testMatch: '**/collab-smoke.spec.ts',
+      timeout: 120_000,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: `http://127.0.0.1:${stackPort}`,

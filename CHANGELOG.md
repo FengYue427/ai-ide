@@ -26,9 +26,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `PATCH /api/collab/rooms/:code/members/:userId`、`POST …/kick`
 - 文档：[docs/COLLAB_M1_PERMISSIONS.md](docs/COLLAB_M1_PERMISSIONS.md)
 
+### Added (v1.1.3 F4 · smoke)
+
+- 双浏览器 Playwright：`npm run test:e2e:collab`（`dev:stack:collab` + `.env.collab-e2e`）
+- API 协作段：`scripts/integration-api-collab.mjs`（create/join/role/kick）
+- 手工 10min 清单：[docs/COLLAB_M1_SMOKE.md](docs/COLLAB_M1_SMOKE.md)
+
 ### Next
 
-- v1.1.3 F4～F5：双机 smoke、GA → [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
+- v1.1.3 F5：GA tag、Release Notes、生产 flag → [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
 
 ---
 

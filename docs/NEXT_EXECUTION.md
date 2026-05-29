@@ -1,7 +1,7 @@
 # 当前执行清单
 
 > **当前世代**：**v1.1.3** · **P0 = 协作 M1**（网关 → **v1.2**）  
-> **阶段**：**F3** ✅ 权限/只读 · **下一步 F4** 双机 smoke  
+> **阶段**：**F4** ✅ smoke · **下一步 F5** GA  
 > **主规划**：[V1.1.3_MASTER_PLAN.md](./V1.1.3_MASTER_PLAN.md)
 
 ---
@@ -25,9 +25,10 @@
 
 ---
 
-## F4（下一步）
+## F5（下一步）
 
-- 双机 10min 手工 / Playwright smoke（A 创建、B 加入、断网重连、viewer 只读）
+- GA：`package.json` / health = **1.1.3**、`RELEASE_NOTES`、生产 flag 文档
+- 勾选 [V1.1.3_GA_EXECUTION.md](./V1.1.3_GA_EXECUTION.md) 全部 DoD
 
 详见 [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md)。
 

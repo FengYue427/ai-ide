@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.1.3.3",
+  "version": "1.1.3.4",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -9,6 +9,7 @@
     "dev": "vite",
     "dev:api": "tsx scripts/local-dev-server.ts",
     "dev:stack": "concurrently -k -n api,web -c blue,green \"npm run dev:api\" \"npm run dev\"",
+    "dev:stack:collab": "concurrently -k -n api,web -c blue,green \"npm run dev:api\" \"vite --mode collab-e2e\"",
     "dev:full": "npx vercel dev",
     "postinstall": "prisma generate",
     "build": "prisma generate && tsc && vite build",
@@ -33,6 +34,7 @@
     "test:e2e": "playwright test --project=ui",
     "test:e2e:local": "npm run build && playwright test --project=ui",
     "test:e2e:stack": "playwright test --project=fullstack",
+    "test:e2e:collab": "node scripts/run-e2e-collab.mjs",
     "test:e2e:install": "playwright install chromium",
     "verify:env": "node scripts/verify-env.mjs",
     "verify:env:prod": "node scripts/verify-env.mjs --production",

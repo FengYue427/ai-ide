@@ -1,6 +1,6 @@
 # v1.1.3 路线 A — 协作 M1（信令稳定）
 
-> **状态**：**P0 执行中** · F1 ✅ · F2 ✅ · F3 ✅（权限 + 只读）  
+> **状态**：**P0 执行中** · F1 ✅ · F2 ✅ · F3 ✅ · F4 ✅（smoke）  
 > **现状**：`CollaborationPanel` + `collaborationService`；M1 开关 `VITE_COLLAB_M1_SIGNAL` 走 `/api/collab/rooms`
 
 ---
@@ -38,7 +38,7 @@
 | **F1** | 选型 + 房间 CRUD API + env 文档 | 3～5d · **✅** |
 | **F2** | `collaborationService` 重连 + 房间生命周期 | 7～10d · **✅** [COLLAB_M1_RECONNECT.md](./COLLAB_M1_RECONNECT.md) |
 | **F3** | 权限模型 UI + API 校验 | 5d · **✅** [COLLAB_M1_PERMISSIONS.md](./COLLAB_M1_PERMISSIONS.md) |
-| **F4** | 双机 10min 手工 + 自动化 smoke（2 browser） | 3d |
+| **F4** | 双机 10min 手工 + 自动化 smoke（2 browser） | 3d · **✅** [COLLAB_M1_SMOKE.md](./COLLAB_M1_SMOKE.md) |
 | **F5** | GA 文档、feature flag 默认 off → 生产 on | 2～3d |
 
 **内部 patch 映射**：F1→1.1.3.1 … F5→1.1.3.5
@@ -47,10 +47,10 @@
 
 ## 4. 验收
 
-- [ ] A 创建房间，B 通过链接加入  
-- [ ] 断网 30s 内重连恢复房间  
-- [ ] viewer 无法修改文件（或修改被拒绝）  
-- [ ] 10min 会话无房间幽灵（双方仍在线）  
+- [x] A 创建房间，B 通过链接加入（e2e + 手工）
+- [ ] 断网 30s 内重连恢复房间（手工 #6）
+- [x] viewer 无法修改文件（e2e + F3）
+- [ ] 10min 会话无房间幽灵（手工 #7）
 
 ---
 
@@ -61,7 +61,8 @@
 LIVEKIT_API_KEY=
 LIVEKIT_API_SECRET=
 LIVEKIT_URL=
-VITE_COLLAB_SIGNALING=true
+VITE_COLLAB_M1_SIGNAL=true
+# Playwright collab e2e: npm run dev:stack:collab (loads .env.collab-e2e)
 ```
 
 Prisma：新增 `CollaborationRoom`、`RoomMember`（Kickoff 时写 migration 草案）。
