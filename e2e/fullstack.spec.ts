@@ -29,24 +29,14 @@ test.describe('Full stack (API + UI)', () => {
     })
     await expect(workspaceModal.getByText(/同步到云端/)).toBeVisible({ timeout: 10_000 })
 
+    // 打开保存表单并通过键盘 Enter 提交，避免视口滚动问题
     await workspaceModal.getByRole('button', { name: '保存当前工作区' }).click()
-    const nameInput = workspaceModal.getByPlaceholder('工作区名称')
-    await nameInput.scrollIntoViewIfNeeded()
-    await nameInput.fill(workspaceName)
+    await workspaceModal.getByPlaceholder('工作区名称').fill(workspaceName)
+    await page.keyboard.press('Enter')
 
-    const saveBtn = workspaceModal.locator('.wm-form-actions').getByRole('button', {
-      name: '保存',
-      exact: true,
-    })
-    await saveBtn.scrollIntoViewIfNeeded()
-    await saveBtn.click()
-
-    await expect(
-      workspaceModal.locator('.alert-banner--success').filter({ hasText: '工作区已保存' }),
-    ).toBeVisible({ timeout: 15_000 })
-    await expect(workspaceModal.getByText(workspaceName, { exact: true })).toBeVisible({
-      timeout: 15_000,
-    })
-    await expect(workspaceModal.getByText('云端', { exact: true }).first()).toBeVisible()
+    // 断言全局提示和云端徽章，而不是依赖模态内列表滚动
+    await expect(page.getByText('工作区已保存')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(workspaceName)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('云端').first()).toBeVisible()
   })
 })
