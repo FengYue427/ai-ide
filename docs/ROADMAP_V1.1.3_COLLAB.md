@@ -1,7 +1,7 @@
 # v1.1.3 路线 A — 协作 M1（信令稳定）
 
-> **状态**：占位 · 仅当 [V1.1.3_MASTER_PLAN.md](./V1.1.3_MASTER_PLAN.md) §0 选择 **协作** 时执行  
-> **现状**：`CollaborationPanel` + WebRTC Beta，公共信令，无生产级房间服务
+> **状态**：**P0 执行中** · F1 已起步（房间 API + Prisma）  
+> **现状**：`CollaborationPanel` + `collaborationService`；M1 开关 `VITE_COLLAB_M1_SIGNAL` 走 `/api/collab/rooms`
 
 ---
 
@@ -35,7 +35,7 @@
 
 | 阶段 | 交付 | 估时 |
 |------|------|------|
-| **F1** | 选型 + 房间 CRUD API + env 文档 | 3～5d |
+| **F1** | 选型 + 房间 CRUD API + env 文档 | 3～5d · **进行中** |
 | **F2** | `collaborationService` 重连 + 房间生命周期 | 7～10d |
 | **F3** | 权限模型 UI + API 校验 | 5d |
 | **F4** | 双机 10min 手工 + 自动化 smoke（2 browser） | 3d |

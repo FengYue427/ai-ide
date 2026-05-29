@@ -1,72 +1,37 @@
 # 当前执行清单
 
-> **当前版本**：**v1.1.2.8**（轨道 A 已冻结）· **下一世代**：**v1.1.3**（准备就绪，待拍板）  
-> **Kickoff**：[V1.1.3_KICKOFF.md](./V1.1.3_KICKOFF.md) · **主规划**：[V1.1.3_MASTER_PLAN.md](./V1.1.3_MASTER_PLAN.md)
+> **当前世代**：**v1.1.3** · **P0 = 协作 M1**（网关 → **v1.2**）  
+> **阶段**：**F1** 房间 API ✅ 骨架 · 待 DB migrate + Preview 开关  
+> **主规划**：[V1.1.3_MASTER_PLAN.md](./V1.1.3_MASTER_PLAN.md)
 
 ---
 
-## 双轨一览
+## 拍板记录
 
-```
-轨道 A   1.1.2.1～.8 ✅ 冻结
-轨道 B   v1.1.2 ✅  ·  v1.1.3 ☐ 待拍板 → F1 开工
-```
-
----
-
-## 立即可做：v1.1.3 Kickoff
-
-### 步骤 1 — 拍板（阻塞代码）
-
-1. 阅读 [V1.1.3_KICKOFF.md §2](./V1.1.3_KICKOFF.md#2-必须先拍板p0-二选一) 决策矩阵  
-2. 在 [V1.1.3_MASTER_PLAN.md](./V1.1.3_MASTER_PLAN.md) §0 填写 **最终决策（A 或 B）**  
-3. 更新 [V1.1.3_GA_EXECUTION.md](./V1.1.3_GA_EXECUTION.md) 顶部 P0 路线  
-
-### 步骤 2 — F1 开工（拍板后）
-
-| 若选 **协作 A** | 若选 **网关 B** |
-|----------------|----------------|
-| [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md) F1 | [ROADMAP_V1.1.3_GATEWAY.md](./ROADMAP_V1.1.3_GATEWAY.md) F1 |
-| 房间 API + [V1.1.3_SCHEMA_DRAFT.md](./V1.1.3_SCHEMA_DRAFT.md) | `lib/api/aiGateway/` + `POST /api/ai/chat` |
-| Livekit / WS env | `PLATFORM_*_API_KEY` |
-
-环境：[V1.1.3_ENV.md](./V1.1.3_ENV.md)
+| 决策 | 日期 |
+|------|------|
+| v1.1.3 = **协作 A** | 2026-05-29 |
+| AI 网关 → **v1.2** | 2026-05-29 |
 
 ---
 
-## v1.1.2.x 摘要（已交付）
+## F1 剩余（协作）
 
-| patch | 内容 |
-|-------|------|
-| .1～.4 | 通知、IDE 应用、Plan 桥接、重试/筛选/回填 |
-| .5～.6 | 真 Agent Worker、Cron 可观测 |
-| .7～.8 | Plan 批量后台、通知/复制/列表重试 |
-
-详见 [ROADMAP_V1.1.2.x_PATCHES.md](./ROADMAP_V1.1.2.x_PATCHES.md)（**已冻结**）。
+1. `npx prisma migrate deploy`（或 `db push`）应用 `CollaborationRoom` / `CollaborationMember`
+2. Vercel Preview：`VITE_COLLAB_M1_SIGNAL=true`（见 [V1.1.3_ENV.md](./V1.1.3_ENV.md)）
+3. 登录后：协作面板「创建房间」→ 应得到 8 位 `code` 与 `?room=` 链接
+4. 第二账号加入同一 `code` → `POST /api/collab/rooms/:code` 200
+5. 勾选 [V1.1.3_GA_EXECUTION.md](./V1.1.3_GA_EXECUTION.md) F1 协作项
 
 ---
 
-## v1.1.3 摘要（待选 P0）
+## F2 预览（下一步）
 
-| 路线 | 文档 | 一句话 |
-|------|------|--------|
-| **协作 M1** | [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md) | 房间 + 重连 + 权限 |
-| **AI 网关** | [ROADMAP_V1.1.3_GATEWAY.md](./ROADMAP_V1.1.3_GATEWAY.md) | 无 Key Pro Chat + 平台额度 |
+- `collaborationService` 重连与房间生命周期  
+- 可选 Livekit token（`livekit-server-sdk`）  
+- 权限 UI：viewer 只读（F3 可部分合并）
 
-**建议默认**：变现优先 → **网关 B**；演示/协作叙事 → **协作 A**。
-
----
-
-## v1.1.2 基线（生产）
-
-| 项 | 说明 |
-|----|------|
-| URL | https://ai-ide-flame.vercel.app |
-| 后台 Agent | `VITE_BACKGROUND_AGENT` + `CRON_SECRET` |
-| Worker | `dummy` 默认；`agent` 需 `BACKGROUND_AGENT_API_KEY` |
-| Cron | Hobby 每日 `0 4 * * *` |
-
-见 [BACKGROUND_AGENT_QUICKSTART.md](./BACKGROUND_AGENT_QUICKSTART.md)。
+详见 [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md)。
 
 ---
 
@@ -74,8 +39,7 @@
 
 | 文档 | 用途 |
 |------|------|
-| [V1.1.3_KICKOFF.md](./V1.1.3_KICKOFF.md) | Kickoff 准备 |
-| [V1.1.3_GA_EXECUTION.md](./V1.1.3_GA_EXECUTION.md) | v1.1.3 DoD |
-| [V1.1.3_MASTER_PLAN.md](./V1.1.3_MASTER_PLAN.md) | 决策与 F 阶段 |
-| [ROADMAP_V1.1.x.md](./ROADMAP_V1.1.x.md) | 世代总览 |
-| [V1.1.2_GA_EXECUTION.md](./V1.1.2_GA_EXECUTION.md) | v1.1.2 DoD（已完成） |
+| [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md) | 协作 F1～F5 |
+| [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) | 网关（延后） |
+| [V1.1.3_GA_EXECUTION.md](./V1.1.3_GA_EXECUTION.md) | DoD |
+| [V1.1.3_ENV.md](./V1.1.3_ENV.md) | 环境变量 |

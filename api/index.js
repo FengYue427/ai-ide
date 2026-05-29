@@ -1146,7 +1146,19 @@ var init_apiMessages = __esm({
         "api.job.concurrentLimit": "\u8FDB\u884C\u4E2D\u7684\u540E\u53F0\u4EFB\u52A1\u8FC7\u591A\uFF08\u6700\u591A {limit} \u4E2A\uFF09",
         "api.job.concurrentLimitUpgrade": "\u514D\u8D39\u7248\u540C\u65F6\u53EA\u80FD\u6709 {limit} \u4E2A\u540E\u53F0\u4EFB\u52A1\uFF0C\u8BF7\u7B49\u5F85\u5B8C\u6210\u6216\u5347\u7EA7\u4E13\u4E1A\u7248",
         "api.job.batchEmpty": "\u6279\u91CF\u4EFB\u52A1\u5217\u8868\u4E3A\u7A7A",
-        "api.job.batchCreated": "\u5DF2\u521B\u5EFA {created}/{requested} \u4E2A\u540E\u53F0\u4EFB\u52A1"
+        "api.job.batchCreated": "\u5DF2\u521B\u5EFA {created}/{requested} \u4E2A\u540E\u53F0\u4EFB\u52A1",
+        "api.collab.roomCreated": "\u534F\u4F5C\u623F\u95F4\u5DF2\u521B\u5EFA",
+        "api.collab.joined": "\u5DF2\u52A0\u5165\u534F\u4F5C\u623F\u95F4",
+        "api.collab.listFailed": "\u83B7\u53D6\u534F\u4F5C\u623F\u95F4\u5217\u8868\u5931\u8D25",
+        "api.collab.createFailed": "\u521B\u5EFA\u534F\u4F5C\u623F\u95F4\u5931\u8D25",
+        "api.collab.loadFailed": "\u52A0\u8F7D\u534F\u4F5C\u623F\u95F4\u5931\u8D25",
+        "api.collab.joinFailed": "\u52A0\u5165\u534F\u4F5C\u623F\u95F4\u5931\u8D25",
+        "api.collab.roomNotFound": "\u534F\u4F5C\u623F\u95F4\u4E0D\u5B58\u5728",
+        "api.collab.roomClosed": "\u534F\u4F5C\u623F\u95F4\u5DF2\u5173\u95ED",
+        "api.collab.codeRequired": "\u7F3A\u5C11\u623F\u95F4\u9080\u8BF7\u7801",
+        "api.collab.nameTooLong": "\u623F\u95F4\u540D\u79F0\u8FC7\u957F",
+        "api.collab.notMember": "\u4F60\u4E0D\u662F\u8BE5\u623F\u95F4\u6210\u5458",
+        "api.collab.joinForbidden": "\u65E0\u6CD5\u4EE5\u8BE5\u89D2\u8272\u52A0\u5165\u623F\u95F4"
       },
       "en-US": {
         "api.auth.required": "Email and password are required",
@@ -1251,7 +1263,19 @@ var init_apiMessages = __esm({
         "api.job.concurrentLimit": "Too many active background jobs (max {limit})",
         "api.job.concurrentLimitUpgrade": "Free plan allows {limit} active background job at a time. Wait or upgrade to Pro.",
         "api.job.batchEmpty": "Batch job list is empty",
-        "api.job.batchCreated": "Created {created}/{requested} background jobs"
+        "api.job.batchCreated": "Created {created}/{requested} background jobs",
+        "api.collab.roomCreated": "Collaboration room created",
+        "api.collab.joined": "Joined collaboration room",
+        "api.collab.listFailed": "Failed to list collaboration rooms",
+        "api.collab.createFailed": "Failed to create collaboration room",
+        "api.collab.loadFailed": "Failed to load collaboration room",
+        "api.collab.joinFailed": "Failed to join collaboration room",
+        "api.collab.roomNotFound": "Collaboration room not found",
+        "api.collab.roomClosed": "Collaboration room is closed",
+        "api.collab.codeRequired": "Room invite code is required",
+        "api.collab.nameTooLong": "Room name is too long",
+        "api.collab.notMember": "You are not a member of this room",
+        "api.collab.joinForbidden": "Cannot join with that role"
       }
     };
   }
@@ -5877,6 +5901,11 @@ var init_translations = __esm({
         "collab.hero.title": "\u548C\u522B\u4EBA\u4E00\u8D77\u76EF\u7740\u540C\u4E00\u4E2A\u5DE5\u4F5C\u533A",
         "collab.hero.desc": "\u521B\u5EFA\u623F\u95F4\u6216\u52A0\u5165\u5DF2\u6709\u623F\u95F4\u3002\u52A0\u5165\u540E\u5F53\u524D\u5DE5\u4F5C\u533A\u6587\u4EF6\u4F1A\u901A\u8FC7 Yjs + WebRTC \u540C\u6B65\u3002",
         "collab.limits": "Beta \u8BF4\u660E\uFF1A\u65E0\u72EC\u7ACB\u4FE1\u4EE4\u670D\u52A1\u5668\u65F6\u4F9D\u8D56\u516C\u5171 WebRTC \u4FE1\u4EE4\uFF1B\u591A\u4EBA\u540C\u65F6\u7F16\u8F91\u53EF\u80FD\u51FA\u73B0\u51B2\u7A81\uFF0C\u7F16\u8F91\u5668\u5149\u6807\u4E0D\u540C\u6B65\u3002\u9002\u5408\u6F14\u793A\u4E0E\u5C0F\u56E2\u961F\u8BD5\u7528\uFF0C\u4E0D\u5EFA\u8BAE\u4F5C\u4E3A\u751F\u4EA7\u7EA7\u534F\u4F5C\u65B9\u6848\u3002",
+        "collab.m1.limits": "M1\uFF1A\u767B\u5F55\u540E\u901A\u8FC7\u670D\u52A1\u7AEF\u623F\u95F4\u52A0\u5165\uFF1B\u4ECD\u4F7F\u7528 Yjs/WebRTC \u540C\u6B65\uFF08\u914D\u7F6E Livekit \u540E\u53EF\u5347\u7EA7\u4FE1\u4EE4\uFF09\u3002",
+        "collab.m1.loginRequired": "\u534F\u4F5C M1 \u9700\u8981\u5148\u767B\u5F55",
+        "collab.m1.createFailed": "\u521B\u5EFA\u534F\u4F5C\u623F\u95F4\u5931\u8D25",
+        "collab.m1.joinFailed": "\u52A0\u5165\u534F\u4F5C\u623F\u95F4\u5931\u8D25",
+        "collab.m1.generate": "\u521B\u5EFA\u623F\u95F4",
         "collab.yourName": "\u4F60\u7684\u540D\u5B57",
         "collab.roomId": "\u623F\u95F4 ID",
         "collab.roomPlaceholder": "\u7559\u7A7A\u5219\u81EA\u52A8\u521B\u5EFA\u4E00\u4E2A\u65B0\u623F\u95F4",
@@ -7447,6 +7476,11 @@ var init_translations = __esm({
         "collab.hero.title": "Work on the same workspace together",
         "collab.hero.desc": "Create or join a room. Files sync over Yjs + WebRTC after you join.",
         "collab.limits": "Beta: uses public WebRTC signaling without a dedicated server; concurrent edits may conflict and cursors are not synced. For demos and small teams, not production-grade collaboration.",
+        "collab.m1.limits": "M1: join via server-backed rooms when signed in; still uses Yjs/WebRTC sync (Livekit when configured).",
+        "collab.m1.loginRequired": "Sign in required for Collaboration M1",
+        "collab.m1.createFailed": "Failed to create collaboration room",
+        "collab.m1.joinFailed": "Failed to join collaboration room",
+        "collab.m1.generate": "Create room",
         "collab.yourName": "Your name",
         "collab.roomId": "Room ID",
         "collab.roomPlaceholder": "Leave empty to create a new room",
@@ -9700,13 +9734,275 @@ var init_byId3 = __esm({
   }
 });
 
+// lib/api/collabTypes.ts
+function normalizeJoinRole(raw, isHost) {
+  if (isHost) return "host";
+  const role = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (role === "viewer") return "viewer";
+  return "editor";
+}
+var COLLAB_ROOM_CODE_LENGTH, MAX_COLLAB_ROOM_NAME_CHARS;
+var init_collabTypes = __esm({
+  "lib/api/collabTypes.ts"() {
+    "use strict";
+    COLLAB_ROOM_CODE_LENGTH = 8;
+    MAX_COLLAB_ROOM_NAME_CHARS = 120;
+  }
+});
+
+// lib/api/collaborationRoomsService.ts
+function randomRoomCode() {
+  return Math.random().toString(36).slice(2, 2 + COLLAB_ROOM_CODE_LENGTH).toLowerCase();
+}
+async function uniqueRoomCode() {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const code = randomRoomCode();
+    const existing = await prisma.collaborationRoom.findUnique({ where: { code } });
+    if (!existing) return code;
+  }
+  throw new Error("COLLAB_CODE_GENERATION_FAILED");
+}
+function buildCollabSignaling(room) {
+  const livekitUrl = process.env.LIVEKIT_URL?.trim();
+  const hasLivekit = livekitUrl && process.env.LIVEKIT_API_KEY?.trim() && process.env.LIVEKIT_API_SECRET?.trim();
+  if (hasLivekit) {
+    return {
+      mode: "livekit",
+      roomChannel: room.code,
+      livekitUrl
+      // F2: issue Livekit access token via livekit-server-sdk
+    };
+  }
+  return {
+    mode: "yjs-webrtc",
+    roomChannel: `ai-ide-${room.code}`
+  };
+}
+function serializeCollabMember(member) {
+  return {
+    id: member.id,
+    userId: member.userId,
+    role: member.role,
+    joinedAt: member.joinedAt.toISOString(),
+    leftAt: member.leftAt?.toISOString() ?? null
+  };
+}
+function serializeCollabRoom(room, members, signaling) {
+  return {
+    id: room.id,
+    code: room.code,
+    name: room.name,
+    status: room.status,
+    hostId: room.hostId,
+    createdAt: room.createdAt.toISOString(),
+    updatedAt: room.updatedAt.toISOString(),
+    members: members.map(serializeCollabMember),
+    signaling: signaling ?? buildCollabSignaling(room)
+  };
+}
+async function createCollaborationRoom(userId, name) {
+  const code = await uniqueRoomCode();
+  const trimmedName = name?.trim() || null;
+  const room = await prisma.collaborationRoom.create({
+    data: {
+      code,
+      hostId: userId,
+      name: trimmedName,
+      status: "open",
+      members: {
+        create: {
+          userId,
+          role: "host"
+        }
+      }
+    },
+    include: { members: true }
+  });
+  return room;
+}
+async function getCollaborationRoomByCode(code) {
+  const normalized = code.trim().toLowerCase();
+  if (!normalized) return null;
+  return prisma.collaborationRoom.findUnique({
+    where: { code: normalized },
+    include: { members: { where: { leftAt: null } } }
+  });
+}
+async function listCollaborationRoomsForUser(userId) {
+  return prisma.collaborationRoom.findMany({
+    where: {
+      OR: [{ hostId: userId }, { members: { some: { userId, leftAt: null } } }]
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+    include: { members: { where: { leftAt: null } } }
+  });
+}
+async function joinCollaborationRoom(userId, code, requestedRole) {
+  const room = await getCollaborationRoomByCode(code);
+  if (!room) return { ok: false, reason: "not_found" };
+  if (room.status === "closed") return { ok: false, reason: "closed" };
+  const isHost = room.hostId === userId;
+  const role = isHost ? "host" : requestedRole === "viewer" ? "viewer" : "editor";
+  if (!isHost && requestedRole === "host") {
+    return { ok: false, reason: "forbidden" };
+  }
+  await prisma.collaborationMember.upsert({
+    where: { roomId_userId: { roomId: room.id, userId } },
+    create: { roomId: room.id, userId, role },
+    update: { role, leftAt: null, joinedAt: /* @__PURE__ */ new Date() }
+  });
+  const refreshed = await getCollaborationRoomByCode(code);
+  if (!refreshed) return { ok: false, reason: "not_found" };
+  return { ok: true, room: refreshed, members: refreshed.members };
+}
+var init_collaborationRoomsService = __esm({
+  "lib/api/collaborationRoomsService.ts"() {
+    "use strict";
+    init_prisma();
+    init_collabTypes();
+  }
+});
+
+// lib/api/handlers/collab/rooms/index.ts
+var rooms_exports = {};
+__export(rooms_exports, {
+  GET: () => GET17,
+  POST: () => POST24
+});
+async function GET17(req) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  try {
+    const rooms = await listCollaborationRoomsForUser(auth.user.id);
+    return jsonResponse({
+      rooms: rooms.map((room) => serializeCollabRoom(room, room.members))
+    });
+  } catch (error) {
+    console.error("[Collab] List rooms error:", error);
+    return localizedErrorResponse(req, "api.collab.listFailed", 500);
+  }
+}
+async function POST24(req) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  try {
+    const parsed = await readJsonWithLimit(req, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const name = typeof parsed.value.name === "string" ? parsed.value.name.trim() : "";
+    if (name.length > MAX_COLLAB_ROOM_NAME_CHARS) {
+      return localizedErrorResponse(req, "api.collab.nameTooLong", 400);
+    }
+    const room = await createCollaborationRoom(auth.user.id, name || null);
+    return jsonResponse(
+      appendApiMessage(req, "api.collab.roomCreated", {
+        room: serializeCollabRoom(room, room.members)
+      }),
+      201
+    );
+  } catch (error) {
+    console.error("[Collab] Create room error:", error);
+    return localizedErrorResponse(req, "api.collab.createFailed", 500);
+  }
+}
+var MAX_BODY_BYTES;
+var init_rooms = __esm({
+  "lib/api/handlers/collab/rooms/index.ts"() {
+    "use strict";
+    init_http();
+    init_requireAuth();
+    init_body();
+    init_localizedError();
+    init_collaborationRoomsService();
+    init_collabTypes();
+    MAX_BODY_BYTES = 8e3;
+  }
+});
+
+// lib/api/handlers/collab/rooms/byCode.ts
+var byCode_exports = {};
+__export(byCode_exports, {
+  GET: () => GET18,
+  POST: () => POST25
+});
+async function GET18(req, ctx) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  const code = ctx?.params?.code?.trim().toLowerCase();
+  if (!code) {
+    return localizedErrorResponse(req, "api.collab.codeRequired", 400);
+  }
+  try {
+    const room = await getCollaborationRoomByCode(code);
+    if (!room) {
+      return localizedErrorResponse(req, "api.collab.roomNotFound", 404);
+    }
+    const isMember = room.members.some((m) => m.userId === auth.user.id);
+    if (!isMember && room.hostId !== auth.user.id) {
+      return localizedErrorResponse(req, "api.collab.notMember", 403);
+    }
+    return jsonResponse({
+      room: serializeCollabRoom(room, room.members)
+    });
+  } catch (error) {
+    console.error("[Collab] Get room error:", error);
+    return localizedErrorResponse(req, "api.collab.loadFailed", 500);
+  }
+}
+async function POST25(req, ctx) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  const code = ctx?.params?.code?.trim().toLowerCase();
+  if (!code) {
+    return localizedErrorResponse(req, "api.collab.codeRequired", 400);
+  }
+  try {
+    const parsed = await readJsonWithLimit(req, MAX_BODY_BYTES2);
+    if (!parsed.ok) return parsed.response;
+    const roomPreview = await getCollaborationRoomByCode(code);
+    const isHost = roomPreview?.hostId === auth.user.id;
+    const requestedRole = normalizeJoinRole(parsed.value.role, isHost);
+    const result = await joinCollaborationRoom(auth.user.id, code, requestedRole);
+    if (!result.ok) {
+      if (result.reason === "not_found") {
+        return localizedErrorResponse(req, "api.collab.roomNotFound", 404);
+      }
+      if (result.reason === "closed") {
+        return localizedErrorResponse(req, "api.collab.roomClosed", 409);
+      }
+      return localizedErrorResponse(req, "api.collab.joinForbidden", 403);
+    }
+    return jsonResponse(
+      appendApiMessage(req, "api.collab.joined", {
+        room: serializeCollabRoom(result.room, result.members)
+      })
+    );
+  } catch (error) {
+    console.error("[Collab] Join room error:", error);
+    return localizedErrorResponse(req, "api.collab.joinFailed", 500);
+  }
+}
+var MAX_BODY_BYTES2;
+var init_byCode = __esm({
+  "lib/api/handlers/collab/rooms/byCode.ts"() {
+    "use strict";
+    init_http();
+    init_requireAuth();
+    init_body();
+    init_localizedError();
+    init_collaborationRoomsService();
+    init_collabTypes();
+    MAX_BODY_BYTES2 = 4e3;
+  }
+});
+
 // lib/api/handlers/auth/authCatchAll.ts
 var authCatchAll_exports = {};
 __export(authCatchAll_exports, {
-  GET: () => GET17
+  GET: () => GET19
 });
 import { randomBytes as randomBytes2 } from "crypto";
-async function GET17(req) {
+async function GET19(req) {
   const url = new URL(req.url);
   const pathname = url.pathname;
   if (pathname.includes("providers")) {
@@ -9922,6 +10218,26 @@ var routes = [
     load: () => Promise.resolve().then(() => (init_byId3(), byId_exports3)),
     export: "DELETE"
   },
+  { method: "GET", match: (p) => p === "/api/collab/rooms" ? {} : null, load: () => Promise.resolve().then(() => (init_rooms(), rooms_exports)), export: "GET" },
+  { method: "POST", match: (p) => p === "/api/collab/rooms" ? {} : null, load: () => Promise.resolve().then(() => (init_rooms(), rooms_exports)), export: "POST" },
+  {
+    method: "GET",
+    match: (p) => {
+      const m = p.match(/^\/api\/collab\/rooms\/([^/]+)$/);
+      return m ? { code: decodeURIComponent(m[1]) } : null;
+    },
+    load: () => Promise.resolve().then(() => (init_byCode(), byCode_exports)),
+    export: "GET"
+  },
+  {
+    method: "POST",
+    match: (p) => {
+      const m = p.match(/^\/api\/collab\/rooms\/([^/]+)$/);
+      return m ? { code: decodeURIComponent(m[1]) } : null;
+    },
+    load: () => Promise.resolve().then(() => (init_byCode(), byCode_exports)),
+    export: "POST"
+  },
   {
     method: "GET",
     match: (p) => {
@@ -10050,18 +10366,18 @@ async function handle(request) {
     );
   }
 }
-var GET18 = handle;
-var POST24 = handle;
+var GET20 = handle;
+var POST26 = handle;
 var PUT2 = handle;
 var DELETE2 = handle;
 var PATCH = handle;
 var OPTIONS = handle;
 export {
   DELETE2 as DELETE,
-  GET18 as GET,
+  GET20 as GET,
   OPTIONS,
   PATCH,
-  POST24 as POST,
+  POST26 as POST,
   PUT2 as PUT
 };
 //# sourceMappingURL=index.js.map

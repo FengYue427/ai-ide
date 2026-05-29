@@ -206,6 +206,26 @@ const routes: RouteEntry[] = [
     load: () => import('./handlers/workspaces/byId'),
     export: 'DELETE',
   },
+  { method: 'GET', match: (p) => (p === '/api/collab/rooms' ? {} : null), load: () => import('./handlers/collab/rooms/index'), export: 'GET' },
+  { method: 'POST', match: (p) => (p === '/api/collab/rooms' ? {} : null), load: () => import('./handlers/collab/rooms/index'), export: 'POST' },
+  {
+    method: 'GET',
+    match: (p) => {
+      const m = p.match(/^\/api\/collab\/rooms\/([^/]+)$/)
+      return m ? { code: decodeURIComponent(m[1]) } : null
+    },
+    load: () => import('./handlers/collab/rooms/byCode'),
+    export: 'GET',
+  },
+  {
+    method: 'POST',
+    match: (p) => {
+      const m = p.match(/^\/api\/collab\/rooms\/([^/]+)$/)
+      return m ? { code: decodeURIComponent(m[1]) } : null
+    },
+    load: () => import('./handlers/collab/rooms/byCode'),
+    export: 'POST',
+  },
   {
     method: 'GET',
     match: (p) => {

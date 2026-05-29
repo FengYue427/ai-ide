@@ -5,9 +5,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added (v1.1.3 F1 · 协作)
+
+- **拍板**：v1.1.3 = 协作 M1；AI 网关 → v1.2
+- `CollaborationRoom` / `CollaborationMember` Prisma 模型
+- `GET|POST /api/collab/rooms`、`GET|POST /api/collab/rooms/:code`
+- `VITE_COLLAB_M1_SIGNAL` + 协作面板对接服务端房间
+
 ### Next
 
-- **v1.1.3+**：协作 M1 或 AI 网关（二选一）→ [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
+- v1.1.3 F2～F5：重连、权限、Livekit 可选 → [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
 
 ---
 

@@ -54,6 +54,8 @@ model User {
   subscription    Subscription?
   paymentOrders   PaymentOrder[]
   backgroundJobs  BackgroundJob[]
+  collabRoomsHosted CollaborationRoom[] @relation("CollabRoomHost")
+  collabMemberships CollaborationMember[]
 }
 
 // 支付宝 / 微信 一次性订阅订单
@@ -158,6 +160,37 @@ model BackgroundJob {
   @@index([userId, createdAt])
   @@index([userId, status])
   @@index([status, createdAt])
+}
+
+// 协作房间（v1.1.3 路线 A）
+model CollaborationRoom {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  hostId    String
+  name      String?
+  status    String   @default("open") // open | closed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  host    User                  @relation("CollabRoomHost", fields: [hostId], references: [id], onDelete: Cascade)
+  members CollaborationMember[]
+
+  @@index([hostId])
+}
+
+model CollaborationMember {
+  id       String    @id @default(cuid())
+  roomId   String
+  userId   String
+  role     String    @default("editor") // host | editor | viewer
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+
+  room CollaborationRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
 }
 
 // AI 使用量记录

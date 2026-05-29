@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Radio, Share2, Users } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { isCollabM1Enabled } from '../lib/collabM1Features'
+import { authService } from '../services/authService'
+import { createCollabRoom, joinCollabRoom } from '../services/collabRoomsApiService'
 import { collaborationService } from '../services/collaborationService'
 import { StorageLayer, unifiedStorage } from '../services/unifiedStorage'
 import { useIDEStore } from '../store/ideStore'
@@ -19,7 +22,10 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const [joined, setJoined] = useState(false)
   const [users, setUsers] = useState<{ user?: { name?: string; color?: string } }[]>([])
   const [copied, setCopied] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const collabM1 = isCollabM1Enabled()
 
   useEffect(() => {
     unifiedStorage.get<string>(COLLAB_USERNAME_KEY, '').then((saved) => {
@@ -47,19 +53,67 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     }
   }, [])
 
-  const generateNewRoom = () => {
+  const generateNewRoom = async () => {
+    setError(null)
+    if (collabM1) {
+      if (!authService.getCurrentUser()) {
+        setError(t('collab.m1.loginRequired'))
+        return
+      }
+      setBusy(true)
+      try {
+        const { room, error: apiError } = await createCollabRoom(undefined, t)
+        if (apiError || !room) {
+          setError(apiError ?? t('collab.m1.createFailed'))
+          return
+        }
+        setRoomId(room.code)
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
     setRoomId(Math.random().toString(36).substring(2, 8))
   }
 
   const handleJoin = async () => {
-    const nextRoomId = roomId.trim() || Math.random().toString(36).substring(2, 8)
-    if (!roomId.trim()) {
+    setError(null)
+    const colors = ['#58a6ff', '#33c58e', '#ffb648', '#f778ba', '#a371f7']
+    const color = colors[Math.floor(Math.random() * colors.length)]
+    let nextRoomId = roomId.trim()
+
+    if (collabM1) {
+      if (!authService.getCurrentUser()) {
+        setError(t('collab.m1.loginRequired'))
+        return
+      }
+      setBusy(true)
+      try {
+        if (!nextRoomId) {
+          const created = await createCollabRoom(undefined, t)
+          if (created.error || !created.room) {
+            setError(created.error ?? t('collab.m1.createFailed'))
+            return
+          }
+          nextRoomId = created.room.code
+          setRoomId(nextRoomId)
+        } else {
+          const joined = await joinCollabRoom(nextRoomId, { t })
+          if (joined.error || !joined.room) {
+            setError(joined.error ?? t('collab.m1.joinFailed'))
+            return
+          }
+          nextRoomId = joined.room.code
+        }
+      } finally {
+        setBusy(false)
+      }
+    } else if (!nextRoomId) {
+      nextRoomId = Math.random().toString(36).substring(2, 8)
       setRoomId(nextRoomId)
     }
 
     await unifiedStorage.set(COLLAB_USERNAME_KEY, userName, { layer: StorageLayer.LOCAL })
-    const colors = ['#58a6ff', '#33c58e', '#ffb648', '#f778ba', '#a371f7']
-    const color = colors[Math.floor(Math.random() * colors.length)]
 
     collaborationService.joinRoom(nextRoomId, userName, color)
     collaborationService.on('users', (nextUsers) => {
@@ -106,8 +160,16 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
           <span className="collab-beta-badge">Beta</span>
         </div>
         <p className="collab-hero__desc">{t('collab.hero.desc')}</p>
-        <div className="collab-limits">{t('collab.limits')}</div>
+        <div className="collab-limits">
+          {collabM1 ? t('collab.m1.limits') : t('collab.limits')}
+        </div>
       </div>
+
+      {error ? (
+        <div className="collab-error" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       {!joined ? (
         <div className="collab-stack">
@@ -133,8 +195,13 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
                     onChange={(event) => setRoomId(event.target.value)}
                     placeholder={t('collab.roomPlaceholder')}
                   />
-                  <button type="button" className="btn btn-secondary" onClick={generateNewRoom}>
-                    {t('collab.generate')}
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    onClick={() => void generateNewRoom()}
+                  >
+                    {t(collabM1 ? 'collab.m1.generate' : 'collab.generate')}
                   </button>
                 </div>
                 <p className="collab-hint">{t('collab.hint')}</p>
@@ -142,7 +209,12 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
             </div>
           </div>
 
-          <button type="button" onClick={handleJoin} className="btn btn-primary" disabled={!userName.trim()}>
+          <button
+            type="button"
+            onClick={() => void handleJoin()}
+            className="btn btn-primary"
+            disabled={!userName.trim() || busy}
+          >
             <Share2 size={14} className="btn-icon-gap" />
             {roomId ? t('collab.joinRoom') : t('collab.createRoom')}
           </button>

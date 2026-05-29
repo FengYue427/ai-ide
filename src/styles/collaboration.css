@@ -39,6 +39,15 @@
   line-height: 1.6;
 }
 
+.collab-error {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--danger-color) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--danger-color) 10%, transparent);
+  font-size: 12px;
+  color: var(--danger-color);
+}
+
 .collab-limits {
   margin-top: var(--space-3);
   padding: var(--space-3);
