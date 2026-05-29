@@ -16,6 +16,7 @@ interface FileLike {
 export type PlanCatalogSort = 'recent-exec' | 'most-open' | 'title'
 
 const PLAN_FILE_RE = /^\.aide\/plans\/.+\.md$/i
+const PLAN_TEMPLATE_DIR_RE = /^\.aide\/plans\/_templates\//i
 const CHECKBOX_RE = /^\s*-\s*\[\s\]\s+.+$/gm
 const CHECKBOX_LINE_RE = /^\s*-\s*\[\s\]\s+(.+)\s*$/
 const EXEC_RE = /^##\s+Plan Step Execution\s+\((.+)\)\s*$/gm
@@ -47,7 +48,7 @@ function parseLastExecutedAt(content: string): string | null {
 
 export function buildPlanCatalog(files: FileLike[]): PlanCatalogItem[] {
   return files
-    .filter((file) => PLAN_FILE_RE.test(file.name))
+    .filter((file) => PLAN_FILE_RE.test(file.name) && !PLAN_TEMPLATE_DIR_RE.test(file.name))
     .map((file) => {
       const title = file.content.match(TITLE_RE)?.[1]?.trim() || filenameTitle(file.name)
       const stepItems = file.content

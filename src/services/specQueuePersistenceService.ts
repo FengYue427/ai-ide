@@ -1,25 +1,34 @@
 import type { QueuedSpecExecution } from '../store/ideStore'
+import {
+  parseQueuePersistencePayload,
+  type QueuePersistenceLoadResult,
+  serializeQueuePersistencePayload,
+} from './queuePersistenceCore'
 
 const STORAGE_KEY = 'ai-ide:queued-spec-executions'
 
-export function loadQueuedSpecExecutions(): QueuedSpecExecution[] {
+function isValidSpecItem(item: unknown): item is QueuedSpecExecution {
+  if (!item || typeof item !== 'object') return false
+  const record = item as QueuedSpecExecution
+  return (
+    typeof record.prompt === 'string' &&
+    !!record.backfill &&
+    typeof record.backfill.taskPath === 'string' &&
+    typeof record.backfill.taskText === 'string' &&
+    typeof record.backfill.specAcceptancePath === 'string'
+  )
+}
+
+export function loadQueuedSpecExecutionsDetailed(): QueuePersistenceLoadResult<QueuedSpecExecution> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (item) =>
-        item &&
-        typeof item.prompt === 'string' &&
-        item.backfill &&
-        typeof item.backfill.taskPath === 'string' &&
-        typeof item.backfill.taskText === 'string' &&
-        typeof item.backfill.specAcceptancePath === 'string',
-    )
+    return parseQueuePersistencePayload(localStorage.getItem(STORAGE_KEY), isValidSpecItem)
   } catch {
-    return []
+    return { items: [], corrupted: true, migrated: false }
   }
+}
+
+export function loadQueuedSpecExecutions(): QueuedSpecExecution[] {
+  return loadQueuedSpecExecutionsDetailed().items
 }
 
 export function saveQueuedSpecExecutions(items: QueuedSpecExecution[]): void {
@@ -28,7 +37,7 @@ export function saveQueuedSpecExecutions(items: QueuedSpecExecution[]): void {
       localStorage.removeItem(STORAGE_KEY)
       return
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+    localStorage.setItem(STORAGE_KEY, serializeQueuePersistencePayload(items))
   } catch {
     // ignore persistence errors
   }

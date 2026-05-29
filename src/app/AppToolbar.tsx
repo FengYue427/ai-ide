@@ -228,7 +228,9 @@ export function AppToolbar({
         <SettingsIcon size={18} />
       </button>
 
-      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>v1.0.0</span>
+      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>
+        {`v${(import.meta.env.VITE_APP_VERSION as string | undefined)?.trim() || 'dev'}`}
+      </span>
     </div>
   )
 }

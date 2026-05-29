@@ -2,7 +2,7 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.1.0.11** · [CHANGELOG](./CHANGELOG.md) · [ROADMAP](./docs/ROADMAP.md)
+**当前版本：v1.1.1**（计划系统 GA）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP](./docs/ROADMAP.md)
 
 | 入口 | 链接 |
 |--|--|
@@ -11,14 +11,18 @@
 | 最新桌面包 | https://github.com/FengYue427/ai-ide/releases/latest |
 | 问题反馈 | https://github.com/FengYue427/ai-ide/issues |
 
-## v1.1 重点能力（截至 v1.1.0.11）
+## v1.1.1 计划系统（GA）
 
-- Plan 系统产品化：多计划管理、步骤勾选执行、映射到 Spec tasks
-- Agent 常开：默认 Agent 模式，减少模式切换心智负担
-- 执行可靠性：计划/Spec 队列、失败重试与跳过、防重复入队
-- 执行可追踪：结构化回填（status/validation/filesTouched）
-- 队列可观测：当前执行项、预览、成功/失败统计、最近完成
-- 队列报告导出：一键复制会话执行报告到剪贴板
+完整流程：**写计划 → 映射 Spec → 队列执行 → 报告留档 → 可恢复**。快速上手：[docs/PLAN_SYSTEM_QUICKSTART.md](./docs/PLAN_SYSTEM_QUICKSTART.md)
+
+- **Plan**：多计划目录、模板创建、步骤执行队列、复制/手动标记完成
+- **Spec**：目录管理、映射并执行、Spec 执行队列
+- **报告**：保存到 `.aide/reports/`、目录管理、预览后恢复队列、批量清理
+- **溯源**：Plan ↔ Spec 来源展示与一键跳转
+- **可观测**：任务队列面板、成功/失败统计、长队列预览展开
+- **工作区**：`.aide` 一键同步到 AI 索引（缓解编辑器与索引不一致）
+
+Agent 默认常开；队列与 Chat 草稿支持本地持久化。
 
 ## 快速开始
 
@@ -68,12 +72,12 @@ npm run check:release
 - Plan Mode（先计划后执行）
 - MCP 工具桥接与后续回合
 
-### 计划与规格（Plan/Spec）
-- `.aide/plans` 多计划目录管理
-- 计划步骤执行队列（Plan Queue）
-- 映射到 `.aide/specs/*/tasks.md`
-- Spec 执行队列（Spec Queue）与持久化恢复
-- 自动回填执行日志与步骤完成状态
+### 计划与规格（Plan/Spec）— v1.1.1
+- `.aide/plans` 多计划 + 内置/自定义模板
+- Plan / Spec 双队列、映射并执行、失败重试与跳过
+- `.aide/reports` 执行报告与恢复预览
+- Plan ↔ Spec 溯源（`.aide/meta/plan-spec-links.json`）
+- 设置中心：计划总览、Plan/Spec/报告目录
 
 ### 编辑器与工程能力
 - Monaco Editor、全局检索、命令面板
@@ -96,6 +100,8 @@ npm run deploy
 
 - 版本记录：`CHANGELOG.md`
 - 路线图：`docs/ROADMAP.md`
+- 计划系统快速上手：`docs/PLAN_SYSTEM_QUICKSTART.md`
+- v1.1.1 GA 清单：`docs/V1.1.1_GA_EXECUTION.md`
 - 下一执行阶段：`docs/NEXT_EXECUTION.md`
 - 发布运行手册：`docs/RELEASE_RUNBOOK.md`
 - 对外发布素材：`docs/publish/README.md`

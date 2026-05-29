@@ -80,8 +80,15 @@ import { applyPlanArtifactsWithResult, buildPlanModeSystemPrompt } from '../serv
 import { buildPlanExecutionPrompt, getFirstPlanStep } from '../services/planExecutionService'
 import { appendPlanExecutionBackfill } from '../services/planBackfillService'
 import { markPlanStepDone } from '../services/planStepCompletionService'
-import { loadQueuedPlanExecutions, saveQueuedPlanExecutions } from '../services/planQueuePersistenceService'
-import { loadQueuedSpecExecutions, saveQueuedSpecExecutions } from '../services/specQueuePersistenceService'
+import {
+  loadQueuedPlanExecutionsDetailed,
+  saveQueuedPlanExecutions,
+} from '../services/planQueuePersistenceService'
+import {
+  loadQueuedSpecExecutionsDetailed,
+  saveQueuedSpecExecutions,
+} from '../services/specQueuePersistenceService'
+import { TaskQueuePanel } from './TaskQueuePanel'
 import {
   buildQueueExecutionReportMarkdown,
   buildQueueReportPath,
@@ -127,6 +134,10 @@ type QueueDoneItem = {
   kind: 'plan' | 'spec'
   text: string
 }
+
+const CHAT_MESSAGES_STORAGE_KEY = 'ai-ide:chat-messages'
+const CHAT_INPUT_STORAGE_KEY = 'ai-ide:chat-input'
+const MAX_PERSISTED_MESSAGES = 200
 
 interface ChatPanelProps {
   aiConfig: AIConfig
@@ -197,8 +208,25 @@ ${t('ai.chat.prompt')}`
   })
   const lastPlanPathRef = useRef<string | null>(null)
   const [workspaceStats, setWorkspaceStats] = useState(workspaceContextService.getStats())
-  const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: createWelcomeMessage(aiConfig) }])
-  const [input, setInput] = useState('')
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as Message[]
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch {
+      // ignore
+    }
+    return [{ role: 'assistant', content: createWelcomeMessage(aiConfig) }]
+  })
+  const [input, setInput] = useState(() => {
+    try {
+      return localStorage.getItem(CHAT_INPUT_STORAGE_KEY) ?? ''
+    } catch {
+      return ''
+    }
+  })
   const [sendQueue, setSendQueue] = useState<PendingSend[]>([])
   const [runId, setRunId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -417,6 +445,27 @@ ${t('ai.chat.prompt')}`
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    try {
+      const trimmed = messages.slice(-MAX_PERSISTED_MESSAGES)
+      localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(trimmed))
+    } catch {
+      // ignore persistence errors
+    }
+  }, [messages])
+
+  useEffect(() => {
+    try {
+      if (input.trim()) {
+        localStorage.setItem(CHAT_INPUT_STORAGE_KEY, input)
+      } else {
+        localStorage.removeItem(CHAT_INPUT_STORAGE_KEY)
+      }
+    } catch {
+      // ignore persistence errors
+    }
+  }, [input])
 
   useEffect(() => {
     if (!isConfigured) {
@@ -1237,9 +1286,12 @@ ${t('ai.chat.prompt')}`
 
   useEffect(() => {
     if (queuedSpecExecutions.length > 0) return
-    const restored = loadQueuedSpecExecutions()
-    if (restored.length > 0) setQueuedSpecExecutions(restored)
-  }, [queuedSpecExecutions.length, setQueuedSpecExecutions])
+    const restored = loadQueuedSpecExecutionsDetailed()
+    if (restored.corrupted) {
+      notify?.('info', t('queue.persist.corruptedTitle'), t('queue.persist.corruptedDetail'))
+    }
+    if (restored.items.length > 0) setQueuedSpecExecutions(restored.items)
+  }, [notify, queuedSpecExecutions.length, setQueuedSpecExecutions, t])
 
   useEffect(() => {
     saveQueuedSpecExecutions(queuedSpecExecutions)
@@ -1247,9 +1299,12 @@ ${t('ai.chat.prompt')}`
 
   useEffect(() => {
     if (queuedPlanExecutions.length > 0) return
-    const restored = loadQueuedPlanExecutions()
-    if (restored.length > 0) setQueuedPlanExecutions(restored)
-  }, [queuedPlanExecutions.length, setQueuedPlanExecutions])
+    const restored = loadQueuedPlanExecutionsDetailed()
+    if (restored.corrupted) {
+      notify?.('info', t('queue.persist.corruptedTitle'), t('queue.persist.corruptedDetail'))
+    }
+    if (restored.items.length > 0) setQueuedPlanExecutions(restored.items)
+  }, [notify, queuedPlanExecutions.length, setQueuedPlanExecutions, t])
 
   useEffect(() => {
     saveQueuedPlanExecutions(queuedPlanExecutions)
@@ -1650,209 +1705,42 @@ ${t('ai.chat.prompt')}`
       <McpToolLogPanel entries={mcpToolEntries} />
 
       {(!loading && (queuedChatPrompt || queuedPlanExecutions.length > 0 || queuedSpecExecutions.length > 0 || sendQueue.length > 0)) || (loading && sendQueue.length > 0) ? (
-        <div
-          style={{
-            margin: '10px 0',
-            padding: '10px 12px',
-            borderRadius: 12,
-            border: '1px solid var(--border-color)',
-            background: 'var(--bg-secondary)',
+        <TaskQueuePanel
+          sessionStatus={sessionStatus}
+          runId={runId}
+          activeQueueTask={activeQueueTask}
+          queuedChatPrompt={queuedChatPrompt}
+          queuedPlanExecutions={queuedPlanExecutions}
+          queuedSpecExecutions={queuedSpecExecutions}
+          sendQueue={sendQueue}
+          queueFailureStats={queueFailureStats}
+          queueSuccessStats={queueSuccessStats}
+          recentDoneQueueItems={recentDoneQueueItems}
+          failedPlanExecution={failedPlanExecution}
+          failedSpecExecution={failedSpecExecution}
+          onExportReport={exportQueueReport}
+          onSaveReport={saveQueueReportToWorkspace}
+          onOpenLatestReport={openLatestQueueReport}
+          onRestoreFromLatestReport={restoreQueueFromLatestReport}
+          onResetFailureStats={() => setQueueFailureStats({ plan: 0, spec: 0 })}
+          onResetSuccessStats={() => setQueueSuccessStats({ plan: 0, spec: 0 })}
+          onClearSpecQueue={() => setQueuedSpecExecutions([])}
+          onClearPlanQueue={() => setQueuedPlanExecutions([])}
+          onRetryFailedPlan={() => {
+            if (!failedPlanExecution) return
+            setQueuedPlanBackfill(failedPlanExecution.backfill)
+            setFailedPlanExecution(null)
+            void handleSend(failedPlanExecution.prompt)
           }}
-        >
-          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: 'var(--text-primary)' }}>任务队列</div>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>
-            会话状态：{sessionStatus}{runId ? ` · ${runId}` : ''}
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ padding: '4px 8px', fontSize: 11 }}
-              onClick={exportQueueReport}
-            >
-              复制报告
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ padding: '4px 8px', fontSize: 11 }}
-              onClick={saveQueueReportToWorkspace}
-            >
-              保存到 .aide/reports
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ padding: '4px 8px', fontSize: 11 }}
-              onClick={openLatestQueueReport}
-            >
-              打开最新报告
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ padding: '4px 8px', fontSize: 11 }}
-              onClick={restoreQueueFromLatestReport}
-            >
-              从最新报告恢复
-            </button>
-          </div>
-          {activeQueueTask ? (
-            <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 6 }}>
-              当前执行：{activeQueueTask}
-            </div>
-          ) : null}
-          {(queueFailureStats.plan > 0 || queueFailureStats.spec > 0) ? (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
-              <div style={{ fontSize: 11, color: 'var(--danger-color)' }}>
-                失败统计：Plan {queueFailureStats.plan} · Spec {queueFailureStats.spec}
-              </div>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{ padding: '4px 8px', fontSize: 11 }}
-                onClick={() => setQueueFailureStats({ plan: 0, spec: 0 })}
-              >
-                重置统计
-              </button>
-            </div>
-          ) : null}
-          {(queueSuccessStats.plan > 0 || queueSuccessStats.spec > 0) ? (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                成功统计：Plan {queueSuccessStats.plan} · Spec {queueSuccessStats.spec}
-              </div>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{ padding: '4px 8px', fontSize: 11 }}
-                onClick={() => setQueueSuccessStats({ plan: 0, spec: 0 })}
-              >
-                重置成功统计
-              </button>
-            </div>
-          ) : null}
-          {recentDoneQueueItems.length > 0 ? (
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
-              最近完成：
-              {recentDoneQueueItems.slice(0, 3).map((item, index) => (
-                <span key={`done-${index}`}>
-                  {' '}
-                  [{item.kind === 'plan' ? 'Plan' : 'Spec'}]
-                  {item.text.slice(0, 18)}
-                  {item.text.length > 18 ? '…' : ''}
-                </span>
-              ))}
-            </div>
-          ) : null}
-          {queuedChatPrompt ? (
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
-              等待执行：{queuedChatPrompt.slice(0, 60)}
-              {queuedChatPrompt.length > 60 ? '…' : ''}
-            </div>
-          ) : null}
-          {(queuedSpecExecutions.length > 0 || queuedPlanExecutions.length > 0) ? (
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
-              队列预览：
-              {queuedSpecExecutions.slice(0, 2).map((item, index) => (
-                <span key={`spec-${index}`}> [Spec]{item.backfill.taskText.slice(0, 18)}{item.backfill.taskText.length > 18 ? '…' : ''}</span>
-              ))}
-              {queuedPlanExecutions.slice(0, 2).map((item, index) => (
-                <span key={`plan-${index}`}> [Plan]{item.backfill.stepText.slice(0, 18)}{item.backfill.stepText.length > 18 ? '…' : ''}</span>
-              ))}
-            </div>
-          ) : null}
-          {queuedSpecExecutions.length > 0 ? (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Spec 队列：{queuedSpecExecutions.length} 步待执行
-              </div>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{ padding: '4px 8px', fontSize: 11 }}
-                onClick={() => setQueuedSpecExecutions([])}
-              >
-                清空 Spec 队列
-              </button>
-            </div>
-          ) : null}
-          {queuedPlanExecutions.length > 0 ? (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                计划队列：{queuedPlanExecutions.length} 步待执行
-              </div>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{ padding: '4px 8px', fontSize: 11 }}
-                onClick={() => setQueuedPlanExecutions([])}
-              >
-                清空计划队列
-              </button>
-            </div>
-          ) : null}
-          {failedPlanExecution ? (
-            <div style={{ marginBottom: 6, fontSize: 12, color: 'var(--danger-color)' }}>
-              执行失败：{failedPlanExecution.backfill.stepText}（{failedPlanExecution.error}）
-              <div style={{ display: 'inline-flex', gap: 8, marginLeft: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: 11 }}
-                  onClick={() => {
-                    setQueuedPlanBackfill(failedPlanExecution.backfill)
-                    setFailedPlanExecution(null)
-                    void handleSend(failedPlanExecution.prompt)
-                  }}
-                >
-                  重试当前步
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: 11 }}
-                  onClick={() => setFailedPlanExecution(null)}
-                >
-                  跳过继续
-                </button>
-              </div>
-            </div>
-          ) : null}
-          {failedSpecExecution ? (
-            <div style={{ marginBottom: 6, fontSize: 12, color: 'var(--danger-color)' }}>
-              Spec 执行失败：{failedSpecExecution.backfill.taskText}（{failedSpecExecution.error}）
-              <div style={{ display: 'inline-flex', gap: 8, marginLeft: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: 11 }}
-                  onClick={() => {
-                    setQueuedSpecBackfill(failedSpecExecution.backfill)
-                    setFailedSpecExecution(null)
-                    void handleSend(failedSpecExecution.prompt)
-                  }}
-                >
-                  重试当前任务
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: 11 }}
-                  onClick={() => setFailedSpecExecution(null)}
-                >
-                  跳过继续
-                </button>
-              </div>
-            </div>
-          ) : null}
-          {sendQueue.length > 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              排队中：{sendQueue.slice(0, 3).map((item, idx) => <span key={idx}>[{idx + 1}] {item.text.slice(0, 28)}{item.text.length>28?'…':''}&nbsp;</span>)}
-              {sendQueue.length > 3 ? `+${sendQueue.length - 3} 更多` : ''}
-            </div>
-          ) : null}
-        </div>
+          onSkipFailedPlan={() => setFailedPlanExecution(null)}
+          onRetryFailedSpec={() => {
+            if (!failedSpecExecution) return
+            setQueuedSpecBackfill(failedSpecExecution.backfill)
+            setFailedSpecExecution(null)
+            void handleSend(failedSpecExecution.prompt)
+          }}
+          onSkipFailedSpec={() => setFailedSpecExecution(null)}
+        />
       ) : null}
 
       <div className="chat-input-area chat-input-area--stacked">

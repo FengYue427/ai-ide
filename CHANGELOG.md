@@ -5,56 +5,37 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Changed
-
-- Chat：Agent 模式默认永久开启，不再提供关闭入口（仍可使用 Plan Mode）
-- Plan：执行计划步骤前增加确认；支持清空计划执行队列；执行后自动将对应步骤标记完成（- [ ] → - [x]）
-- Plan：多计划列表支持“显示更多”；映射 Specs 时支持手动选择目标 `tasks.md`（默认最近 Spec）
-- Plan：支持执行失败后“重试当前步/跳过继续”；计划队列本地持久化恢复；执行日志增加 status/validation/filesTouched 结构化字段；执行队列入队防重
-- Plan：计划步骤支持“映射并执行”，映射到 Spec 后自动触发首条新增任务执行，形成 Plan → Spec → Chat 的闭环
-- Plan：`映射并执行` 升级为多任务顺序执行，新增 Spec 执行队列（可视化待执行数），支持自动串行推进全部新增任务
-- Plan：Spec 队列新增失败暂停与“重试当前任务/跳过继续”；增加“清空 Spec 队列”；映射并执行入队时支持与现有 Spec 队列合并去重
-- Plan：Spec 执行队列支持本地持久化与刷新恢复（含数据校验），与 Plan 队列一致，避免页面刷新导致任务丢失
-- Plan：任务队列增强可观测性：展示当前执行项、队列预览（Plan/Spec）与失败统计（支持重置），便于长队列追踪与回溯
-- Plan：任务队列新增成功统计与最近完成记录（Plan/Spec），支持快速查看执行产出并可单独重置成功统计
-- Plan：任务队列支持一键导出会话执行报告（复制到剪贴板），包含状态、成功/失败统计、最近完成与待执行快照
-- Plan：队列执行报告支持保存到 `.aide/reports/`（自动打开报告文件），报告内容包含队列预览与最近失败信息
-- Plan：设置中心新增执行报告目录（`.aide/reports`），支持搜索、排序、打开与删除；Chat 任务队列支持「打开最新报告」
-- Plan：队列报告支持「恢复队列」（从报告解析失败项与待执行预览，含 Restore Hints）；Chat「从最新报告恢复」
-- Plan：设置中心 Spec 目录（`.aide/specs`）支持搜索、排序、打开 tasks/acceptance、执行首条未完成
-- Plan：队列全部完成后可自动保存报告到 `.aide/reports` 并可选浏览器通知（设置 → 执行报告）
-
-### 规划
-
-- **v1.0.7.x** 附属路线图 → [ROADMAP_V1.0.7.x.md](docs/ROADMAP_V1.0.7.x.md)
-- **v1.1** Kickoff → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
-
 ### Next
 
-- **v1.1.0.14～0.20**：报告恢复队列、Spec 目录、完成自动留档、Plan↔Spec 溯源、计划总览、模板、报告清理 → [ROADMAP_V1.1.0_PLAN_SYSTEM.md](docs/ROADMAP_V1.1.0_PLAN_SYSTEM.md)
-- **v1.1.1**：计划系统 GA
-- **v1.1.2+**：后台 Agent 队列或协作 M1（见 [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)）
+- **v1.1.2+**：后台 Agent 队列或协作 M1 → [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)
+
+---
+
+## [1.1.1] — 2026-05-29（计划系统 GA）
 
 ### Added
 
-- Plan Catalog：新增 `planCatalogService`，支持计划文件目录构建、过滤、排序与状态摘要
-- Plan UI：`PlansSection` 支持搜索、排序、未完成步骤摘要、步骤勾选后执行
-- Plan Queue：`ideStore` 新增 `queuedPlanExecutions` 队列，支持多步骤顺序执行
-- Plan/Specs Bridge：新增 `planSpecsBridgeService`，支持将计划步骤去重追加到最近 Spec `tasks.md`
-- Report Catalog：新增 `reportCatalogService` 与 `ReportsSection`，管理队列执行报告文件
+- Plan 系统 GA：多计划目录、双执行队列、报告目录、溯源、总览、模板、报告清理（见 [PLAN_SYSTEM_QUICKSTART.md](docs/PLAN_SYSTEM_QUICKSTART.md)）
+- Plan Catalog / Spec Catalog / Report Catalog 与设置中心统一管理 UI
+- 计划模板（内置 3 套 + `.aide/plans/_templates/`）
+- Plan ↔ Spec 溯源（`.aide/meta/plan-spec-links.json`）与双向跳转
+- 报告恢复预览、复制计划、计划步骤手动标记完成、`.aide` 同步到工作区索引
+- 任务队列面板 `TaskQueuePanel`、长队列预览展开
 
 ### Changed
 
-- Plan 执行服务增强：`planExecutionService` 新增 `listPlanSteps`，保留 `getFirstPlanStep` 兼容
-- Plan 回填日志增强：`planBackfillService` 新增 `provider/model/summary` 元信息
+- Chat：Agent 模式默认常开；Plan 执行确认、自动勾选步骤、队列持久化（schema v1）、报告保存与恢复
+- Plan → Spec → Chat 闭环：映射、映射并执行、失败重试/跳过、队列入队去重
+- 队列可观测：当前项、预览、成功/失败统计、最近完成、导出/保存报告
+- Plans / Specs / Reports / 任务队列 UI 中英 i18n
+- Plan 执行服务：`listPlanSteps`；回填日志增加 `provider/model/summary`
+- Fix：启动不再因 referrer 跳过工作区恢复；Chat 消息与输入草稿本地持久化
 
-### Changed (in progress)
+### Docs
 
-- `v1.0.7.1` 首批落地：新增 `chat.abort` / `chat.payload_too_large` / `workspace.limit.warn/full` 事件埋点
-- Chat UI v2 窄宽回归修补：`chat-toolbar-row` 在小宽度下改为单列，避免按钮挤压
-- 文件树展开全量路径改为 `useMemo` 缓存，降低重复递归开销
-- `v1.0.7.2` 首批落地：发送前请求体估算、超限预警拦截、`精简后发送` 一键重试
-- `v1.0.7.2` 第二批：设置页新增“上下文预算”卡片；预警条展示精简策略明细
+- [V1.1.1_GA_EXECUTION.md](docs/V1.1.1_GA_EXECUTION.md)、[ROADMAP_V1.1.1.x.md](docs/ROADMAP_V1.1.1.x.md)
+
+---
 
 ## [1.0.8] — 2026-05-28（质量收口：编排/语义/测试/边界）
 

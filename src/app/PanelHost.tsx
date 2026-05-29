@@ -46,13 +46,36 @@ import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
 import { buildPlanExecutionPrompt } from '../services/planExecutionService'
 import { buildPlanCatalog } from '../services/planCatalogService'
 import { buildReportCatalog } from '../services/reportCatalogService'
+import {
+  buildReportsZipBlob,
+  downloadBlob,
+  pickReportPathsToPrune,
+  removeReportsFromFiles,
+} from '../services/reportArchiveService'
 import { buildSpecCatalog } from '../services/specCatalogService'
+import {
+  buildPlanLinkCountMap,
+  findSpecTasksPathForPlanStep,
+  listPlanLinksForSpec,
+  readPlanSpecLinks,
+  summarizeSpecSources,
+  upsertPlanSpecLinksFile,
+} from '../services/planSpecLinkService'
+import { markPlanStepDone } from '../services/planStepCompletionService'
+import { listAideEditorFiles, syncAideFilesToWorkspace } from '../services/aideWorkspaceSyncService'
 import {
   buildQueueRestoreFromReport,
   mergePlanRestoreItems,
   mergeSpecRestoreItems,
 } from '../services/queueReportRestoreService'
 import { appendPlanStepsToSpecTasks, findLatestSpecTasksPath, listSpecTasksPaths } from '../services/planSpecsBridgeService'
+import { duplicatePlanFile } from '../services/planDuplicateService'
+import { createPlanFromTemplate, listPlanTemplates } from '../services/planTemplateService'
+import {
+  buildQueueRestorePreview,
+  formatQueueRestorePreview,
+  hasQueueRestoreItems,
+} from '../services/queueReportRestorePreviewService'
 import { useI18n } from '../i18n'
 
 interface PanelHostProps {
@@ -181,6 +204,7 @@ export function PanelHost({
   const queuedPlanBackfill = useIDEStore((s) => s.queuedPlanBackfill)
   const queuedPlanExecutions = useIDEStore((s) => s.queuedPlanExecutions)
   const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
+  const queuedChatPrompt = useIDEStore((s) => s.queuedChatPrompt)
 
   const projectRulesPreview = extractProjectRules(
     collectRulesSources(
@@ -195,8 +219,27 @@ export function PanelHost({
     ),
   )
   const planItems = buildPlanCatalog(files)
+  const planTemplates = listPlanTemplates(files)
   const reportItems = buildReportCatalog(files)
   const specCatalogItems = buildSpecCatalog(files)
+  const planSpecLinks = readPlanSpecLinks(files)
+  const planLinkCounts = buildPlanLinkCountMap(planSpecLinks)
+  const specLinkCounts = planSpecLinks.reduce<Record<string, number>>((acc, link) => {
+    acc[link.specTasksPath] = (acc[link.specTasksPath] ?? 0) + 1
+    return acc
+  }, {})
+  const specSourceSummaries = specCatalogItems.reduce<Record<string, string[]>>((acc, item) => {
+    acc[item.tasksPath] = summarizeSpecSources(planSpecLinks, item.tasksPath)
+    return acc
+  }, {})
+  const specPlanLinks = specCatalogItems.reduce<Record<string, (typeof planSpecLinks)[number][]>>((acc, item) => {
+    acc[item.tasksPath] = listPlanLinksForSpec(planSpecLinks, item.tasksPath)
+    return acc
+  }, {})
+  const latestReportAt = reportItems
+    .map((item) => item.generatedAt)
+    .filter((item): item is string => !!item)
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null
   const specTaskPaths = listSpecTasksPaths(files)
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAiConfig = useIDEStore((s) => s.setAiConfig)
@@ -471,6 +514,49 @@ export function PanelHost({
             }
           }}
           specCatalogItems={specCatalogItems}
+          specSourceSummaries={specSourceSummaries}
+          specPlanLinks={specPlanLinks}
+          specLinkCounts={specLinkCounts}
+          onOpenLinkedPlan={(planPath, stepLine) => {
+            const targetIndex = files.findIndex((file) => file.name === planPath)
+            if (targetIndex < 0) return
+            setActiveFile(targetIndex)
+            setEditorTarget({ line: stepLine ?? 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
+          }}
+          onSyncAideToWorkspace={() => {
+            void (async () => {
+              const aideFiles = listAideEditorFiles(files)
+              if (aideFiles.length === 0) {
+                notify('info', '无可同步文件', '编辑器中没有 .aide/ 下的文件')
+                return
+              }
+              const result = await syncAideFilesToWorkspace(files)
+              if (result.synced === 0) {
+                notify('error', '同步失败', result.errors[0] ?? '请检查工作区容量限制')
+                return
+              }
+              notify(
+                'success',
+                '已同步到工作区索引',
+                `成功 ${result.synced} 个${result.failed > 0 ? `，失败 ${result.failed} 个` : ''}`,
+              )
+            })()
+          }}
+          planOverview={{
+            planCount: planItems.length,
+            openSteps: planItems.reduce((sum, item) => sum + item.uncheckedSteps, 0),
+            planQueueCount: queuedPlanExecutions.length + (queuedPlanBackfill ? 1 : 0),
+            specQueueCount: queuedSpecExecutions.length + (queuedSpecBackfill ? 1 : 0),
+            isQueueRunning: !!(
+              queuedChatPrompt ||
+              queuedPlanBackfill ||
+              queuedSpecBackfill ||
+              queuedPlanExecutions.length > 0 ||
+              queuedSpecExecutions.length > 0
+            ),
+            latestReportAt,
+          }}
           onOpenSpecTasks={(tasksPath) => {
             const targetIndex = files.findIndex((file) => file.name === tasksPath)
             if (targetIndex < 0) return
@@ -506,6 +592,20 @@ export function PanelHost({
             openChatPanel()
           }}
           planItems={planItems}
+          planLinkCounts={planLinkCounts}
+          planTemplates={planTemplates}
+          onCreatePlanFromTemplate={(templateId, planTitle) => {
+            const result = createPlanFromTemplate(files, templateId, planTitle)
+            if (!result) {
+              notify('error', '创建失败', '未找到所选计划模板')
+              return
+            }
+            setFiles(result.files)
+            setActiveFile(result.index)
+            markWorkspaceHydrated()
+            closeSettingsPanel()
+            notify('success', '计划已创建', result.path)
+          }}
           specTaskPaths={specTaskPaths}
           onOpenPlan={(path) => {
             const targetIndex = files.findIndex((file) => file.name === path)
@@ -513,6 +613,35 @@ export function PanelHost({
             setActiveFile(targetIndex)
             setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
             closeSettingsPanel()
+          }}
+          getLinkedSpecPath={(planPath, stepText) => findSpecTasksPathForPlanStep(planSpecLinks, planPath, stepText)}
+          onOpenLinkedSpec={(specTasksPath) => {
+            const targetIndex = files.findIndex((file) => file.name === specTasksPath)
+            if (targetIndex < 0) return
+            setActiveFile(targetIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
+          }}
+          onMarkPlanStepsDone={(path, steps) => {
+            if (steps.length === 0) return
+            let nextFiles = files
+            for (const step of steps) {
+              nextFiles = markPlanStepDone(nextFiles, path, step)
+            }
+            setFiles(nextFiles)
+            markWorkspaceHydrated()
+            notify('success', '已标记完成', `${path} · ${steps.length} 个步骤`)
+          }}
+          onDuplicatePlan={(path) => {
+            const result = duplicatePlanFile(files, path)
+            if (!result) {
+              notify('error', '复制失败', '未找到可复制的计划文件')
+              return
+            }
+            setFiles(result.files)
+            setActiveFile(result.index)
+            markWorkspaceHydrated()
+            notify('success', '计划已复制', result.path)
           }}
           onRunPlan={(path, steps) => {
             const file = files.find((f) => f.name === path)
@@ -569,8 +698,19 @@ export function PanelHost({
               notify('info', '无需映射', '这些步骤已存在于 Spec tasks')
               return
             }
-            setFiles(result.files)
-            const index = result.files.findIndex((file) => file.name === targetSpecTasks)
+            const linkInput = result.addedSteps.map((taskText) => {
+              const source = steps.find((step) => step.text.trim().toLowerCase() === taskText.trim().toLowerCase())
+              return {
+                planPath: path,
+                planStepText: source?.text ?? taskText,
+                planStepLine: source?.line,
+                specTasksPath: targetSpecTasks,
+                specTaskText: taskText,
+              }
+            })
+            const nextFiles = upsertPlanSpecLinksFile(result.files, linkInput)
+            setFiles(nextFiles)
+            const index = nextFiles.findIndex((file) => file.name === targetSpecTasks)
             if (index >= 0) {
               setActiveFile(index)
               setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
@@ -588,7 +728,18 @@ export function PanelHost({
               notify('info', '无需映射', '这些步骤已存在于 Spec tasks')
               return
             }
-            setFiles(result.files)
+            const linkInput = result.addedSteps.map((taskText) => {
+              const source = steps.find((step) => step.text.trim().toLowerCase() === taskText.trim().toLowerCase())
+              return {
+                planPath: path,
+                planStepText: source?.text ?? taskText,
+                planStepLine: source?.line,
+                specTasksPath: targetSpecTasks,
+                specTaskText: taskText,
+              }
+            })
+            const nextFiles = upsertPlanSpecLinksFile(result.files, linkInput)
+            setFiles(nextFiles)
             const acceptancePath = targetSpecTasks.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
             const executionQueue = result.addedSteps.map((taskText) => ({
               prompt: `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${targetSpecTasks}] ${taskText}`,
@@ -651,41 +802,104 @@ export function PanelHost({
               notify('success', '已删除', path)
             })()
           }}
+          onDeleteReports={(paths) => {
+            if (paths.length === 0) return
+            void (async () => {
+              const preview = paths.slice(0, 6).join('\n')
+              const ok = await requestConfirm({
+                title: '批量删除报告？',
+                message: `将删除 ${paths.length} 份报告：\n\n${preview}${paths.length > 6 ? '\n…' : ''}`,
+                confirmText: '删除',
+                tone: 'danger',
+              })
+              if (!ok) return
+              setFiles((prev) => removeReportsFromFiles(prev, paths))
+              notify('success', '已批量删除', `共 ${paths.length} 份报告`)
+            })()
+          }}
+          onPruneReports={(keepRecent) => {
+            const toDelete = pickReportPathsToPrune(reportItems, keepRecent)
+            if (toDelete.length === 0) {
+              notify('info', '无需清理', `当前报告数 ≤ ${keepRecent}，没有可删除项`)
+              return
+            }
+            void (async () => {
+              const preview = toDelete.slice(0, 6).join('\n')
+              const ok = await requestConfirm({
+                title: '清理旧报告？',
+                message: `将保留最近 ${keepRecent} 份，删除 ${toDelete.length} 份：\n\n${preview}${toDelete.length > 6 ? '\n…' : ''}`,
+                confirmText: '清理',
+                tone: 'danger',
+              })
+              if (!ok) return
+              setFiles((prev) => removeReportsFromFiles(prev, toDelete))
+              notify('success', '清理完成', `已删除 ${toDelete.length} 份，保留最近 ${keepRecent} 份`)
+            })()
+          }}
+          onExportReportsZip={(paths) => {
+            if (paths.length === 0) return
+            void (async () => {
+              try {
+                const blob = await buildReportsZipBlob(files, paths)
+                downloadBlob(blob, `aide-reports-${Date.now()}.zip`)
+                notify('success', 'ZIP 已导出', `已打包 ${paths.length} 份报告`)
+              } catch (error) {
+                notify('error', '导出失败', error instanceof Error ? error.message : '打包失败')
+              }
+            })()
+          }}
+          getRestorePreview={(path) => {
+            const file = files.find((f) => f.name === path)
+            if (!file) return null
+            return buildQueueRestorePreview(
+              file.content,
+              files.map((f) => ({ name: f.name, content: f.content })),
+            )
+          }}
           onRestoreReport={(path) => {
             const file = files.find((f) => f.name === path)
             if (!file) return
             const fileLikes = files.map((f) => ({ name: f.name, content: f.content }))
-            const result = buildQueueRestoreFromReport(file.content, fileLikes)
-            if (result.planItems.length === 0 && result.specItems.length === 0) {
+            const preview = buildQueueRestorePreview(file.content, fileLikes)
+            void (async () => {
+              if (!hasQueueRestoreItems(preview)) {
+                notify(
+                  'info',
+                  '无可恢复项',
+                  preview.unresolved.length ? preview.unresolved.join('；') : '报告中没有可匹配的待执行项',
+                )
+                return
+              }
+              const ok = await requestConfirm({
+                title: '从报告恢复队列？',
+                message: formatQueueRestorePreview(preview),
+                confirmText: '恢复入队',
+              })
+              if (!ok) return
+              const result = buildQueueRestoreFromReport(file.content, fileLikes)
+              const mergedPlan = mergePlanRestoreItems(queuedPlanExecutions, result.planItems, queuedPlanBackfill)
+              const mergedSpec = mergeSpecRestoreItems(queuedSpecExecutions, result.specItems, queuedSpecBackfill)
+              if (mergedSpec.length > 0) {
+                const [first, ...rest] = mergedSpec
+                setQueuedSpecExecutions(rest)
+                setQueuedPlanExecutions(mergedPlan)
+                setQueuedSpecBackfill(first.backfill)
+                setQueuedChatPrompt(first.prompt)
+              } else if (mergedPlan.length > 0) {
+                const [first, ...rest] = mergedPlan
+                setQueuedPlanExecutions(rest)
+                setQueuedSpecExecutions([])
+                setQueuedPlanBackfill(first.backfill)
+                setQueuedChatPrompt(first.prompt)
+              }
+              closeSettingsPanel()
+              openChatPanel()
               notify(
-                'info',
-                '无可恢复项',
-                result.unresolved.length ? result.unresolved.join('；') : '报告中没有可匹配的待执行项',
+                'success',
+                '已恢复队列',
+                `Plan ${result.planItems.length} · Spec ${result.specItems.length}${result.unresolved.length ? ` · 未匹配 ${result.unresolved.length}` : ''}`,
               )
-              return
-            }
-            const mergedPlan = mergePlanRestoreItems(queuedPlanExecutions, result.planItems, queuedPlanBackfill)
-            const mergedSpec = mergeSpecRestoreItems(queuedSpecExecutions, result.specItems, queuedSpecBackfill)
-            if (mergedSpec.length > 0) {
-              const [first, ...rest] = mergedSpec
-              setQueuedSpecExecutions(rest)
-              setQueuedPlanExecutions(mergedPlan)
-              setQueuedSpecBackfill(first.backfill)
-              setQueuedChatPrompt(first.prompt)
-            } else if (mergedPlan.length > 0) {
-              const [first, ...rest] = mergedPlan
-              setQueuedPlanExecutions(rest)
-              setQueuedSpecExecutions([])
-              setQueuedPlanBackfill(first.backfill)
-              setQueuedChatPrompt(first.prompt)
-            }
-            closeSettingsPanel()
-            openChatPanel()
-            notify(
-              'success',
-              '已恢复队列',
-              `Plan ${result.planItems.length} · Spec ${result.specItems.length}${result.unresolved.length ? ` · 未匹配 ${result.unresolved.length}` : ''}`,
-            )
+            })()
           }}
           onClose={closeSettingsPanel}
         />

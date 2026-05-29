@@ -1,14 +1,23 @@
 import { useMemo, useState } from 'react'
+import { useI18n } from '../i18n'
 import { filterPlanCatalog, sortPlanCatalog, type PlanCatalogItem, type PlanCatalogSort } from '../services/planCatalogService'
+import type { PlanTemplateItem } from '../services/planTemplateService'
 
 interface PlansSectionProps {
   plans: PlanCatalogItem[]
   specTaskPaths: string[]
+  planLinkCounts?: Record<string, number>
+  planTemplates?: PlanTemplateItem[]
+  onCreateFromTemplate?: (templateId: string, planTitle: string) => void
   onOpenPlan: (path: string) => void
   onDeletePlan: (path: string) => void
   onRunPlan: (path: string, steps: Array<{ text: string; line?: number }>) => void
   onMapPlanToSpec: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
   onMapPlanToSpecAndRun: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
+  getLinkedSpecPath?: (planPath: string, stepText: string) => string | null
+  onOpenLinkedSpec?: (specTasksPath: string) => void
+  onMarkPlanStepsDone?: (path: string, steps: Array<{ text: string; line?: number }>) => void
+  onDuplicatePlan?: (path: string) => void
 }
 
 function planLabelFromPath(path: string): string {
@@ -17,11 +26,33 @@ function planLabelFromPath(path: string): string {
   return fileName.replace(/\.md$/i, '')
 }
 
-export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, onRunPlan, onMapPlanToSpec, onMapPlanToSpecAndRun }: PlansSectionProps) {
+function linkKey(path: string, text: string): string {
+  return `${path}::${text.trim().toLowerCase()}`
+}
+
+export function PlansSection({
+  plans,
+  specTaskPaths,
+  planLinkCounts = {},
+  planTemplates = [],
+  onCreateFromTemplate,
+  onOpenPlan,
+  onDeletePlan,
+  onRunPlan,
+  onMapPlanToSpec,
+  onMapPlanToSpecAndRun,
+  getLinkedSpecPath,
+  onOpenLinkedSpec,
+  onMarkPlanStepsDone,
+  onDuplicatePlan,
+}: PlansSectionProps) {
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState<PlanCatalogSort>('recent-exec')
   const [visibleCount, setVisibleCount] = useState(8)
   const [targetSpecPath, setTargetSpecPath] = useState('')
+  const [templateId, setTemplateId] = useState(planTemplates[0]?.id ?? 'feature-dev')
+  const [newPlanTitle, setNewPlanTitle] = useState('')
   const [selectedSteps, setSelectedSteps] = useState<Record<string, Record<string, boolean>>>({})
   const filtered = useMemo(() => sortPlanCatalog(filterPlanCatalog(plans, query), sortBy), [plans, query, sortBy])
   const items = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
@@ -31,17 +62,47 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
 
   return (
     <div className="settings-card settings-card--grid">
-      <div className="settings-row-title">Plan 管理（多计划）</div>
-      <div className="settings-row-desc">
-        管理 `.aide/plans/` 下的计划文件：筛选、排序、摘要查看，并可选择多个步骤执行（执行结果会回填到 plan 文件）。
-      </div>
+      <div className="settings-row-title">{t('plan.catalog.title')}</div>
+      <div className="settings-row-desc">{t('plan.catalog.desc')}</div>
+      {onCreateFromTemplate && planTemplates.length > 0 ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <select
+            className="settings-select"
+            style={{ minWidth: 180 }}
+            value={templateId}
+            onChange={(e) => setTemplateId(e.target.value)}
+          >
+            {planTemplates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.title}
+                {template.source === 'workspace' ? t('plan.catalog.templateCustom') : ''}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            className="settings-input"
+            style={{ flex: 1, minWidth: 180 }}
+            value={newPlanTitle}
+            placeholder={t('plan.catalog.newPlanPlaceholder')}
+            onChange={(e) => setNewPlanTitle(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => onCreateFromTemplate(templateId, newPlanTitle.trim() || t('plan.catalog.newPlanPlaceholder'))}
+          >
+            {t('plan.catalog.createFromTemplate')}
+          </button>
+        </div>
+      ) : null}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         <input
           type="text"
           className="settings-input"
           style={{ flex: 1, minWidth: 220 }}
           value={query}
-          placeholder="搜索计划名 / 路径 / 标签"
+          placeholder={t('plan.catalog.searchPlaceholder')}
           onChange={(e) => setQuery(e.target.value)}
         />
         <select
@@ -50,9 +111,9 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as PlanCatalogSort)}
         >
-          <option value="recent-exec">按最近执行</option>
-          <option value="most-open">按未完成步骤数</option>
-          <option value="title">按标题</option>
+          <option value="recent-exec">{t('plan.catalog.sort.recentExec')}</option>
+          <option value="most-open">{t('plan.catalog.sort.mostOpen')}</option>
+          <option value="title">{t('plan.catalog.sort.title')}</option>
         </select>
         {specTaskPaths.length > 0 ? (
           <select
@@ -62,7 +123,7 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
             onChange={(e) => setTargetSpecPath(e.target.value)}
             title="映射目标 Spec tasks 文件"
           >
-            <option value="">映射目标：默认最近 Spec</option>
+            <option value="">{t('plan.catalog.mapTargetDefault')}</option>
             {specTaskPaths.map((path) => (
               <option key={path} value={path}>
                 {path}
@@ -84,16 +145,22 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
                   <span style={{ flex: 1, fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>
                     {plan.title || planLabelFromPath(plan.path)}
                   </span>
-                  <span className="settings-badge settings-badge--enabled">待办 {plan.uncheckedSteps}</span>
+                  <span className="settings-badge settings-badge--enabled">
+                    {t('plan.catalog.todoBadge', { count: plan.uncheckedSteps })}
+                  </span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                  {plan.path} {plan.lastExecutedAt ? `· 最近执行 ${plan.lastExecutedAt}` : '· 尚未执行'}
+                  {plan.path}{' '}
+                  {plan.lastExecutedAt
+                    ? `· ${t('plan.catalog.lastExecuted', { time: plan.lastExecutedAt })}`
+                    : `· ${t('plan.catalog.notExecuted')}`}
                 </div>
                 {plan.stepItems.length > 0 ? (
                   <div style={{ display: 'grid', gap: 6 }}>
                     {plan.stepItems.slice(0, 4).map((step) => {
                       const key = `${step.line}-${step.text}`
                       const checked = !!selectedSteps[plan.path]?.[key]
+                      const mappedCount = planLinkCounts[linkKey(plan.path, step.text)] ?? 0
                       return (
                         <label key={key} style={{ fontSize: 12, display: 'flex', gap: 6, alignItems: 'center' }}>
                           <input
@@ -106,17 +173,38 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
                               }))
                             }
                           />
-                          <span>{step.text}</span>
+                          <span style={{ flex: 1 }}>
+                            {step.text}
+                            {mappedCount > 0 ? (
+                              <span style={{ color: 'var(--text-secondary)', marginLeft: 8, fontSize: 11 }}>
+                                {t('plan.catalog.mappedCount', { count: mappedCount })}
+                                {getLinkedSpecPath && onOpenLinkedSpec ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    style={{ padding: '0 6px', fontSize: 11, marginLeft: 6 }}
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      const specPath = getLinkedSpecPath(plan.path, step.text)
+                                      if (specPath) onOpenLinkedSpec(specPath)
+                                    }}
+                                  >
+                                    {t('plan.catalog.openLinkedSpec')}
+                                  </button>
+                                ) : null}
+                              </span>
+                            ) : null}
+                          </span>
                         </label>
                       )
                     })}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>无未完成步骤</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('plan.catalog.noOpenSteps')}</div>
                 )}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <button type="button" className="btn btn-secondary" onClick={() => onOpenPlan(plan.path)}>
-                    打开
+                    {t('plan.catalog.open')}
                   </button>
                   <button
                     type="button"
@@ -130,8 +218,31 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
                       onRunPlan(plan.path, selected.length > 0 ? selected : [{ text: plan.stepItems[0].text, line: plan.stepItems[0].line }])
                     }}
                   >
-                    执行步骤{selectedCount(plan.path) > 0 ? ` (${selectedCount(plan.path)})` : ''}
+                    {t('plan.catalog.runSteps')}
+                    {selectedCount(plan.path) > 0 ? ` (${selectedCount(plan.path)})` : ''}
                   </button>
+                  {onMarkPlanStepsDone ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      disabled={plan.stepItems.length === 0}
+                      onClick={() => {
+                        const selectedMap = selectedSteps[plan.path] ?? {}
+                        const selected = plan.stepItems
+                          .filter((step) => selectedMap[`${step.line}-${step.text}`])
+                          .map((step) => ({ text: step.text, line: step.line }))
+                        onMarkPlanStepsDone(
+                          plan.path,
+                          selected.length > 0
+                            ? selected
+                            : plan.stepItems.map((step) => ({ text: step.text, line: step.line })),
+                        )
+                      }}
+                    >
+                      {t('plan.catalog.markDone')}
+                      {selectedCount(plan.path) > 0 ? ` (${selectedCount(plan.path)})` : ''}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="btn btn-secondary"
@@ -148,7 +259,7 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
                       )
                     }}
                   >
-                    映射到 Spec
+                    {t('plan.catalog.map')}
                   </button>
                   <button
                     type="button"
@@ -166,10 +277,15 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
                       )
                     }}
                   >
-                    映射并执行
+                    {t('plan.catalog.mapAndRun')}
                   </button>
+                  {onDuplicatePlan ? (
+                    <button type="button" className="btn btn-secondary" onClick={() => onDuplicatePlan(plan.path)}>
+                      {t('plan.catalog.duplicate')}
+                    </button>
+                  ) : null}
                   <button type="button" className="btn btn-secondary" onClick={() => onDeletePlan(plan.path)}>
-                    删除
+                    {t('plan.catalog.delete')}
                   </button>
                 </div>
               </div>
@@ -178,14 +294,14 @@ export function PlansSection({ plans, specTaskPaths, onOpenPlan, onDeletePlan, o
           {items.length < filtered.length ? (
             <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setVisibleCount((count) => count + 8)}>
-                显示更多
+                {t('plan.catalog.showMore')}
               </button>
             </div>
           ) : null}
         </div>
       ) : (
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          还没有计划文件。你可以在 Chat 的 Plan Mode 下生成计划，它会自动保存到 `.aide/plans/`。
+          {t('plan.catalog.empty')}
         </div>
       )}
     </div>

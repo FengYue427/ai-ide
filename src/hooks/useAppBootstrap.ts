@@ -90,19 +90,8 @@ export function useAppBootstrap() {
     if (initialWorkspaceLoadedRef.current) return
     initialWorkspaceLoadedRef.current = true
 
-    const referrer = document.referrer
-    const isFromLandingPage =
-      referrer.includes('/website/') ||
-      referrer.endsWith('index.html') ||
-      (!referrer.includes('ai-ide') && referrer.length > 0)
-
     const loadWorkspace = async () => {
       const { setShowWelcome, setFiles } = useIDEStore.getState()
-
-      if (isFromLandingPage) {
-        setShowWelcome(true)
-        return
-      }
 
       const localFiles = await loadLocalAutosaveFiles()
       let cloudFiles: FileItem[] | null = null

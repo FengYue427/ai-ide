@@ -6,6 +6,7 @@ import { ProjectTasksSection } from './ProjectTasksSection'
 import { SpecCatalogSection } from './SpecCatalogSection'
 import { PlansSection } from './PlansSection'
 import { ReportsSection } from './ReportsSection'
+import { PlanOverviewSection } from './PlanOverviewSection'
 import { McpToolsBrowser } from './McpToolsBrowser'
 import { QuotaIndicator } from './ui/QuotaIndicator'
 import { Toggle } from './ui/Toggle'
@@ -42,6 +43,9 @@ import { workspaceContextService } from '../services/workspaceContextService'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
 import type { ProjectTaskItem } from '../services/projectTasksService'
 import type { PlanCatalogItem } from '../services/planCatalogService'
+import type { PlanTemplateItem } from '../services/planTemplateService'
+import type { PlanSpecLink } from '../services/planSpecLinkService'
+import type { QueueRestorePreview } from '../services/queueReportRestorePreviewService'
 import type { ReportCatalogItem } from '../services/reportCatalogService'
 import type { SpecCatalogItem } from '../services/specCatalogService'
 
@@ -66,19 +70,43 @@ interface SettingsCenterProps {
   onMarkSpecTaskDone?: (path: string, line: number) => void
   onRunSpecTask?: (path: string, text: string) => void
   specCatalogItems?: SpecCatalogItem[]
+  specSourceSummaries?: Record<string, string[]>
+  specPlanLinks?: Record<string, PlanSpecLink[]>
+  specLinkCounts?: Record<string, number>
+  onOpenLinkedPlan?: (planPath: string, stepLine?: number) => void
+  onSyncAideToWorkspace?: () => void
   onOpenSpecTasks?: (tasksPath: string) => void
   onOpenSpecAcceptance?: (tasksPath: string) => void
   onRunFirstOpenSpecTask?: (tasksPath: string) => void
   planItems?: PlanCatalogItem[]
+  planLinkCounts?: Record<string, number>
+  planTemplates?: PlanTemplateItem[]
+  onCreatePlanFromTemplate?: (templateId: string, planTitle: string) => void
+  planOverview?: {
+    planCount: number
+    openSteps: number
+    planQueueCount: number
+    specQueueCount: number
+    isQueueRunning: boolean
+    latestReportAt: string | null
+  }
   specTaskPaths?: string[]
   onOpenPlan?: (path: string) => void
   onRunPlan?: (path: string, steps: Array<{ text: string; line?: number }>) => void
   onMapPlanToSpec?: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
   onMapPlanToSpecAndRun?: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
+  getLinkedSpecPath?: (planPath: string, stepText: string) => string | null
+  onOpenLinkedSpec?: (specTasksPath: string) => void
+  onMarkPlanStepsDone?: (path: string, steps: Array<{ text: string; line?: number }>) => void
+  onDuplicatePlan?: (path: string) => void
   onDeletePlan?: (path: string) => void
   reportItems?: ReportCatalogItem[]
   onOpenReport?: (path: string) => void
   onDeleteReport?: (path: string) => void
+  onDeleteReports?: (paths: string[]) => void
+  onPruneReports?: (keepRecent: number) => void
+  onExportReportsZip?: (paths: string[]) => void
+  getRestorePreview?: (path: string) => QueueRestorePreview | null
   onRestoreReport?: (path: string) => void
   onClose: () => void
 }
@@ -103,19 +131,36 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onCreateSpec,
   onOpenSpecsRoot,
   specCatalogItems = [],
+  specSourceSummaries = {},
+  specPlanLinks = {},
+  specLinkCounts = {},
+  onOpenLinkedPlan,
+  onSyncAideToWorkspace,
   onOpenSpecTasks,
   onOpenSpecAcceptance,
   onRunFirstOpenSpecTask,
   planItems = [],
+  planLinkCounts = {},
+  planTemplates = [],
+  onCreatePlanFromTemplate,
+  planOverview,
   specTaskPaths = [],
   onOpenPlan,
   onRunPlan,
   onMapPlanToSpec,
   onMapPlanToSpecAndRun,
+  getLinkedSpecPath,
+  onOpenLinkedSpec,
+  onMarkPlanStepsDone,
+  onDuplicatePlan,
   onDeletePlan,
   reportItems = [],
   onOpenReport,
   onDeleteReport,
+  onDeleteReports,
+  onPruneReports,
+  onExportReportsZip,
+  getRestorePreview,
   onRestoreReport,
   onClose,
 }) => {
@@ -644,6 +689,10 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   <SpecCatalogSection
                     language={localLanguage}
                     specs={specCatalogItems}
+                    specSources={specSourceSummaries}
+                    specPlanLinks={specPlanLinks}
+                    specLinkCounts={specLinkCounts}
+                    onOpenLinkedPlan={onOpenLinkedPlan}
                     onCreateSpec={onCreateSpec}
                     onOpenSpecsRoot={onOpenSpecsRoot}
                     onOpenSpecTasks={onOpenSpecTasks}
@@ -651,10 +700,28 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     onRunFirstOpenTask={onRunFirstOpenSpecTask}
                   />
                 ) : null}
+                {planOverview ? (
+                  <PlanOverviewSection
+                    planCount={planOverview.planCount}
+                    openSteps={planOverview.openSteps}
+                    planQueueCount={planOverview.planQueueCount}
+                    specQueueCount={planOverview.specQueueCount}
+                    isQueueRunning={planOverview.isQueueRunning}
+                    latestReportAt={planOverview.latestReportAt}
+                    onSyncAideToWorkspace={onSyncAideToWorkspace}
+                  />
+                ) : null}
                 {onOpenPlan && onRunPlan && onMapPlanToSpec && onMapPlanToSpecAndRun && onDeletePlan ? (
                   <PlansSection
                     plans={planItems}
                     specTaskPaths={specTaskPaths}
+                    planLinkCounts={planLinkCounts}
+                    planTemplates={planTemplates}
+                    onCreateFromTemplate={onCreatePlanFromTemplate}
+                    getLinkedSpecPath={getLinkedSpecPath}
+                    onOpenLinkedSpec={onOpenLinkedSpec}
+                    onMarkPlanStepsDone={onMarkPlanStepsDone}
+                    onDuplicatePlan={onDuplicatePlan}
                     onOpenPlan={onOpenPlan}
                     onRunPlan={onRunPlan}
                     onMapPlanToSpec={onMapPlanToSpec}
@@ -667,6 +734,10 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     reports={reportItems}
                     onOpenReport={onOpenReport}
                     onDeleteReport={onDeleteReport}
+                    getRestorePreview={getRestorePreview}
+                    onDeleteReports={onDeleteReports}
+                    onPruneReports={onPruneReports}
+                    onExportReportsZip={onExportReportsZip}
                     onRestoreReport={onRestoreReport}
                   />
                 ) : null}
