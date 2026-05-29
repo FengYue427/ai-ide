@@ -40,3 +40,5 @@ npm-debug.log*
 test-results/
 playwright-report/
 api-server.log
+
+.vercel

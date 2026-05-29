@@ -20,6 +20,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Plan：任务队列支持一键导出会话执行报告（复制到剪贴板），包含状态、成功/失败统计、最近完成与待执行快照
 - Plan：队列执行报告支持保存到 `.aide/reports/`（自动打开报告文件），报告内容包含队列预览与最近失败信息
 - Plan：设置中心新增执行报告目录（`.aide/reports`），支持搜索、排序、打开与删除；Chat 任务队列支持「打开最新报告」
+- Plan：队列报告支持「恢复队列」（从报告解析失败项与待执行预览，含 Restore Hints）；Chat「从最新报告恢复」
+- Plan：设置中心 Spec 目录（`.aide/specs`）支持搜索、排序、打开 tasks/acceptance、执行首条未完成
+- Plan：队列全部完成后可自动保存报告到 `.aide/reports` 并可选浏览器通知（设置 → 执行报告）
 
 ### 规划
 
@@ -28,8 +31,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Next
 
-- **v1.0.9**：Plan 模式（先计划、再执行）：计划落盘 `.aide/plans` + 任务提取 `.aide/tasks.md` + 一键执行第一步（v1.0.9.x）
-- **v1.1.x**：计划系统产品化：多计划管理（搜索/排序/摘要）+ 步骤选择执行 + 多步骤队列 + 计划步骤映射 Specs
+- **v1.1.0.14～0.20**：报告恢复队列、Spec 目录、完成自动留档、Plan↔Spec 溯源、计划总览、模板、报告清理 → [ROADMAP_V1.1.0_PLAN_SYSTEM.md](docs/ROADMAP_V1.1.0_PLAN_SYSTEM.md)
+- **v1.1.1**：计划系统 GA
+- **v1.1.2+**：后台 Agent 队列或协作 M1（见 [ROADMAP_V1.1.md](docs/ROADMAP_V1.1.md)）
 
 ### Added
 

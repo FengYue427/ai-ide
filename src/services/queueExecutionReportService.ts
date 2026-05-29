@@ -22,6 +22,10 @@ export interface QueueExecutionReportInput {
   }
   failedPlan?: { stepText: string; error: string } | null
   failedSpec?: { taskText: string; error: string } | null
+  restoreHints?: {
+    plan: Array<{ planPath: string; stepText: string; stepLine?: number }>
+    spec: Array<{ taskPath: string; taskText: string }>
+  }
   now?: Date
 }
 
@@ -51,6 +55,15 @@ export function buildQueueExecutionReportMarkdown(input: QueueExecutionReportInp
     input.failedSpec ? `- Spec: ${input.failedSpec.taskText} (${input.failedSpec.error})` : '',
   ].filter(Boolean)
 
+  const hintPlan = input.restoreHints?.plan ?? []
+  const hintSpec = input.restoreHints?.spec ?? []
+  const restoreHintLines = [
+    ...hintPlan.map(
+      (h) => `- plan | ${h.planPath} | ${h.stepLine ?? ''} | ${h.stepText}`,
+    ),
+    ...hintSpec.map((h) => `- spec | ${h.taskPath} | ${h.taskText}`),
+  ]
+
   return [
     '# Queue Execution Report',
     '',
@@ -76,6 +89,9 @@ export function buildQueueExecutionReportMarkdown(input: QueueExecutionReportInp
     '',
     '## Last Failure',
     ...(failedLines.length > 0 ? failedLines : ['- None']),
+    '',
+    '## Restore Hints',
+    ...(restoreHintLines.length > 0 ? restoreHintLines : ['- None']),
     '',
   ].join('\n')
 }

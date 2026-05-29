@@ -89,6 +89,15 @@ import {
   type QueueExecutionReportInput,
 } from '../services/queueExecutionReportService'
 import { findLatestReportPath } from '../services/reportCatalogService'
+import {
+  buildQueueRestoreFromReport,
+  mergePlanRestoreItems,
+  mergeSpecRestoreItems,
+} from '../services/queueReportRestoreService'
+import {
+  loadQueueAutoReportPrefs,
+  notifyQueueComplete,
+} from '../services/queueAutoReportPrefsService'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -493,6 +502,39 @@ ${t('ai.chat.prompt')}`
   }, [agentActivity, copyMessageText, lastRunRounds])
 
   const buildQueueReportInput = useCallback((): QueueExecutionReportInput => {
+    const planHints = [
+      ...(failedPlanExecution
+        ? [
+            {
+              planPath: failedPlanExecution.backfill.planPath,
+              stepText: failedPlanExecution.backfill.stepText,
+              stepLine: failedPlanExecution.backfill.stepLine,
+            },
+          ]
+        : []),
+      ...(queuedPlanBackfill
+        ? [
+            {
+              planPath: queuedPlanBackfill.planPath,
+              stepText: queuedPlanBackfill.stepText,
+              stepLine: queuedPlanBackfill.stepLine,
+            },
+          ]
+        : []),
+      ...queuedPlanExecutions.map((item) => item.backfill),
+    ]
+    const specHints = [
+      ...(failedSpecExecution
+        ? [{ taskPath: failedSpecExecution.backfill.taskPath, taskText: failedSpecExecution.backfill.taskText }]
+        : []),
+      ...(queuedSpecBackfill
+        ? [{ taskPath: queuedSpecBackfill.taskPath, taskText: queuedSpecBackfill.taskText }]
+        : []),
+      ...queuedSpecExecutions.map((item) => ({
+        taskPath: item.backfill.taskPath,
+        taskText: item.backfill.taskText,
+      })),
+    ]
     return {
       sessionStatus,
       runId,
@@ -513,6 +555,7 @@ ${t('ai.chat.prompt')}`
       failedSpec: failedSpecExecution
         ? { taskText: failedSpecExecution.backfill.taskText, error: failedSpecExecution.error }
         : null,
+      restoreHints: { plan: planHints, spec: specHints },
     }
   }, [
     activeQueueTask,
@@ -520,7 +563,9 @@ ${t('ai.chat.prompt')}`
     failedSpecExecution,
     queueFailureStats,
     queueSuccessStats,
+    queuedPlanBackfill,
     queuedPlanExecutions,
+    queuedSpecBackfill,
     queuedSpecExecutions,
     recentDoneQueueItems,
     runId,
@@ -558,6 +603,122 @@ ${t('ai.chat.prompt')}`
     }
     setActiveFile(index)
   }, [editorFiles, notify, setActiveFile])
+
+  const applyRestoreFromMarkdown = useCallback(
+    (markdown: string) => {
+      const fileLikes = editorFiles.map((f) => ({ name: f.name, content: f.content }))
+      const result = buildQueueRestoreFromReport(markdown, fileLikes)
+      if (result.planItems.length === 0 && result.specItems.length === 0) {
+        notify?.('info', '无可恢复项', result.unresolved.length ? result.unresolved.join('；') : '报告中没有可匹配的待执行项')
+        return
+      }
+      setFailedPlanExecution(null)
+      setFailedSpecExecution(null)
+      const mergedPlan = mergePlanRestoreItems(queuedPlanExecutions, result.planItems, queuedPlanBackfill)
+      const mergedSpec = mergeSpecRestoreItems(queuedSpecExecutions, result.specItems, queuedSpecBackfill)
+      if (mergedSpec.length > 0) {
+        const [first, ...rest] = mergedSpec
+        setQueuedSpecExecutions(rest)
+        setQueuedPlanExecutions(mergedPlan)
+        setQueuedSpecBackfill(first.backfill)
+        setQueuedChatPrompt(first.prompt)
+      } else if (mergedPlan.length > 0) {
+        const [first, ...rest] = mergedPlan
+        setQueuedPlanExecutions(rest)
+        setQueuedSpecExecutions([])
+        setQueuedPlanBackfill(first.backfill)
+        setQueuedChatPrompt(first.prompt)
+      } else {
+        setQueuedPlanExecutions(mergedPlan)
+        setQueuedSpecExecutions(mergedSpec)
+      }
+      const detail = [
+        `Plan ${result.planItems.length} · Spec ${result.specItems.length}`,
+        result.unresolved.length ? `未匹配 ${result.unresolved.length} 项` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')
+      notify?.('success', '已恢复队列', detail)
+    },
+    [
+      editorFiles,
+      notify,
+      queuedPlanBackfill,
+      queuedPlanExecutions,
+      queuedSpecBackfill,
+      queuedSpecExecutions,
+      setQueuedChatPrompt,
+      setQueuedPlanBackfill,
+      setQueuedPlanExecutions,
+      setQueuedSpecBackfill,
+      setQueuedSpecExecutions,
+    ],
+  )
+
+  const restoreQueueFromLatestReport = useCallback(() => {
+    const path = findLatestReportPath(editorFiles.map((f) => ({ name: f.name, content: f.content })))
+    if (!path) {
+      notify?.('info', '暂无报告', '请先保存一份队列报告')
+      return
+    }
+    const file = editorFiles.find((f) => f.name === path)
+    if (!file) return
+    applyRestoreFromMarkdown(file.content)
+  }, [applyRestoreFromMarkdown, editorFiles, notify])
+
+  const lastQueueSnapshotRef = useRef<QueueExecutionReportInput | null>(null)
+  const wasQueueBusyRef = useRef(false)
+
+  const isQueueBusy = useMemo(() => {
+    return !!(
+      loading ||
+      queuedChatPrompt ||
+      queuedSpecBackfill ||
+      queuedSpecExecutions.length > 0 ||
+      queuedPlanBackfill ||
+      queuedPlanExecutions.length > 0 ||
+      sendQueue.length > 0 ||
+      failedPlanExecution ||
+      failedSpecExecution
+    )
+  }, [
+    failedPlanExecution,
+    failedSpecExecution,
+    loading,
+    queuedChatPrompt,
+    queuedPlanBackfill,
+    queuedPlanExecutions.length,
+    queuedSpecBackfill,
+    queuedSpecExecutions.length,
+    sendQueue.length,
+  ])
+
+  useEffect(() => {
+    if (isQueueBusy) {
+      lastQueueSnapshotRef.current = buildQueueReportInput()
+    }
+  }, [buildQueueReportInput, isQueueBusy])
+
+  useEffect(() => {
+    if (wasQueueBusyRef.current && !isQueueBusy) {
+      const prefs = loadQueueAutoReportPrefs()
+      const snapshot = lastQueueSnapshotRef.current
+      if (prefs.autoSaveOnComplete && snapshot) {
+        const markdown = buildQueueExecutionReportMarkdown(snapshot)
+        const path = buildQueueReportPath()
+        setFiles((prev) => {
+          const result = upsertQueueReportFile(prev, markdown, path)
+          setActiveFile(result.index)
+          return result.files
+        })
+        notify?.('success', '已自动保存', `队列报告：${path}`)
+      }
+      if (prefs.notifyOnComplete) {
+        notifyQueueComplete('AI IDE', '任务队列已执行完毕')
+      }
+    }
+    wasQueueBusyRef.current = isQueueBusy
+  }, [isQueueBusy, notify, setActiveFile, setFiles])
 
   const appendExecutionToSpecAcceptance = useCallback(
     (specAcceptancePath: string, taskText: string, assistantOutput: string, executionRunId?: string | null) => {
@@ -1526,6 +1687,14 @@ ${t('ai.chat.prompt')}`
               onClick={openLatestQueueReport}
             >
               打开最新报告
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: '4px 8px', fontSize: 11 }}
+              onClick={restoreQueueFromLatestReport}
+            >
+              从最新报告恢复
             </button>
           </div>
           {activeQueueTask ? (

@@ -46,6 +46,12 @@ import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
 import { buildPlanExecutionPrompt } from '../services/planExecutionService'
 import { buildPlanCatalog } from '../services/planCatalogService'
 import { buildReportCatalog } from '../services/reportCatalogService'
+import { buildSpecCatalog } from '../services/specCatalogService'
+import {
+  buildQueueRestoreFromReport,
+  mergePlanRestoreItems,
+  mergeSpecRestoreItems,
+} from '../services/queueReportRestoreService'
 import { appendPlanStepsToSpecTasks, findLatestSpecTasksPath, listSpecTasksPaths } from '../services/planSpecsBridgeService'
 import { useI18n } from '../i18n'
 
@@ -174,6 +180,7 @@ export function PanelHost({
   const setQueuedPlanExecutions = useIDEStore((s) => s.setQueuedPlanExecutions)
   const queuedPlanBackfill = useIDEStore((s) => s.queuedPlanBackfill)
   const queuedPlanExecutions = useIDEStore((s) => s.queuedPlanExecutions)
+  const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
 
   const projectRulesPreview = extractProjectRules(
     collectRulesSources(
@@ -187,18 +194,9 @@ export function PanelHost({
       workspaceContextService.getAllFiles().map((file) => ({ path: file.path, content: file.content })),
     ),
   )
-  const specTaskItems = files
-    .filter((file) => /^\.aide\/specs\/[^/]+\/tasks\.md$/i.test(file.name))
-    .flatMap((file) =>
-      parseProjectTasks(file.content).map((task) => ({
-        path: file.name,
-        text: task.text,
-        done: task.done,
-        line: task.line,
-      })),
-    )
   const planItems = buildPlanCatalog(files)
   const reportItems = buildReportCatalog(files)
+  const specCatalogItems = buildSpecCatalog(files)
   const specTaskPaths = listSpecTasksPaths(files)
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAiConfig = useIDEStore((s) => s.setAiConfig)
@@ -472,31 +470,36 @@ export function PanelHost({
               closeSettingsPanel()
             }
           }}
-          specTasks={specTaskItems}
-          onMarkSpecTaskDone={(path, line) => {
-            setFiles((prev) =>
-              prev.map((file) => {
-                if (file.name !== path) return file
-                const lines = file.content.split(/\r?\n/)
-                const index = line - 1
-                if (index < 0 || index >= lines.length) return file
-                lines[index] = lines[index].replace(/^(\s*-\s*)\[( |x|X)\]/, '$1[x]')
-                return { ...file, content: lines.join('\n') }
-              }),
-            )
-            const targetIndex = files.findIndex((file) => file.name === path)
-            if (targetIndex >= 0) {
-              setActiveFile(targetIndex)
-              setEditorTarget({ line, column: 1, nonce: Date.now() })
-            }
+          specCatalogItems={specCatalogItems}
+          onOpenSpecTasks={(tasksPath) => {
+            const targetIndex = files.findIndex((file) => file.name === tasksPath)
+            if (targetIndex < 0) return
+            setActiveFile(targetIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
           }}
-          onRunSpecTask={(path, text) => {
-            const prompt = `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${path}] ${text}`
-            const acceptancePath = path.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
+          onOpenSpecAcceptance={(tasksPath) => {
+            const acceptancePath = tasksPath.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
+            const targetIndex = files.findIndex((file) => file.name === acceptancePath)
+            if (targetIndex < 0) return
+            setActiveFile(targetIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
+          }}
+          onRunFirstOpenSpecTask={(tasksPath) => {
+            const file = files.find((f) => f.name === tasksPath)
+            if (!file) return
+            const first = parseProjectTasks(file.content).find((t) => !t.done)
+            if (!first) {
+              notify('info', '无待执行', '该 Spec 没有未完成任务')
+              return
+            }
+            const prompt = `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${tasksPath}] ${first.text}`
+            const acceptancePath = tasksPath.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
             setQueuedChatPrompt(prompt)
             setQueuedSpecBackfill({
-              taskPath: path,
-              taskText: text,
+              taskPath: tasksPath,
+              taskText: first.text,
               specAcceptancePath: acceptancePath,
             })
             closeSettingsPanel()
@@ -647,6 +650,42 @@ export function PanelHost({
               setFiles((prev) => prev.filter((f) => f.name !== path))
               notify('success', '已删除', path)
             })()
+          }}
+          onRestoreReport={(path) => {
+            const file = files.find((f) => f.name === path)
+            if (!file) return
+            const fileLikes = files.map((f) => ({ name: f.name, content: f.content }))
+            const result = buildQueueRestoreFromReport(file.content, fileLikes)
+            if (result.planItems.length === 0 && result.specItems.length === 0) {
+              notify(
+                'info',
+                '无可恢复项',
+                result.unresolved.length ? result.unresolved.join('；') : '报告中没有可匹配的待执行项',
+              )
+              return
+            }
+            const mergedPlan = mergePlanRestoreItems(queuedPlanExecutions, result.planItems, queuedPlanBackfill)
+            const mergedSpec = mergeSpecRestoreItems(queuedSpecExecutions, result.specItems, queuedSpecBackfill)
+            if (mergedSpec.length > 0) {
+              const [first, ...rest] = mergedSpec
+              setQueuedSpecExecutions(rest)
+              setQueuedPlanExecutions(mergedPlan)
+              setQueuedSpecBackfill(first.backfill)
+              setQueuedChatPrompt(first.prompt)
+            } else if (mergedPlan.length > 0) {
+              const [first, ...rest] = mergedPlan
+              setQueuedPlanExecutions(rest)
+              setQueuedSpecExecutions([])
+              setQueuedPlanBackfill(first.backfill)
+              setQueuedChatPrompt(first.prompt)
+            }
+            closeSettingsPanel()
+            openChatPanel()
+            notify(
+              'success',
+              '已恢复队列',
+              `Plan ${result.planItems.length} · Spec ${result.specItems.length}${result.unresolved.length ? ` · 未匹配 ${result.unresolved.length}` : ''}`,
+            )
           }}
           onClose={closeSettingsPanel}
         />

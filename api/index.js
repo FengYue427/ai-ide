@@ -95,7 +95,7 @@ var FALLBACK, cached;
 var init_releaseVersion = __esm({
   "lib/api/releaseVersion.ts"() {
     "use strict";
-    FALLBACK = "1.0.8";
+    FALLBACK = "1.1.0.13";
     cached = null;
   }
 });

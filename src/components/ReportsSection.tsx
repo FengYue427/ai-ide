@@ -1,15 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   filterReportCatalog,
   sortReportCatalog,
   type ReportCatalogItem,
   type ReportCatalogSort,
 } from '../services/reportCatalogService'
+import {
+  loadQueueAutoReportPrefs,
+  saveQueueAutoReportPrefs,
+  type QueueAutoReportPrefs,
+} from '../services/queueAutoReportPrefsService'
 
 interface ReportsSectionProps {
   reports: ReportCatalogItem[]
   onOpenReport: (path: string) => void
   onDeleteReport: (path: string) => void
+  onRestoreReport?: (path: string) => void
 }
 
 function formatGeneratedAt(value: string | null): string {
@@ -19,18 +25,41 @@ function formatGeneratedAt(value: string | null): string {
   return new Date(parsed).toLocaleString()
 }
 
-export function ReportsSection({ reports, onOpenReport, onDeleteReport }: ReportsSectionProps) {
+export function ReportsSection({ reports, onOpenReport, onDeleteReport, onRestoreReport }: ReportsSectionProps) {
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState<ReportCatalogSort>('recent')
   const [visibleCount, setVisibleCount] = useState(8)
+  const [autoPrefs, setAutoPrefs] = useState<QueueAutoReportPrefs>(() => loadQueueAutoReportPrefs())
   const filtered = useMemo(() => sortReportCatalog(filterReportCatalog(reports, query), sortBy), [reports, query, sortBy])
   const items = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+
+  useEffect(() => {
+    saveQueueAutoReportPrefs(autoPrefs)
+  }, [autoPrefs])
 
   return (
     <div className="settings-card settings-card--grid">
       <div className="settings-row-title">执行报告（.aide/reports）</div>
       <div className="settings-row-desc">
-        查看 Chat 保存的队列执行报告：支持搜索、按时间排序、打开与删除。
+        查看、恢复队列、打开与删除报告。队列全部跑完后可自动保存报告（可选）。
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8, fontSize: 12 }}>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={autoPrefs.autoSaveOnComplete}
+            onChange={(e) => setAutoPrefs((p) => ({ ...p, autoSaveOnComplete: e.target.checked }))}
+          />
+          队列完成时自动保存报告到 .aide/reports
+        </label>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={autoPrefs.notifyOnComplete}
+            onChange={(e) => setAutoPrefs((p) => ({ ...p, notifyOnComplete: e.target.checked }))}
+          />
+          队列完成时浏览器通知（需授权）
+        </label>
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         <input
@@ -78,10 +107,15 @@ export function ReportsSection({ reports, onOpenReport, onDeleteReport }: Report
                     {report.summary ? `统计：${report.summary}` : ''}
                   </div>
                 ) : null}
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button type="button" className="btn btn-secondary" onClick={() => onOpenReport(report.path)}>
                     打开
                   </button>
+                  {onRestoreReport ? (
+                    <button type="button" className="btn btn-secondary" onClick={() => onRestoreReport(report.path)}>
+                      恢复队列
+                    </button>
+                  ) : null}
                   <button type="button" className="btn btn-secondary" onClick={() => onDeleteReport(report.path)}>
                     删除
                   </button>
