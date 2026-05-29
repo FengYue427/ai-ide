@@ -44,7 +44,9 @@ import {
 } from '../services/projectTasksService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
-import { buildPlanExecutionPrompt } from '../services/planExecutionService'
+import { buildPlanBackgroundJobPrompt, buildPlanExecutionPrompt } from '../services/planExecutionService'
+import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
+import { createBackgroundJob } from '../services/backgroundJobsApiService'
 import { buildPlanCatalog } from '../services/planCatalogService'
 import { buildReportCatalog, findLatestReportPath } from '../services/reportCatalogService'
 import {
@@ -97,6 +99,7 @@ interface PanelHostProps {
   openGitPanel: () => void
   openShareDialog: () => void
   openChatPanel: () => void
+  openBackgroundJobsPanel?: () => void
   openSnippetPanel: () => void
   openTerminalPanel: () => void
   openPreviewPanel: () => void
@@ -139,6 +142,7 @@ export function PanelHost({
   openGitPanel,
   openShareDialog,
   openChatPanel,
+  openBackgroundJobsPanel,
   openSnippetPanel,
   openTerminalPanel,
   openPreviewPanel,
@@ -176,6 +180,7 @@ export function PanelHost({
   const diagnosticCount = useIDEStore((s) => s.diagnosticCount)
   const recentProjects = useIDEStore((s) => s.recentProjects)
   const currentPlan = useIDEStore((s) => s.currentPlan)
+  const currentUser = useIDEStore((s) => s.currentUser)
   const showTemplateModal = useIDEStore((s) => s.showTemplateModal)
   const showShareModal = useIDEStore((s) => s.showShareModal)
   const showAISettings = useIDEStore((s) => s.showAISettings)
@@ -691,6 +696,62 @@ export function PanelHost({
               openChatPanel()
             })()
           }}
+          onRunPlanInBackground={
+            isBackgroundAgentEnabled() && openBackgroundJobsPanel
+              ? (path, steps) => {
+                  if (!currentUser) {
+                    notify('error', t('backgroundJobs.loginRequired'))
+                    return
+                  }
+                  if (steps.length === 0) {
+                    notify('error', t('plan.host.runNoSteps.title'), t('plan.host.runNoSteps.detail'))
+                    return
+                  }
+                  void (async () => {
+                    const preview = steps
+                      .slice(0, 8)
+                      .map((s) => `- ${s.text}`)
+                      .join('\n')
+                    const ok = await requestConfirm({
+                      title: t('plan.host.runBackgroundConfirm.title'),
+                      message: t('plan.host.runBackgroundConfirm.message', {
+                        path,
+                        count: steps.length,
+                        preview,
+                        more: steps.length > 8 ? t('plan.host.runConfirm.more') : '',
+                      }),
+                      confirmText: t('plan.host.runBackgroundConfirm.confirm'),
+                    })
+                    if (!ok) return
+
+                    let queued = 0
+                    let lastError: string | undefined
+                    for (const step of steps) {
+                      const prompt = buildPlanBackgroundJobPrompt(path, step.text)
+                      const { job, error } = await createBackgroundJob({ prompt, repoKey: 'default' }, t)
+                      if (error || !job) {
+                        lastError = error
+                        break
+                      }
+                      queued += 1
+                    }
+
+                    closeSettingsPanel()
+                    openBackgroundJobsPanel()
+                    if (queued > 0) {
+                      notify(
+                        'success',
+                        t('plan.host.runBackgroundQueued.title'),
+                        t('plan.host.runBackgroundQueued.detail', { count: queued, path }),
+                      )
+                    }
+                    if (lastError) {
+                      notify('error', t('chat.backgroundRun.failed'), lastError)
+                    }
+                  })()
+                }
+              : undefined
+          }
           onMapPlanToSpec={(path, steps, targetSpecPath) => {
             const targetSpecTasks = targetSpecPath || findLatestSpecTasksPath(files)
             if (!targetSpecTasks) {

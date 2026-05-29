@@ -72,6 +72,7 @@ export function AppToolbar({
   const fileLimit = getWorkspaceLimitSnapshot(files.length)
   const currentUser = useIDEStore((s) => s.currentUser)
   const currentPlan = useIDEStore((s) => s.currentPlan)
+  const backgroundJobsActiveCount = useIDEStore((s) => s.backgroundJobsActiveCount)
   const pluginToolbarButtons = useIDEStore((s) => s.pluginToolbarButtons)
   const setCurrentUser = useIDEStore((s) => s.setCurrentUser)
 
@@ -107,9 +108,19 @@ export function AppToolbar({
           <span>{t('toolbar.ai')}</span>
         </button>
         {isBackgroundAgentEnabled() && onOpenBackgroundJobs ? (
-          <button type="button" onClick={onOpenBackgroundJobs} title={t('toolbar.backgroundJobs')}>
+          <button
+            type="button"
+            className="toolbar-btn-with-badge"
+            onClick={onOpenBackgroundJobs}
+            title={t('toolbar.backgroundJobs')}
+          >
             <Server size={14} />
             <span>{t('toolbar.backgroundJobs')}</span>
+            {backgroundJobsActiveCount > 0 ? (
+              <span className="toolbar-badge" aria-label={t('backgroundJobs.activeBadge', { count: backgroundJobsActiveCount })}>
+                {backgroundJobsActiveCount > 9 ? '9+' : backgroundJobsActiveCount}
+              </span>
+            ) : null}
           </button>
         ) : null}
         <button onClick={onOpenWorkspace}>

@@ -11,6 +11,31 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.2.3] — 2026-05-29
+
+### Added
+
+- **Plan → 后台**：计划目录 **后台运行** 将选中步骤提交为 `POST /api/jobs`（`buildPlanBackgroundJobPrompt`）
+
+---
+
+## [1.1.2.2] — 2026-05-29
+
+### Added
+
+- 后台任务详情 **应用到 IDE**：`mergeJobChangesIntoFileItems` 一键合并 `pendingChanges` 到当前编辑器
+
+---
+
+## [1.1.2.1] — 2026-05-29
+
+### Added
+
+- 后台任务完成 **Toast + 桌面通知**（可开关，默认开启）
+- 工具栏 / 右栏 Tab **进行中任务数徽章**（`useBackgroundJobsTracker` 全局轮询）
+
+---
+
 ## [1.1.2] — 2026-05-29（后台 Agent MVP）
 
 ### Added

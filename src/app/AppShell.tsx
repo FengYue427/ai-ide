@@ -18,6 +18,7 @@ import { useProjectIndexSync } from '../hooks/useProjectIndexSync'
 import { useApiErrorFeedback } from '../hooks/useApiErrorFeedback'
 import { useSessionGuard } from '../hooks/useSessionGuard'
 import { useWorkspacePersistence } from '../hooks/useWorkspacePersistence'
+import { useBackgroundJobsTracker } from '../hooks/useBackgroundJobsTracker'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import { AppToolbar } from './AppToolbar'
@@ -58,6 +59,7 @@ export function AppShell() {
   const showWelcome = useIDEStore((s) => s.showWelcome)
 
   const { toasts, confirmRequest, dismissToast, notify, requestConfirm, resolveConfirm } = useAppFeedback()
+  useBackgroundJobsTracker(notify)
 
   const handleOpenRecentWorkspace = async (workspaceId: string) => {
     setShowWelcome(false)
@@ -268,6 +270,7 @@ export function AppShell() {
         openGitPanel={ui.openGitPanel}
         openShareDialog={ui.openShareDialog}
         openChatPanel={ui.openChatPanel}
+        openBackgroundJobsPanel={ui.openBackgroundJobsPanel}
         openSnippetPanel={ui.openSnippetPanel}
         openTerminalPanel={ui.openTerminalPanel}
         openPreviewPanel={ui.openPreviewPanel}

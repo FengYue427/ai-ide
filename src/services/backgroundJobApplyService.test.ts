@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildAgentApplyQueueFromJob, getJobPendingFileChanges } from './backgroundJobApplyService'
+import {
+  applyBackgroundJobToIde,
+  buildAgentApplyQueueFromJob,
+  getJobPendingFileChanges,
+} from './backgroundJobApplyService'
 import type { SerializedBackgroundJob } from './backgroundJobsApiService'
 
 function job(overrides: Partial<SerializedBackgroundJob> = {}): SerializedBackgroundJob {
@@ -33,5 +37,12 @@ describe('backgroundJobApplyService', () => {
     const queue = buildAgentApplyQueueFromJob(job(), [{ name: 'src/a.ts', content: 'old', language: 'typescript' }])
     expect(queue[0]?.newContent).toBe('new')
     expect(queue[0]?.oldContent).toBe('old')
+  })
+
+  it('applies job changes to ide files', () => {
+    const files = [{ name: 'src/a.ts', content: 'old', language: 'typescript' }]
+    const { files: next, appliedCount } = applyBackgroundJobToIde(files, job())
+    expect(appliedCount).toBe(1)
+    expect(next.find((f) => f.name === 'src/a.ts')?.content).toBe('new')
   })
 })

@@ -12,6 +12,7 @@ interface PlansSectionProps {
   onOpenPlan: (path: string) => void
   onDeletePlan: (path: string) => void
   onRunPlan: (path: string, steps: Array<{ text: string; line?: number }>) => void
+  onRunPlanInBackground?: (path: string, steps: Array<{ text: string; line?: number }>) => void
   onMapPlanToSpec: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
   onMapPlanToSpecAndRun: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
   getLinkedSpecPath?: (planPath: string, stepText: string) => string | null
@@ -39,6 +40,7 @@ export function PlansSection({
   onOpenPlan,
   onDeletePlan,
   onRunPlan,
+  onRunPlanInBackground,
   onMapPlanToSpec,
   onMapPlanToSpecAndRun,
   getLinkedSpecPath,
@@ -221,6 +223,28 @@ export function PlansSection({
                     {t('plan.catalog.runSteps')}
                     {selectedCount(plan.path) > 0 ? ` (${selectedCount(plan.path)})` : ''}
                   </button>
+                  {onRunPlanInBackground ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      disabled={plan.stepItems.length === 0}
+                      onClick={() => {
+                        const selectedMap = selectedSteps[plan.path] ?? {}
+                        const selected = plan.stepItems
+                          .filter((step) => selectedMap[`${step.line}-${step.text}`])
+                          .map((step) => ({ text: step.text, line: step.line }))
+                        onRunPlanInBackground(
+                          plan.path,
+                          selected.length > 0
+                            ? selected
+                            : [{ text: plan.stepItems[0].text, line: plan.stepItems[0].line }],
+                        )
+                      }}
+                    >
+                      {t('plan.catalog.runInBackground')}
+                      {selectedCount(plan.path) > 0 ? ` (${selectedCount(plan.path)})` : ''}
+                    </button>
+                  ) : null}
                   {plan.stepItems.length > 1 ? (
                     <button
                       type="button"

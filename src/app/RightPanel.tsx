@@ -36,6 +36,7 @@ export function RightPanel({
   const showGitPanel = useIDEStore((s) => s.showGitPanel)
   const showChatPanel = useIDEStore((s) => s.showChatPanel)
   const rightPanelView = useIDEStore((s) => s.rightPanelView)
+  const backgroundJobsActiveCount = useIDEStore((s) => s.backgroundJobsActiveCount)
   const setRightPanelView = useIDEStore((s) => s.setRightPanelView)
   const setFiles = useIDEStore((s) => s.setFiles)
   const setDiffContent = useIDEStore((s) => s.setDiffContent)
@@ -67,7 +68,12 @@ export function RightPanel({
             className={`right-panel-tab ${rightPanelView === tab.id ? 'right-panel-tab--active' : ''}`}
             onClick={() => setRightPanelView(tab.id)}
           >
-            {tab.label}
+            <span className="right-panel-tab__label">{tab.label}</span>
+            {tab.id === 'backgroundJobs' && backgroundJobsActiveCount > 0 ? (
+              <span className="right-panel-tab__badge" aria-hidden>
+                {backgroundJobsActiveCount > 9 ? '9+' : backgroundJobsActiveCount}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

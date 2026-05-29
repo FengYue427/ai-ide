@@ -22,3 +22,7 @@ export function getFirstPlanStep(planText: string): string | null {
 export function buildPlanExecutionPrompt(step: string): string {
   return `请执行这个计划步骤，并给出改动文件与验证结果：\n\n- [ ] ${step}`
 }
+
+export function buildPlanBackgroundJobPrompt(planPath: string, step: string): string {
+  return `## Plan\nPath: ${planPath}\n\n${buildPlanExecutionPrompt(step)}`
+}

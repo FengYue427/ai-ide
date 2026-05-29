@@ -63,3 +63,12 @@ export function mergeJobChangesIntoFileItems(
 
   return [...map.values()]
 }
+
+export function applyBackgroundJobToIde(
+  files: FileItem[],
+  job: SerializedBackgroundJob,
+): { files: FileItem[]; appliedCount: number } {
+  const changes = getJobPendingFileChanges(job)
+  if (changes.length === 0) return { files, appliedCount: 0 }
+  return { files: mergeJobChangesIntoFileItems(files, job), appliedCount: changes.length }
+}

@@ -121,6 +121,7 @@ export interface IDEState {
   showCommandPalette: boolean
   showChatPanel: boolean
   rightPanelView: RightPanelView
+  backgroundJobsActiveCount: number
   showWorkspaceManager: boolean
   showWorkspacePanel: boolean
   showThemeSelector: boolean
@@ -175,6 +176,7 @@ export interface IDEState {
   setShowCommandPalette: (show: boolean) => void
   setShowChatPanel: (show: boolean) => void
   setRightPanelView: (view: RightPanelView) => void
+  setBackgroundJobsActiveCount: (count: number) => void
   setShowWorkspaceManager: (show: boolean) => void
   setShowWorkspacePanel: (show: boolean) => void
   setShowThemeSelector: (show: boolean) => void
@@ -252,6 +254,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   showCommandPalette: false,
   showChatPanel: false,
   rightPanelView: 'chat',
+  backgroundJobsActiveCount: 0,
   showWorkspaceManager: false,
   showWorkspacePanel: false,
   showThemeSelector: false,
@@ -331,6 +334,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setShowCommandPalette: (showCommandPalette) => set({ showCommandPalette }),
   setShowChatPanel: (showChatPanel) => set({ showChatPanel }),
   setRightPanelView: (rightPanelView) => set({ rightPanelView }),
+  setBackgroundJobsActiveCount: (backgroundJobsActiveCount) => set({ backgroundJobsActiveCount }),
   setShowWorkspaceManager: (showWorkspaceManager) => set({ showWorkspaceManager }),
   setShowWorkspacePanel: (showWorkspacePanel) => set({ showWorkspacePanel }),
   setShowThemeSelector: (showThemeSelector) => set({ showThemeSelector }),

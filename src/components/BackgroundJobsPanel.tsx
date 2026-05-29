@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Clock, Eye, Loader2, RefreshCw, Server, XCircle } from 'lucide-react'
+import { Bell, Clock, Eye, Loader2, RefreshCw, Server, XCircle } from 'lucide-react'
 import { useI18n } from '../i18n'
 import type { TranslationKey } from '../i18n/translations'
 import type { ToastKind } from './FeedbackCenter'
+import { Toggle } from './ui/Toggle'
 import {
+  applyBackgroundJobToIde,
   buildAgentApplyQueueFromJob,
   getJobPendingFileChanges,
 } from '../services/backgroundJobApplyService'
+import { processBackgroundJobsSnapshot } from '../services/backgroundJobCompletionTracker'
 import { authService } from '../services/authService'
+import {
+  loadBackgroundJobNotifyPrefs,
+  saveBackgroundJobNotifyPrefs,
+  type BackgroundJobNotifyPrefs,
+} from '../services/backgroundJobNotifyPrefsService'
 import {
   cancelBackgroundJob,
   isActiveBackgroundJobStatus,
@@ -15,6 +23,7 @@ import {
   listBackgroundJobs,
   type SerializedBackgroundJob,
 } from '../services/backgroundJobsApiService'
+import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { useIDEStore } from '../store/ideStore'
 
 const POLL_MS = 5_000
@@ -38,13 +47,17 @@ export default function BackgroundJobsPanel({
 }: BackgroundJobsPanelProps) {
   const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
+  const setFiles = useIDEStore((s) => s.setFiles)
   const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
+  const setBackgroundJobsActiveCount = useIDEStore((s) => s.setBackgroundJobsActiveCount)
   const currentPlan = useIDEStore((s) => s.currentPlan)
   const [jobs, setJobs] = useState<SerializedBackgroundJob[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [notifyPrefs, setNotifyPrefs] = useState<BackgroundJobNotifyPrefs>(() => loadBackgroundJobNotifyPrefs())
   const mountedRef = useRef(true)
 
   const selected = useMemo(
@@ -54,9 +67,14 @@ export default function BackgroundJobsPanel({
 
   const hasActiveJobs = jobs.some((j) => isActiveBackgroundJobStatus(j.status))
 
+  useEffect(() => {
+    saveBackgroundJobNotifyPrefs(notifyPrefs)
+  }, [notifyPrefs])
+
   const refresh = useCallback(async () => {
     if (!isLoggedIn) {
       setJobs([])
+      setBackgroundJobsActiveCount(0)
       return
     }
     setLoading(true)
@@ -67,6 +85,8 @@ export default function BackgroundJobsPanel({
         notify?.('error', t('backgroundJobs.loadFailed'), error)
         return
       }
+      const active = processBackgroundJobsSnapshot(next, { notify, t })
+      setBackgroundJobsActiveCount(active)
       setJobs(next)
       setSelectedId((prev) => {
         if (prev && next.some((j) => j.id === prev)) return prev
@@ -75,7 +95,7 @@ export default function BackgroundJobsPanel({
     } finally {
       if (mountedRef.current) setLoading(false)
     }
-  }, [isLoggedIn, notify, t])
+  }, [isLoggedIn, notify, setBackgroundJobsActiveCount, t])
 
   useEffect(() => {
     mountedRef.current = true
@@ -112,6 +132,22 @@ export default function BackgroundJobsPanel({
     }
   }
 
+  const handleApplyToIde = async (job: SerializedBackgroundJob) => {
+    setApplyingId(job.id)
+    try {
+      const { files: next, appliedCount } = applyBackgroundJobToIde(files, job)
+      if (appliedCount === 0) {
+        notify?.('info', t('backgroundJobs.applyToIdeEmpty'))
+        return
+      }
+      setFiles(next)
+      markWorkspaceHydrated()
+      notify?.('success', t('backgroundJobs.applyToIdeOk'), t('backgroundJobs.applyToIdeOkDetail', { count: appliedCount }))
+    } finally {
+      setApplyingId(null)
+    }
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="background-jobs-panel background-jobs-panel--empty">
@@ -132,15 +168,25 @@ export default function BackgroundJobsPanel({
         <span className="background-jobs-panel__hint">
           {currentPlan === 'free' ? t('backgroundJobs.hintFree') : t('backgroundJobs.hint')}
         </span>
-        <button
-          type="button"
-          className="chat-btn-ghost"
-          onClick={() => void refresh()}
-          disabled={loading}
-          title={t('backgroundJobs.refresh')}
-        >
-          {loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />}
-        </button>
+        <div className="background-jobs-panel__toolbar-actions">
+          <label className="background-jobs-notify-toggle" title={t('backgroundJobs.notifyOnComplete')}>
+            <Bell size={12} />
+            <Toggle
+              checked={notifyPrefs.notifyOnComplete}
+              onChange={(checked) => setNotifyPrefs((prev) => ({ ...prev, notifyOnComplete: checked }))}
+              aria-label={t('backgroundJobs.notifyOnComplete')}
+            />
+          </label>
+          <button
+            type="button"
+            className="chat-btn-ghost"
+            onClick={() => void refresh()}
+            disabled={loading}
+            title={t('backgroundJobs.refresh')}
+          >
+            {loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />}
+          </button>
+        </div>
       </div>
 
       {jobs.length === 0 ? (
@@ -219,6 +265,17 @@ export default function BackgroundJobsPanel({
                   <button
                     type="button"
                     className="chat-btn-primary-sm"
+                    disabled={applyingId === selected.id}
+                    onClick={() => void handleApplyToIde(selected)}
+                  >
+                    {applyingId === selected.id ? (
+                      <Loader2 size={14} className="spin" style={{ marginRight: 6 }} />
+                    ) : null}
+                    {t('backgroundJobs.applyToIde')}
+                  </button>
+                  <button
+                    type="button"
+                    className="chat-btn-ghost"
                     onClick={() => {
                       setAgentApplyQueue(buildAgentApplyQueueFromJob(selected, files))
                       setShowAgentApplyModal(true)

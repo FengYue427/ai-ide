@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildPlanExecutionPrompt, getFirstPlanStep, listPlanSteps } from './planExecutionService'
+import {
+  buildPlanBackgroundJobPrompt,
+  buildPlanExecutionPrompt,
+  getFirstPlanStep,
+  listPlanSteps,
+} from './planExecutionService'
 
 describe('planExecutionService', () => {
   it('extracts first unchecked checklist step', () => {
@@ -22,5 +27,11 @@ describe('planExecutionService', () => {
 
   it('builds execution prompt', () => {
     expect(buildPlanExecutionPrompt('refactor chat')).toContain('- [ ] refactor chat')
+  })
+
+  it('builds background job prompt with plan path', () => {
+    const prompt = buildPlanBackgroundJobPrompt('.aide/plans/foo.md', 'refactor chat')
+    expect(prompt).toContain('.aide/plans/foo.md')
+    expect(prompt).toContain('- [ ] refactor chat')
   })
 })

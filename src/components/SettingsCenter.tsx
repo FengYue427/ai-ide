@@ -93,6 +93,7 @@ interface SettingsCenterProps {
   specTaskPaths?: string[]
   onOpenPlan?: (path: string) => void
   onRunPlan?: (path: string, steps: Array<{ text: string; line?: number }>) => void
+  onRunPlanInBackground?: (path: string, steps: Array<{ text: string; line?: number }>) => void
   onMapPlanToSpec?: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
   onMapPlanToSpecAndRun?: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
   getLinkedSpecPath?: (planPath: string, stepText: string) => string | null
@@ -148,6 +149,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   specTaskPaths = [],
   onOpenPlan,
   onRunPlan,
+  onRunPlanInBackground,
   onMapPlanToSpec,
   onMapPlanToSpecAndRun,
   getLinkedSpecPath,
@@ -734,6 +736,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     onDuplicatePlan={onDuplicatePlan}
                     onOpenPlan={onOpenPlan}
                     onRunPlan={onRunPlan}
+                    onRunPlanInBackground={onRunPlanInBackground}
                     onMapPlanToSpec={onMapPlanToSpec}
                     onMapPlanToSpecAndRun={onMapPlanToSpecAndRun}
                     onDeletePlan={onDeletePlan}
