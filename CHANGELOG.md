@@ -11,6 +11,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.2.6] — 2026-05-29
+
+### Added
+
+- **`/api/jobs/process` 可观测**：响应含 `workerMode`、`startedAt`、`finishedAt`、`durationMs`；每 job 结构化日志
+
+### Changed
+
+- Cron 运维文档：Hobby 日 Cron vs 本地 `npm run jobs:process`（见 [BACKGROUND_AGENT_QUICKSTART.md](docs/BACKGROUND_AGENT_QUICKSTART.md)）
+
+---
+
+## [1.1.2.5] — 2026-05-29
+
+### Added
+
+- **真 Agent Worker（云）**：`BACKGROUND_JOB_WORKER_MODE=agent` 时服务端读云工作区 → Agent 工具循环 → `pendingChanges` + 云回写
+- 环境变量：`BACKGROUND_AGENT_API_KEY`（必填）、`BACKGROUND_AGENT_PROVIDER`、`BACKGROUND_AGENT_MODEL`、`BACKGROUND_AGENT_MAX_ROUNDS`
+- 模块：`lib/api/backgroundAgent*.ts`（无 DOM / WebContainer 依赖）
+
+---
+
 ## [1.1.2.4] — 2026-05-29
 
 ### Added

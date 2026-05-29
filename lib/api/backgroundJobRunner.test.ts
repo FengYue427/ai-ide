@@ -1,7 +1,36 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { BackgroundJob } from '@prisma/client'
 import { isJobRuntimeExpired } from './backgroundJobTypes'
-import { runDummyBackgroundJob } from './backgroundJobRunner'
+import { runAgentBackgroundJob, runDummyBackgroundJob } from './backgroundJobRunner'
+
+vi.mock('./workspacesService', () => ({
+  getWorkspaceByName: vi.fn(async () => ({
+    name: 'default',
+    files: JSON.stringify([{ name: 'hello.txt', content: 'hi' }]),
+    settings: '{}',
+  })),
+  ensureDefaultWorkspace: vi.fn(),
+}))
+
+vi.mock('./backgroundAgentLoop', () => ({
+  runBackgroundAgentLoop: vi.fn(async () => ({
+    finalContent: 'Done.',
+    rounds: 2,
+    toolCalls: 3,
+  })),
+}))
+
+vi.mock('./backgroundAgentConfig', () => ({
+  resolveBackgroundAgentAiConfig: vi.fn(() => ({
+    ok: true,
+    config: {
+      provider: 'deepseek',
+      apiKey: 'sk-test',
+      model: 'deepseek-v4-flash',
+      endpoint: 'https://api.deepseek.com/v1/chat/completions',
+    },
+  })),
+}))
 
 function mockJob(overrides: Partial<BackgroundJob> = {}): BackgroundJob {
   return {
@@ -57,5 +86,24 @@ describe('backgroundJobRunner', () => {
     const started = new Date(Date.now() - 31 * 60 * 1000)
     expect(isJobRuntimeExpired(started)).toBe(true)
     expect(isJobRuntimeExpired(new Date())).toBe(false)
+  })
+
+  it('runAgentBackgroundJob succeeds when workspace and API key resolve', async () => {
+    const progress: string[] = []
+    const outcome = await runAgentBackgroundJob(mockJob(), {
+      startedAt: new Date(),
+      setProgress: async (p) => {
+        progress.push(p.phase)
+      },
+      isCancelled: async () => false,
+    })
+
+    expect(outcome.kind).toBe('succeeded')
+    if (outcome.kind === 'succeeded') {
+      expect(outcome.result.mode).toBe('agent')
+      expect(outcome.result.summary).toContain('Done')
+    }
+    expect(progress).toContain('agent:load')
+    expect(progress).toContain('agent:done')
   })
 })

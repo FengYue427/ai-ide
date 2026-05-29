@@ -21,7 +21,11 @@
 VITE_BACKGROUND_AGENT=true
 DATABASE_URL=...
 CRON_SECRET=...          # Vercel Cron / 本地 npm run jobs:process
-BACKGROUND_JOB_WORKER_MODE=dummy   # 默认 dummy；F4+ 云 Agent 为 agent
+BACKGROUND_JOB_WORKER_MODE=dummy   # dummy（默认）| agent（云 Agent，见下）
+BACKGROUND_AGENT_API_KEY=sk-...  # agent 模式必填（平台密钥，非浏览器 localStorage）
+# BACKGROUND_AGENT_PROVIDER=deepseek
+# BACKGROUND_AGENT_MODEL=deepseek-v4-flash
+# BACKGROUND_AGENT_MAX_ROUNDS=8
 ```
 
 迁移：
@@ -49,7 +53,17 @@ npx prisma migrate deploy
 | `npm run jobs:process` | 本地处理 queued 任务（同 Cron 逻辑） |
 | `npm run jobs:verify-cron` | 校验 `/api/jobs/process` Bearer 鉴权 |
 
-Vercel Cron：`/api/jobs/process`，`0 4 * * *`（每日一次；Hobby 计划限制。Pro 可改为 `*/5 * * * *`，见 `vercel.json`）。
+### Cron 与 Hobby
+
+| 环境 | 队列推进方式 |
+|------|----------------|
+| **Vercel Hobby** | `vercel.json` 日 Cron `0 4 * * *` → 每天 UTC 04:00 处理最多 `DEFAULT_JOBS_PER_CRON_TICK`（1）个 queued 任务 |
+| **本地 / 预发** | `npm run jobs:process`（可 `--limit` 通过改脚本或调 `processBackgroundJobs({ limit: N })`） |
+| **Vercel Pro** | 可将 Cron 改为 `*/5 * * * *`（每 5 分钟），并提高 `limit` |
+
+`/api/jobs/process` 响应（**1.1.2.6+**）含 `workerMode`、`processed`、`durationMs`、`jobIds` 等，便于 Cron 日志与告警。
+
+Vercel Cron 路径：`/api/jobs/process`，当前 `0 4 * * *`（见 `vercel.json`）。
 
 ---
 
@@ -68,7 +82,8 @@ Vercel Cron：`/api/jobs/process`，`0 4 * * *`（每日一次；Hobby 计划限
 
 - **浏览器本机盘**无法无人值守写盘 → 结果写入 **云工作区**（`repoKey`，默认 `default`）
 - 单任务硬超时 **≤30min**
-- Worker 默认 **dummy**（写入 `.aide/background-jobs/{id}.md`）；真 Agent 云执行在后续版本加强
+- Worker 默认 **dummy**（写入 `.aide/background-jobs/{id}.md`）；**agent** 需配置 `BACKGROUND_AGENT_API_KEY`（使用平台密钥，按用户扣 AI 日配额）
+- Agent 模式工具集：`list_files` / `read_file` / `write_file` / `search_repo` / `grep_repo`（无 `run_command`）
 - **不做**：Plan 多步队列后台化、PR 自动创建
 
 ---

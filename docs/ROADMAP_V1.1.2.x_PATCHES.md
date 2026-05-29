@@ -13,18 +13,18 @@
 | **1.1.2.2** | 一键 **应用到 IDE**（`pendingChanges`） | ✅ |
 | **1.1.2.3** | Plan 目录 **后台运行** → `POST /api/jobs` | ✅ |
 | **1.1.2.4** | 重试、筛选、Plan 步骤回填/自动勾选 | ✅ |
+| **1.1.2.5** | **真 Agent Worker（云）** | ✅ |
+| **1.1.2.6** | Worker 可观测 + Cron 文档 | ✅ |
 | — | CI：`integration-api` 收尾 + `e2e-stack` fullstack | ✅ |
 
 ---
 
-## 建议排期（1.1.2.5～.8）
+## 建议排期（1.1.2.7～.8）
 
 > **原则**：补齐后台 Agent **真实价值** 与 **运维**，然后 **冻结** 本线，开 v1.1.3。
 
 | 版本 | 主题 | 交付要点 | 优先级 |
 |------|------|----------|:------:|
-| **1.1.2.5** | **真 Agent Worker（云）** | 实现 `runAgentBackgroundJob`：服务端读云工作区 → 调 Agent 循环 → `pendingChanges` + 回写；`BACKGROUND_JOB_WORKER_MODE=agent` 可跑通 | **P0** |
-| **1.1.2.6** | Worker 可观测 + Cron | 任务日志字段、`/api/jobs/process` 指标；文档：Hobby 日 Cron vs Pro 手动 `jobs:process`；可选 Vercel Pro 恢复 5min Cron | P1 |
 | **1.1.2.7** | Plan **批量**后台 | 计划目录「后台运行全部选中步骤」一次确认 → N 个 job；配额按 N 计；去重 | P2 |
 | **1.1.2.8** | 体验抛光 | 通知点击打开后台 Tab；任务详情复制 prompt；失败 job 一键重试（已有可跳过） | P2 |
 
@@ -53,7 +53,8 @@
 |------|------|
 | `VITE_BACKGROUND_AGENT` | 客户端面板/入口 |
 | `CRON_SECRET` | Worker 触发 |
-| `BACKGROUND_JOB_WORKER_MODE` | `dummy`（默认）→ **1.1.2.5 后 `agent`** |
+| `BACKGROUND_JOB_WORKER_MODE` | `dummy`（默认）或 `agent`（需 `BACKGROUND_AGENT_API_KEY`） |
+| `BACKGROUND_AGENT_API_KEY` | 云 Agent 平台密钥（**1.1.2.5+**） |
 
 ---
 

@@ -1,17 +1,24 @@
 import type { BackgroundJob } from '@prisma/client'
+import { runBackgroundAgentLoop } from './backgroundAgentLoop'
+import { resolveBackgroundAgentAiConfig } from './backgroundAgentConfig'
+import { BackgroundAgentWorkspace } from './backgroundAgentWorkspace'
 import type {
   BackgroundJobProgress,
   BackgroundJobResultPayload,
   BackgroundJobWorkerMode,
 } from './backgroundJobTypes'
 import { isJobRuntimeExpired, resolveBackgroundJobWorkerMode } from './backgroundJobTypes'
-import { enrichResultWithCloudWriteback } from './backgroundJobCloudWriteback'
+import {
+  enrichResultWithCloudWriteback,
+  parseWorkspaceFilesJson,
+} from './backgroundJobCloudWriteback'
 import {
   completeBackgroundJobFailed,
   completeBackgroundJobSucceeded,
   getBackgroundJobById,
   updateBackgroundJobProgress,
 } from './backgroundJobsService'
+import { ensureDefaultWorkspace, getWorkspaceByName } from './workspacesService'
 
 export type BackgroundJobRunContext = {
   isCancelled: () => Promise<boolean>
@@ -77,17 +84,82 @@ export async function runDummyBackgroundJob(
   }
 }
 
-/**
- * Full agent loop on server — not wired in v1.1.2 F2 (browser workspace deps).
- * F4+ will mount cloud workspace + agent execution here.
- */
+/** Cloud workspace agent loop (v1.1.2.5). Requires BACKGROUND_AGENT_API_KEY. */
 export async function runAgentBackgroundJob(
-  _job: BackgroundJob,
-  _ctx: BackgroundJobRunContext,
+  job: BackgroundJob,
+  ctx: BackgroundJobRunContext,
 ): Promise<BackgroundJobRunOutcome> {
-  return {
-    kind: 'failed',
-    error: 'AGENT_WORKER_NOT_IMPLEMENTED',
+  const stamp = () => new Date().toISOString()
+
+  await ctx.setProgress({ phase: 'agent:load', updatedAt: stamp() })
+
+  if (await ctx.isCancelled()) return { kind: 'cancelled' }
+  if (isJobRuntimeExpired(ctx.startedAt)) return { kind: 'timeout' }
+
+  const workspaceName = (job.repoKey?.trim() || 'default').slice(0, 256)
+  let workspaceRow = await getWorkspaceByName(job.userId, workspaceName)
+  if (!workspaceRow && workspaceName === 'default') {
+    workspaceRow = await ensureDefaultWorkspace(job.userId)
+  }
+  if (!workspaceRow) {
+    return { kind: 'failed', error: 'WORKSPACE_NOT_FOUND' }
+  }
+
+  const ai = resolveBackgroundAgentAiConfig(workspaceRow.settings)
+  if (!ai.ok) {
+    return { kind: 'failed', error: ai.error }
+  }
+
+  const files = parseWorkspaceFilesJson(workspaceRow.files)
+  const workspace = new BackgroundAgentWorkspace(files)
+
+  await ctx.setProgress({ phase: 'agent:start', updatedAt: stamp() })
+
+  try {
+    const loop = await runBackgroundAgentLoop(
+      job.userId,
+      ai.config,
+      workspace,
+      job.prompt,
+      {
+        shouldStop: async () =>
+          (await ctx.isCancelled()) || isJobRuntimeExpired(ctx.startedAt),
+        onRound: async (round) => {
+          if (isJobRuntimeExpired(ctx.startedAt)) return
+          await ctx.setProgress({
+            phase: 'agent:round',
+            round,
+            updatedAt: stamp(),
+          })
+        },
+      },
+    )
+
+    if (await ctx.isCancelled()) return { kind: 'cancelled' }
+    if (isJobRuntimeExpired(ctx.startedAt)) return { kind: 'timeout' }
+
+    const pendingChanges = workspace.getPendingChanges()
+    const summary =
+      loop.finalContent.trim() ||
+      (pendingChanges.length > 0
+        ? `Background agent updated ${pendingChanges.length} file(s) in ${workspaceName}.`
+        : `Background agent completed with no file changes (${loop.toolCalls} tool call(s)).`)
+
+    await ctx.setProgress({ phase: 'agent:done', round: loop.rounds, updatedAt: stamp() })
+
+    return {
+      kind: 'succeeded',
+      result: {
+        mode: 'agent',
+        summary: summary.slice(0, 4000),
+        rounds: loop.rounds,
+        pendingChanges,
+      },
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[Jobs] Agent worker failed:', job.id, message)
+    return { kind: 'failed', error: message.slice(0, 500) }
   }
 }
 
