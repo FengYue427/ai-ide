@@ -168,3 +168,59 @@
   border-color: color-mix(in srgb, var(--danger-color) 40%, var(--border-color)) !important;
   color: var(--danger-color) !important;
 }
+
+.collab-join-role {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.collab-join-role__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.collab-api-members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.collab-api-member {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.collab-api-member-id {
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-secondary);
+}
+
+.collab-api-member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.collab-readonly-banner {
+  padding: var(--space-2) var(--space-4);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warning-color);
+  background: color-mix(in srgb, var(--warning-color) 12%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--warning-color) 35%, var(--border-color));
+}

@@ -2,12 +2,15 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Radio, Share2, Users } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { isCollabM1Enabled } from '../lib/collabM1Features'
+import { isCollabMemberRole, type CollabMemberRole } from '../lib/collabPermissions'
 import { authService } from '../services/authService'
 import { useCollabConnection } from '../hooks/useCollabConnection'
 import {
   createCollabRoom,
   joinCollabRoom,
+  kickCollabMember,
   leaveCollabRoom,
+  updateCollabMemberRole,
 } from '../services/collabRoomsApiService'
 import { collaborationService } from '../services/collaborationService'
 import type { CollabRoomClient } from '../services/collabRoomsApiService'
@@ -43,7 +46,9 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const collabM1 = isCollabM1Enabled()
   const { status: connStatus, reconnectAttempt } = useCollabConnection(joined)
-  const [memberRole, setMemberRole] = useState<string | null>(null)
+  const [memberRole, setMemberRole] = useState<CollabMemberRole | null>(null)
+  const [joinRole, setJoinRole] = useState<'editor' | 'viewer'>('editor')
+  const [apiMembers, setApiMembers] = useState<CollabRoomClient['members']>([])
 
   useEffect(() => {
     unifiedStorage.get<string>(COLLAB_USERNAME_KEY, '').then((saved) => {
@@ -94,10 +99,19 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     setRoomId(Math.random().toString(36).substring(2, 8))
   }
 
-  const connectSignaling = (code: string, room: CollabRoomClient, color: string) => {
+  const applyRoomPayload = (room: CollabRoomClient) => {
     const me = authService.getCurrentUser()
     const myMember = room.members.find((m) => m.userId === me?.id)
-    setMemberRole(myMember?.role ?? null)
+    const roleRaw = myMember?.role ?? (room.hostId === me?.id ? 'host' : 'editor')
+    const role: CollabMemberRole = isCollabMemberRole(roleRaw) ? roleRaw : 'editor'
+    setMemberRole(role)
+    setApiMembers(room.members)
+    useIDEStore.getState().setCollaborationMemberRole(role)
+    return role
+  }
+
+  const connectSignaling = (code: string, room: CollabRoomClient, color: string) => {
+    const role = applyRoomPayload(room)
 
     collaborationService.joinRoom({
       roomId: code,
@@ -105,6 +119,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
       userColor: color,
       signaling: room.signaling,
       enableReconnect: true,
+      memberRole: role,
     })
     collaborationService.on('users', (nextUsers) => {
       setUsers(nextUsers as typeof users)
@@ -137,7 +152,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
           nextRoomId = created.room.code
           setRoomId(nextRoomId)
         } else {
-          const joinedRes = await joinCollabRoom(nextRoomId, { t })
+          const joinedRes = await joinCollabRoom(nextRoomId, { role: joinRole, t })
           if (joinedRes.error || !joinedRes.room) {
             setError(joinedRes.error ?? t('collab.m1.joinFailed'))
             return
@@ -174,9 +189,43 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     }
     collaborationService.leaveRoom()
     useIDEStore.getState().setCollaborationRoomId(null)
+    useIDEStore.getState().setCollaborationMemberRole(null)
     setJoined(false)
     setUsers([])
     setMemberRole(null)
+    setApiMembers([])
+  }
+
+  const handleMemberRoleChange = async (userId: string, role: 'editor' | 'viewer') => {
+    const code = roomId.trim()
+    if (!code) return
+    setBusy(true)
+    try {
+      const result = await updateCollabMemberRole(code, userId, role, t)
+      if (result.error || !result.room) {
+        setError(result.error ?? t('collab.m1.roleUpdateFailed'))
+        return
+      }
+      applyRoomPayload(result.room)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleKickMember = async (userId: string) => {
+    const code = roomId.trim()
+    if (!code) return
+    setBusy(true)
+    try {
+      const result = await kickCollabMember(code, userId, t)
+      if (result.error || !result.room) {
+        setError(result.error ?? t('collab.m1.kickFailed'))
+        return
+      }
+      applyRoomPayload(result.room)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const connStatusLabel = (): string => {
@@ -270,6 +319,33 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
                 </div>
                 <p className="collab-hint">{t('collab.hint')}</p>
               </div>
+
+              {collabM1 && roomId.trim() ? (
+                <div className="form-group">
+                  <label className="form-label">{t('collab.joinAs')}</label>
+                  <div className="collab-join-role">
+                    <label className="collab-join-role__option">
+                      <input
+                        type="radio"
+                        name="collab-join-role"
+                        checked={joinRole === 'editor'}
+                        onChange={() => setJoinRole('editor')}
+                      />
+                      {t('collab.role.editor')}
+                    </label>
+                    <label className="collab-join-role__option">
+                      <input
+                        type="radio"
+                        name="collab-join-role"
+                        checked={joinRole === 'viewer'}
+                        onChange={() => setJoinRole('viewer')}
+                      />
+                      {t('collab.role.viewer')}
+                    </label>
+                  </div>
+                  <p className="collab-hint">{t('collab.joinAsHint')}</p>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -310,6 +386,60 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
               {t('collab.roomIdLabel')}<strong>{roomId}</strong>
             </p>
           </div>
+
+          {collabM1 && memberRole === 'host' && apiMembers.length > 0 ? (
+            <div className="collab-panel">
+              <div className="collab-members-title">{t('collab.roomMembers')}</div>
+              <ul className="collab-api-members">
+                {apiMembers.map((member) => {
+                  const me = authService.getCurrentUser()
+                  const isSelf = member.userId === me?.id
+                  return (
+                    <li key={member.id} className="collab-api-member">
+                      <span className="collab-api-member-id">
+                        {isSelf ? t('collab.you') : member.userId.slice(0, 8)}
+                      </span>
+                      <span className="collab-role-badge">
+                        {collabRoleLabel(member.role, t)}
+                      </span>
+                      {!isSelf && member.role !== 'host' ? (
+                        <span className="collab-api-member-actions">
+                          {member.role !== 'viewer' ? (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              disabled={busy}
+                              onClick={() => void handleMemberRoleChange(member.userId, 'viewer')}
+                            >
+                              {t('collab.makeViewer')}
+                            </button>
+                          ) : null}
+                          {member.role !== 'editor' ? (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              disabled={busy}
+                              onClick={() => void handleMemberRoleChange(member.userId, 'editor')}
+                            >
+                              {t('collab.makeEditor')}
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            disabled={busy}
+                            onClick={() => void handleKickMember(member.userId)}
+                          >
+                            {t('collab.kick')}
+                          </button>
+                        </span>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ) : null}
 
           <div className="collab-panel">
             <div className="collab-members-title">{t('collab.members', { count: users.length })}</div>

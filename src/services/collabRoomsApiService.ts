@@ -87,3 +87,52 @@ export async function joinCollabRoom(
   }
   return { room: json?.room }
 }
+
+export async function updateCollabMemberRole(
+  code: string,
+  userId: string,
+  role: 'editor' | 'viewer',
+  t?: TranslateFn,
+): Promise<{ room?: CollabRoomClient; error?: string }> {
+  const response = await apiFetch(
+    `/api/collab/rooms/${encodeURIComponent(code)}/members/${encodeURIComponent(userId)}`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    },
+  )
+  const json = await readJsonResponse<{ room?: CollabRoomClient; message?: string }>(response)
+  if (!response.ok) {
+    return {
+      error:
+        pickApiResponseMessage(json ?? undefined, t) ?? json?.message ?? `HTTP ${response.status}`,
+    }
+  }
+  return { room: json?.room }
+}
+
+export async function kickCollabMember(
+  code: string,
+  userId: string,
+  t?: TranslateFn,
+): Promise<{ room?: CollabRoomClient; error?: string }> {
+  const response = await apiFetch(
+    `/api/collab/rooms/${encodeURIComponent(code)}/members/${encodeURIComponent(userId)}/kick`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    },
+  )
+  const json = await readJsonResponse<{ room?: CollabRoomClient; message?: string }>(response)
+  if (!response.ok) {
+    return {
+      error:
+        pickApiResponseMessage(json ?? undefined, t) ?? json?.message ?? `HTTP ${response.status}`,
+    }
+  }
+  return { room: json?.room }
+}

@@ -44,4 +44,26 @@ describe('CollaborationService workspace map', () => {
     unsub()
     service.leaveRoom()
   })
+
+  it('viewer role does not push file updates to Yjs', () => {
+    const service = new CollaborationService()
+    service.joinRoom({
+      roomId: 'view-room',
+      userName: 'Viewer',
+      userColor: '#58a6ff',
+      memberRole: 'viewer',
+    })
+
+    expect(service.canWriteToRoom()).toBe(false)
+    service.pushWorkspaceFiles([{ name: 'a.js', content: '1' }])
+    service.syncFile('a.js', '2')
+
+    let snapshot: Record<string, string> = {}
+    service.onWorkspaceFilesChange((next) => {
+      snapshot = next
+    })
+    expect(snapshot['a.js']).toBeUndefined()
+
+    service.leaveRoom()
+  })
 })

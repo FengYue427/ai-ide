@@ -19,9 +19,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - 可选 Livekit JWT（`livekit-server-sdk`）；`COLLAB_SIGNALING_URL(S)` 配置
 - 文档：[docs/COLLAB_M1_RECONNECT.md](docs/COLLAB_M1_RECONNECT.md)
 
+### Added (v1.1.3 F3 · 权限)
+
+- **viewer 只读**：Monaco `readOnly`、Yjs 不写、`collaborationMemberRole` 全局状态
+- 加入时选择 **编辑者 / 只读**；Host 可 **改角色 / 移出成员**
+- `PATCH /api/collab/rooms/:code/members/:userId`、`POST …/kick`
+- 文档：[docs/COLLAB_M1_PERMISSIONS.md](docs/COLLAB_M1_PERMISSIONS.md)
+
 ### Next
 
-- v1.1.3 F3～F5：viewer 只读、双机 smoke、GA → [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
+- v1.1.3 F4～F5：双机 smoke、GA → [ROADMAP_V1.1.3_COLLAB.md](docs/ROADMAP_V1.1.3_COLLAB.md)
 
 ---
 

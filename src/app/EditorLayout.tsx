@@ -5,6 +5,7 @@ import Editor from '../components/Editor'
 import Terminal from '../components/Terminal'
 import type { ToastKind } from '../components/FeedbackCenter'
 import { PreviewPanel } from './lazyPanels'
+import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { useIDEStore } from '../store/ideStore'
 
 interface EditorLayoutProps {
@@ -47,6 +48,11 @@ export function EditorLayout({
   const setDiagnosticCount = useIDEStore((s) => s.setDiagnosticCount)
   const setShowPreview = useIDEStore((s) => s.setShowPreview)
   const aiConfig = useIDEStore((s) => s.aiConfig)
+  const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
+  const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
+  const collabReadOnly = Boolean(
+    collaborationRoomId && !collabRoleCanWrite(collaborationMemberRole),
+  )
 
   const currentFile = files[activeFile]
 
@@ -120,8 +126,15 @@ export function EditorLayout({
         </div>
       </div>
 
+      {collabReadOnly ? (
+        <div className="collab-readonly-banner" role="status">
+          {t('collab.readOnlyBanner')}
+        </div>
+      ) : null}
+
       <div className="monaco-wrapper">
         <Editor
+          readOnly={collabReadOnly}
           value={currentFile?.content || ''}
           language={currentFile?.language || 'javascript'}
           filename={currentFile?.name || 'untitled'}

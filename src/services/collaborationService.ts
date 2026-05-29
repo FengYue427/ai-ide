@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { WebrtcProvider } from 'y-webrtc'
+import { collabRoleCanWrite } from '../lib/collabPermissions'
 import type { CollabJoinOptions, CollabConnectionStatus, CollabStatusEvent } from './collaborationTypes'
 
 const FILES_MAP_KEY = 'workspace-files'
@@ -22,6 +23,7 @@ type PersistedSession = {
   signalingUrls: string[]
   webrtcRoomName: string
   enableReconnect: boolean
+  canWrite: boolean
 }
 
 export class CollaborationService {
@@ -82,6 +84,7 @@ export class CollaborationService {
       signalingUrls,
       webrtcRoomName,
       enableReconnect: options.enableReconnect !== false,
+      canWrite: collabRoleCanWrite(options.memberRole),
     }
 
     this.reconnectAttempt = 0
@@ -226,8 +229,12 @@ export class CollaborationService {
     return this.currentRoom.doc.getMap(FILES_MAP_KEY)
   }
 
+  canWriteToRoom(): boolean {
+    return this.session?.canWrite !== false
+  }
+
   pushWorkspaceFiles(files: { name: string; content: string }[]): void {
-    if (!this.currentRoom || files.length === 0) return
+    if (!this.currentRoom || files.length === 0 || !this.canWriteToRoom()) return
 
     const map = this.getFilesMap()
     this.currentRoom.doc.transact(() => {
@@ -238,7 +245,7 @@ export class CollaborationService {
   }
 
   syncFile(filePath: string, content: string): void {
-    if (!this.currentRoom) return
+    if (!this.currentRoom || !this.canWriteToRoom()) return
 
     const map = this.getFilesMap()
     if (map.get(filePath) !== content) {

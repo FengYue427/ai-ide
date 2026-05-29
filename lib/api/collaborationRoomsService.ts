@@ -1,10 +1,12 @@
 import type { CollaborationMember, CollaborationRoom } from '@prisma/client'
 import { prisma } from '../../src/lib/prisma'
 import { appendLivekitToken } from './collabLivekit'
+import { canManageCollabMember } from './collabPermissions'
 import {
   COLLAB_ROOM_CODE_LENGTH,
   type CollabMemberRole,
   type CollabSignalingPayload,
+  isCollabMemberRole,
 } from './collabTypes'
 
 const DEFAULT_YJS_SIGNALING = ['wss://signaling.yjs.dev']
@@ -184,4 +186,79 @@ export async function leaveCollaborationRoom(
   })
 
   return { ok: true }
+}
+
+export async function getCollaborationMemberRole(
+  userId: string,
+  code: string,
+): Promise<CollabMemberRole | null> {
+  const room = await getCollaborationRoomByCode(code)
+  if (!room) return null
+  if (room.hostId === userId) return 'host'
+  const member = room.members.find((m) => m.userId === userId)
+  if (!member) return null
+  return isCollabMemberRole(member.role) ? member.role : 'editor'
+}
+
+export async function updateCollaborationMemberRole(
+  actorUserId: string,
+  code: string,
+  targetUserId: string,
+  nextRole: 'editor' | 'viewer',
+): Promise<
+  | { ok: true; room: CollaborationRoom; members: CollaborationMember[] }
+  | { ok: false; reason: 'not_found' | 'forbidden' | 'invalid_role' | 'target_not_found' }
+> {
+  const room = await getCollaborationRoomByCode(code)
+  if (!room) return { ok: false, reason: 'not_found' }
+
+  const target = room.members.find((m) => m.userId === targetUserId)
+  if (!target) return { ok: false, reason: 'target_not_found' }
+
+  const targetRole = isCollabMemberRole(target.role) ? target.role : 'editor'
+  if (!canManageCollabMember(actorUserId, room.hostId, targetRole)) {
+    return { ok: false, reason: 'forbidden' }
+  }
+
+  await prisma.collaborationMember.update({
+    where: { id: target.id },
+    data: { role: nextRole },
+  })
+
+  const refreshed = await getCollaborationRoomByCode(code)
+  if (!refreshed) return { ok: false, reason: 'not_found' }
+
+  return { ok: true, room: refreshed, members: refreshed.members }
+}
+
+export async function kickCollaborationMember(
+  actorUserId: string,
+  code: string,
+  targetUserId: string,
+): Promise<
+  | { ok: true; room: CollaborationRoom; members: CollaborationMember[] }
+  | { ok: false; reason: 'not_found' | 'forbidden' | 'target_not_found' }
+> {
+  const room = await getCollaborationRoomByCode(code)
+  if (!room) return { ok: false, reason: 'not_found' }
+
+  const target = await prisma.collaborationMember.findUnique({
+    where: { roomId_userId: { roomId: room.id, userId: targetUserId } },
+  })
+  if (!target || target.leftAt) return { ok: false, reason: 'target_not_found' }
+
+  const targetRole = isCollabMemberRole(target.role) ? target.role : 'editor'
+  if (!canManageCollabMember(actorUserId, room.hostId, targetRole)) {
+    return { ok: false, reason: 'forbidden' }
+  }
+
+  await prisma.collaborationMember.update({
+    where: { id: target.id },
+    data: { leftAt: new Date() },
+  })
+
+  const refreshed = await getCollaborationRoomByCode(code)
+  if (!refreshed) return { ok: false, reason: 'not_found' }
+
+  return { ok: true, room: refreshed, members: refreshed.members }
 }

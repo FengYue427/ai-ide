@@ -95,6 +95,7 @@ export interface IDEState {
   authChecked: boolean
   currentPlan: string
   collaborationRoomId: string | null
+  collaborationMemberRole: 'host' | 'editor' | 'viewer' | null
   queuedChatPrompt: string | null
   queuedSpecBackfill: QueuedSpecBackfill | null
   queuedSpecExecutions: QueuedSpecExecution[]
@@ -148,6 +149,7 @@ export interface IDEState {
   setAuthChecked: (checked: boolean) => void
   setCurrentPlan: (plan: string) => void
   setCollaborationRoomId: (roomId: string | null) => void
+  setCollaborationMemberRole: (role: 'host' | 'editor' | 'viewer' | null) => void
   setQueuedChatPrompt: (prompt: string | null) => void
   setQueuedSpecBackfill: (backfill: QueuedSpecBackfill | null) => void
   setQueuedSpecExecutions: (items: QueuedSpecExecution[]) => void
@@ -228,6 +230,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   authChecked: false,
   currentPlan: 'free',
   collaborationRoomId: null,
+  collaborationMemberRole: null,
   queuedChatPrompt: null,
   queuedSpecBackfill: null,
   queuedSpecExecutions: [],
@@ -284,7 +287,12 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setCurrentUser: (currentUser) => set({ currentUser }),
   setAuthChecked: (authChecked) => set({ authChecked }),
   setCurrentPlan: (currentPlan) => set({ currentPlan }),
-  setCollaborationRoomId: (collaborationRoomId) => set({ collaborationRoomId }),
+  setCollaborationRoomId: (collaborationRoomId) =>
+    set({
+      collaborationRoomId,
+      ...(collaborationRoomId ? {} : { collaborationMemberRole: null }),
+    }),
+  setCollaborationMemberRole: (collaborationMemberRole) => set({ collaborationMemberRole }),
   setQueuedChatPrompt: (queuedChatPrompt) => set({ queuedChatPrompt }),
   setQueuedSpecBackfill: (queuedSpecBackfill) => set({ queuedSpecBackfill }),
   setQueuedSpecExecutions: (queuedSpecExecutions) => set({ queuedSpecExecutions }),

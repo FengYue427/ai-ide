@@ -29,6 +29,7 @@ interface EditorProps {
   target?: EditorTarget | null
   aiConfig?: AIConfig
   inlineCompletionEnabled?: boolean
+  readOnly?: boolean
   allFiles?: DefinitionProjectFile[]
   onChange: (value: string | undefined) => void
   onDiagnosticsChange?: (markers: MonacoMarker[]) => void
@@ -44,6 +45,7 @@ const Editor: React.FC<EditorProps> = ({
   target,
   aiConfig,
   inlineCompletionEnabled = true,
+  readOnly = false,
   allFiles = [],
   onChange,
   onDiagnosticsChange,
@@ -111,7 +113,7 @@ const Editor: React.FC<EditorProps> = ({
   }, [isLoading, t])
 
   useEffect(() => {
-    if (!inlineCompletionEnabled || !aiConfig) return
+    if (readOnly || !inlineCompletionEnabled || !aiConfig) return
 
     const disposable = registerInlineCompletionProvider({
       language,
@@ -121,7 +123,7 @@ const Editor: React.FC<EditorProps> = ({
     })
 
     return () => disposable.dispose()
-  }, [language, filename, inlineCompletionEnabled, aiConfig?.provider, aiConfig?.apiKey])
+  }, [language, filename, inlineCompletionEnabled, readOnly, aiConfig?.provider, aiConfig?.apiKey])
 
   useEffect(() => {
     if (!target || !editorRef.current) return
@@ -174,6 +176,8 @@ const Editor: React.FC<EditorProps> = ({
         }}
         onValidate={(markers) => onDiagnosticsChange?.(markers)}
         options={{
+          readOnly,
+          domReadOnly: readOnly,
           minimap: { enabled: false },
           fontSize: 14,
           fontFamily: "'SF Mono', Monaco, 'Cascadia Code', monospace",

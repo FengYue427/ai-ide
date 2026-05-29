@@ -13,6 +13,8 @@ export type CollabJoinOptions = {
   userColor: string
   signaling?: CollabSignalingClient
   enableReconnect?: boolean
+  /** When set, viewer cannot push Yjs file updates (F3). */
+  memberRole?: 'host' | 'editor' | 'viewer'
 }
 
 export type CollabStatusEvent = {

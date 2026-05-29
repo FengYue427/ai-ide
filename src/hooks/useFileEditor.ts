@@ -1,4 +1,5 @@
 import { useDebounce } from './useDebounce'
+import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { collaborationService } from '../services/collaborationService'
 import { projectIndexManager } from '../services/projectIndexManager'
 import { detectLanguageFromPath } from '../services/projectIndexService'
@@ -14,6 +15,8 @@ interface UseFileEditorOptions {
 
 export function useFileEditor({ activeFile, setFiles }: UseFileEditorOptions) {
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
+  const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
+  const collabCanWrite = collabRoleCanWrite(collaborationMemberRole)
 
   const debouncedFileChange = useDebounce((index: number, content: string | undefined, fileName?: string) => {
     if (content === undefined) return
@@ -24,7 +27,7 @@ export function useFileEditor({ activeFile, setFiles }: UseFileEditorOptions) {
       return nextFiles
     })
 
-    if (collaborationRoomId && fileName) {
+    if (collaborationRoomId && collabCanWrite && fileName) {
       collaborationService.syncFile(fileName, content)
     }
 

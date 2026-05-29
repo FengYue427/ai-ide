@@ -236,6 +236,26 @@ const routes: RouteEntry[] = [
     export: 'POST',
   },
   {
+    method: 'PATCH',
+    match: (p) => {
+      const m = p.match(/^\/api\/collab\/rooms\/([^/]+)\/members\/([^/]+)$/)
+      return m ? { code: decodeURIComponent(m[1]), userId: decodeURIComponent(m[2]) } : null
+    },
+    load: () => import('./handlers/collab/rooms/member'),
+    export: 'PATCH',
+  },
+  {
+    method: 'POST',
+    match: (p) => {
+      const m = p.match(/^\/api\/collab\/rooms\/([^/]+)\/members\/([^/]+)\/kick$/)
+      return m
+        ? { code: decodeURIComponent(m[1]), userId: decodeURIComponent(m[2]) }
+        : null
+    },
+    load: () => import('./handlers/collab/rooms/kick'),
+    export: 'POST',
+  },
+  {
     method: 'GET',
     match: (p) => {
       if (!p.startsWith('/api/auth/')) return null
