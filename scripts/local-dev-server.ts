@@ -2,8 +2,9 @@
  * Local API server for development (no Vercel CLI required).
  * Listens on PORT (default 3001). Pair with Vite proxy via `npm run dev:stack`.
  */
-import { createServer } from 'node:http'
+import { createServer, type Server } from 'node:http'
 import { dispatchApiRequest } from '../lib/api/dispatch'
+import { prisma } from '../src/lib/prisma'
 import { loadEnvLocal } from './load-env-local.mjs'
 
 const PORT = Number(process.env.API_PORT || 3001)
@@ -64,13 +65,38 @@ async function handleNodeRequest(
 
 loadEnvLocal()
 
-const server = createServer((req, res) => {
+const server: Server = createServer((req, res) => {
   handleNodeRequest(req, res).catch((err) => {
     console.error(err)
     res.statusCode = 500
     res.end(JSON.stringify({ error: 'Server error' }))
   })
 })
+
+let shuttingDown = false
+
+async function shutdown(exitCode = 0): Promise<void> {
+  if (shuttingDown) return
+  shuttingDown = true
+
+  await new Promise<void>((resolve) => {
+    server.close(() => resolve())
+  })
+
+  try {
+    await prisma.$disconnect()
+  } catch {
+    // ignore — CI teardown
+  }
+
+  process.exit(exitCode)
+}
+
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    void shutdown(0)
+  })
+}
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`[local-dev-server] http://127.0.0.1:${PORT}`)

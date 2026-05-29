@@ -15,10 +15,14 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 loadEnvLocal()
 const apiBase = (process.env.API_BASE || 'http://127.0.0.1:3001').replace(/\/$/, '')
 const skipDbSetup = process.env.SKIP_DB_SETUP === '1'
+const isWin = process.platform === 'win32'
 
 let apiChild = null
 const apiLogPath = join(root, 'api-server.log')
 let apiLogStream = null
+
+const STOP_GRACE_MS = 3_000
+const STOP_FORCE_MS = 10_000
 
 function runNodeScript(scriptName, extraEnv = {}) {
   return new Promise((resolve, reject) => {
@@ -50,12 +54,52 @@ function runNpmScript(scriptName) {
   })
 }
 
+function closeApiLogStream() {
+  if (!apiLogStream) return
+  try {
+    apiLogStream.end()
+  } catch {
+    // ignore
+  } finally {
+    apiLogStream = null
+  }
+}
+
+function detachApiStreams(child) {
+  child.stdout?.removeAllListeners('data')
+  child.stderr?.removeAllListeners('data')
+  child.stdout?.destroy()
+  child.stderr?.destroy()
+}
+
+function signalApiTree(child, signal) {
+  if (!child?.pid) return
+  if (isWin) {
+    spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', shell: true })
+    return
+  }
+  try {
+    process.kill(-child.pid, signal)
+  } catch {
+    try {
+      child.kill(signal)
+    } catch {
+      // ignore
+    }
+  }
+}
+
 function startApiServer() {
   return new Promise((resolve, reject) => {
-    apiChild = spawn('npm', ['run', 'dev:api'], {
+    // Direct tsx spawn (no npm/shell) + detached process group on Linux/macOS for reliable teardown in CI.
+    const args = ['tsx', 'scripts/local-dev-server.ts']
+    const command = isWin ? 'npx.cmd' : 'npx'
+
+    apiChild = spawn(command, args, {
       cwd: root,
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: true,
+      shell: false,
+      detached: !isWin,
       env: { ...process.env, NODE_ENV: process.env.NODE_ENV || 'development' },
     })
 
@@ -73,29 +117,39 @@ function startApiServer() {
 }
 
 function stopApiServer() {
-  if (apiLogStream) {
-    try {
-      apiLogStream.end()
-    } catch {
-      // ignore
-    } finally {
-      apiLogStream = null
-    }
-  }
+  return new Promise((resolve) => {
+    closeApiLogStream()
 
-  if (!apiChild || apiChild.killed) return
-
-  try {
-    if (process.platform === 'win32') {
-      spawnSync('taskkill', ['/PID', String(apiChild.pid), '/T', '/F'], { stdio: 'ignore' })
-    } else {
-      apiChild.kill('SIGTERM')
-    }
-  } catch {
-    // ignore
-  } finally {
+    const child = apiChild
     apiChild = null
-  }
+    if (!child || child.killed) {
+      resolve()
+      return
+    }
+
+    detachApiStreams(child)
+
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+
+    child.once('exit', finish)
+
+    signalApiTree(child, 'SIGTERM')
+
+    setTimeout(() => {
+      if (child.exitCode != null) return
+      signalApiTree(child, 'SIGKILL')
+    }, STOP_GRACE_MS).unref()
+
+    setTimeout(() => {
+      signalApiTree(child, 'SIGKILL')
+      finish()
+    }, STOP_FORCE_MS).unref()
+  })
 }
 
 async function main() {
@@ -137,13 +191,21 @@ async function main() {
     process.exitCode = 1
   } finally {
     console.log('\nStopping API server…')
-    stopApiServer()
+    await stopApiServer()
   }
 }
 
-process.on('SIGINT', () => {
-  stopApiServer()
+process.on('SIGINT', async () => {
+  await stopApiServer()
   process.exit(130)
 })
 
 main()
+  .then(() => {
+    process.exit(process.exitCode ?? 0)
+  })
+  .catch(async (error) => {
+    console.error(error)
+    await stopApiServer()
+    process.exit(1)
+  })
