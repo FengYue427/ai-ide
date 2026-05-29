@@ -5,6 +5,7 @@ import { ProjectRulesSection } from './ProjectRulesSection'
 import { ProjectTasksSection } from './ProjectTasksSection'
 import { SpecsSection } from './SpecsSection'
 import { PlansSection } from './PlansSection'
+import { ReportsSection } from './ReportsSection'
 import { McpToolsBrowser } from './McpToolsBrowser'
 import { QuotaIndicator } from './ui/QuotaIndicator'
 import { Toggle } from './ui/Toggle'
@@ -41,6 +42,7 @@ import { workspaceContextService } from '../services/workspaceContextService'
 import { useIDEStore, type AIConfigState } from '../store/ideStore'
 import type { ProjectTaskItem } from '../services/projectTasksService'
 import type { PlanCatalogItem } from '../services/planCatalogService'
+import type { ReportCatalogItem } from '../services/reportCatalogService'
 
 interface SettingsCenterProps {
   aiConfig: AIConfigState
@@ -69,6 +71,9 @@ interface SettingsCenterProps {
   onMapPlanToSpec?: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
   onMapPlanToSpecAndRun?: (path: string, steps: Array<{ text: string; line?: number }>, targetSpecPath?: string) => void
   onDeletePlan?: (path: string) => void
+  reportItems?: ReportCatalogItem[]
+  onOpenReport?: (path: string) => void
+  onDeleteReport?: (path: string) => void
   onClose: () => void
 }
 
@@ -101,6 +106,9 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onMapPlanToSpec,
   onMapPlanToSpecAndRun,
   onDeletePlan,
+  reportItems = [],
+  onOpenReport,
+  onDeleteReport,
   onClose,
 }) => {
   const { t } = useI18n()
@@ -644,6 +652,9 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     onMapPlanToSpecAndRun={onMapPlanToSpecAndRun}
                     onDeletePlan={onDeletePlan}
                   />
+                ) : null}
+                {onOpenReport && onDeleteReport ? (
+                  <ReportsSection reports={reportItems} onOpenReport={onOpenReport} onDeleteReport={onDeleteReport} />
                 ) : null}
                 <AgentSettingsSection onRegisterPersist={(persist) => { persistAgentRef.current = persist }} />
                 <McpSettingsSection onRegisterPersist={(persist) => { persistMcpRef.current = persist }} />

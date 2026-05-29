@@ -82,6 +82,13 @@ import { appendPlanExecutionBackfill } from '../services/planBackfillService'
 import { markPlanStepDone } from '../services/planStepCompletionService'
 import { loadQueuedPlanExecutions, saveQueuedPlanExecutions } from '../services/planQueuePersistenceService'
 import { loadQueuedSpecExecutions, saveQueuedSpecExecutions } from '../services/specQueuePersistenceService'
+import {
+  buildQueueExecutionReportMarkdown,
+  buildQueueReportPath,
+  upsertQueueReportFile,
+  type QueueExecutionReportInput,
+} from '../services/queueExecutionReportService'
+import { findLatestReportPath } from '../services/reportCatalogService'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -166,6 +173,7 @@ ${t('ai.chat.prompt')}`
   const shiftQueuedPlanExecution = useIDEStore((s) => s.shiftQueuedPlanExecution)
   const setQueuedPlanExecutions = useIDEStore((s) => s.setQueuedPlanExecutions)
   const setFiles = useIDEStore((s) => s.setFiles)
+  const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
   const [mounted, setMounted] = useState(false)
@@ -484,40 +492,72 @@ ${t('ai.chat.prompt')}`
     void copyMessageText(lines.join('\n'))
   }, [agentActivity, copyMessageText, lastRunRounds])
 
-  const exportQueueReport = useCallback(() => {
-    const lines = [
-      '# Queue Execution Report',
-      '',
-      `- Status: ${sessionStatus}${runId ? ` (${runId})` : ''}`,
-      `- Success: Plan ${queueSuccessStats.plan}, Spec ${queueSuccessStats.spec}`,
-      `- Failure: Plan ${queueFailureStats.plan}, Spec ${queueFailureStats.spec}`,
-      '',
-      '## Recent Done',
-      ...(recentDoneQueueItems.length > 0
-        ? recentDoneQueueItems.map((item, idx) => `- ${idx + 1}. [${item.kind.toUpperCase()}] ${item.text}`)
-        : ['- None']),
-      '',
-      '## Pending Snapshot',
-      `- Plan queue: ${queuedPlanExecutions.length}`,
-      `- Spec queue: ${queuedSpecExecutions.length}`,
-      `- Send queue: ${sendQueue.length}`,
-    ]
-    void copyMessageText(lines.join('\n'))
-    notify?.('success', '已复制', '队列执行报告已复制到剪贴板')
+  const buildQueueReportInput = useCallback((): QueueExecutionReportInput => {
+    return {
+      sessionStatus,
+      runId,
+      activeTask: activeQueueTask,
+      success: queueSuccessStats,
+      failure: queueFailureStats,
+      recentDone: recentDoneQueueItems,
+      pending: {
+        planQueue: queuedPlanExecutions.length,
+        specQueue: queuedSpecExecutions.length,
+        sendQueue: sendQueue.length,
+        planPreview: queuedPlanExecutions.slice(0, 8).map((item) => item.backfill.stepText),
+        specPreview: queuedSpecExecutions.slice(0, 8).map((item) => item.backfill.taskText),
+      },
+      failedPlan: failedPlanExecution
+        ? { stepText: failedPlanExecution.backfill.stepText, error: failedPlanExecution.error }
+        : null,
+      failedSpec: failedSpecExecution
+        ? { taskText: failedSpecExecution.backfill.taskText, error: failedSpecExecution.error }
+        : null,
+    }
   }, [
-    copyMessageText,
-    notify,
-    queueFailureStats.plan,
-    queueFailureStats.spec,
-    queueSuccessStats.plan,
-    queueSuccessStats.spec,
-    queuedPlanExecutions.length,
-    queuedSpecExecutions.length,
+    activeQueueTask,
+    failedPlanExecution,
+    failedSpecExecution,
+    queueFailureStats,
+    queueSuccessStats,
+    queuedPlanExecutions,
+    queuedSpecExecutions,
     recentDoneQueueItems,
     runId,
     sendQueue.length,
     sessionStatus,
   ])
+
+  const exportQueueReport = useCallback(() => {
+    const markdown = buildQueueExecutionReportMarkdown(buildQueueReportInput())
+    void copyMessageText(markdown)
+    notify?.('success', '已复制', '队列执行报告已复制到剪贴板')
+  }, [buildQueueReportInput, copyMessageText, notify])
+
+  const saveQueueReportToWorkspace = useCallback(() => {
+    const markdown = buildQueueExecutionReportMarkdown(buildQueueReportInput())
+    const path = buildQueueReportPath()
+    setFiles((prev) => {
+      const result = upsertQueueReportFile(prev, markdown, path)
+      setActiveFile(result.index)
+      return result.files
+    })
+    notify?.('success', '已保存', `报告已写入 ${path}`)
+  }, [buildQueueReportInput, notify, setActiveFile, setFiles])
+
+  const openLatestQueueReport = useCallback(() => {
+    const path = findLatestReportPath(editorFiles.map((f) => ({ name: f.name, content: f.content })))
+    if (!path) {
+      notify?.('info', '暂无报告', '请先在任务队列中保存报告到 .aide/reports')
+      return
+    }
+    const index = editorFiles.findIndex((f) => f.name === path)
+    if (index < 0) {
+      notify?.('error', '无法打开', `未找到报告文件：${path}`)
+      return
+    }
+    setActiveFile(index)
+  }, [editorFiles, notify, setActiveFile])
 
   const appendExecutionToSpecAcceptance = useCallback(
     (specAcceptancePath: string, taskText: string, assistantOutput: string, executionRunId?: string | null) => {
@@ -1462,14 +1502,30 @@ ${t('ai.chat.prompt')}`
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>
             会话状态：{sessionStatus}{runId ? ` · ${runId}` : ''}
           </div>
-          <div style={{ marginBottom: 6 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
             <button
               type="button"
               className="btn btn-secondary"
               style={{ padding: '4px 8px', fontSize: 11 }}
               onClick={exportQueueReport}
             >
-              导出队列报告
+              复制报告
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: '4px 8px', fontSize: 11 }}
+              onClick={saveQueueReportToWorkspace}
+            >
+              保存到 .aide/reports
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: '4px 8px', fontSize: 11 }}
+              onClick={openLatestQueueReport}
+            >
+              打开最新报告
             </button>
           </div>
           {activeQueueTask ? (

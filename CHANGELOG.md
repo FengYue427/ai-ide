@@ -18,6 +18,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Plan：任务队列增强可观测性：展示当前执行项、队列预览（Plan/Spec）与失败统计（支持重置），便于长队列追踪与回溯
 - Plan：任务队列新增成功统计与最近完成记录（Plan/Spec），支持快速查看执行产出并可单独重置成功统计
 - Plan：任务队列支持一键导出会话执行报告（复制到剪贴板），包含状态、成功/失败统计、最近完成与待执行快照
+- Plan：队列执行报告支持保存到 `.aide/reports/`（自动打开报告文件），报告内容包含队列预览与最近失败信息
+- Plan：设置中心新增执行报告目录（`.aide/reports`），支持搜索、排序、打开与删除；Chat 任务队列支持「打开最新报告」
 
 ### 规划
 
@@ -35,6 +37,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Plan UI：`PlansSection` 支持搜索、排序、未完成步骤摘要、步骤勾选后执行
 - Plan Queue：`ideStore` 新增 `queuedPlanExecutions` 队列，支持多步骤顺序执行
 - Plan/Specs Bridge：新增 `planSpecsBridgeService`，支持将计划步骤去重追加到最近 Spec `tasks.md`
+- Report Catalog：新增 `reportCatalogService` 与 `ReportsSection`，管理队列执行报告文件
 
 ### Changed
 

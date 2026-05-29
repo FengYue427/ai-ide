@@ -45,6 +45,7 @@ import { workspaceContextService } from '../services/workspaceContextService'
 import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
 import { buildPlanExecutionPrompt } from '../services/planExecutionService'
 import { buildPlanCatalog } from '../services/planCatalogService'
+import { buildReportCatalog } from '../services/reportCatalogService'
 import { appendPlanStepsToSpecTasks, findLatestSpecTasksPath, listSpecTasksPaths } from '../services/planSpecsBridgeService'
 import { useI18n } from '../i18n'
 
@@ -197,6 +198,7 @@ export function PanelHost({
       })),
     )
   const planItems = buildPlanCatalog(files)
+  const reportItems = buildReportCatalog(files)
   const specTaskPaths = listSpecTasksPaths(files)
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAiConfig = useIDEStore((s) => s.setAiConfig)
@@ -616,6 +618,27 @@ export function PanelHost({
             void (async () => {
               const ok = await requestConfirm({
                 title: '删除计划？',
+                message: `将从工作区移除：${path}`,
+                confirmText: '删除',
+                tone: 'danger',
+              })
+              if (!ok) return
+              setFiles((prev) => prev.filter((f) => f.name !== path))
+              notify('success', '已删除', path)
+            })()
+          }}
+          reportItems={reportItems}
+          onOpenReport={(path) => {
+            const targetIndex = files.findIndex((file) => file.name === path)
+            if (targetIndex < 0) return
+            setActiveFile(targetIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
+          }}
+          onDeleteReport={(path) => {
+            void (async () => {
+              const ok = await requestConfirm({
+                title: '删除报告？',
                 message: `将从工作区移除：${path}`,
                 confirmText: '删除',
                 tone: 'danger',
