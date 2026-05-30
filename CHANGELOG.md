@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.3.5] — 2026-05-30
+
+### Fixed
+
+- 协作 **创建房间 HTTP 500**：Neon HTTP 驱动不支持 Prisma 嵌套 `create`；改为分步创建 `CollaborationRoom` + `CollaborationMember`
+
+---
+
 ## [1.1.3.3] — 2026-05-30
 
 ### Added

@@ -95,7 +95,7 @@ var FALLBACK, cached;
 var init_releaseVersion = __esm({
   "lib/api/releaseVersion.ts"() {
     "use strict";
-    FALLBACK = "1.1.3.3";
+    FALLBACK = "1.1.3.5";
     cached = null;
   }
 });
@@ -9800,19 +9800,24 @@ async function createLivekitAccessToken(roomName, identity, displayName) {
   const apiKey = process.env.LIVEKIT_API_KEY?.trim();
   const apiSecret = process.env.LIVEKIT_API_SECRET?.trim();
   if (!apiKey || !apiSecret) return null;
-  const token = new AccessToken(apiKey, apiSecret, {
-    identity,
-    name: displayName ?? identity,
-    ttl: 2 * 60 * 60
-  });
-  token.addGrant({
-    roomJoin: true,
-    room: roomName,
-    canPublish: true,
-    canSubscribe: true,
-    canPublishData: true
-  });
-  return token.toJwt();
+  try {
+    const token = new AccessToken(apiKey, apiSecret, {
+      identity,
+      name: displayName ?? identity,
+      ttl: 2 * 60 * 60
+    });
+    token.addGrant({
+      roomJoin: true,
+      room: roomName,
+      canPublish: true,
+      canSubscribe: true,
+      canPublishData: true
+    });
+    return await token.toJwt();
+  } catch (error) {
+    console.error("[Collab] Livekit token generation failed:", error);
+    return null;
+  }
 }
 async function appendLivekitToken(payload, userId, displayName) {
   if (payload.mode !== "livekit") return payload;
@@ -9893,7 +9898,26 @@ function buildCollabSignaling(room) {
   };
 }
 async function buildCollabSignalingForUser(room, userId, displayName) {
-  return appendLivekitToken(buildCollabSignaling(room), userId, displayName);
+  const base = buildCollabSignaling(room);
+  try {
+    const withToken = await appendLivekitToken(base, userId, displayName);
+    if (withToken.mode === "livekit" && !withToken.livekitToken) {
+      console.warn("[Collab] Livekit configured but token missing \u2014 falling back to yjs-webrtc");
+      return {
+        mode: "yjs-webrtc",
+        roomChannel: `ai-ide-${room.code}`,
+        signalingUrls: base.signalingUrls
+      };
+    }
+    return withToken;
+  } catch (error) {
+    console.error("[Collab] buildCollabSignalingForUser failed:", error);
+    return {
+      mode: "yjs-webrtc",
+      roomChannel: `ai-ide-${room.code}`,
+      signalingUrls: base.signalingUrls
+    };
+  }
 }
 function serializeCollabMember(member) {
   return {
@@ -9925,17 +9949,17 @@ async function createCollaborationRoom(userId, name) {
       code,
       hostId: userId,
       name: trimmedName,
-      status: "open",
-      members: {
-        create: {
-          userId,
-          role: "host"
-        }
-      }
-    },
-    include: { members: true }
+      status: "open"
+    }
   });
-  return room;
+  const member = await prisma.collaborationMember.create({
+    data: {
+      roomId: room.id,
+      userId,
+      role: "host"
+    }
+  });
+  return { ...room, members: [member] };
 }
 async function getCollaborationRoomByCode(code) {
   const normalized = code.trim().toLowerCase();
@@ -10076,7 +10100,11 @@ async function POST24(req) {
       201
     );
   } catch (error) {
-    console.error("[Collab] Create room error:", error);
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+    console.error("[Collab] Create room error:", code, error);
+    if (code === "P2021") {
+      return localizedErrorResponse(req, "api.collab.createFailed", 503);
+    }
     return localizedErrorResponse(req, "api.collab.createFailed", 500);
   }
 }

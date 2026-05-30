@@ -117,23 +117,25 @@ export async function createCollaborationRoom(userId: string, name?: string | nu
   const code = await uniqueRoomCode()
   const trimmedName = name?.trim() || null
 
+  // Neon HTTP adapter: no nested writes (see prismaTransactions.ts).
   const room = await prisma.collaborationRoom.create({
     data: {
       code,
       hostId: userId,
       name: trimmedName,
       status: 'open',
-      members: {
-        create: {
-          userId,
-          role: 'host',
-        },
-      },
     },
-    include: { members: true },
   })
 
-  return room
+  const member = await prisma.collaborationMember.create({
+    data: {
+      roomId: room.id,
+      userId,
+      role: 'host',
+    },
+  })
+
+  return { ...room, members: [member] }
 }
 
 export async function getCollaborationRoomByCode(code: string) {
