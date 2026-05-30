@@ -28,7 +28,7 @@
 |----------|------|:----:|:----:|
 | **v1.1.3** | 协作 M1 | B | ✅ |
 | **v1.1.4** | 编辑器深度 + UX 跃迁 + i18n Phase 2 | B | ✅ [RELEASE_NOTES_v1.1.4.md](./RELEASE_NOTES_v1.1.4.md) |
-| **v1.1.5** | **终端 + 任务**（集成 shell、npm scripts 面板） | B | 📋 |
+| **v1.1.5** | **终端 + 任务**（集成 shell、npm scripts 面板） | B | 🔄 [V1.1.5_KICKOFF.md](./V1.1.5_KICKOFF.md) |
 | **v1.1.6** | **Git 可视化**（diff、stage、log 基础） | B | 📋 |
 | **v1.1.7** | **调试器 MVP**（Node / 浏览器 attach 择一） | B | 📋 |
 | **v1.1.8** | **插件 SDK 2.0** + 扩展 API 稳定 | B | 📋 |
