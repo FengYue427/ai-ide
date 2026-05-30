@@ -8,6 +8,7 @@ import { PreviewPanel } from './lazyPanels'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { summarizeMonacoMarkers } from '../editor/summarizeMonacoMarkers'
 import { useIDEStore } from '../store/ideStore'
+import type { RunNpmScriptHandler } from '../lib/npmScriptRun'
 
 interface EditorLayoutProps {
   isReady: boolean
@@ -17,7 +18,7 @@ interface EditorLayoutProps {
   writeFile: (path: string, content: string) => Promise<void>
   onRunCode: () => void
   onClearTerminal: () => void
-  onRunNpmScript: (scriptName: string) => void | Promise<void>
+  onRunNpmScript: RunNpmScriptHandler
   onOpenPackageJson?: () => void
   onOpenTaskFile: (path: string, line?: number) => void
   onCreateProjectTasks: () => void

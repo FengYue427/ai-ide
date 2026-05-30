@@ -4,6 +4,7 @@ import { collectPackageScriptSources, parsePackageScripts } from '../services/pa
 import { workspaceContextService } from '../services/workspaceContextService'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
+import type { RunNpmScriptHandler } from '../lib/npmScriptRun'
 import { InlineStatePanel } from './InlineStatePanel'
 import type { FileItem } from '../types/file'
 import {
@@ -75,7 +76,7 @@ interface CommandPaletteProps {
   onOpenWorkspaceImport: () => void
   onOpenThemeSelector: () => void
   onOpenWelcome: () => void
-  onRunNpmScript?: (scriptName: string) => void | Promise<void>
+  onRunNpmScript?: RunNpmScriptHandler
   theme: 'vs-dark' | 'light'
   autoSaveEnabled: boolean
 }

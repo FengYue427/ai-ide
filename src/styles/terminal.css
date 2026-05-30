@@ -267,6 +267,41 @@
   cursor: not-allowed;
 }
 
+.npm-scripts-item--running {
+  border-color: color-mix(in srgb, var(--accent-color) 55%, var(--border-color));
+}
+
+.npm-scripts-item--last-success {
+  border-color: #22c55e;
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+.npm-scripts-item--last-error {
+  border-color: #ef4444;
+  box-shadow: inset 3px 0 0 #ef4444;
+}
+
+.npm-scripts-last-run {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.npm-scripts-last-run--success {
+  color: #16a34a;
+  background: color-mix(in srgb, #22c55e 12%, transparent);
+}
+
+.npm-scripts-last-run--error {
+  color: #dc2626;
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+}
+
 .npm-scripts-no-match {
   margin: 0;
   font-size: 12px;

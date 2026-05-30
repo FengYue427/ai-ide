@@ -6,6 +6,7 @@ import { modelOptions } from '../services/aiService'
 import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
 import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { useIDEStore, type EditorTheme } from '../store/ideStore'
+import type { RunNpmScriptHandler } from '../lib/npmScriptRun'
 import {
   AISettingsModal,
   AuthModal,
@@ -94,7 +95,7 @@ interface PanelHostProps {
   onExportFile: () => void
   onExportZip: () => void
   onRunCode: () => void
-  onRunNpmScript: (scriptName: string) => void | Promise<void>
+  onRunNpmScript: RunNpmScriptHandler
   onToggleTheme: () => void
   closeCommandPalette: () => void
   closeSettingsPanel: () => void

@@ -7,6 +7,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.5.2] — 2026-05-29
+
+### Added
+
+- NPM Scripts **last-run 持久化**（localStorage）与成功/失败行高亮
+- 交互 shell 跑 script 时 **等待终端结果**（exit code / npm ERR 检测）
+- i18n：`scripts.lastRunSuccess/Error`、`notify.scriptExitCode/TimeoutDetail`
+
+### Fixed
+
+- 从 Scripts 面板跑 script 在 jsh 模式下无 Toast 反馈
+
+---
+
 ## [1.1.5.1] — 2026-05-29
 
 ### Fixed

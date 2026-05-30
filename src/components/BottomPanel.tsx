@@ -4,6 +4,7 @@ import { useI18n } from '../i18n'
 import { useBottomPanelPersistence } from '../hooks/useBottomPanelPersistence'
 import { useBottomPanelResize } from '../hooks/useBottomPanelResize'
 import { clampBottomPanelHeight } from '../lib/bottomPanelPrefs'
+import type { RunNpmScriptHandler } from '../lib/npmScriptRun'
 import { useIDEStore, type BottomPanelTab } from '../store/ideStore'
 import IntegratedTerminal from './IntegratedTerminal'
 import { NpmScriptsPanel } from './NpmScriptsPanel'
@@ -18,7 +19,7 @@ interface BottomPanelProps {
   writeFile: (path: string, content: string) => Promise<void>
   onRunCode: () => void
   onClearTerminal: () => void
-  onRunNpmScript: (scriptName: string) => void | Promise<void>
+  onRunNpmScript: RunNpmScriptHandler
   onOpenPackageJson?: () => void
   onOpenTaskFile: (path: string, line?: number) => void
   onCreateProjectTasks: () => void

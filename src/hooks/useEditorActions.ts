@@ -1,6 +1,13 @@
 import { useCallback } from 'react'
 import { type AIModel } from '../services/aiService'
-import { clearTerminalOutput, isShellInputReady, sendShellInput } from '../lib/terminalSession'
+import {
+  clearTerminalOutput,
+  getTerminalOutputLines,
+  isShellInputReady,
+  sendShellInput,
+} from '../lib/terminalSession'
+import { resultFromCommandOutcome, detectCommandOutcome, type NpmScriptRunResult } from '../lib/npmScriptRun'
+import { waitForTerminalCommandOutcome } from '../lib/waitForTerminalCommandOutcome'
 import { runTerminalCommand } from '../services/terminalBridge'
 import { useIDEStore } from '../store/ideStore'
 import { StorageLayer, unifiedStorage } from '../services/unifiedStorage'
@@ -113,10 +120,10 @@ export function useEditorActions({
   }, [])
 
   const handleRunNpmScript = useCallback(
-    async (scriptName: string) => {
+    async (scriptName: string): Promise<NpmScriptRunResult> => {
       if (!isReady) {
         notify('info', t('notify.runtimeInit'), t('notify.runtimeInitNpm'))
-        return
+        return { scriptName, status: 'skipped', detail: t('notify.runtimeInitNpm') }
       }
 
       setShowTerminal(true)
@@ -128,18 +135,60 @@ export function useEditorActions({
         }
 
         if (isShellInputReady()) {
+          const baselineLineCount = getTerminalOutputLines().length
           sendShellInput(`npm run ${scriptName}\r`)
-          return
+          const outcome = await waitForTerminalCommandOutcome({ baselineLineCount })
+          const result = outcome.timedOut && outcome.exitCode === undefined && !outcome.failed
+            ? {
+                scriptName,
+                status: 'error' as const,
+                detail: t('notify.scriptTimeoutDetail', { script: scriptName }),
+              }
+            : resultFromCommandOutcome(
+                scriptName,
+                outcome,
+                outcome.timedOut ? t('notify.scriptTimeoutDetail', { script: scriptName }) : undefined,
+              )
+
+          if (result.status === 'error') {
+            notify(
+              'error',
+              t('notify.scriptFailed'),
+              result.detail
+                ?? (result.exitCode !== undefined
+                  ? t('notify.scriptExitCode', { code: result.exitCode, script: scriptName })
+                  : t('notify.scriptRanDetail', { script: scriptName })),
+            )
+          } else {
+            notify('success', t('notify.scriptRan'), t('notify.scriptRanDetail', { script: scriptName }))
+          }
+          return result
         }
 
         const output = await runTerminalCommand(`npm run ${scriptName}`)
-        if (output.includes('(exit') && !output.includes('(exit 0)')) {
-          notify('error', t('notify.scriptFailed'), output.slice(0, 200) || t('notify.scriptRanDetail', { script: scriptName }))
+        const exitMatch = output.match(/\(exit (\d+)\)/)
+        const exitCode = exitMatch ? Number(exitMatch[1]) : undefined
+        const failed = exitMatch ? exitCode !== 0 : detectCommandOutcome(output.split('\n')).failed
+        const result = resultFromCommandOutcome(
+          scriptName,
+          { exitCode, failed },
+          output.slice(0, 200) || undefined,
+        )
+
+        if (result.status === 'error') {
+          notify(
+            'error',
+            t('notify.scriptFailed'),
+            result.detail || t('notify.scriptRanDetail', { script: scriptName }),
+          )
         } else {
           notify('success', t('notify.scriptRan'), t('notify.scriptRanDetail', { script: scriptName }))
         }
+        return result
       } catch (error) {
-        notify('error', t('notify.scriptFailed'), error instanceof Error ? error.message : t('notify.commandFailed'))
+        const detail = error instanceof Error ? error.message : t('notify.commandFailed')
+        notify('error', t('notify.scriptFailed'), detail)
+        return { scriptName, status: 'error', detail }
       }
     },
     [files, isReady, notify, setShowTerminal, t, writeFile],
