@@ -4,8 +4,10 @@ import { parsePackageScripts } from '../services/packageJsonService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
+import { InlineStatePanel } from './InlineStatePanel'
 import type { FileItem } from '../types/file'
 import {
+  AlignLeft,
   Activity,
   Bot,
   Code2,
@@ -61,6 +63,7 @@ interface CommandPaletteProps {
   onExportZip: () => void
   onToggleTheme: () => void
   onToggleAutoSave: () => void
+  onFormatDocument: () => void
   onOpenCollaboration: () => void
   onExportFile: () => void
   onOpenImport: () => void
@@ -105,6 +108,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   onExportZip,
   onToggleTheme,
   onToggleAutoSave,
+  onFormatDocument,
   onOpenCollaboration,
   onExportFile,
   onOpenImport,
@@ -256,6 +260,18 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
         category: t('command.cat.files'),
         action: () => {
           onOpenImport()
+          onClose()
+        },
+      },
+      {
+        id: 'format-document',
+        title: t('command.formatDocument'),
+        subtitle: t('command.formatDocument.sub'),
+        icon: <AlignLeft size={18} />,
+        shortcut: 'Ctrl+Shift+I',
+        category: t('command.cat.editor'),
+        action: () => {
+          onFormatDocument()
           onClose()
         },
       },
@@ -466,6 +482,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       onOpenShare,
       onOpenSnippetLibrary,
       onOpenTerminal,
+      onFormatDocument,
       onRunCode,
       onSelectFile,
       onToggleAutoSave,
@@ -584,11 +601,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
 
         <div style={{ flex: 1, overflow: 'auto' }}>
           {filteredCommands.length === 0 ? (
-            <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Search size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
-              <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '6px' }}>{t('command.empty.title')}</div>
-              <div style={{ fontSize: '13px' }}>{t('command.empty.desc')}</div>
-            </div>
+            <InlineStatePanel
+              compact
+              tone="hint"
+              icon={Search}
+              title={t('command.empty.title')}
+              description={t('command.empty.desc')}
+            />
           ) : (
             Object.entries(groupedCommands).map(([category, categoryCommands]) => (
               <div key={category}>

@@ -8,6 +8,11 @@ import { trackEvent } from '../lib/observability'
 import { useIDEStore } from '../store/ideStore'
 import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
 
+/** Show file filter above this count (v1.1.4 F2). */
+const FILE_FILTER_THRESHOLD = 80
+/** Collapse file tree by default above this count (v1.1.4 F1). */
+const LARGE_TREE_FILE_THRESHOLD = 250
+
 interface FileSidebarProps {
   onCreateFile: () => void
   onDeleteFile: (index: number) => void
@@ -18,6 +23,7 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
   const { t } = useI18n()
   const [outlineCollapsed, setOutlineCollapsed] = useState(false)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const [fileFilterQuery, setFileFilterQuery] = useState('')
   const lastLimitTierRef = useRef<'ok' | 'warn' | 'full'>('ok')
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
@@ -37,20 +43,19 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
 
   const limitSnapshot = useMemo(() => getWorkspaceLimitSnapshot(files.length), [files.length])
 
-  const collectFolderPaths = (nodes: TreeNode[]): string[] => {
-    const paths: string[] = []
-    for (const node of nodes) {
-      if (node.kind === 'folder') {
-        paths.push(node.path)
-        if (node.children) paths.push(...collectFolderPaths(node.children))
-      }
+  const filteredFileEntries = useMemo(() => {
+    const query = fileFilterQuery.trim().toLowerCase()
+    if (!query || files.length < FILE_FILTER_THRESHOLD) {
+      return files.map((file, index) => ({ file, index }))
     }
-    return paths
-  }
+    return files
+      .map((file, index) => ({ file, index }))
+      .filter(({ file }) => file.name.toLowerCase().includes(query))
+  }, [files, fileFilterQuery])
 
   const fileTree = useMemo<TreeNode[]>(() => {
     const root: TreeNode[] = []
-    files.forEach((file, idx) => {
+    filteredFileEntries.forEach(({ file, index: idx }) => {
       const parts = file.name.split('/').filter(Boolean)
       let current = root
       let currentPath = ''
@@ -79,13 +84,24 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
 
     sortNodes(root)
     return root
-  }, [files])
+  }, [filteredFileEntries])
+
+  const collectFolderPaths = (nodes: TreeNode[]): string[] => {
+    const paths: string[] = []
+    for (const node of nodes) {
+      if (node.kind === 'folder') {
+        paths.push(node.path)
+        if (node.children) paths.push(...collectFolderPaths(node.children))
+      }
+    }
+    return paths
+  }
 
   const allFolderPaths = useMemo(() => collectFolderPaths(fileTree), [fileTree])
   const hasFolders = allFolderPaths.length > 0
 
   useEffect(() => {
-    if (files.length < 8) return
+    if (files.length < 8 || files.length >= LARGE_TREE_FILE_THRESHOLD) return
     setExpandedFolders((prev) => {
       if (prev.size > 0) return prev
       const firstLevel = fileTree.filter((n) => n.kind === 'folder').map((n) => n.path)
@@ -209,6 +225,9 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
       {files.length > 0 ? (
         <div className="sidebar-capacity-wrap">
           <WorkspaceCapacityBanner snapshot={limitSnapshot} compact />
+          {files.length >= LARGE_TREE_FILE_THRESHOLD ? (
+            <p className="sidebar-large-tree-hint">{t('sidebar.largeTreeHint')}</p>
+          ) : null}
         </div>
       ) : null}
       <div className="sidebar-section">
@@ -240,8 +259,30 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
             </button>
           </div>
         )}
+        {files.length >= FILE_FILTER_THRESHOLD ? (
+          <div className="sidebar-file-filter">
+            <input
+              type="search"
+              className="sidebar-input sidebar-file-filter__input"
+              value={fileFilterQuery}
+              onChange={(event) => setFileFilterQuery(event.target.value)}
+              placeholder={t('sidebar.fileFilterPlaceholder')}
+              aria-label={t('sidebar.fileFilterPlaceholder')}
+            />
+            {fileFilterQuery.trim() ? (
+              <span className="sidebar-file-filter__count">
+                {t('sidebar.fileFilterCount', {
+                  shown: filteredFileEntries.length,
+                  total: files.length,
+                })}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {files.length === 0 ? (
           <EmptyState type="files" onAction={() => setShowNewFileInput(true)} onSecondaryAction={onOpenDropZone} />
+        ) : filteredFileEntries.length === 0 ? (
+          <p className="sidebar-file-filter__empty">{t('sidebar.fileFilterEmpty')}</p>
         ) : (
           <div className="sidebar-file-list">{fileTree.map((node) => renderNode(node))}</div>
         )}

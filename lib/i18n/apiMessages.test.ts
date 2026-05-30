@@ -23,5 +23,13 @@ describe('apiMessages', () => {
   it('returns localized success messages', () => {
     expect(apiMessage('api.auth.loginOk', 'en-US')).toBe('Signed in successfully')
     expect(apiMessage('api.workspace.deleted', 'zh-CN')).toBe('工作区已删除')
+    expect(apiMessage('api.auth.loginOk', 'ja-JP')).toMatch(/サインイン|Signed in/i)
+  })
+
+  it('resolves ja-JP from X-App-Language', () => {
+    const req = new Request('http://localhost', {
+      headers: { 'X-App-Language': 'ja-JP' },
+    })
+    expect(resolveRequestLocale(req)).toBe('ja-JP')
   })
 })

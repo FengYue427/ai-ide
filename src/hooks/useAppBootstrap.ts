@@ -18,13 +18,17 @@ export function useAppBootstrap() {
     const loadSettings = async () => {
       const [savedTheme, savedSettings, savedAIConfig] = await Promise.all([
         unifiedStorage.get<'vs-dark' | 'light'>('theme', 'vs-dark'),
-        unifiedStorage.get<{ autosave: boolean }>('settings', { autosave: true }),
+        unifiedStorage.get<{ autosave: boolean; formatOnSave?: boolean }>('settings', {
+          autosave: true,
+          formatOnSave: false,
+        }),
         unifiedStorage.get('ai-config', useIDEStore.getState().aiConfig),
       ])
 
-      const { setTheme, setAutoSaveEnabled, setAiConfig } = useIDEStore.getState()
+      const { setTheme, setAutoSaveEnabled, setFormatOnSaveEnabled, setAiConfig } = useIDEStore.getState()
       setTheme(savedTheme)
       setAutoSaveEnabled(savedSettings.autosave)
+      setFormatOnSaveEnabled(savedSettings.formatOnSave ?? false)
 
       const validModels = modelOptions[savedAIConfig.provider].models
       const model = validModels.includes(savedAIConfig.model) ? savedAIConfig.model : validModels[0]

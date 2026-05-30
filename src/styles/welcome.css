@@ -302,6 +302,36 @@
   color: var(--text-secondary);
 }
 
+.welcome-onboarding-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-color) 10%, var(--bg-secondary));
+}
+
+.welcome-onboarding-banner strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.welcome-onboarding-banner p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.welcome-recent-empty {
+  min-height: 180px;
+  padding: 12px 0 0;
+}
+
 .welcome-empty-recent {
   padding: 18px;
   border-radius: 14px;

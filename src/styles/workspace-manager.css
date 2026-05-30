@@ -74,6 +74,13 @@
   gap: 10px;
 }
 
+.wm-cloud-preview {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
 .wm-form-actions {
   display: flex;
   gap: var(--space-2);

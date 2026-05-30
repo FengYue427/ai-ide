@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.1.3.5",
+  "version": "1.1.4",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -23,6 +23,7 @@
     "deploy": "npx vercel --prod",
     "test": "prisma generate && tsc --noEmit && npm run build:deploy",
     "test:unit": "vitest run",
+    "i18n:ja-bulk": "node scripts/build-ja-phase2-bulk.mjs",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:integration": "node scripts/integration-api.mjs",
     "test:integration:local": "node scripts/run-integration-local.mjs",

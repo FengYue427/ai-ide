@@ -47,6 +47,28 @@
   margin-bottom: var(--space-3);
 }
 
+.collab-connection-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.collab-signaling-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  color: var(--accent-color);
+}
+
+.collab-hint--warn {
+  color: var(--warning-color);
+  margin-top: calc(-1 * var(--space-2));
+  margin-bottom: var(--space-3);
+}
+
 .collab-connection {
   font-size: 12px;
   font-weight: 600;

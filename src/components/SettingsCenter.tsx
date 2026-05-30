@@ -28,6 +28,11 @@ import { BILLING_SYNC_EVENT } from '../hooks/useBillingSync'
 import { fetchAIQuota } from '../services/usageService'
 import { useI18n, type Language } from '../i18n'
 import {
+  MAX_FILE_CONTENT_LEN,
+  MAX_WORKSPACE_BODY_BYTES,
+  MAX_WORKSPACE_FILES,
+} from '../../lib/api/workspacePayload'
+import {
   getTabCompletionMaxLines,
   isTabCompletionEnabled,
   MAX_TAB_MAX_LINES,
@@ -53,10 +58,12 @@ interface SettingsCenterProps {
   aiConfig: AIConfigState
   theme: 'vs-dark' | 'light'
   autoSaveEnabled: boolean
+  formatOnSaveEnabled: boolean
   language: Language
   onSaveAIConfig: (config: AIConfigState) => void
   onToggleTheme: () => void
   onToggleAutoSave: () => void
+  onToggleFormatOnSave: () => void
   onChangeLanguage: (lang: Language) => void
   onClearLocalData?: () => void
   onResetDefaults?: () => void
@@ -119,10 +126,12 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   aiConfig,
   theme,
   autoSaveEnabled,
+  formatOnSaveEnabled,
   language,
   onSaveAIConfig,
   onToggleTheme,
   onToggleAutoSave,
+  onToggleFormatOnSave,
   onChangeLanguage,
   onClearLocalData,
   onResetDefaults,
@@ -176,6 +185,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   const [activeTab, setActiveTab] = useState<SettingTab>('ai')
   const [localAIConfig, setLocalAIConfig] = useState(aiConfig)
   const [localAutoSave, setLocalAutoSave] = useState(autoSaveEnabled)
+  const [localFormatOnSave, setLocalFormatOnSave] = useState(formatOnSaveEnabled)
   const [localTheme, setLocalTheme] = useState(theme)
   const [localLanguage, setLocalLanguage] = useState(language)
   const [quota, setQuota] = useState<QuotaCheck>({
@@ -320,14 +330,16 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   useEffect(() => {
     setLocalAIConfig(aiConfig)
     setLocalAutoSave(autoSaveEnabled)
+    setLocalFormatOnSave(formatOnSaveEnabled)
     setLocalTheme(theme)
     setLocalLanguage(language)
-  }, [aiConfig, autoSaveEnabled, theme, language])
+  }, [aiConfig, autoSaveEnabled, formatOnSaveEnabled, theme, language])
 
   const handleSave = () => {
     void (async () => {
       onSaveAIConfig(localAIConfig)
       if (localAutoSave !== autoSaveEnabled) onToggleAutoSave()
+      if (localFormatOnSave !== formatOnSaveEnabled) onToggleFormatOnSave()
       if (localTheme !== theme) onToggleTheme()
       if (localLanguage !== language) onChangeLanguage(localLanguage)
       await persistMcpRef.current?.()
@@ -503,6 +515,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     {[
                       { value: 'zh-CN' as const, label: t('settings.lang.zh') },
                       { value: 'en-US' as const, label: t('settings.lang.en') },
+                      { value: 'ja-JP' as const, label: t('settings.lang.ja') },
                     ].map((option) => (
                       <button
                         key={option.value}
@@ -533,6 +546,18 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     checked={localAutoSave}
                     onChange={() => setLocalAutoSave((value) => !value)}
                     aria-label={t('settings.autosave.aria')}
+                  />
+                </div>
+
+                <div className="settings-card settings-card--row">
+                  <div>
+                    <div className="settings-row-title">{t('settings.formatOnSave')}</div>
+                    <div className="settings-row-desc">{t('settings.formatOnSave.desc')}</div>
+                  </div>
+                  <Toggle
+                    checked={localFormatOnSave}
+                    onChange={() => setLocalFormatOnSave((value) => !value)}
+                    aria-label={t('settings.formatOnSave.aria')}
                   />
                 </div>
 
@@ -667,6 +692,18 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     </div>
                   </div>
                   <span className="settings-badge settings-badge--experimental">413 Guard</span>
+                </div>
+                <div className="settings-card settings-card--row">
+                  <div style={{ flex: 1 }}>
+                    <div className="settings-row-title">{t('settings.cloudSave.card.title')}</div>
+                    <div className="settings-row-desc">
+                      {t('settings.cloudSave.card.desc', {
+                        maxFiles: MAX_WORKSPACE_FILES,
+                        maxFileKb: Math.round(MAX_FILE_CONTENT_LEN / 1024),
+                        maxBodyMb: Math.round(MAX_WORKSPACE_BODY_BYTES / 1_000_000),
+                      })}
+                    </div>
+                  </div>
                 </div>
                 {featureList.map((feature) => (
                   <div key={feature.name} className="settings-card settings-card--row">

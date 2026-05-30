@@ -2,7 +2,8 @@
 
 ## 架构
 
-- 词条：`src/i18n/translations.ts`（`zh-CN` / `en-US`，~980 keys，两语言 key 对齐）
+- 词条：`src/i18n/translations.ts`（`zh-CN` / `en-US`，~990 keys，两语言 key 对齐）
+- **Phase 2**：`src/i18n/translationsJa.ts` + `localeTables.ts`（`ja-JP` 骨架，未译 key 回退 `en-US`）
 - 运行时：`I18nProvider` + `useI18n().t(key, params?)`
 - 服务层：`src/lib/serviceI18n.ts` → `serviceText(key)`（跟随 `getApiLanguage()`）
 - 非 React：`createTranslator`、`workspaceError()`、`pluginError()`、`localizeAuthApiError()`
@@ -30,7 +31,10 @@
 
 ## UI 国际化结论
 
-**用户可见 UI 与主要服务/API 错误、成功提示已双语覆盖。** 剩余为非 UI 或第三方协议字段（见下）。
+**zh-CN / en-US 用户可见 UI 与主要服务/API 错误、成功提示已双语覆盖。**  
+**ja-JP（F3～F4）**：Phase 2 前缀 **100%** 显式覆盖（~647 keys）；bulk gloss + 精校；API message ja。详见 [I18N_PHASE2_AUDIT.md](./I18N_PHASE2_AUDIT.md)。
+
+剩余为非 UI 或第三方协议字段（见下）。
 
 ## 待接入（低优先级）
 

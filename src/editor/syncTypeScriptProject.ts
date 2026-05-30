@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import { selectMonacoTypeScriptLibs } from './selectMonacoTypeScriptLibs'
 
 export interface ProjectFileSource {
   name: string
@@ -17,9 +18,17 @@ function toLibPath(name: string): string {
   return `file:///${name.replace(/\\/g, '/').replace(/^\//, '')}`
 }
 
+export type SyncMonacoTypeScriptOptions = {
+  activeFilename?: string
+}
+
 /** Sync in-memory editor files into Monaco TS/JS language service for cross-file IntelliSense & F12. */
-export function syncMonacoTypeScriptProject(files: ProjectFileSource[]): void {
-  const libs = files
+export function syncMonacoTypeScriptProject(
+  files: ProjectFileSource[],
+  options?: SyncMonacoTypeScriptOptions,
+): void {
+  const selected = selectMonacoTypeScriptLibs(files, options?.activeFilename)
+  const libs = selected
     .filter(isScriptFile)
     .map((file) => ({
       content: file.content,

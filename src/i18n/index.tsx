@@ -3,11 +3,10 @@ import { normalizeLanguage } from '../lib/language'
 import { readStoredApiLanguage, setApiLanguage } from '../lib/apiLanguage'
 import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
 import {
-  interpolate,
-  translations,
+  translateKey,
   type Language,
   type TranslationKey,
-} from './translations'
+} from './localeTables'
 
 export type { Language, TranslationKey }
 
@@ -40,11 +39,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const t = useCallback(
-    (key: TranslationKey, params?: Record<string, string | number>): string => {
-      const table = translations[language]
-      const raw = table[key] ?? translations['zh-CN'][key] ?? key
-      return interpolate(raw, params)
-    },
+    (key: TranslationKey, params?: Record<string, string | number>): string =>
+      translateKey(language, key, params),
     [language],
   )
 
@@ -69,11 +65,8 @@ export type TranslateFn = I18nContextType['t']
 
 /** Translate outside React (hooks, services) when UI locale is known. */
 export function createTranslator(language: Language): TranslateFn {
-  return (key: TranslationKey, params?: Record<string, string | number>) => {
-    const table = translations[language]
-    const raw = table[key] ?? translations['zh-CN'][key] ?? key
-    return interpolate(raw, params)
-  }
+  return (key: TranslationKey, params?: Record<string, string | number>) =>
+    translateKey(language, key, params)
 }
 
 export function LanguageSelector() {
@@ -95,6 +88,16 @@ export function LanguageSelector() {
     >
       <option value="zh-CN">中文</option>
       <option value="en-US">English</option>
+      <option value="ja-JP">日本語</option>
     </select>
   )
 }
+
+/** Exposed for tests and coverage reports. */
+export {
+  getTranslationTable,
+  auditPhase2JaCoverage,
+  countJaOverrides,
+  translateKey,
+  JA_COVERAGE_TARGET_PCT,
+} from './localeTables'

@@ -1,6 +1,7 @@
-import { apiFetch, readJsonResponse } from './apiUtils'
+import { formatCollabApiError } from '../lib/collabApiErrors'
 import { pickApiResponseMessage } from '../lib/apiUserMessage'
 import type { TranslateFn } from '../i18n'
+import { apiFetch, readJsonResponse } from './apiUtils'
 
 export type CollabSignalingClient = {
   mode: 'yjs-webrtc' | 'livekit'
@@ -29,7 +30,7 @@ export type CollabRoomClient = {
 export async function createCollabRoom(
   name?: string,
   t?: TranslateFn,
-): Promise<{ room?: CollabRoomClient; error?: string }> {
+): Promise<{ room?: CollabRoomClient; error?: string; status?: number }> {
   const response = await apiFetch('/api/collab/rooms', {
     method: 'POST',
     credentials: 'include',
@@ -38,9 +39,15 @@ export async function createCollabRoom(
   })
   const json = await readJsonResponse<{ room?: CollabRoomClient; message?: string }>(response)
   if (!response.ok) {
+    const serverMessage = pickApiResponseMessage(json ?? undefined, t)
     return {
-      error:
-        pickApiResponseMessage(json ?? undefined, t) ?? json?.message ?? `HTTP ${response.status}`,
+      status: response.status,
+      error: formatCollabApiError(
+        response.status,
+        serverMessage,
+        t?.('collab.m1.createFailed') ?? `HTTP ${response.status}`,
+        t ?? ((key) => key),
+      ),
     }
   }
   return { room: json?.room }
@@ -56,10 +63,15 @@ export async function fetchCollabRoom(
   })
   const json = await readJsonResponse<{ room?: CollabRoomClient; message?: string }>(response)
   if (!response.ok) {
+    const serverMessage = pickApiResponseMessage(json ?? undefined, t)
     return {
       status: response.status,
-      error:
-        pickApiResponseMessage(json ?? undefined, t) ?? json?.message ?? `HTTP ${response.status}`,
+      error: formatCollabApiError(
+        response.status,
+        serverMessage,
+        t?.('collab.m1.error.generic') ?? `HTTP ${response.status}`,
+        t ?? ((key) => key),
+      ),
     }
   }
   return { room: json?.room, status: response.status }
@@ -68,7 +80,7 @@ export async function fetchCollabRoom(
 export async function leaveCollabRoom(
   code: string,
   t?: TranslateFn,
-): Promise<{ ok?: boolean; error?: string }> {
+): Promise<{ ok?: boolean; error?: string; status?: number }> {
   const response = await apiFetch(`/api/collab/rooms/${encodeURIComponent(code)}/leave`, {
     method: 'POST',
     credentials: 'include',
@@ -77,9 +89,15 @@ export async function leaveCollabRoom(
   })
   const json = await readJsonResponse<{ success?: boolean; message?: string }>(response)
   if (!response.ok) {
+    const serverMessage = pickApiResponseMessage(json ?? undefined, t)
     return {
-      error:
-        pickApiResponseMessage(json ?? undefined, t) ?? json?.message ?? `HTTP ${response.status}`,
+      status: response.status,
+      error: formatCollabApiError(
+        response.status,
+        serverMessage,
+        t?.('collab.m1.leaveFailed') ?? `HTTP ${response.status}`,
+        t ?? ((key) => key),
+      ),
     }
   }
   return { ok: true }
@@ -88,7 +106,7 @@ export async function leaveCollabRoom(
 export async function joinCollabRoom(
   code: string,
   options?: { role?: 'editor' | 'viewer'; t?: TranslateFn },
-): Promise<{ room?: CollabRoomClient; error?: string }> {
+): Promise<{ room?: CollabRoomClient; error?: string; status?: number }> {
   const response = await apiFetch(`/api/collab/rooms/${encodeURIComponent(code)}`, {
     method: 'POST',
     credentials: 'include',
@@ -97,11 +115,16 @@ export async function joinCollabRoom(
   })
   const json = await readJsonResponse<{ room?: CollabRoomClient; message?: string }>(response)
   if (!response.ok) {
+    const t = options?.t
+    const serverMessage = pickApiResponseMessage(json ?? undefined, t)
     return {
-      error:
-        pickApiResponseMessage(json ?? undefined, options?.t) ??
-        json?.message ??
-        `HTTP ${response.status}`,
+      status: response.status,
+      error: formatCollabApiError(
+        response.status,
+        serverMessage,
+        t?.('collab.m1.joinFailed') ?? `HTTP ${response.status}`,
+        t ?? ((key) => key),
+      ),
     }
   }
   return { room: json?.room }
@@ -112,7 +135,7 @@ export async function updateCollabMemberRole(
   userId: string,
   role: 'editor' | 'viewer',
   t?: TranslateFn,
-): Promise<{ room?: CollabRoomClient; error?: string }> {
+): Promise<{ room?: CollabRoomClient; error?: string; status?: number }> {
   const response = await apiFetch(
     `/api/collab/rooms/${encodeURIComponent(code)}/members/${encodeURIComponent(userId)}`,
     {
@@ -124,9 +147,15 @@ export async function updateCollabMemberRole(
   )
   const json = await readJsonResponse<{ room?: CollabRoomClient; message?: string }>(response)
   if (!response.ok) {
+    const serverMessage = pickApiResponseMessage(json ?? undefined, t)
     return {
-      error:
-        pickApiResponseMessage(json ?? undefined, t) ?? json?.message ?? `HTTP ${response.status}`,
+      status: response.status,
+      error: formatCollabApiError(
+        response.status,
+        serverMessage,
+        t?.('collab.m1.roleUpdateFailed') ?? `HTTP ${response.status}`,
+        t ?? ((key) => key),
+      ),
     }
   }
   return { room: json?.room }
@@ -136,7 +165,7 @@ export async function kickCollabMember(
   code: string,
   userId: string,
   t?: TranslateFn,
-): Promise<{ room?: CollabRoomClient; error?: string }> {
+): Promise<{ room?: CollabRoomClient; error?: string; status?: number }> {
   const response = await apiFetch(
     `/api/collab/rooms/${encodeURIComponent(code)}/members/${encodeURIComponent(userId)}/kick`,
     {
@@ -148,9 +177,15 @@ export async function kickCollabMember(
   )
   const json = await readJsonResponse<{ room?: CollabRoomClient; message?: string }>(response)
   if (!response.ok) {
+    const serverMessage = pickApiResponseMessage(json ?? undefined, t)
     return {
-      error:
-        pickApiResponseMessage(json ?? undefined, t) ?? json?.message ?? `HTTP ${response.status}`,
+      status: response.status,
+      error: formatCollabApiError(
+        response.status,
+        serverMessage,
+        t?.('collab.m1.kickFailed') ?? `HTTP ${response.status}`,
+        t ?? ((key) => key),
+      ),
     }
   }
   return { room: json?.room }

@@ -1,7 +1,7 @@
 # v1.1.x 世代总览
 
-> **更新**：2026-05-29 — **v1.1.3 GA ✅**（协作 M1）  
-> **主规划**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md) · **执行入口**：[NEXT_EXECUTION.md](./NEXT_EXECUTION.md)
+> **更新**：2026-05-30 — **v1.1.3 GA ✅**（协作 M1）· **1.1.3.6～7 ✅**  
+> **主规划**：[ROADMAP_V1.1.md](./ROADMAP_V1.1.md) · **长期 v1.1.5～9**：[ROADMAP_V1.1_LONG_HORIZON.md](./ROADMAP_V1.1_LONG_HORIZON.md) · **执行**：[NEXT_EXECUTION.md](./NEXT_EXECUTION.md)
 
 ---
 
@@ -26,8 +26,10 @@
 | **v1.1.2** | 后台 Agent MVP | **B** | ✅ GA 就绪 |
 | **1.1.2.5～.8** | 后台 Agent 加深 | A | ✅ 冻结 |
 | **v1.1.3** | **协作 M1** | **B** | ✅ GA [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md) |
-| **v1.2** | **AI 网关**（原 1.1.3-B） | **B** | 📋 [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
-| **v1.1.4** | 世代收官 ~2.90 | **B** | ☐ 占位 |
+| **1.1.3.1～.9** | 协作抛光 + e2e + 413 patch | A | ✅ **冻结** |
+| **v1.1.4** | 编辑器深度 + UX + i18n Phase 2 | **B** | ✅ [RELEASE_NOTES_v1.1.4.md](./RELEASE_NOTES_v1.1.4.md) |
+| **v1.1.5～1.1.9** | 终端 / Git / 调试 / 插件 / 多根 | **B** | 📋 [ROADMAP_V1.1_LONG_HORIZON.md](./ROADMAP_V1.1_LONG_HORIZON.md) |
+| **v1.2** | **AI 网关** | **B** | 📋 [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
 
 ---
 
@@ -45,17 +47,22 @@
 | **[V1.1.3_MASTER_PLAN.md](./V1.1.3_MASTER_PLAN.md)** | **v1.1.3 决策 + F 阶段** |
 | [V1.1.3_GA_EXECUTION.md](./V1.1.3_GA_EXECUTION.md) | v1.1.3 DoD |
 | [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md) | 路线 A：协作 |
-| [ROADMAP_V1.1.3_GATEWAY.md](./ROADMAP_V1.1.3_GATEWAY.md) | 路线 B：网关 |
+| **[V1.1.4_KICKOFF.md](./V1.1.4_KICKOFF.md)** | **v1.1.4 开波 + F1** |
+| **[V1.1.4_MASTER_PLAN.md](./V1.1.4_MASTER_PLAN.md)** | **v1.1.4 主规划** |
+| [ROADMAP_V1.1.4.x_PATCHES.md](./ROADMAP_V1.1.4.x_PATCHES.md) | 1.1.4.x patch |
+| [ROADMAP_V1.1_LONG_HORIZON.md](./ROADMAP_V1.1_LONG_HORIZON.md) | v1.1.5～1.1.9.x |
+| [ROADMAP_V1.1.3.x_PATCHES.md](./ROADMAP_V1.1.3.x_PATCHES.md) | 1.1.3.x patch |
 
 ---
 
-## 4. 竞品目标
+## 4. 竞品参照（雷达，非收官分数）
 
-| 时期 | AI IDE（估） |
-|------|:------------:|
-| v1.1.1 计划 GA | ~2.82 |
-| **v1.1.2** 后台 Agent GA | **~2.88** |
-| v1.1.4 收官 | ~2.90 |
+| 时期 | 说明 |
+|------|------|
+| v1.1.3 协作 GA | 协作轴达到可演示生产级 |
+| v1.1.4+ | 各轴定性复评 → [ROADMAP_V1.1_LONG_HORIZON.md §6](./ROADMAP_V1.1_LONG_HORIZON.md) |
+
+历史估分（~2.82～2.88）仅作内部参考，**不作为停更条件**。
 
 ---
 

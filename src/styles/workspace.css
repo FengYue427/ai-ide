@@ -68,6 +68,34 @@
   padding: 8px 12px 0;
 }
 
+.sidebar-large-tree-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.sidebar-file-filter {
+  padding: 0 12px 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.sidebar-file-filter__input {
+  font-size: 12px;
+}
+
+.sidebar-file-filter__count,
+.sidebar-file-filter__empty {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.sidebar-file-filter__empty {
+  padding: 8px 12px 12px;
+}
+
 .workspace-capacity {
   padding: 10px 12px;
   border-radius: 12px;

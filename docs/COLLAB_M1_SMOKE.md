@@ -1,6 +1,6 @@
 # 协作 M1 — 双机 Smoke（F4）
 
-> **状态**：已实现（v1.1.3.4）  
+> **状态**：v1.1.3.8 加固（e2e 选择器 + CI optional job）  
 > **自动化**：`npm run test:e2e:collab` · API 段在 `npm run test:integration:local`
 
 ---
@@ -21,7 +21,30 @@ npm run dev:stack:collab    # VITE_COLLAB_M1_SIGNAL=true
 | 命令 | 覆盖 |
 |------|------|
 | `node scripts/integration-api-collab.mjs`（经 `integration-api.mjs`） | 创建房间、viewer 加入、403 越权、host 改角色、踢人 |
-| `npm run test:e2e:collab` | **双浏览器**：Host 创建 → Viewer 只读加入 → 只读 banner |
+| `npm run test:e2e:collab` | **双浏览器**：Host 创建 → Viewer 只读 → 信令徽章可见 |
+
+**CI**：`e2e-collab` job（`continue-on-error: true`，不阻塞主 CI）。
+
+---
+
+## 2b. Livekit 生产手测（可选）
+
+未配置 `LIVEKIT_*` 时 e2e/CI 走 **y-webrtc**；生产验证 Livekit：
+
+| 变量 | 说明 |
+|------|------|
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | 服务端 JWT |
+| `LIVEKIT_URL` | `wss://…` |
+| `VITE_COLLAB_M1_SIGNAL=true` | 客户端 M1 |
+
+**步骤**：
+
+1. Vercel 配置上述变量并 redeploy。  
+2. 双人加入同一房间，协作面板信令徽章应显示 **Livekit**。  
+3. 浏览器 Console：`connected to livekit server`（区域因项目而异）。  
+4. 编辑同文件，数秒内 Yjs 内容一致；光标/选区可见（1.1.3.3+）。
+
+**VPN**：可能影响 WebRTC/Livekit 媒体路径；房间 REST **500** 为服务端问题，与 VPN 无关。
 
 ---
 

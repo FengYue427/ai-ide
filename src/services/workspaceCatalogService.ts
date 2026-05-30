@@ -1,5 +1,6 @@
 import { serviceText } from '../lib/serviceI18n'
 import { cloudSyncService, type WorkspaceBackup } from './cloudSyncService'
+import type { WorkspaceCloudSaveResult } from './authService'
 import { remoteWorkspaceService, type WorkspaceEntry, type WorkspaceSource } from './remoteWorkspaceService'
 
 export type { WorkspaceEntry, WorkspaceSource }
@@ -47,14 +48,24 @@ export async function saveWorkspaceEntry(
   settings: WorkspaceBackup['settings'],
   description: string | undefined,
   isLoggedIn: boolean,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{
+  ok: boolean
+  error?: string
+  cloudResult?: WorkspaceCloudSaveResult
+}> {
   const trimmed = name.trim()
   if (!trimmed) return { ok: false, error: serviceText('workspace.nameRequired') }
 
   if (isLoggedIn) {
-    const cloudOk = await remoteWorkspaceService.save(trimmed, files, settings, description)
-    if (cloudOk) return { ok: true }
-    return { ok: false, error: serviceText('workspace.cloudSaveFailed') }
+    const cloudResult = await remoteWorkspaceService.save(trimmed, files, settings, description)
+    if (!cloudResult.ok) {
+      return {
+        ok: false,
+        error: serviceText('workspace.cloudSaveFailed'),
+        cloudResult,
+      }
+    }
+    return { ok: true, cloudResult }
   }
 
   await cloudSyncService.saveWorkspace(trimmed, files, settings, description)

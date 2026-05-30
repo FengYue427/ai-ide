@@ -6,6 +6,7 @@ import Terminal from '../components/Terminal'
 import type { ToastKind } from '../components/FeedbackCenter'
 import { PreviewPanel } from './lazyPanels'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
+import { summarizeMonacoMarkers } from '../editor/summarizeMonacoMarkers'
 import { useIDEStore } from '../store/ideStore'
 
 interface EditorLayoutProps {
@@ -45,7 +46,7 @@ export function EditorLayout({
   const showTerminal = useIDEStore((s) => s.showTerminal)
   const showPreview = useIDEStore((s) => s.showPreview)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
-  const setDiagnosticCount = useIDEStore((s) => s.setDiagnosticCount)
+  const setDiagnosticSummary = useIDEStore((s) => s.setDiagnosticSummary)
   const setShowPreview = useIDEStore((s) => s.setShowPreview)
   const aiConfig = useIDEStore((s) => s.aiConfig)
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
@@ -150,7 +151,7 @@ export function EditorLayout({
             isTabCompletionEnabled() && (!!aiConfig.apiKey || aiConfig.provider === 'ollama')
           }
           onChange={onFileChange}
-          onDiagnosticsChange={(markers) => setDiagnosticCount(markers.length)}
+          onDiagnosticsChange={(markers) => setDiagnosticSummary(summarizeMonacoMarkers(markers))}
         />
       </div>
 

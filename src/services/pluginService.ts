@@ -1,4 +1,5 @@
 import { createTranslator } from '../i18n'
+import { formatService } from './formatService'
 import { getWorkspaceLocale } from './workspaceErrors'
 import { ALL_PLUGIN_PERMISSIONS, hasUi, normalizePluginPermissions } from './pluginPermissions'
 import {
@@ -232,10 +233,17 @@ export const createBuiltinPlugins = (locale = getWorkspaceLocale()): Plugin[] =>
           icon: 'sparkles',
           label: t('plugin.builtin.format.label'),
           onClick: () => {
-            const content = context.editor.getValue()
-            const formatted = content.replace(/\s+$/gm, '').replace(/\n{3,}/g, '\n\n')
-            context.editor.setValue(formatted)
-            context.ui.showNotification(createTranslator(getWorkspaceLocale())('plugin.builtin.format.done'), 'success')
+            void (async () => {
+              const active = context.files.getActive()
+              const content = context.editor.getValue()
+              const language = active?.language ?? 'javascript'
+              const formatted = await formatService.formatCode(content, language)
+              context.editor.setValue(formatted)
+              context.ui.showNotification(
+                createTranslator(getWorkspaceLocale())('plugin.builtin.format.done'),
+                'success',
+              )
+            })()
           },
         })
       },

@@ -9,6 +9,8 @@ export interface ToastMessage {
   title: string
   detail?: string
   onClick?: () => void
+  actionLabel?: string
+  onAction?: () => void
 }
 
 export interface ConfirmRequest {
@@ -75,6 +77,19 @@ export function FeedbackCenter({
               <div className="toast-content">
                 <div className="toast-title">{toast.title}</div>
                 {toast.detail && <div className="toast-detail">{toast.detail}</div>}
+                {toast.actionLabel && toast.onAction && (
+                  <button
+                    type="button"
+                    className="toast-action"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      toast.onAction?.()
+                      onDismissToast(toast.id)
+                    }}
+                  >
+                    {toast.actionLabel}
+                  </button>
+                )}
               </div>
               <button
                 className="toast-close"

@@ -1,5 +1,6 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import { extractSymbolsFromContent } from '../services/projectIndexService'
+import { selectFilesForDefinitionSearch } from './selectFilesForDefinitionSearch'
 
 export interface DefinitionProjectFile {
   name: string
@@ -32,13 +33,14 @@ export function registerCrossFileDefinitionProvider(
   currentFile: string,
 ): monaco.IDisposable {
   const languages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
+  const searchFiles = selectFilesForDefinitionSearch(files, currentFile)
 
   return monaco.languages.registerDefinitionProvider(languages, {
     provideDefinition(model, position) {
       const word = model.getWordAtPosition(position)
       if (!word?.word) return null
 
-      const location = findDefinition(files, word.word, currentFile, position.lineNumber)
+      const location = findDefinition(searchFiles, word.word, currentFile, position.lineNumber)
       if (!location) return null
 
       return {

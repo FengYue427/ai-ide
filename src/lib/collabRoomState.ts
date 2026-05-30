@@ -22,6 +22,11 @@ export function applyCollabRoomSnapshot(
   store.setCollaborationMemberRole(role)
   store.setCollaborationRoomMembers(room.members)
   collaborationService.applyMemberRole(role)
+  if (role === 'host') {
+    collaborationService.publishMemberRoles(
+      room.members.map((member) => ({ userId: member.userId, role: member.role })),
+    )
+  }
   return role
 }
 

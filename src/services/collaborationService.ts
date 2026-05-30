@@ -9,6 +9,7 @@ import { LivekitYjsProvider } from './collab/livekitYjsProvider'
 import type { CollabEditorSelection } from '../lib/collabAwareness'
 
 const FILES_MAP_KEY = 'workspace-files'
+const MEMBER_ROLES_MAP_KEY = 'collab-member-roles'
 const DEFAULT_SIGNALING = ['wss://signaling.yjs.dev']
 /** Backoff steps — sum ≈30s for acceptance「断网 30s 内重连」. */
 const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 15000]
@@ -44,6 +45,7 @@ export class CollaborationService {
   private intentionalLeave = false
   private statusHandler: ((event: { connected: boolean }) => void) | null = null
   private awarenessHandler: (() => void) | null = null
+  private memberRolesHandler: (() => void) | null = null
   private presenceTimer: ReturnType<typeof setTimeout> | null = null
   private pendingPresence: { filePath: string; selection: CollabEditorSelection } | null = null
 
@@ -53,6 +55,46 @@ export class CollaborationService {
 
   getReconnectAttempt(): number {
     return this.reconnectAttempt
+  }
+
+  getSignalingMode(): 'livekit' | 'yjs-webrtc' | null {
+    return this.session?.signalingMode ?? null
+  }
+
+  /** Host publishes authoritative member roles over Yjs (v1.1.3.7). */
+  publishMemberRoles(
+    members: Array<{ userId: string; role: string }>,
+  ): void {
+    if (!this.currentRoom) return
+
+    const map = this.currentRoom.doc.getMap<string>(MEMBER_ROLES_MAP_KEY)
+    const activeIds = new Set(members.map((member) => member.userId))
+
+    this.currentRoom.doc.transact(() => {
+      for (const key of Array.from(map.keys())) {
+        if (!activeIds.has(key)) map.delete(key)
+      }
+      for (const member of members) {
+        map.set(member.userId, member.role)
+      }
+    })
+  }
+
+  getMemberRolesSnapshot(): Record<string, string> {
+    if (!this.currentRoom) return {}
+    const map = this.currentRoom.doc.getMap<string>(MEMBER_ROLES_MAP_KEY)
+    const snapshot: Record<string, string> = {}
+    map.forEach((role, userId) => {
+      snapshot[userId] = role
+    })
+    return snapshot
+  }
+
+  onMemberRolesChange(callback: (roles: Record<string, string>) => void): () => void {
+    const handler = () => callback(this.getMemberRolesSnapshot())
+    this.on('memberRoles', handler)
+    if (this.currentRoom) handler()
+    return () => this.off('memberRoles', handler)
   }
 
   joinRoom(
@@ -176,6 +218,8 @@ export class CollaborationService {
     }
     provider.awareness.on('change', this.awarenessHandler)
 
+    this.attachMemberRolesObserver(doc)
+
     this.currentRoom = {
       roomId: this.session.roomId,
       provider,
@@ -231,8 +275,31 @@ export class CollaborationService {
     })
   }
 
+  private attachMemberRolesObserver(doc: Y.Doc): void {
+    if (this.memberRolesHandler) {
+      this.memberRolesHandler()
+      this.memberRolesHandler = null
+    }
+
+    const map = doc.getMap<string>(MEMBER_ROLES_MAP_KEY)
+    const emitSnapshot = () => {
+      const snapshot: Record<string, string> = {}
+      map.forEach((role, userId) => {
+        snapshot[userId] = role
+      })
+      this.emit('memberRoles', snapshot)
+    }
+    map.observe(emitSnapshot)
+    this.memberRolesHandler = () => map.unobserve(emitSnapshot)
+    emitSnapshot()
+  }
+
   private teardownProvider(destroyDoc = false): void {
     this.clearPresenceTimer()
+    if (this.memberRolesHandler) {
+      this.memberRolesHandler()
+      this.memberRolesHandler = null
+    }
     if (this.currentRoom) {
       if (this.statusHandler) {
         this.currentRoom.provider.off('status', this.statusHandler)

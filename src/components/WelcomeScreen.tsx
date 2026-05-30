@@ -1,4 +1,4 @@
-import React, { useMemo, type CSSProperties } from 'react'
+import React, { useMemo, useState, type CSSProperties } from 'react'
 import {
   ArrowRight,
   Bot,
@@ -16,9 +16,11 @@ import {
 } from 'lucide-react'
 import { shouldShowNetworkTips, useCloudHealth } from '../hooks/useCloudHealth'
 import { getPublicAppOrigin } from '../lib/appOrigin'
+import { dismissWelcomeOnboarding, shouldShowWelcomeOnboarding } from '../lib/welcomeOnboarding'
 import { useI18n } from '../i18n'
 import { isDesktopApp } from '../services/desktopBridge'
 import type { TranslationKey } from '../i18n'
+import { InlineStatePanel } from './InlineStatePanel'
 
 interface RecentProject {
   id: string
@@ -54,7 +56,7 @@ function getReleaseBadgeLabel(t: (key: TranslationKey) => string): string {
   if (version && /-rc/i.test(version)) {
     return `${version.replace(/-rc.*/i, '')} RC`
   }
-  if (version && /^1\.0\.\d+(\.\d+)?$/.test(version)) {
+  if (version && /^1\.\d+\.\d+(\.\d+)?$/i.test(version) && !/-rc/i.test(version)) {
     return interpolate(t('welcome.stableBadge'), { version })
   }
   return t('welcome.rcBadge')
@@ -73,6 +75,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   shortcuts: shortcutsProp,
 }) => {
   const { t, locale } = useI18n()
+  const [showOnboarding, setShowOnboarding] = useState(() => shouldShowWelcomeOnboarding())
   const cloudHealth = useCloudHealth()
   const showNetworkTips = shouldShowNetworkTips(cloudHealth, isDesktopApp())
   const appOrigin = getPublicAppOrigin()
@@ -227,6 +230,25 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           </button>
         </header>
 
+        {showOnboarding && (
+          <div className="welcome-onboarding-banner" role="note">
+            <div>
+              <strong>{t('welcome.onboarding.title')}</strong>
+              <p>{t('welcome.onboarding.desc')}</p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                dismissWelcomeOnboarding()
+                setShowOnboarding(false)
+              }}
+            >
+              {t('welcome.onboarding.dismiss')}
+            </button>
+          </div>
+        )}
+
         {cloudHealth.status !== 'loading' && (
           <p
             className={`welcome-cloud-banner ${
@@ -314,7 +336,20 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   </button>
                 ))
               ) : (
-                <div className="welcome-empty-recent">{t('welcome.recentEmpty')}</div>
+                <InlineStatePanel
+                  compact
+                  tone="empty"
+                  icon={FolderOpen}
+                  title={t('welcome.recentEmptyTitle')}
+                  description={t('welcome.recentEmpty')}
+                  primaryAction={{ label: t('welcome.cta.template'), onClick: onNewProject }}
+                  secondaryAction={{
+                    label: t('welcome.cta.manage'),
+                    onClick: onOpenProject,
+                    variant: 'secondary',
+                  }}
+                  className="welcome-recent-empty"
+                />
               )}
             </div>
           </section>
@@ -370,7 +405,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           {appOrigin ? <span>{t('welcome.appUrl', { url: appOrigin })}</span> : null}
           {(() => {
             const version = (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim()
-            if (!version || !/^1\.0\.\d+(\.\d+)?$/.test(version)) return null
+            if (!version || !/^1\.\d+\.\d+(\.\d+)?$/i.test(version)) return null
             return (
               <a
                 href={`https://github.com/FengYue427/ai-ide/releases/tag/v${version}`}

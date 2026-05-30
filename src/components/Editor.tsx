@@ -13,6 +13,7 @@ import { syncMonacoTypeScriptProject } from '../editor/syncTypeScriptProject'
 import type { AIConfig } from '../services/aiService'
 import { useI18n } from '../i18n'
 import { useCollabEditorPresence } from '../hooks/useCollabEditorPresence'
+import { canFormatFile, formatActiveFileInStore } from '../lib/editorFormat'
 import { useIDEStore } from '../store/ideStore'
 import { SkeletonLoader } from './SkeletonLoader'
 
@@ -61,6 +62,7 @@ const Editor: React.FC<EditorProps> = ({
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
+  const formatDocumentNonce = useIDEStore((s) => s.formatDocumentNonce)
   aiConfigRef.current = aiConfig
   allFilesRef.current = allFiles
 
@@ -72,14 +74,23 @@ const Editor: React.FC<EditorProps> = ({
 
   useEffect(() => {
     if (allFiles.length === 0) return
-    syncMonacoTypeScriptProject(
-      allFiles.map((file) => ({
-        name: file.name,
-        content: file.content,
-        language: file.language ?? 'javascript',
-      })),
-    )
-  }, [allFiles])
+
+    const payload = allFiles.map((file) => ({
+      name: file.name,
+      content: file.content,
+      language: file.language ?? 'javascript',
+    }))
+
+    const timer = window.setTimeout(() => {
+      syncMonacoTypeScriptProject(payload, { activeFilename: filename })
+    }, 400)
+
+    return () => window.clearTimeout(timer)
+  }, [allFiles, filename])
+
+  const handleDiagnostics = (markers: MonacoMarker[]) => {
+    onDiagnosticsChange?.(markers)
+  }
 
   useEffect(() => {
     if (!filename || allFiles.length === 0) return
@@ -147,6 +158,27 @@ const Editor: React.FC<EditorProps> = ({
     editorRef.current.focus()
   }, [target])
 
+  useEffect(() => {
+    if (!formatDocumentNonce || readOnly) return
+
+    const runFormat = async () => {
+      const editor = editorRef.current
+      if (editor) {
+        const action = editor.getAction('editor.action.formatDocument')
+        if (action) {
+          await action.run()
+          return
+        }
+      }
+
+      if (canFormatFile({ name: filename, language })) {
+        await formatActiveFileInStore()
+      }
+    }
+
+    void runFormat()
+  }, [formatDocumentNonce, readOnly, filename, language])
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       {isLoading && (
@@ -184,7 +216,7 @@ const Editor: React.FC<EditorProps> = ({
           setIsLoading(false)
           setLoadError(null)
         }}
-        onValidate={(markers) => onDiagnosticsChange?.(markers)}
+        onValidate={handleDiagnostics}
         options={{
           readOnly,
           domReadOnly: readOnly,

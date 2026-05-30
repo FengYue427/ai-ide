@@ -49,6 +49,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const collabM1 = isCollabM1Enabled()
   const { status: connStatus, reconnectAttempt } = useCollabConnection(joined)
+  const [signalingMode, setSignalingMode] = useState<'livekit' | 'yjs-webrtc' | null>(null)
   const [memberRole, setMemberRole] = useState<CollabMemberRole | null>(null)
   const [joinRole, setJoinRole] = useState<'editor' | 'viewer'>('editor')
   const apiMembers = useIDEStore((s) => s.collaborationRoomMembers) ?? []
@@ -84,13 +85,26 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   }, [t])
 
   useEffect(() => {
-    if (joined) {
-      const interval = setInterval(() => {
-        setUsers(collaborationService.getOnlineUsers() as typeof users)
-      }, 2000)
-      return () => clearInterval(interval)
+    if (!joined) {
+      setSignalingMode(null)
+      return
     }
+    setSignalingMode(collaborationService.getSignalingMode())
+  }, [joined, connStatus])
+
+  useEffect(() => {
+    if (!joined) return
+    const interval = setInterval(() => {
+      setUsers(collaborationService.getOnlineUsers() as typeof users)
+    }, 2000)
+    return () => clearInterval(interval)
   }, [joined])
+
+  const signalingModeLabel = (): string => {
+    if (signalingMode === 'livekit') return t('collab.m1.signaling.livekit')
+    if (signalingMode === 'yjs-webrtc') return t('collab.m1.signaling.webrtc')
+    return ''
+  }
 
   useEffect(() => {
     return () => {
@@ -285,7 +299,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
       <div className="collab-hero">
         <div className="collab-hero__head">
           <div className="collab-hero__title">{t('collab.hero.title')}</div>
-          <span className="collab-beta-badge">Beta</span>
+          <span className="collab-beta-badge">{t('collab.betaBadge')}</span>
         </div>
         <p className="collab-hero__desc">{t('collab.hero.desc')}</p>
         <div className="collab-limits">
@@ -343,6 +357,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
                       <input
                         type="radio"
                         name="collab-join-role"
+                        value="editor"
                         checked={joinRole === 'editor'}
                         onChange={() => setJoinRole('editor')}
                       />
@@ -352,6 +367,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
                       <input
                         type="radio"
                         name="collab-join-role"
+                        value="viewer"
                         checked={joinRole === 'viewer'}
                         onChange={() => setJoinRole('viewer')}
                       />
@@ -378,13 +394,29 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
         <div className="collab-stack">
           <div className="collab-panel">
             <div className="collab-connection-row">
-              <span className={`collab-connection collab-connection--${connStatus}`}>
-                {connStatusLabel()}
-              </span>
+              <div className="collab-connection-meta">
+                <span className={`collab-connection collab-connection--${connStatus}`}>
+                  {connStatusLabel()}
+                </span>
+                {signalingMode ? (
+                  <span
+                    className="collab-signaling-badge"
+                    title={t('collab.m1.signaling.label')}
+                    data-testid="collab-signaling-badge"
+                  >
+                    {signalingModeLabel()}
+                  </span>
+                ) : null}
+              </div>
               {memberRole ? (
-                <span className="collab-role-badge">{collabRoleLabel(memberRole, t)}</span>
+                <span className="collab-role-badge" data-testid="collab-role-badge">
+                  {collabRoleLabel(memberRole, t)}
+                </span>
               ) : null}
             </div>
+            {connStatus === 'disconnected' ? (
+              <p className="collab-hint collab-hint--warn">{t('collab.m1.error.signalingFailed')}</p>
+            ) : null}
             <div className="collab-members-title">{t('collab.roomLink')}</div>
             <div className="collab-copy-row">
               <input
@@ -397,7 +429,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
                 <span className="btn-icon-gap">{copied ? t('collab.copied') : t('collab.copyLink')}</span>
               </button>
             </div>
-            <p className="collab-room-id">
+            <p className="collab-room-id" data-testid="collab-room-code">
               {t('collab.roomIdLabel')}<strong>{roomId}</strong>
             </p>
           </div>

@@ -43,6 +43,10 @@ export function AppShell() {
   const activeFile = useIDEStore((s) => s.activeFile)
   const newFileName = useIDEStore((s) => s.newFileName)
   const autoSaveEnabled = useIDEStore((s) => s.autoSaveEnabled)
+  const formatOnSaveEnabled = useIDEStore((s) => s.formatOnSaveEnabled)
+  const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
+  const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
+  const requestFormatDocument = useIDEStore((s) => s.requestFormatDocument)
   const currentUser = useIDEStore((s) => s.currentUser)
   const showSearchPanel = useIDEStore((s) => s.showSearchPanel)
   const setShowSearchPanel = useIDEStore((s) => s.setShowSearchPanel)
@@ -63,6 +67,7 @@ export function AppShell() {
 
   const { toasts, confirmRequest, dismissToast, notify, requestConfirm, resolveConfirm } = useAppFeedback()
   useBackgroundJobsTracker(notify)
+  const ui = useUIActions()
 
   const handleOpenRecentWorkspace = async (workspaceId: string) => {
     setShowWelcome(false)
@@ -104,7 +109,7 @@ export function AppShell() {
   useDesktopBootstrap()
   useBillingSync()
   useSessionGuard(notify, t)
-  useApiErrorFeedback(notify, t)
+  useApiErrorFeedback(notify, t, ui.openSettingsPanel)
   useMcpBootstrap()
   useProjectIndexSync()
   const gitStatus = useGitStatus(fs, files)
@@ -116,11 +121,16 @@ export function AppShell() {
 
   useWorkspacePersistence({
     autoSaveEnabled,
+    formatOnSaveEnabled,
+    activeFile,
+    collaborationRoomId,
+    collaborationMemberRole,
     currentUser,
     files,
     uiLocale: language,
     theme,
     showWelcome,
+    notify,
   })
 
   const { handleFileChange } = useFileEditor({ activeFile, setFiles })
@@ -167,8 +177,6 @@ export function AppShell() {
       t,
     })
 
-  const ui = useUIActions()
-
   useEffect(() => {
     const openPanel = () => ui.openBackgroundJobsPanel()
     window.addEventListener(OPEN_BACKGROUND_JOBS_PANEL_EVENT, openPanel)
@@ -183,6 +191,7 @@ export function AppShell() {
     openNewFileInput: ui.openNewFileInput,
     openSearchPanel: ui.openSearchPanel,
     toggleTerminalPanel: ui.toggleTerminalPanel,
+    onFormat: () => requestFormatDocument(),
   })
 
   const runStatusText = runtimeError

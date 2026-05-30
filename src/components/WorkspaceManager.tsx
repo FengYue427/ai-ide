@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Check, Clock, Cloud, Download, Folder, FolderOpen, HardDrive, RotateCcw, Save, Search, Trash2, Upload, X } from 'lucide-react'
 import { cloudSyncService, type WorkspaceBackup } from '../services/cloudSyncService'
+import { previewWorkspaceCloudSync } from '../lib/workspaceCloudPreview'
+import { workspaceCloudSaveToast } from '../lib/workspaceCloudSaveMessages'
 import {
   deleteWorkspaceEntry,
   listWorkspaceEntries,
@@ -87,32 +89,54 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     [searchQuery, workspaces],
   )
 
+  const cloudSavePreview = useMemo(() => {
+    if (!isLoggedIn || !showSaveForm) return null
+    return previewWorkspaceCloudSync(currentFiles)
+  }, [isLoggedIn, showSaveForm, currentFiles])
+
   const handleSave = async () => {
     if (!saveName.trim()) return
+    const savedName = saveName.trim()
 
     const result = await saveWorkspaceEntry(
-      saveName,
+      savedName,
       currentFiles,
       currentSettings,
       saveDescription,
       isLoggedIn,
     )
+
     if (!result.ok) {
+      const cloudToast =
+        result.cloudResult && !result.cloudResult.ok
+          ? workspaceCloudSaveToast(result.cloudResult, t)
+          : null
+      const detail = cloudToast?.detail ?? result.error
       setMessage({ type: 'error', text: result.error || t('wm.saveFailed') })
-      notify('error', t('wm.saveFailed'), result.error)
+      notify('error', cloudToast?.title ?? t('wm.saveFailed'), detail)
       return
+    }
+
+    if (result.cloudResult) {
+      const partialToast = workspaceCloudSaveToast(result.cloudResult, t)
+      if (partialToast) {
+        notify(partialToast.kind, partialToast.title, partialToast.detail)
+      }
     }
 
     setSaveName('')
     setSaveDescription('')
     setShowSaveForm(false)
+    const syncedCount = result.cloudResult?.ok
+      ? (result.cloudResult.summary?.kept ?? currentFiles.length)
+      : currentFiles.length
     const detail = isLoggedIn
-      ? t('wm.saved.cloud', { count: currentFiles.length })
+      ? t('wm.saved.cloud', { count: syncedCount })
       : t('wm.saved.local', { count: currentFiles.length })
     setMessage({ type: 'success', text: t('wm.saved.flash') })
     notify('success', t('wm.saved'), detail)
     const list = await listWorkspaceEntries(isLoggedIn)
-    const saved = list.find((workspace) => workspace.name === saveName.trim())
+    const saved = list.find((workspace) => workspace.name === savedName)
     if (saved) {
       await recentFilesService.addRecentProject({
         id: saved.id,
@@ -382,6 +406,16 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
                   onChange={(event) => setSaveDescription(event.target.value)}
                   placeholder={t('wm.descPlaceholder')}
                 />
+                {cloudSavePreview ? (
+                  <p className="wm-cloud-preview" role="status">
+                    {cloudSavePreview.hasOmissions
+                      ? t('wm.cloudPreview.partial', {
+                          syncable: cloudSavePreview.syncable,
+                          total: cloudSavePreview.total,
+                        })
+                      : t('wm.cloudPreview.full', { count: cloudSavePreview.total })}
+                  </p>
+                ) : null}
                 <div className="wm-form-actions">
                   <button type="button" className="btn btn-primary" onClick={handleSave} disabled={!saveName.trim()}>
                     {t('common.save')}

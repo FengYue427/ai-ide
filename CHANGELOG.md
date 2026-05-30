@@ -7,6 +7,65 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.4] — 2026-05-30
+
+### Added
+
+- **F1** 工作区云端预览、大文件树折叠（≥250）、413 裁剪与 Toast（延续 1.1.3.9）
+- **F2** Monaco TS **≤80** extra libs、侧栏 **≥80** 文件筛选、诊断错误/警告分级、**format-on-save**、F12 扫描 **≤120** 文件
+- **F3/F4** **ja-JP** UI 语言；Phase 2 前缀 **100%** ja 覆盖；`apiMessages` **ja-JP**
+- **F5** `InlineStatePanel` 统一空态/提示；Welcome 首登引导；503 Toast **跳转设置**；大工作区状态栏 performance hint
+- 脚本：`npm run i18n:ja-bulk` · [I18N_PHASE2_AUDIT.md](docs/I18N_PHASE2_AUDIT.md)
+
+### Changed
+
+- 版本 **1.1.4**（`VITE_APP_VERSION` / health / 欢迎页徽章支持 1.1.x）
+
+### Docs
+
+- [RELEASE_NOTES_v1.1.4.md](docs/RELEASE_NOTES_v1.1.4.md) · [V1.1.4_GA_EXECUTION.md](docs/V1.1.4_GA_EXECUTION.md)
+
+---
+
+## [1.1.3.9] — 2026-05-30
+
+### Added
+
+- 云端 autosave **`sanitizeWorkspaceFilesForCloud`**：跳过二进制/超大文件、限制数量与 body 体积，降低工作区 **413**
+- 部分上传与 413 失败 **Toast**（`workspace.cloudSave.*` i18n）
+- 文档：[WORKSPACE_CLOUD_SAVE.md](docs/WORKSPACE_CLOUD_SAVE.md)
+
+### Changed
+
+- `authService.saveWorkspace` 返回 `WorkspaceCloudSaveResult`；本地 IndexedDB 仍保存完整工作区
+
+---
+
+## [1.1.3.8] — 2026-05-30
+
+### Added
+
+- 协作 e2e：`data-testid`、中英双语选择器、信令徽章断言
+- CI **`e2e-collab`** job（`continue-on-error: true`）
+- [COLLAB_M1_SMOKE.md](docs/COLLAB_M1_SMOKE.md) **Livekit 生产手测** 小节
+
+---
+
+## [1.1.3.7] — 2026-05-30
+
+### Added
+
+- 协作 **角色实时同步**：Yjs Map `collab-member-roles`，主持人 API 成功后 publish；成员经 `useCollabRoleSync` 即时收到角色变更
+- 协作面板 **信令模式** 徽章（Livekit / WebRTC）与断开 hint
+- `formatCollabApiError`：房间 REST 按 HTTP 状态返回可区分文案
+
+### Changed
+
+- 角色轮询降为 **120s** 慢轮询，仅兜底踢人 / 成员校验
+- 更新协作 Beta / hero / M1 limits 中英 copy
+
+---
+
 ## [1.1.3.5] — 2026-05-30
 
 ### Fixed

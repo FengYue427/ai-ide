@@ -180,8 +180,11 @@ export function PanelHost({
   const theme = useIDEStore((s) => s.theme)
   const aiConfig = useIDEStore((s) => s.aiConfig)
   const autoSaveEnabled = useIDEStore((s) => s.autoSaveEnabled)
+  const formatOnSaveEnabled = useIDEStore((s) => s.formatOnSaveEnabled)
   const diffContent = useIDEStore((s) => s.diffContent)
   const diagnosticCount = useIDEStore((s) => s.diagnosticCount)
+  const diagnosticErrors = useIDEStore((s) => s.diagnosticErrors)
+  const diagnosticWarnings = useIDEStore((s) => s.diagnosticWarnings)
   const recentProjects = useIDEStore((s) => s.recentProjects)
   const currentPlan = useIDEStore((s) => s.currentPlan)
   const currentUser = useIDEStore((s) => s.currentUser)
@@ -266,6 +269,8 @@ export function PanelHost({
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAiConfig = useIDEStore((s) => s.setAiConfig)
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
+  const setFormatOnSaveEnabled = useIDEStore((s) => s.setFormatOnSaveEnabled)
+  const requestFormatDocument = useIDEStore((s) => s.requestFormatDocument)
   const setCurrentUser = useIDEStore((s) => s.setCurrentUser)
   const setShowAISettings = useIDEStore((s) => s.setShowAISettings)
 
@@ -404,6 +409,7 @@ export function PanelHost({
         onExportZip={onExportZip}
         onToggleTheme={onToggleTheme}
         onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
+        onFormatDocument={() => requestFormatDocument()}
         onOpenCollaboration={openCollaborationDialog}
         onExportFile={onExportFile}
         onOpenImport={openImportDialog}
@@ -421,6 +427,7 @@ export function PanelHost({
           aiConfig={aiConfig}
           theme={theme}
           autoSaveEnabled={autoSaveEnabled}
+          formatOnSaveEnabled={formatOnSaveEnabled}
           language={language}
           onSaveAIConfig={async (config) => {
             setAiConfig(config)
@@ -430,7 +437,22 @@ export function PanelHost({
           onToggleAutoSave={async () => {
             const newValue = !autoSaveEnabled
             setAutoSaveEnabled(newValue)
-            await unifiedStorage.set('settings', { autosave: newValue }, { layer: StorageLayer.LOCAL })
+            const existing = await unifiedStorage.get<Record<string, unknown>>('settings', {})
+            await unifiedStorage.set(
+              'settings',
+              { ...existing, autosave: newValue },
+              { layer: StorageLayer.LOCAL },
+            )
+          }}
+          onToggleFormatOnSave={async () => {
+            const newValue = !formatOnSaveEnabled
+            setFormatOnSaveEnabled(newValue)
+            const existing = await unifiedStorage.get<Record<string, unknown>>('settings', {})
+            await unifiedStorage.set(
+              'settings',
+              { ...existing, formatOnSave: newValue },
+              { layer: StorageLayer.LOCAL },
+            )
           }}
           onChangeLanguage={(lang) => {
             setLanguage(lang)
@@ -460,6 +482,7 @@ export function PanelHost({
             if (!ok) return
             setTheme('vs-dark')
             setAutoSaveEnabled(true)
+            setFormatOnSaveEnabled(false)
             const defaultAi = {
               provider: 'openai' as const,
               apiKey: '',
@@ -469,7 +492,7 @@ export function PanelHost({
             setAiConfig(defaultAi)
             await unifiedStorage.set('ai-config', defaultAi)
             await unifiedStorage.set('theme', 'vs-dark', { layer: StorageLayer.LOCAL })
-            await unifiedStorage.set('settings', { autosave: true }, { layer: StorageLayer.LOCAL })
+            await unifiedStorage.set('settings', { autosave: true, formatOnSave: false }, { layer: StorageLayer.LOCAL })
             notify('success', t('notify.defaultsRestored'))
           }}
           projectRulesPreview={projectRulesPreview}
@@ -1098,11 +1121,14 @@ export function PanelHost({
         lineCount={files[activeFile]?.content.split('\n').length || 0}
         charCount={files[activeFile]?.content.length || 0}
         diagnosticCount={diagnosticCount}
+        diagnosticErrors={diagnosticErrors}
+        diagnosticWarnings={diagnosticWarnings}
         isWebContainerReady={isWebContainerReady}
         aiProvider={aiConfig.provider}
         isAIConnected={!!aiConfig.apiKey}
         autoSaveEnabled={autoSaveEnabled}
         language={language}
+        workspaceFileCount={files.length}
         onOpenSettings={openSettingsPanel}
         onOpenAISettings={() => setShowAISettings(true)}
         onToggleAutoSave={() => {

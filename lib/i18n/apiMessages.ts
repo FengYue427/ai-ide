@@ -1,4 +1,5 @@
 import type { ApiLocale } from './resolveLocale'
+import { API_MESSAGES_JA } from './apiMessagesJa.generated'
 
 function interpolate(template: string, params?: Record<string, string | number>): string {
   if (!params) return template
@@ -269,6 +270,7 @@ export const API_MESSAGES = {
     'api.collab.memberKicked': 'Member removed from room',
     'api.collab.kickFailed': 'Failed to remove member',
   },
+  'ja-JP': API_MESSAGES_JA,
 } as const
 
 export type ApiMessageKey = keyof (typeof API_MESSAGES)['zh-CN']
@@ -281,6 +283,10 @@ export function apiMessage(
   params?: Record<string, string | number>,
 ): string {
   const table = API_MESSAGES[locale]
-  const raw = table[key] ?? API_MESSAGES['zh-CN'][key] ?? key
+  const raw =
+    table[key] ??
+    API_MESSAGES['en-US'][key] ??
+    API_MESSAGES['zh-CN'][key] ??
+    key
   return interpolate(raw, params)
 }

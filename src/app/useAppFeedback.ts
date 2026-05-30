@@ -11,11 +11,19 @@ export function useAppFeedback() {
   }, [])
 
   const notify = useCallback(
-    (kind: ToastKind, title: string, detail?: string, options?: { onClick?: () => void }) => {
+    (kind: ToastKind, title: string, detail?: string, options?: { onClick?: () => void; actionLabel?: string; onAction?: () => void }) => {
       const id = Date.now() + Math.random()
       setToasts((current) => [
         ...current.slice(-3),
-        { id, kind, title, detail, onClick: options?.onClick },
+        {
+          id,
+          kind,
+          title,
+          detail,
+          onClick: options?.onClick,
+          actionLabel: options?.actionLabel,
+          onAction: options?.onAction,
+        },
       ])
       window.setTimeout(() => dismissToast(id), 3600)
     },

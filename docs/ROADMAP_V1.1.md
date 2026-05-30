@@ -106,7 +106,7 @@ flowchart TB
 | **1.1.1** | 计划系统 GA（Plan/Spec/报告闭环） | [ROADMAP_V1.1.1.x.md](./ROADMAP_V1.1.1.x.md) ✅ |
 | **1.1.2** | 后台 Agent MVP（**大更新**） | [V1.1.2_MASTER_PLAN.md](./V1.1.2_MASTER_PLAN.md) 🔶 |
 | **1.1.3** | 协作 M1 **或** 网关（**大更新**） | [ROADMAP_V1.1.3_COLLAB.md](./ROADMAP_V1.1.3_COLLAB.md) ☐ |
-| **1.1.4** | 发布收官 + 竞品复评 **~2.90** | 待建 |
+| **1.1.4** | 发布收官 + i18n Phase 2 + 竞品 **~2.90** | [V1.1.4_MASTER_PLAN.md](./V1.1.4_MASTER_PLAN.md) ☐ |
 
 > 总表：[ROADMAP_V1.1.x.md](./ROADMAP_V1.1.x.md)
 

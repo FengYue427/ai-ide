@@ -3,7 +3,10 @@ import { interpolate } from '../i18n/translations'
 import { pluginError } from './pluginErrors'
 import type { PluginI18nTable } from './pluginTypes'
 
-const SUPPORTED_LOCALES: Language[] = ['zh-CN', 'en-US']
+const PLUGIN_LOCALES = ['zh-CN', 'en-US'] as const
+type PluginLocale = (typeof PLUGIN_LOCALES)[number]
+
+const SUPPORTED_LOCALES: PluginLocale[] = ['zh-CN', 'en-US']
 const MAX_KEYS_PER_LOCALE = 64
 const MAX_VALUE_LENGTH = 512
 const MAX_TOTAL_CHARS = 8_192
@@ -35,7 +38,7 @@ export function validatePluginI18n(i18n: unknown): string | null {
   if (locales.length === 0) return null
 
   for (const locale of locales) {
-    if (!SUPPORTED_LOCALES.includes(locale as Language)) {
+    if (!SUPPORTED_LOCALES.includes(locale as PluginLocale)) {
       return pluginError('plugin.i18n.unsupportedLocale', { locale })
     }
     const entries = table[locale]
@@ -67,9 +70,11 @@ export function validatePluginI18n(i18n: unknown): string | null {
   return null
 }
 
-/** Compact tables for Worker embedding (zh-CN + en-US only). */
-export function normalizePluginI18n(i18n: PluginI18nTable | undefined): Record<Language, Record<string, string>> {
-  const out: Record<Language, Record<string, string>> = { 'zh-CN': {}, 'en-US': {} }
+/** Compact tables for Worker embedding (zh-CN + en-US; ja-JP uses en-US plugin strings). */
+export function normalizePluginI18n(
+  i18n: PluginI18nTable | undefined,
+): Record<PluginLocale, Record<string, string>> {
+  const out: Record<PluginLocale, Record<string, string>> = { 'zh-CN': {}, 'en-US': {} }
   if (!i18n) return out
   for (const locale of SUPPORTED_LOCALES) {
     const entries = i18n[locale]
@@ -84,8 +89,9 @@ export function createPluginTranslator(
   locale: Language,
 ): (key: string, params?: Record<string, string | number>) => string {
   const tables = normalizePluginI18n(i18n)
+  const pluginLocale: PluginLocale = locale === 'zh-CN' ? 'zh-CN' : 'en-US'
   return (key, params) => {
-    const raw = tables[locale]?.[key] ?? tables['zh-CN']?.[key] ?? key
+    const raw = tables[pluginLocale]?.[key] ?? tables['zh-CN']?.[key] ?? key
     return interpolate(raw, params)
   }
 }

@@ -1,6 +1,6 @@
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../lib/language'
 import { serviceText } from '../lib/serviceI18n'
-import { authService } from './authService'
+import { authService, type WorkspaceCloudSaveResult } from './authService'
 import type { WorkspaceBackup } from './cloudSyncService'
 
 export type WorkspaceSource = 'local' | 'cloud'
@@ -93,12 +93,14 @@ export const remoteWorkspaceService = {
     files: WorkspaceBackup['files'],
     settings: WorkspaceBackup['settings'],
     description?: string,
-  ): Promise<boolean> {
+  ): Promise<WorkspaceCloudSaveResult> {
     const trimmed = name.trim()
-    if (!trimmed || !authService.getCurrentUser()) return false
+    if (!trimmed || !authService.getCurrentUser()) {
+      return { ok: false, reason: 'not_logged_in' }
+    }
 
-    const ok = await authService.saveWorkspace(files, settings, trimmed)
-    if (!ok) return false
+    const saveResult = await authService.saveWorkspace(files, settings, trimmed)
+    if (!saveResult.ok) return saveResult
 
     // Mirror to local IndexedDB for offline fallback
     const { cloudSyncService } = await import('./cloudSyncService')
@@ -113,7 +115,7 @@ export const remoteWorkspaceService = {
     } else {
       await cloudSyncService.saveWorkspace(trimmed, files, settings, description)
     }
-    return true
+    return saveResult
   },
 
   async remove(name: string): Promise<{ ok: boolean; error?: string }> {

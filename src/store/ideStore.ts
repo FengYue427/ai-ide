@@ -86,10 +86,14 @@ export interface IDEState {
   newFileName: string
   theme: EditorTheme
   autoSaveEnabled: boolean
+  formatOnSaveEnabled: boolean
+  formatDocumentNonce: number
   aiConfig: AIConfigState
   diffContent: DiffContent | null
   editorTarget: EditorTarget | null
   diagnosticCount: number
+  diagnosticErrors: number
+  diagnosticWarnings: number
   recentProjects: RecentProject[]
   currentUser: AuthUser | null
   authChecked: boolean
@@ -147,10 +151,13 @@ export interface IDEState {
   setNewFileName: (name: string) => void
   setTheme: (theme: EditorTheme) => void
   setAutoSaveEnabled: (enabled: boolean | ((prev: boolean) => boolean)) => void
+  setFormatOnSaveEnabled: (enabled: boolean | ((prev: boolean) => boolean)) => void
+  requestFormatDocument: () => void
   setAiConfig: (config: AIConfigState | ((prev: AIConfigState) => AIConfigState)) => void
   setDiffContent: (content: DiffContent | null) => void
   setEditorTarget: (target: EditorTarget | null) => void
   setDiagnosticCount: (count: number) => void
+  setDiagnosticSummary: (summary: { errors: number; warnings: number }) => void
   setRecentProjects: (projects: RecentProject[]) => void
   setCurrentUser: (user: AuthUser | null) => void
   setAuthChecked: (checked: boolean) => void
@@ -237,10 +244,14 @@ export const useIDEStore = create<IDEState>()((set) => ({
   newFileName: '',
   theme: 'vs-dark',
   autoSaveEnabled: true,
+  formatOnSaveEnabled: false,
+  formatDocumentNonce: 0,
   aiConfig: defaultAiConfig,
   diffContent: null,
   editorTarget: null,
   diagnosticCount: 0,
+  diagnosticErrors: 0,
+  diagnosticWarnings: 0,
   recentProjects: [],
   currentUser: null,
   authChecked: false,
@@ -293,6 +304,10 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setTheme: (theme) => set({ theme }),
   setAutoSaveEnabled: (enabled) =>
     set((state) => ({ autoSaveEnabled: resolveBoolean(enabled, state.autoSaveEnabled) })),
+  setFormatOnSaveEnabled: (enabled) =>
+    set((state) => ({ formatOnSaveEnabled: resolveBoolean(enabled, state.formatOnSaveEnabled) })),
+  requestFormatDocument: () =>
+    set((state) => ({ formatDocumentNonce: state.formatDocumentNonce + 1 })),
   setAiConfig: (config) =>
     set((state) => ({
       aiConfig: typeof config === 'function' ? config(state.aiConfig) : config,
@@ -300,6 +315,12 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setDiffContent: (diffContent) => set({ diffContent }),
   setEditorTarget: (editorTarget) => set({ editorTarget }),
   setDiagnosticCount: (diagnosticCount) => set({ diagnosticCount }),
+  setDiagnosticSummary: ({ errors, warnings }) =>
+    set({
+      diagnosticErrors: errors,
+      diagnosticWarnings: warnings,
+      diagnosticCount: errors + warnings,
+    }),
   setRecentProjects: (recentProjects) => set({ recentProjects }),
   setCurrentUser: (currentUser) => set({ currentUser }),
   setAuthChecked: (authChecked) => set({ authChecked }),

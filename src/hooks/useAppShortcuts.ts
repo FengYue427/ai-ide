@@ -10,6 +10,7 @@ interface UseAppShortcutsOptions {
   openNewFileInput: () => void
   openSearchPanel: () => void
   toggleTerminalPanel: () => void
+  onFormat?: () => void
 }
 
 export function useAppShortcuts({
@@ -20,6 +21,7 @@ export function useAppShortcuts({
   openNewFileInput,
   openSearchPanel,
   toggleTerminalPanel,
+  onFormat,
 }: UseAppShortcutsOptions) {
   useKeyboardShortcuts(
     getDefaultShortcuts({
@@ -40,6 +42,7 @@ export function useAppShortcuts({
       onSearch: openSearchPanel,
       onCommandPalette: openCommandPalette,
       onToggleTerminal: toggleTerminalPanel,
+      onFormat,
     }),
     true,
   )

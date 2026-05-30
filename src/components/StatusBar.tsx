@@ -2,6 +2,7 @@ import React from 'react'
 import { Activity, AlertCircle, Bot, CheckCircle2, CircleDot, Globe, Save, Settings2, Shield, Sparkles, Zap } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { normalizeLanguage } from '../lib/language'
+import { shouldShowWorkspacePerformanceHint } from '../lib/welcomeOnboarding'
 
 interface StatusBarProps {
   currentFileName: string
@@ -9,6 +10,8 @@ interface StatusBarProps {
   lineCount: number
   charCount: number
   diagnosticCount?: number
+  diagnosticErrors?: number
+  diagnosticWarnings?: number
   isModified?: boolean
   isWebContainerReady: boolean
   gitBranch?: string
@@ -17,6 +20,7 @@ interface StatusBarProps {
   isAIConnected?: boolean
   autoSaveEnabled: boolean
   language: string
+  workspaceFileCount?: number
   activeFeatures?: {
     codeReview?: boolean
     performance?: boolean
@@ -54,6 +58,8 @@ const StatusBar: React.FC<StatusBarProps> = ({
   lineCount,
   charCount,
   diagnosticCount = 0,
+  diagnosticErrors = 0,
+  diagnosticWarnings = 0,
   isModified = false,
   isWebContainerReady,
   gitBranch,
@@ -62,6 +68,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   isAIConnected = false,
   autoSaveEnabled,
   language,
+  workspaceFileCount = 0,
   activeFeatures = {},
   onOpenGitPanel,
   onOpenAISettings,
@@ -70,6 +77,13 @@ const StatusBar: React.FC<StatusBarProps> = ({
 }) => {
   const { t } = useI18n()
   const uiLocale = normalizeLanguage(language)
+  const showPerformanceHint = shouldShowWorkspacePerformanceHint(workspaceFileCount)
+  const localeLabel =
+    uiLocale === 'ja-JP'
+      ? t('status.locale.ja')
+      : uiLocale === 'en-US'
+        ? t('status.locale.en')
+        : t('status.locale.zh')
   const getLanguageLabel = () => {
     const map: Record<string, string> = {
       javascript: 'JavaScript',
@@ -115,14 +129,36 @@ const StatusBar: React.FC<StatusBarProps> = ({
           <span>{t('editor.meta.chars', { count: charCount })}</span>
         </div>
 
-        <div style={{ ...pillStyle, color: diagnosticCount > 0 ? 'var(--warning-color)' : 'var(--success-color)' }}>
+        <div
+          style={{
+            ...pillStyle,
+            color:
+              diagnosticErrors > 0
+                ? 'var(--danger-color)'
+                : diagnosticWarnings > 0
+                  ? 'var(--warning-color)'
+                  : 'var(--success-color)',
+          }}
+        >
           <AlertCircle size={12} />
           <span>
             {diagnosticCount > 0
-              ? t('status.diagnostics.count', { count: diagnosticCount })
+              ? diagnosticErrors > 0 || diagnosticWarnings > 0
+                ? t('status.diagnostics.split', {
+                    errors: diagnosticErrors,
+                    warnings: diagnosticWarnings,
+                  })
+                : t('status.diagnostics.count', { count: diagnosticCount })
               : t('status.diagnostics.none')}
           </span>
         </div>
+
+        {showPerformanceHint && (
+          <div style={{ ...pillStyle, color: 'var(--warning-color)' }} title={t('status.performance.hint')}>
+            <Activity size={12} />
+            <span>{t('status.performance.hint')}</span>
+          </div>
+        )}
 
         {activeFeatures.codeReview && (
           <div style={{ ...pillStyle, color: '#60a5fa' }}>
@@ -164,7 +200,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
         <div style={pillStyle}>
           <Globe size={12} />
-          <span>{uiLocale === 'en-US' ? t('status.locale.en') : t('status.locale.zh')}</span>
+          <span>{localeLabel}</span>
         </div>
 
         <button onClick={onOpenSettings} style={actionButtonStyle} title={t('status.settingsTitle')}>

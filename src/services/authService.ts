@@ -1,4 +1,9 @@
 import { createTranslator } from '../i18n'
+import type { WorkspaceSanitizeSummary } from '../../lib/api/workspacePayload'
+import {
+  sanitizeWorkspaceFilesForCloud,
+  workspaceSanitizeHadOmissions,
+} from '../../lib/api/workspacePayload'
 import { unifiedStorage, StorageLayer } from './unifiedStorage'
 import { readJsonResponse, apiFetch } from './apiUtils'
 import { trackEvent } from '../lib/observability'
@@ -20,6 +25,15 @@ export interface Session {
   user: User
   expires: string
 }
+
+export type WorkspaceCloudSaveResult =
+  | { ok: true; summary?: WorkspaceSanitizeSummary }
+  | {
+      ok: false
+      reason: 'not_logged_in' | 'payload_too_large' | 'http_error' | 'network_error'
+      status?: number
+      summary?: WorkspaceSanitizeSummary
+    }
 
 const USER_KEY = 'user'
 const LOCAL_USERS_KEY = 'ai-ide-local-users'
@@ -308,12 +322,19 @@ class AuthService {
     }
   }
 
-  // 云同步：保存工作区
-  async saveWorkspace(files: any[], settings?: any, name: string = 'default'): Promise<boolean> {
+  // 云同步：保存工作区（大文件在客户端裁剪，避免 413 — v1.1.3.9）
+  async saveWorkspace(
+    files: Array<{ name: string; content: string; language?: string; id?: string }>,
+    settings?: Record<string, unknown>,
+    name: string = 'default',
+  ): Promise<WorkspaceCloudSaveResult> {
     if (!this.currentUser) {
-      // 未登录，保存到本地
-      return false
+      return { ok: false, reason: 'not_logged_in' }
     }
+
+    const sanitized = sanitizeWorkspaceFilesForCloud(
+      files.map(({ name: fileName, content }) => ({ name: fileName, content })),
+    )
 
     try {
       const res = await apiFetch(`/api/workspaces/${encodeURIComponent(name)}`, {
@@ -321,14 +342,30 @@ class AuthService {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          files: JSON.stringify(files),
+          files: JSON.stringify(sanitized.files),
           settings: JSON.stringify(settings ?? {}),
           name,
         }),
       })
-      return res.ok
+
+      if (res.status === 413) {
+        return {
+          ok: false,
+          reason: 'payload_too_large',
+          summary: sanitized.summary,
+        }
+      }
+
+      if (!res.ok) {
+        return { ok: false, reason: 'http_error', status: res.status, summary: sanitized.summary }
+      }
+
+      return {
+        ok: true,
+        summary: workspaceSanitizeHadOmissions(sanitized.summary) ? sanitized.summary : undefined,
+      }
     } catch {
-      return false
+      return { ok: false, reason: 'network_error', summary: sanitized.summary }
     }
   }
 
