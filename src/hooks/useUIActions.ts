@@ -21,6 +21,7 @@ export function useUIActions() {
   const setShowSnippetLibrary = useIDEStore((s) => s.setShowSnippetLibrary)
   const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
   const setShowTerminal = useIDEStore((s) => s.setShowTerminal)
+  const setBottomPanelTab = useIDEStore((s) => s.setBottomPanelTab)
   const setShowWelcome = useIDEStore((s) => s.setShowWelcome)
   const setShowWorkspaceManager = useIDEStore((s) => s.setShowWorkspaceManager)
   const setShowWorkspacePanel = useIDEStore((s) => s.setShowWorkspacePanel)
@@ -69,7 +70,18 @@ export function useUIActions() {
   const openShareDialog = useCallback(() => setShowShareModal(true), [setShowShareModal])
   const openSnippetPanel = useCallback(() => setShowSnippetLibrary(true), [setShowSnippetLibrary])
   const openSubscriptionDialog = useCallback(() => setShowSubscriptionModal(true), [setShowSubscriptionModal])
-  const openTerminalPanel = useCallback(() => setShowTerminal(true), [setShowTerminal])
+  const openTerminalPanel = useCallback(() => {
+    setShowTerminal(true)
+    setBottomPanelTab('terminal')
+  }, [setBottomPanelTab, setShowTerminal])
+  const openScriptsPanel = useCallback(() => {
+    setShowTerminal(true)
+    setBottomPanelTab('scripts')
+  }, [setBottomPanelTab, setShowTerminal])
+  const openTasksPanel = useCallback(() => {
+    setShowTerminal(true)
+    setBottomPanelTab('tasks')
+  }, [setBottomPanelTab, setShowTerminal])
   const openWorkspaceManagerModal = useCallback(() => setShowWorkspaceManager(true), [setShowWorkspaceManager])
   const openWorkspacePanelModal = useCallback(() => setShowWorkspacePanel(true), [setShowWorkspacePanel])
   const openTemplateModal = useCallback(() => setShowTemplateModal(true), [setShowTemplateModal])
@@ -108,6 +120,8 @@ export function useUIActions() {
     openSnippetPanel,
     openSubscriptionDialog,
     openTerminalPanel,
+    openScriptsPanel,
+    openTasksPanel,
     openWorkspaceManagerModal,
     openWorkspacePanelModal,
     openTemplateModal,

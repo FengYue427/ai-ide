@@ -7,11 +7,31 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [1.1.4] — 2026-05-30
+## [1.1.5] — 2026-05-29
 
 ### Added
 
-- **F1** 工作区云端预览、大文件树折叠（≥250）、413 裁剪与 Toast（延续 1.1.3.9）
+- **F1** 交互式终端：`IntegratedTerminal`（xterm.js）、WebContainer **jsh** shell、桌面 line REPL、`terminalSession` Agent 上下文
+- **F2** 底栏 **NPM Scripts** 面板：`NpmScriptsPanel` · `usePackageScripts` · 多 `package.json` 聚合
+- **F3** 底栏 **Tasks** 面板：`.aide/tasks.md` + spec tasks 分组 · 搜索 · Send to Agent
+- **F4** 底栏 UX：三 tab · 拖拽高度 · `bottom-panel-prefs` 持久化 · 视口 resize 钳制
+- **F5** 底栏/Scripts/Tasks **ja-JP**；`Ctrl+`` 终端切换提示；Welcome 快捷键列表
+- 依赖：`@xterm/xterm` · `@xterm/addon-fit`
+
+### Changed
+
+- `BottomPanel` 取代只读 `Terminal` 嵌入 `EditorLayout`；Command Palette / Settings 联动 Scripts / Tasks 面板
+- 版本 **1.1.5**（`VITE_APP_VERSION` / health / 欢迎页徽章）
+
+### Docs
+
+- [RELEASE_NOTES_v1.1.5.md](docs/RELEASE_NOTES_v1.1.5.md) · [V1.1.5_GA_EXECUTION.md](docs/V1.1.5_GA_EXECUTION.md)
+
+---
+
+## [1.1.4] — 2026-05-30
+
+### Added
 - **F2** Monaco TS **≤80** extra libs、侧栏 **≥80** 文件筛选、诊断错误/警告分级、**format-on-save**、F12 扫描 **≤120** 文件
 - **F3/F4** **ja-JP** UI 语言；Phase 2 前缀 **100%** ja 覆盖；`apiMessages` **ja-JP**
 - **F5** `InlineStatePanel` 统一空态/提示；Welcome 首登引导；503 Toast **跳转设置**；大工作区状态栏 performance hint

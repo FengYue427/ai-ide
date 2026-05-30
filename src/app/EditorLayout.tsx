@@ -2,7 +2,7 @@ import { FileText, Shield, Sparkles, TerminalSquare, X } from 'lucide-react'
 import { isTabCompletionEnabled } from '../lib/inlineCompletionPrefs'
 import { useI18n } from '../i18n'
 import Editor from '../components/Editor'
-import Terminal from '../components/Terminal'
+import BottomPanel from '../components/BottomPanel'
 import type { ToastKind } from '../components/FeedbackCenter'
 import { PreviewPanel } from './lazyPanels'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
@@ -10,11 +10,18 @@ import { summarizeMonacoMarkers } from '../editor/summarizeMonacoMarkers'
 import { useIDEStore } from '../store/ideStore'
 
 interface EditorLayoutProps {
+  isReady: boolean
+  isRuntimeLoading: boolean
   isRunning: boolean
   runtimeError: Error | null
-  output: string[]
+  writeFile: (path: string, content: string) => Promise<void>
   onRunCode: () => void
   onClearTerminal: () => void
+  onRunNpmScript: (scriptName: string) => void | Promise<void>
+  onOpenPackageJson?: () => void
+  onOpenTaskFile: (path: string, line?: number) => void
+  onCreateProjectTasks: () => void
+  onSendOpenTasksToAgent: () => void
   onRetryRuntime: () => void
   onFileChange: (value: string | undefined) => void
   onDeleteFile: (index: number) => void
@@ -25,11 +32,18 @@ interface EditorLayoutProps {
 }
 
 export function EditorLayout({
+  isReady,
+  isRuntimeLoading,
   isRunning,
   runtimeError,
-  output,
+  writeFile,
   onRunCode,
   onClearTerminal,
+  onRunNpmScript,
+  onOpenPackageJson,
+  onOpenTaskFile,
+  onCreateProjectTasks,
+  onSendOpenTasksToAgent,
   onRetryRuntime,
   onFileChange,
   onDeleteFile,
@@ -156,7 +170,21 @@ export function EditorLayout({
       </div>
 
       {showTerminal && (
-        <Terminal output={output} isRunning={isRunning} onRun={onRunCode} onClear={onClearTerminal} />
+        <BottomPanel
+          isReady={isReady}
+          isLoading={isRuntimeLoading}
+          isRunning={isRunning}
+          readOnly={collabReadOnly}
+          theme={theme === 'light' ? 'light' : 'vs-dark'}
+          writeFile={writeFile}
+          onRunCode={onRunCode}
+          onClearTerminal={onClearTerminal}
+          onRunNpmScript={onRunNpmScript}
+          onOpenPackageJson={onOpenPackageJson}
+          onOpenTaskFile={onOpenTaskFile}
+          onCreateProjectTasks={onCreateProjectTasks}
+          onSendOpenTasksToAgent={onSendOpenTasksToAgent}
+        />
       )}
 
       {showPreview && (

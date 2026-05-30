@@ -23,6 +23,15 @@ import { useWorkspacePersistence } from '../hooks/useWorkspacePersistence'
 import { useBackgroundJobsTracker } from '../hooks/useBackgroundJobsTracker'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
+import {
+  buildOpenTasksAgentPrompt,
+  collectAllTaskSources,
+  createProjectTasksFileEntry,
+  findTaskFileIndex,
+  listOpenTasksFromGroups,
+  listTaskFileGroups,
+} from '../lib/projectTasksNavigation'
+import { workspaceContextService } from '../services/workspaceContextService'
 import { AppToolbar } from './AppToolbar'
 import { EditorLayout } from './EditorLayout'
 import { FileSidebar } from './FileSidebar'
@@ -60,6 +69,7 @@ export function AppShell() {
   const setShowAISettings = useIDEStore((s) => s.setShowAISettings)
   const setShowTemplateModal = useIDEStore((s) => s.setShowTemplateModal)
   const setShowTerminal = useIDEStore((s) => s.setShowTerminal)
+  const setQueuedChatPrompt = useIDEStore((s) => s.setQueuedChatPrompt)
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
   const setShowWelcome = useIDEStore((s) => s.setShowWelcome)
@@ -117,7 +127,7 @@ export function AppShell() {
   useCollabRoleSync(notify, t)
   useBillingReturn(notify, t)
 
-  usePluginHost({ notify, terminalOutput: output })
+  usePluginHost({ notify })
 
   useWorkspacePersistence({
     autoSaveEnabled,
@@ -247,12 +257,79 @@ export function AppShell() {
         )}
 
         <EditorLayout
+          isReady={isReady}
+          isRuntimeLoading={isRuntimeLoading}
           isRunning={isRunning}
           runtimeError={runtimeError}
-          output={output}
+          writeFile={writeFile}
           onRunCode={handleRunCode}
           onClearTerminal={clearTerminal}
           onRetryRuntime={retryRuntime}
+          onRunNpmScript={handleRunNpmScript}
+          onOpenPackageJson={() => {
+            const idx = files.findIndex(
+              (f) => f.name === 'package.json' || f.name.endsWith('/package.json'),
+            )
+            if (idx >= 0) {
+              setActiveFile(idx)
+              return
+            }
+            setFiles((prev) => {
+              const next = [
+                ...prev,
+                {
+                  name: 'package.json',
+                  content:
+                    '{\n  "name": "project",\n  "scripts": {\n    "dev": "vite",\n    "build": "vite build"\n  }\n}\n',
+                  language: 'json',
+                },
+              ]
+              setActiveFile(next.length - 1)
+              return next
+            })
+          }}
+          onOpenTaskFile={(path, line = 1) => {
+            const idx = findTaskFileIndex(files, path)
+            if (idx >= 0) {
+              setActiveFile(idx)
+            } else {
+              notify('info', t('tasksPanel.fileMissing'), path)
+              return
+            }
+            setEditorTarget({ line, column: 1, nonce: Date.now() })
+          }}
+          onCreateProjectTasks={() => {
+            const idx = findTaskFileIndex(files, createProjectTasksFileEntry(language).name)
+            if (idx >= 0) {
+              setActiveFile(idx)
+            } else {
+              setFiles((prev) => {
+                const next = [...prev, createProjectTasksFileEntry(language)]
+                setActiveFile(next.length - 1)
+                return next
+              })
+            }
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            useIDEStore.getState().setBottomPanelTab('tasks')
+          }}
+          onSendOpenTasksToAgent={() => {
+            const sources = collectAllTaskSources(
+              files.map((file) => ({ name: file.name, content: file.content })),
+              workspaceContextService.getAllFiles(),
+            )
+            const open = listOpenTasksFromGroups(listTaskFileGroups(sources))
+            const prompt = buildOpenTasksAgentPrompt(
+              open.map((task) => ({ path: task.path, text: task.text })),
+              language,
+            )
+            if (!prompt) {
+              notify('info', t('tasksPanel.noOpenTasks'))
+              return
+            }
+            setQueuedChatPrompt(prompt)
+            ui.openChatPanel()
+            notify('success', t('tasksPanel.agentQueued'), t('tasksPanel.agentQueuedDetail', { count: open.length }))
+          }}
           onFileChange={handleFileChange}
           onDeleteFile={handleDeleteFile}
           onOpenSnippetPanel={ui.openSnippetPanel}
@@ -292,6 +369,8 @@ export function AppShell() {
         openBackgroundJobsPanel={ui.openBackgroundJobsPanel}
         openSnippetPanel={ui.openSnippetPanel}
         openTerminalPanel={ui.openTerminalPanel}
+        openScriptsPanel={ui.openScriptsPanel}
+        openTasksPanel={ui.openTasksPanel}
         openPreviewPanel={ui.openPreviewPanel}
         openCodeReviewPanel={ui.openCodeReviewPanel}
         openPerformanceDialog={ui.openPerformanceDialog}

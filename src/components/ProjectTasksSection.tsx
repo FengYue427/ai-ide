@@ -13,9 +13,10 @@ const cardStyle: React.CSSProperties = {
 interface ProjectTasksSectionProps {
   tasks: ProjectTaskItem[]
   onEditTasks: () => void
+  onOpenTasksPanel?: () => void
 }
 
-export function ProjectTasksSection({ tasks, onEditTasks }: ProjectTasksSectionProps) {
+export function ProjectTasksSection({ tasks, onEditTasks, onOpenTasksPanel }: ProjectTasksSectionProps) {
   const { t } = useI18n()
   const summary = summarizeProjectTasks(tasks)
 
@@ -25,7 +26,7 @@ export function ProjectTasksSection({ tasks, onEditTasks }: ProjectTasksSectionP
         <CheckSquare size={18} style={{ marginTop: '2px', flexShrink: 0 }} />
         <div>
           <div style={{ fontWeight: 700, marginBottom: '4px' }}>{t('tasks.title')}</div>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>{t('tasks.desc')}</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>{t('tasks.descPanel')}</div>
         </div>
       </div>
 
@@ -66,9 +67,16 @@ export function ProjectTasksSection({ tasks, onEditTasks }: ProjectTasksSectionP
         <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>{t('tasks.empty')}</div>
       )}
 
-      <button type="button" className="btn btn-secondary" onClick={onEditTasks}>
-        {tasks.length > 0 ? t('tasks.open') : t('tasks.create')}
-      </button>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-secondary" onClick={onEditTasks}>
+          {tasks.length > 0 ? t('tasks.open') : t('tasks.create')}
+        </button>
+        {onOpenTasksPanel ? (
+          <button type="button" className="btn btn-secondary" onClick={onOpenTasksPanel}>
+            {t('tasks.openPanel')}
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 }

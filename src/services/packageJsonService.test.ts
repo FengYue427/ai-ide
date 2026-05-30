@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parsePackageScripts } from './packageJsonService'
+import { collectPackageScriptSources, parsePackageScripts } from './packageJsonService'
 
 describe('parsePackageScripts', () => {
   it('parses scripts from package.json', () => {
@@ -12,12 +12,22 @@ describe('parsePackageScripts', () => {
       },
     ])
     expect(scripts).toEqual([
-      { name: 'dev', command: 'vite' },
       { name: 'build', command: 'tsc && vite build' },
+      { name: 'dev', command: 'vite' },
     ])
   })
 
   it('returns empty for invalid json', () => {
     expect(parsePackageScripts([{ name: 'package.json', content: '{' }])).toEqual([])
+  })
+
+  it('collects editor and workspace sources', () => {
+    const scripts = parsePackageScripts(
+      collectPackageScriptSources(
+        [{ name: 'package.json', content: '{"scripts":{"test":"vitest"}}' }],
+        [{ path: 'nested/package.json', content: '{"scripts":{"lint":"eslint ."}}' }],
+      ),
+    )
+    expect(scripts).toEqual([{ name: 'test', command: 'vitest' }])
   })
 })

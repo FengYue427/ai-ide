@@ -2,10 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { WebContainer } from '@webcontainer/api'
 import { createTranslator } from '../i18n'
 import { registerTerminalBridge } from '../services/terminalBridge'
+import { isDesktopApp } from '../services/desktopBridge'
+import { appendTerminalOutput, getTerminalOutputLines } from '../lib/terminalSession'
 import { getWorkspaceLocale } from '../services/workspaceErrors'
 
 let webcontainerInstance: WebContainer | null = null
 let initPromise: Promise<WebContainer> | null = null
+
+export function getWebContainerInstance(): WebContainer | null {
+  return webcontainerInstance
+}
 
 export interface UseWebContainerReturn {
   isReady: boolean
@@ -122,6 +128,7 @@ export function useWebContainer(): UseWebContainerReturn {
     setIsRunning(true)
     outputRef.current = []
     setOutput([])
+    appendTerminalOutput(`\r\n\x1b[90m$ ${[command, ...args].join(' ')}\x1b[0m\r\n`)
 
     try {
       const process = await instance.spawn(command, args)
@@ -131,6 +138,7 @@ export function useWebContainer(): UseWebContainerReturn {
           if (mountedRef.current) {
             outputRef.current = [...outputRef.current, data]
             setOutput(outputRef.current)
+            appendTerminalOutput(data)
           }
         },
       }))
@@ -151,12 +159,15 @@ export function useWebContainer(): UseWebContainerReturn {
   }, [runCommand])
 
   useEffect(() => {
+    if (isDesktopApp()) return
     if (isReady) {
-      registerTerminalBridge(runCommand, () => outputRef.current)
+      registerTerminalBridge(runCommand, getTerminalOutputLines)
     } else {
       registerTerminalBridge(null)
     }
-    return () => registerTerminalBridge(null)
+    return () => {
+      if (!isDesktopApp()) registerTerminalBridge(null)
+    }
   }, [isReady, runCommand])
 
   const installDependencies = useCallback(async () => {

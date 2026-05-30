@@ -70,6 +70,7 @@ interface SettingsCenterProps {
   onEditProjectRules?: () => void
   projectRulesPreview?: string | null
   onEditProjectTasks?: () => void
+  onOpenTasksPanel?: () => void
   projectTasks?: ProjectTaskItem[]
   onCreateSpec?: (name: string, language: Language) => void
   onOpenSpecsRoot?: () => void
@@ -138,6 +139,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onEditProjectRules,
   projectRulesPreview = null,
   onEditProjectTasks,
+  onOpenTasksPanel,
   projectTasks = [],
   onCreateSpec,
   onOpenSpecsRoot,
@@ -726,7 +728,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   <ProjectRulesSection rulesPreview={projectRulesPreview} onEditRules={onEditProjectRules} />
                 ) : null}
                 {onEditProjectTasks ? (
-                  <ProjectTasksSection tasks={projectTasks} onEditTasks={onEditProjectTasks} />
+                  <ProjectTasksSection
+                    tasks={projectTasks}
+                    onEditTasks={onEditProjectTasks}
+                    onOpenTasksPanel={onOpenTasksPanel}
+                  />
                 ) : null}
                 {onCreateSpec && onOpenSpecsRoot && onOpenSpecTasks && onOpenSpecAcceptance && onRunFirstOpenSpecTask ? (
                   <SpecCatalogSection

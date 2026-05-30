@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createTranslator } from '../i18n'
 import { readStoredApiLanguage } from '../lib/apiLanguage'
+import { BOTTOM_PANEL_DEFAULT_HEIGHT } from '../lib/bottomPanelPrefs'
 import { modelOptions, type AIModel } from '../services/aiService'
 import type { User as AuthUser } from '../services/authService'
 import type { RecentProject } from '../services/recentFilesService'
@@ -47,6 +48,8 @@ export interface PluginModalState {
 }
 
 export type RightPanelView = 'chat' | 'backgroundJobs'
+
+export type BottomPanelTab = 'terminal' | 'scripts' | 'tasks'
 
 function buildDefaultFiles(): FileItem[] {
   const t = createTranslator(readStoredApiLanguage())
@@ -115,6 +118,8 @@ export interface IDEState {
 
   showNewFileInput: boolean
   showTerminal: boolean
+  bottomPanelTab: BottomPanelTab
+  bottomPanelHeight: number
   showTemplateModal: boolean
   showShareModal: boolean
   showGitPanel: boolean
@@ -183,6 +188,8 @@ export interface IDEState {
 
   setShowNewFileInput: (show: BooleanUpdater) => void
   setShowTerminal: (show: BooleanUpdater) => void
+  setBottomPanelTab: (tab: BottomPanelTab) => void
+  setBottomPanelHeight: (height: number) => void
   setShowTemplateModal: (show: boolean) => void
   setShowShareModal: (show: boolean) => void
   setShowGitPanel: (show: BooleanUpdater) => void
@@ -267,6 +274,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
 
   showNewFileInput: false,
   showTerminal: false,
+  bottomPanelTab: 'terminal',
+  bottomPanelHeight: BOTTOM_PANEL_DEFAULT_HEIGHT,
   showTemplateModal: false,
   showShareModal: false,
   showGitPanel: false,
@@ -362,6 +371,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
     set((state) => ({ showNewFileInput: resolveBoolean(value, state.showNewFileInput) })),
   setShowTerminal: (value) =>
     set((state) => ({ showTerminal: resolveBoolean(value, state.showTerminal) })),
+  setBottomPanelTab: (tab) => set({ bottomPanelTab: tab }),
+  setBottomPanelHeight: (height) => set({ bottomPanelHeight: height }),
   setShowTemplateModal: (showTemplateModal) => set({ showTemplateModal }),
   setShowShareModal: (showShareModal) => set({ showShareModal }),
   setShowGitPanel: (value) =>

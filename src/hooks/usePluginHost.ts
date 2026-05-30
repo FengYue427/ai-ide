@@ -4,17 +4,17 @@ import { createPluginContext } from '../services/pluginContext'
 import { createBuiltinPlugins, pluginManager } from '../services/pluginService'
 import { loadInstalledPluginPackages } from '../services/pluginStorage'
 import { runTerminalCommand } from '../services/terminalBridge'
+import { getTerminalOutputLines } from '../lib/terminalSession'
 import { useIDEStore, type PluginToolbarButton } from '../store/ideStore'
 import type { ToastKind } from '../components/FeedbackCenter'
 
 interface UsePluginHostOptions {
   notify: (kind: ToastKind, title: string, detail?: string) => void
-  terminalOutput?: string[]
 }
 
 const BUILTIN_PLUGIN_IDS = ['format-code', 'line-count'] as const
 
-export function usePluginHost({ notify, terminalOutput = [] }: UsePluginHostOptions) {
+export function usePluginHost({ notify }: UsePluginHostOptions) {
   const { language } = useI18n()
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function usePluginHost({ notify, terminalOutput = [] }: UsePluginHostOpti
         useIDEStore.getState().addPluginToolbarButton(button)
       },
       runTerminal: runTerminalCommand,
-      getTerminalHistory: () => terminalOutput,
+      getTerminalHistory: () => getTerminalOutputLines(),
     })
 
     pluginManager.setContext(context)
@@ -60,5 +60,5 @@ export function usePluginHost({ notify, terminalOutput = [] }: UsePluginHostOpti
     return () => {
       pluginManager.getActivePlugins().forEach((plugin) => pluginManager.deactivate(plugin.id))
     }
-  }, [language, notify, terminalOutput])
+  }, [language, notify])
 }

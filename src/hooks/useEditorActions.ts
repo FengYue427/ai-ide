@@ -1,6 +1,8 @@
 import { useCallback } from 'react'
 import { type AIModel } from '../services/aiService'
+import { clearTerminalOutput, isShellInputReady, sendShellInput } from '../lib/terminalSession'
 import { runTerminalCommand } from '../services/terminalBridge'
+import { useIDEStore } from '../store/ideStore'
 import { StorageLayer, unifiedStorage } from '../services/unifiedStorage'
 import type { TranslateFn } from '../i18n'
 import type { FileItem } from '../types/file'
@@ -83,10 +85,16 @@ export function useEditorActions({
     if (!file) return
 
     setShowTerminal(true)
+    useIDEStore.getState().setBottomPanelTab('terminal')
 
     try {
       for (const workspaceFile of files) {
         await writeFile(workspaceFile.name, workspaceFile.content)
+      }
+
+      if (isShellInputReady()) {
+        sendShellInput(`node ${file.name}\r`)
+        return
       }
 
       const exitCode = await runNode(file.name)
@@ -101,9 +109,8 @@ export function useEditorActions({
   }, [activeFile, files, isReady, notify, runNode, setShowTerminal, t, writeFile])
 
   const clearTerminal = useCallback(() => {
-    setShowTerminal(false)
-    window.setTimeout(() => setShowTerminal(true), 10)
-  }, [setShowTerminal])
+    clearTerminalOutput()
+  }, [])
 
   const handleRunNpmScript = useCallback(
     async (scriptName: string) => {
@@ -113,10 +120,16 @@ export function useEditorActions({
       }
 
       setShowTerminal(true)
+      useIDEStore.getState().setBottomPanelTab('terminal')
 
       try {
         for (const workspaceFile of files) {
           await writeFile(workspaceFile.name, workspaceFile.content)
+        }
+
+        if (isShellInputReady()) {
+          sendShellInput(`npm run ${scriptName}\r`)
+          return
         }
 
         const output = await runTerminalCommand(`npm run ${scriptName}`)

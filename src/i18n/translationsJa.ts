@@ -65,6 +65,7 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'welcome.shortcut.run': 'コード実行',
   'welcome.shortcut.commandPalette': 'コマンドパレット',
   'welcome.shortcut.search': '全体検索',
+  'welcome.shortcut.terminal': 'ターミナル表示/非表示',
   'welcome.cloudOk': 'クラウドアカウント利用可能 — サインインしてワークスペースを同期。',
   'welcome.cloudDegraded':
     'クラウド DB 利用不可 — サインインとクラウド同期が失敗する場合があります。BYOK とローカル編集は利用できます。',

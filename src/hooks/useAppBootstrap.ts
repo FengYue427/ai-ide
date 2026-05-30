@@ -7,6 +7,7 @@ import { loadLocalAutosaveFiles } from '../services/workspaceAutosave'
 import { markWorkspaceHydrated, pickRicherFileSet } from '../services/workspaceSession'
 import { useIDEStore } from '../store/ideStore'
 import { unifiedStorage } from '../services/unifiedStorage'
+import { loadBottomPanelPrefs } from '../services/bottomPanelPrefsService'
 import type { FileItem } from '../types/file'
 
 export function useAppBootstrap() {
@@ -16,19 +17,29 @@ export function useAppBootstrap() {
 
   useEffect(() => {
     const loadSettings = async () => {
-      const [savedTheme, savedSettings, savedAIConfig] = await Promise.all([
+      const [savedTheme, savedSettings, savedAIConfig, bottomPanelPrefs] = await Promise.all([
         unifiedStorage.get<'vs-dark' | 'light'>('theme', 'vs-dark'),
         unifiedStorage.get<{ autosave: boolean; formatOnSave?: boolean }>('settings', {
           autosave: true,
           formatOnSave: false,
         }),
         unifiedStorage.get('ai-config', useIDEStore.getState().aiConfig),
+        loadBottomPanelPrefs(),
       ])
 
-      const { setTheme, setAutoSaveEnabled, setFormatOnSaveEnabled, setAiConfig } = useIDEStore.getState()
+      const {
+        setTheme,
+        setAutoSaveEnabled,
+        setFormatOnSaveEnabled,
+        setAiConfig,
+        setBottomPanelTab,
+        setBottomPanelHeight,
+      } = useIDEStore.getState()
       setTheme(savedTheme)
       setAutoSaveEnabled(savedSettings.autosave)
       setFormatOnSaveEnabled(savedSettings.formatOnSave ?? false)
+      setBottomPanelTab(bottomPanelPrefs.tab)
+      setBottomPanelHeight(bottomPanelPrefs.height)
 
       const validModels = modelOptions[savedAIConfig.provider].models
       const model = validModels.includes(savedAIConfig.model) ? savedAIConfig.model : validModels[0]

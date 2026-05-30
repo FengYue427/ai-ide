@@ -106,6 +106,8 @@ interface PanelHostProps {
   openBackgroundJobsPanel?: () => void
   openSnippetPanel: () => void
   openTerminalPanel: () => void
+  openScriptsPanel: () => void
+  openTasksPanel: () => void
   openPreviewPanel: () => void
   openCodeReviewPanel: () => void
   openPerformanceDialog: () => void
@@ -149,6 +151,8 @@ export function PanelHost({
   openBackgroundJobsPanel,
   openSnippetPanel,
   openTerminalPanel,
+  openScriptsPanel,
+  openTasksPanel,
   openPreviewPanel,
   openCodeReviewPanel,
   openPerformanceDialog,
@@ -402,6 +406,8 @@ export function PanelHost({
         onOpenAIChat={openChatPanel}
         onOpenSnippetLibrary={openSnippetPanel}
         onOpenTerminal={openTerminalPanel}
+        onOpenScripts={openScriptsPanel}
+        onOpenTasks={openTasksPanel}
         onOpenPreview={openPreviewPanel}
         onOpenCodeReview={openCodeReviewPanel}
         onOpenPerformance={openPerformanceDialog}
@@ -532,6 +538,10 @@ export function PanelHost({
             }
             setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
             closeSettingsPanel()
+          }}
+          onOpenTasksPanel={() => {
+            closeSettingsPanel()
+            openTasksPanel()
           }}
           onCreateSpec={(name) => {
             const templates = buildSpecTemplateFiles(name)

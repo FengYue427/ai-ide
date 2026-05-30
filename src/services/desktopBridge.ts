@@ -1,6 +1,5 @@
 import { registerTerminalBridge } from './terminalBridge'
-
-let terminalOutputLines: string[] = []
+import { appendTerminalOutput, getTerminalOutputLines } from '../lib/terminalSession'
 
 export function isDesktopApp(): boolean {
   return typeof window !== 'undefined' && Boolean(window.aiIdeDesktop?.isDesktop)
@@ -19,11 +18,12 @@ export function initDesktopTerminalBridge(getProjectRoot: () => string | null): 
     async (command, args) => {
       const root = getProjectRoot()
       const line = [command, ...(args ?? [])].filter(Boolean).join(' ')
+      appendTerminalOutput(`\r\n$ ${line}\r\n`)
       const result = await api.runCommand(root ?? '', line)
-      terminalOutputLines = result.output ? result.output.split(/\r?\n/) : []
+      if (result.output) appendTerminalOutput(`${result.output}\r\n`)
       return result.exitCode
     },
-    () => terminalOutputLines,
+    getTerminalOutputLines,
   )
 }
 

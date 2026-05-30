@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { projectIndexManager } from '../services/projectIndexManager'
-import { parsePackageScripts } from '../services/packageJsonService'
+import { collectPackageScriptSources, parsePackageScripts } from '../services/packageJsonService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
@@ -10,6 +10,7 @@ import {
   AlignLeft,
   Activity,
   Bot,
+  CheckSquare,
   Code2,
   Download,
   Eye,
@@ -56,6 +57,8 @@ interface CommandPaletteProps {
   onOpenAIChat: () => void
   onOpenSnippetLibrary: () => void
   onOpenTerminal: () => void
+  onOpenScripts?: () => void
+  onOpenTasks?: () => void
   onOpenPreview: () => void
   onOpenCodeReview: () => void
   onOpenPerformance: () => void
@@ -101,6 +104,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   onOpenAIChat,
   onOpenSnippetLibrary,
   onOpenTerminal,
+  onOpenScripts,
+  onOpenTasks,
   onOpenPreview,
   onOpenCodeReview,
   onOpenPerformance,
@@ -145,13 +150,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   const npmScriptCommands: Command[] = useMemo(() => {
     if (!onRunNpmScript) return []
 
-    const sources = [
-      ...files.map((file) => ({ name: file.name, content: file.content })),
-      ...workspaceContextService.getAllFiles().map((file) => ({
-        name: file.path,
-        content: file.content,
-      })),
-    ]
+    const sources = collectPackageScriptSources(
+      files.map((file) => ({ name: file.name, content: file.content })),
+      workspaceContextService.getAllFiles(),
+    )
 
     return parsePackageScripts(sources).map((script) => ({
       id: `npm-${script.name}`,
@@ -297,6 +299,34 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           onClose()
         },
       },
+      ...(onOpenScripts
+        ? [
+            {
+              id: 'open-scripts-panel',
+              title: t('command.scriptsPanel'),
+              icon: <Package size={18} />,
+              category: t('command.cat.npm'),
+              action: () => {
+                onOpenScripts()
+                onClose()
+              },
+            } satisfies Command,
+          ]
+        : []),
+      ...(onOpenTasks
+        ? [
+            {
+              id: 'open-tasks-panel',
+              title: t('command.tasksPanel'),
+              icon: <CheckSquare size={18} />,
+              category: t('command.cat.tasks'),
+              action: () => {
+                onOpenTasks()
+                onClose()
+              },
+            } satisfies Command,
+          ]
+        : []),
       {
         id: 'performance',
         title: t('command.performance'),
@@ -481,6 +511,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       onOpenSettings,
       onOpenShare,
       onOpenSnippetLibrary,
+      onOpenScripts,
+      onOpenTasks,
       onOpenTerminal,
       onFormatDocument,
       onRunCode,
