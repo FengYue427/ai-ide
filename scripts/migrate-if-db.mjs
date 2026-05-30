@@ -77,7 +77,7 @@ async function collaborationRoomExists() {
   const { PrismaClient } = await import('@prisma/client')
   const prisma = new PrismaClient()
   try {
-    const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+    const rows = await prisma.$queryRaw`
       SELECT to_regclass('public."CollaborationRoom"') IS NOT NULL AS "exists"
     `
     return Boolean(rows[0]?.exists)
