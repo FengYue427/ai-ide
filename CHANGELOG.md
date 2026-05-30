@@ -7,6 +7,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.3.3] — 2026-05-30
+
+### Added
+
+- 协作 **光标/选区 awareness**：同文件内远程光标与选区高亮（Monaco decorations + Yjs awareness）
+- `updateEditorPresence`（80ms 节流）、`useCollabEditorPresence` hook
+- 协作成员列表显示当前编辑文件
+
+---
+
 ## [1.1.3.2] — 2026-05-29
 
 ### Added

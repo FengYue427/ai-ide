@@ -95,7 +95,7 @@ var FALLBACK, cached;
 var init_releaseVersion = __esm({
   "lib/api/releaseVersion.ts"() {
     "use strict";
-    FALLBACK = "1.1.3.2";
+    FALLBACK = "1.1.3.3";
     cached = null;
   }
 });
@@ -5920,8 +5920,8 @@ var init_translations = __esm({
         "collab.aria": "\u5B9E\u65F6\u534F\u4F5C Beta",
         "collab.hero.title": "\u548C\u522B\u4EBA\u4E00\u8D77\u76EF\u7740\u540C\u4E00\u4E2A\u5DE5\u4F5C\u533A",
         "collab.hero.desc": "\u521B\u5EFA\u623F\u95F4\u6216\u52A0\u5165\u5DF2\u6709\u623F\u95F4\u3002\u52A0\u5165\u540E\u5F53\u524D\u5DE5\u4F5C\u533A\u6587\u4EF6\u4F1A\u901A\u8FC7 Yjs + WebRTC \u540C\u6B65\u3002",
-        "collab.limits": "Beta \u8BF4\u660E\uFF1A\u65E0\u72EC\u7ACB\u4FE1\u4EE4\u670D\u52A1\u5668\u65F6\u4F9D\u8D56\u516C\u5171 WebRTC \u4FE1\u4EE4\uFF1B\u591A\u4EBA\u540C\u65F6\u7F16\u8F91\u53EF\u80FD\u51FA\u73B0\u51B2\u7A81\uFF0C\u7F16\u8F91\u5668\u5149\u6807\u4E0D\u540C\u6B65\u3002\u9002\u5408\u6F14\u793A\u4E0E\u5C0F\u56E2\u961F\u8BD5\u7528\uFF0C\u4E0D\u5EFA\u8BAE\u4F5C\u4E3A\u751F\u4EA7\u7EA7\u534F\u4F5C\u65B9\u6848\u3002",
-        "collab.m1.limits": "M1\uFF1A\u767B\u5F55\u540E\u901A\u8FC7\u670D\u52A1\u7AEF\u623F\u95F4\u52A0\u5165\uFF1B\u4ECD\u4F7F\u7528 Yjs/WebRTC \u540C\u6B65\uFF08\u914D\u7F6E Livekit \u540E\u53EF\u5347\u7EA7\u4FE1\u4EE4\uFF09\u3002",
+        "collab.limits": "Beta \u8BF4\u660E\uFF1A\u65E0\u72EC\u7ACB\u4FE1\u4EE4\u670D\u52A1\u5668\u65F6\u4F9D\u8D56\u516C\u5171 WebRTC \u4FE1\u4EE4\uFF1B\u591A\u4EBA\u540C\u65F6\u7F16\u8F91\u53EF\u80FD\u51FA\u73B0\u51B2\u7A81\u3002v1.1.3.3 \u8D77\u540C\u6587\u4EF6\u5149\u6807/\u9009\u533A\u53EF\u540C\u6B65\u3002\u9002\u5408\u6F14\u793A\u4E0E\u5C0F\u56E2\u961F\u8BD5\u7528\u3002",
+        "collab.m1.limits": "M1\uFF1A\u767B\u5F55\u540E\u901A\u8FC7\u670D\u52A1\u7AEF\u623F\u95F4\u52A0\u5165\uFF1BYjs \u540C\u6B65\u6587\u4EF6\u5185\u5BB9\uFF0C\u540C\u6587\u4EF6\u5149\u6807/\u9009\u533A\u7ECF awareness \u5E7F\u64AD\uFF08Livekit \u6216 y-webrtc\uFF09\u3002",
         "collab.m1.loginRequired": "\u534F\u4F5C M1 \u9700\u8981\u5148\u767B\u5F55",
         "collab.m1.createFailed": "\u521B\u5EFA\u534F\u4F5C\u623F\u95F4\u5931\u8D25",
         "collab.m1.joinFailed": "\u52A0\u5165\u534F\u4F5C\u623F\u95F4\u5931\u8D25",
@@ -7515,8 +7515,8 @@ var init_translations = __esm({
         "collab.aria": "Live collaboration Beta",
         "collab.hero.title": "Work on the same workspace together",
         "collab.hero.desc": "Create or join a room. Files sync over Yjs + WebRTC after you join.",
-        "collab.limits": "Beta: uses public WebRTC signaling without a dedicated server; concurrent edits may conflict and cursors are not synced. For demos and small teams, not production-grade collaboration.",
-        "collab.m1.limits": "M1: join via server-backed rooms when signed in; still uses Yjs/WebRTC sync (Livekit when configured).",
+        "collab.limits": "Beta: uses public WebRTC signaling without a dedicated server; concurrent edits may conflict. Since v1.1.3.3, cursors and selections sync on the same file.",
+        "collab.m1.limits": "M1: join via server-backed rooms when signed in; file sync via Yjs, cursor/selection via awareness (Livekit or y-webrtc).",
         "collab.m1.loginRequired": "Sign in required for Collaboration M1",
         "collab.m1.createFailed": "Failed to create collaboration room",
         "collab.m1.joinFailed": "Failed to join collaboration room",

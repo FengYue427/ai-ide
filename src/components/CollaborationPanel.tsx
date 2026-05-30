@@ -40,7 +40,9 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const [roomId, setRoomId] = useState('')
   const [userName, setUserName] = useState('')
   const [joined, setJoined] = useState(false)
-  const [users, setUsers] = useState<{ user?: { name?: string; color?: string } }[]>([])
+  const [users, setUsers] = useState<
+    { user?: { name?: string; color?: string; cursor?: { filePath?: string } } }[]
+  >([])
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -466,6 +468,12 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
                   <span className="collab-member-name">
                     {user.user?.name || t('collab.unknownUser')}
                     {user.user?.name === userName ? t('collab.you') : ''}
+                    {user.user?.cursor?.filePath ? (
+                      <span className="collab-member-file">
+                        {' · '}
+                        {user.user.cursor.filePath.split('/').pop()}
+                      </span>
+                    ) : null}
                   </span>
                   <Radio size={14} color="#33c58e" />
                 </div>

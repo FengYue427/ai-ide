@@ -164,6 +164,12 @@
   font-weight: 600;
 }
 
+.collab-member-file {
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 .collab-leave-btn {
   border-color: color-mix(in srgb, var(--danger-color) 40%, var(--border-color)) !important;
   color: var(--danger-color) !important;

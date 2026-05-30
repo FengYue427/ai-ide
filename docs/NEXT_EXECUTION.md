@@ -1,21 +1,22 @@
 # 当前执行清单
 
-> **当前世代**：**v1.1.3.x** · **1.1.3.2** Livekit 客户端 ✅  
+> **当前世代**：**v1.1.3.x** · **1.1.3.3** 光标 awareness ✅  
 > **生产**：https://ai-ide-flame.vercel.app
 
 ---
 
-## 1.1.3.2（2026-05-29）
+## 1.1.3.3（2026-05-30）
 
-- API `signaling.mode: livekit` + token/url → **`LivekitYjsProvider`**（Yjs over LiveKit data）
-- 未配置 Livekit 或 token 缺失 → 仍用 **y-webrtc**
+- 同文件 **光标/选区** 经 Yjs awareness 广播，Monaco 远程高亮
+- 协作面板成员行显示当前文件
 - 补丁路线图：[ROADMAP_V1.1.3.x_PATCHES.md](./ROADMAP_V1.1.3.x_PATCHES.md)
 
 ---
 
-## 下一 patch 候选（1.1.3.3）
+## 下一 patch 候选
 
-- 光标/选区 **awareness**（可选）
+- Yjs **角色 awareness** 实时广播（若轮询延迟不可接受）
+- 或进入 **v1.1.4 / v1.2** 规划
 
 ---
 
@@ -23,7 +24,5 @@
 
 | 文档 | 用途 |
 |------|------|
-| [RELEASE_NOTES_v1.1.3.md](./RELEASE_NOTES_v1.1.3.md) | v1.1.3 GA |
+| [COLLAB_M1_AWARENESS.md](./COLLAB_M1_AWARENESS.md) | 光标/选区同步 |
 | [ROADMAP_V1.1.3.x_PATCHES.md](./ROADMAP_V1.1.3.x_PATCHES.md) | 补丁线 |
-| [V1.1.3_ENV.md](./V1.1.3_ENV.md) | 环境变量 |
-| [COLLAB_M1_RECONNECT.md](./COLLAB_M1_RECONNECT.md) | 信令 / 重连 |

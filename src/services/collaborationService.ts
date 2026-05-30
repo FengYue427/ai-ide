@@ -6,6 +6,7 @@ import type { CollabMemberRole } from '../lib/collabPermissions'
 import type { CollabYjsProvider } from './collab/collabYjsProviderTypes'
 import { shouldUseLivekitSignaling } from './collab/collabYjsProviderTypes'
 import { LivekitYjsProvider } from './collab/livekitYjsProvider'
+import type { CollabEditorSelection } from '../lib/collabAwareness'
 
 const FILES_MAP_KEY = 'workspace-files'
 const DEFAULT_SIGNALING = ['wss://signaling.yjs.dev']
@@ -43,6 +44,8 @@ export class CollaborationService {
   private intentionalLeave = false
   private statusHandler: ((event: { connected: boolean }) => void) | null = null
   private awarenessHandler: (() => void) | null = null
+  private presenceTimer: ReturnType<typeof setTimeout> | null = null
+  private pendingPresence: { filePath: string; selection: CollabEditorSelection } | null = null
 
   getConnectionStatus(): CollabConnectionStatus {
     return this.status
@@ -107,6 +110,7 @@ export class CollaborationService {
   leaveRoom(): void {
     this.intentionalLeave = true
     this.clearReconnectTimer()
+    this.clearPresenceTimer()
     this.setStatus('disconnected')
     this.teardownProvider(true)
     this.session = null
@@ -228,6 +232,7 @@ export class CollaborationService {
   }
 
   private teardownProvider(destroyDoc = false): void {
+    this.clearPresenceTimer()
     if (this.currentRoom) {
       if (this.statusHandler) {
         this.currentRoom.provider.off('status', this.statusHandler)
@@ -324,16 +329,57 @@ export class CollaborationService {
     return () => map.unobserve(handler)
   }
 
-  updateCursor(filePath: string, line: number, column: number): void {
+  updateEditorPresence(filePath: string, selection: CollabEditorSelection): void {
     if (!this.currentRoom) return
+    this.pendingPresence = { filePath, selection }
+    if (this.presenceTimer) return
+    this.presenceTimer = setTimeout(() => {
+      this.presenceTimer = null
+      this.flushEditorPresence()
+    }, 80)
+  }
 
+  updateCursor(filePath: string, line: number, column: number): void {
+    this.updateEditorPresence(filePath, {
+      startLine: line,
+      startColumn: column,
+      endLine: line,
+      endColumn: column,
+    })
+  }
+
+  private flushEditorPresence(): void {
+    if (!this.currentRoom || !this.pendingPresence) return
+    const { filePath, selection } = this.pendingPresence
     const user = this.currentRoom.awareness.getLocalState()?.user as Record<string, unknown> | undefined
-    if (user) {
-      this.currentRoom.awareness.setLocalStateField('user', {
-        ...user,
-        cursor: { filePath, line, column },
-      })
+    if (!user) return
+
+    const collapsed =
+      selection.startLine === selection.endLine &&
+      selection.startColumn === selection.endColumn
+
+    this.currentRoom.awareness.setLocalStateField('user', {
+      ...user,
+      cursor: { filePath, line: selection.endLine, column: selection.endColumn },
+      selection: collapsed
+        ? null
+        : {
+            filePath,
+            startLine: selection.startLine,
+            startColumn: selection.startColumn,
+            endLine: selection.endLine,
+            endColumn: selection.endColumn,
+          },
+    })
+    this.pendingPresence = null
+  }
+
+  private clearPresenceTimer(): void {
+    if (this.presenceTimer) {
+      clearTimeout(this.presenceTimer)
+      this.presenceTimer = null
     }
+    this.pendingPresence = null
   }
 
   getOnlineUsers(): unknown[] {

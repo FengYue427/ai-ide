@@ -12,6 +12,7 @@ import { registerCrossFileReferenceProvider } from '../editor/registerCrossFileR
 import { syncMonacoTypeScriptProject } from '../editor/syncTypeScriptProject'
 import type { AIConfig } from '../services/aiService'
 import { useI18n } from '../i18n'
+import { useCollabEditorPresence } from '../hooks/useCollabEditorPresence'
 import { useIDEStore } from '../store/ideStore'
 import { SkeletonLoader } from './SkeletonLoader'
 
@@ -53,13 +54,21 @@ const Editor: React.FC<EditorProps> = ({
   const { t } = useI18n()
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [mountedEditor, setMountedEditor] = useState<MonacoEditorInstance | null>(null)
   const editorRef = useRef<MonacoEditorInstance | null>(null)
   const allFilesRef = useRef(allFiles)
   const aiConfigRef = useRef(aiConfig)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
+  const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
   aiConfigRef.current = aiConfig
   allFilesRef.current = allFiles
+
+  useCollabEditorPresence(
+    mountedEditor,
+    filename,
+    Boolean(collaborationRoomId),
+  )
 
   useEffect(() => {
     if (allFiles.length === 0) return
@@ -171,6 +180,7 @@ const Editor: React.FC<EditorProps> = ({
         loading={null}
         onMount={(editor) => {
           editorRef.current = editor
+          setMountedEditor(editor)
           setIsLoading(false)
           setLoadError(null)
         }}

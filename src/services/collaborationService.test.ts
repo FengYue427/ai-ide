@@ -1,7 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
+const localAwarenessState: Record<string, unknown> = {}
+
 const mockAwareness = {
-  setLocalStateField: vi.fn(),
+  setLocalStateField: vi.fn((key: string, value: unknown) => {
+    localAwarenessState[key] = value
+  }),
+  getLocalState: vi.fn(() => ({ ...localAwarenessState })),
   on: vi.fn(),
   off: vi.fn(),
   getStates: vi.fn(() => new Map()),
@@ -38,6 +43,9 @@ import { LivekitYjsProvider } from './collab/livekitYjsProvider'
 describe('CollaborationService workspace map', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    for (const key of Object.keys(localAwarenessState)) {
+      delete localAwarenessState[key]
+    }
     mockAwareness.getStates.mockReturnValue(new Map())
   })
 
@@ -135,6 +143,36 @@ describe('CollaborationService workspace map', () => {
 
     expect(WebrtcProvider).toHaveBeenCalled()
     expect(LivekitYjsProvider).not.toHaveBeenCalled()
+    service.leaveRoom()
+  })
+
+  it('updateEditorPresence publishes cursor and selection to awareness', () => {
+    vi.useFakeTimers()
+    const service = new CollaborationService()
+    service.joinRoom('presence-room', 'Alice', '#58a6ff')
+
+    service.updateEditorPresence('index.js', {
+      startLine: 1,
+      startColumn: 1,
+      endLine: 2,
+      endColumn: 4,
+    })
+    vi.advanceTimersByTime(80)
+
+    expect(mockAwareness.setLocalStateField).toHaveBeenLastCalledWith('user', {
+      name: 'Alice',
+      color: '#58a6ff',
+      cursor: { filePath: 'index.js', line: 2, column: 4 },
+      selection: {
+        filePath: 'index.js',
+        startLine: 1,
+        startColumn: 1,
+        endLine: 2,
+        endColumn: 4,
+      },
+    })
+
+    vi.useRealTimers()
     service.leaveRoom()
   })
 })
