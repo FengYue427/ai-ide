@@ -63,7 +63,26 @@ export async function buildCollabSignalingForUser(
   userId: string,
   displayName?: string,
 ): Promise<CollabSignalingPayload> {
-  return appendLivekitToken(buildCollabSignaling(room), userId, displayName)
+  const base = buildCollabSignaling(room)
+  try {
+    const withToken = await appendLivekitToken(base, userId, displayName)
+    if (withToken.mode === 'livekit' && !withToken.livekitToken) {
+      console.warn('[Collab] Livekit configured but token missing — falling back to yjs-webrtc')
+      return {
+        mode: 'yjs-webrtc',
+        roomChannel: `ai-ide-${room.code}`,
+        signalingUrls: base.signalingUrls,
+      }
+    }
+    return withToken
+  } catch (error) {
+    console.error('[Collab] buildCollabSignalingForUser failed:', error)
+    return {
+      mode: 'yjs-webrtc',
+      roomChannel: `ai-ide-${room.code}`,
+      signalingUrls: base.signalingUrls,
+    }
+  }
 }
 
 export function serializeCollabMember(member: CollaborationMember) {

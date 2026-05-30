@@ -18,19 +18,24 @@ export async function createLivekitAccessToken(
   const apiSecret = process.env.LIVEKIT_API_SECRET?.trim()
   if (!apiKey || !apiSecret) return null
 
-  const token = new AccessToken(apiKey, apiSecret, {
-    identity,
-    name: displayName ?? identity,
-    ttl: 2 * 60 * 60,
-  })
-  token.addGrant({
-    roomJoin: true,
-    room: roomName,
-    canPublish: true,
-    canSubscribe: true,
-    canPublishData: true,
-  })
-  return token.toJwt()
+  try {
+    const token = new AccessToken(apiKey, apiSecret, {
+      identity,
+      name: displayName ?? identity,
+      ttl: 2 * 60 * 60,
+    })
+    token.addGrant({
+      roomJoin: true,
+      room: roomName,
+      canPublish: true,
+      canSubscribe: true,
+      canPublishData: true,
+    })
+    return await token.toJwt()
+  } catch (error) {
+    console.error('[Collab] Livekit token generation failed:', error)
+    return null
+  }
 }
 
 export async function appendLivekitToken(

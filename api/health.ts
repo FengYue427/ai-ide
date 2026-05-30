@@ -42,6 +42,7 @@ export async function GET() {
     }
 
     let prismaRouter: 'connected' | 'unavailable' | 'skipped' = 'skipped'
+    let collabSchema: 'ready' | 'missing' | 'unknown' = 'unknown'
     try {
       const { prisma } = await import('../src/lib/prisma')
       await prisma.$queryRaw`SELECT 1`
@@ -49,6 +50,19 @@ export async function GET() {
     } catch (prismaError) {
       prismaRouter = 'unavailable'
       console.error('[api/health] prisma router probe failed:', prismaError)
+    }
+
+    if (isNeon) {
+      try {
+        const { neon } = await import('@neondatabase/serverless')
+        const sql = neon(safeUrl)
+        const rows = await sql`
+          SELECT to_regclass('public."CollaborationRoom"') IS NOT NULL AS "exists"
+        `
+        collabSchema = rows[0]?.exists ? 'ready' : 'missing'
+      } catch (collabProbeError) {
+        console.error('[api/health] collab schema probe failed:', collabProbeError)
+      }
     }
 
     return Response.json({
@@ -66,6 +80,7 @@ export async function GET() {
       checks: {
         authSecretConfigured: Boolean(process.env.AUTH_SECRET?.trim()),
         prismaRouter,
+        collabSchema,
       },
     })
   } catch (error) {

@@ -56,7 +56,14 @@ export async function POST(req: Request) {
       201,
     )
   } catch (error) {
-    console.error('[Collab] Create room error:', error)
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? String((error as { code: unknown }).code)
+        : 'unknown'
+    console.error('[Collab] Create room error:', code, error)
+    if (code === 'P2021') {
+      return localizedErrorResponse(req, 'api.collab.createFailed', 503)
+    }
     return localizedErrorResponse(req, 'api.collab.createFailed', 500)
   }
 }
