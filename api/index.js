@@ -95,7 +95,7 @@ var FALLBACK, cached;
 var init_releaseVersion = __esm({
   "lib/api/releaseVersion.ts"() {
     "use strict";
-    FALLBACK = "1.1.3";
+    FALLBACK = "1.1.3.1";
     cached = null;
   }
 });
@@ -5942,6 +5942,10 @@ var init_translations = __esm({
         "collab.kick": "\u79FB\u51FA",
         "collab.m1.roleUpdateFailed": "\u66F4\u65B0\u6210\u5458\u89D2\u8272\u5931\u8D25",
         "collab.m1.kickFailed": "\u79FB\u51FA\u6210\u5458\u5931\u8D25",
+        "collab.m1.kickedTitle": "\u5DF2\u79FB\u51FA\u534F\u4F5C\u623F\u95F4",
+        "collab.m1.kicked": "\u4E3B\u6301\u4EBA\u5DF2\u5C06\u4F60\u79FB\u51FA\u623F\u95F4\uFF0C\u534F\u4F5C\u8FDE\u63A5\u5DF2\u65AD\u5F00\u3002",
+        "collab.m1.roleChangedTitle": "\u534F\u4F5C\u89D2\u8272\u5DF2\u66F4\u65B0",
+        "collab.m1.roleChanged": "\u5F53\u524D\u8EAB\u4EFD\uFF1A{role}",
         "collab.yourName": "\u4F60\u7684\u540D\u5B57",
         "collab.roomId": "\u623F\u95F4 ID",
         "collab.roomPlaceholder": "\u7559\u7A7A\u5219\u81EA\u52A8\u521B\u5EFA\u4E00\u4E2A\u65B0\u623F\u95F4",
@@ -7533,6 +7537,10 @@ var init_translations = __esm({
         "collab.kick": "Remove",
         "collab.m1.roleUpdateFailed": "Failed to update member role",
         "collab.m1.kickFailed": "Failed to remove member",
+        "collab.m1.kickedTitle": "Removed from collaboration room",
+        "collab.m1.kicked": "The host removed you from the room. Collaboration has ended.",
+        "collab.m1.roleChangedTitle": "Collaboration role updated",
+        "collab.m1.roleChanged": "You are now: {role}",
         "collab.yourName": "Your name",
         "collab.roomId": "Room ID",
         "collab.roomPlaceholder": "Leave empty to create a new room",

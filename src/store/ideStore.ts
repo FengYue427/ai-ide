@@ -96,6 +96,13 @@ export interface IDEState {
   currentPlan: string
   collaborationRoomId: string | null
   collaborationMemberRole: 'host' | 'editor' | 'viewer' | null
+  collaborationRoomMembers: Array<{
+    id: string
+    userId: string
+    role: string
+    joinedAt: string
+    leftAt: string | null
+  }> | null
   queuedChatPrompt: string | null
   queuedSpecBackfill: QueuedSpecBackfill | null
   queuedSpecExecutions: QueuedSpecExecution[]
@@ -150,6 +157,15 @@ export interface IDEState {
   setCurrentPlan: (plan: string) => void
   setCollaborationRoomId: (roomId: string | null) => void
   setCollaborationMemberRole: (role: 'host' | 'editor' | 'viewer' | null) => void
+  setCollaborationRoomMembers: (
+    members: Array<{
+      id: string
+      userId: string
+      role: string
+      joinedAt: string
+      leftAt: string | null
+    }> | null,
+  ) => void
   setQueuedChatPrompt: (prompt: string | null) => void
   setQueuedSpecBackfill: (backfill: QueuedSpecBackfill | null) => void
   setQueuedSpecExecutions: (items: QueuedSpecExecution[]) => void
@@ -231,6 +247,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   currentPlan: 'free',
   collaborationRoomId: null,
   collaborationMemberRole: null,
+  collaborationRoomMembers: null,
   queuedChatPrompt: null,
   queuedSpecBackfill: null,
   queuedSpecExecutions: [],
@@ -290,9 +307,10 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setCollaborationRoomId: (collaborationRoomId) =>
     set({
       collaborationRoomId,
-      ...(collaborationRoomId ? {} : { collaborationMemberRole: null }),
+      ...(collaborationRoomId ? {} : { collaborationMemberRole: null, collaborationRoomMembers: null }),
     }),
   setCollaborationMemberRole: (collaborationMemberRole) => set({ collaborationMemberRole }),
+  setCollaborationRoomMembers: (collaborationRoomMembers) => set({ collaborationRoomMembers }),
   setQueuedChatPrompt: (queuedChatPrompt) => set({ queuedChatPrompt }),
   setQueuedSpecBackfill: (queuedSpecBackfill) => set({ queuedSpecBackfill }),
   setQueuedSpecExecutions: (queuedSpecExecutions) => set({ queuedSpecExecutions }),

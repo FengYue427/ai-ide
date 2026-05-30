@@ -13,6 +13,7 @@ import { useFileEditor } from '../hooks/useFileEditor'
 import { useUIActions } from '../hooks/useUIActions'
 import { useWebContainer } from '../hooks/useWebContainer'
 import { useCollaborationSync } from '../hooks/useCollaborationSync'
+import { useCollabRoleSync } from '../hooks/useCollabRoleSync'
 import { useGitStatus } from '../hooks/useGitStatus'
 import { useMcpBootstrap } from '../hooks/useMcpBootstrap'
 import { useProjectIndexSync } from '../hooks/useProjectIndexSync'
@@ -108,6 +109,7 @@ export function AppShell() {
   useProjectIndexSync()
   const gitStatus = useGitStatus(fs, files)
   useCollaborationSync()
+  useCollabRoleSync(notify, t)
   useBillingReturn(notify, t)
 
   usePluginHost({ notify, terminalOutput: output })

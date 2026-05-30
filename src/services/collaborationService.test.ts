@@ -66,4 +66,18 @@ describe('CollaborationService workspace map', () => {
 
     service.leaveRoom()
   })
+
+  it('applyMemberRole toggles write without reconnecting', () => {
+    const service = new CollaborationService()
+    service.joinRoom({
+      roomId: 'role-room',
+      userName: 'User',
+      userColor: '#58a6ff',
+      memberRole: 'viewer',
+    })
+    expect(service.canWriteToRoom()).toBe(false)
+    service.applyMemberRole('editor')
+    expect(service.canWriteToRoom()).toBe(true)
+    service.leaveRoom()
+  })
 })

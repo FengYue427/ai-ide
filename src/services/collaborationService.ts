@@ -2,6 +2,7 @@ import * as Y from 'yjs'
 import { WebrtcProvider } from 'y-webrtc'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
 import type { CollabJoinOptions, CollabConnectionStatus, CollabStatusEvent } from './collaborationTypes'
+import type { CollabMemberRole } from '../lib/collabPermissions'
 
 const FILES_MAP_KEY = 'workspace-files'
 const DEFAULT_SIGNALING = ['wss://signaling.yjs.dev']
@@ -112,6 +113,12 @@ export class CollaborationService {
 
   getCurrentRoom(): CollaborationRoom | null {
     return this.currentRoom
+  }
+
+  /** Update write permission when server role changes (v1.1.3.1). */
+  applyMemberRole(role: CollabMemberRole | null | undefined): void {
+    if (!this.session) return
+    this.session.canWrite = collabRoleCanWrite(role)
   }
 
   private attachProvider(): void {

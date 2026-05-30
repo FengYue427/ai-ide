@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Radio, Share2, Users } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { isCollabM1Enabled } from '../lib/collabM1Features'
-import { isCollabMemberRole, type CollabMemberRole } from '../lib/collabPermissions'
+import { applyCollabRoomSnapshot, endCollabSession } from '../lib/collabRoomState'
+import type { CollabMemberRole } from '../lib/collabPermissions'
 import { authService } from '../services/authService'
 import { useCollabConnection } from '../hooks/useCollabConnection'
 import {
@@ -48,7 +49,8 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const { status: connStatus, reconnectAttempt } = useCollabConnection(joined)
   const [memberRole, setMemberRole] = useState<CollabMemberRole | null>(null)
   const [joinRole, setJoinRole] = useState<'editor' | 'viewer'>('editor')
-  const [apiMembers, setApiMembers] = useState<CollabRoomClient['members']>([])
+  const apiMembers = useIDEStore((s) => s.collaborationRoomMembers) ?? []
+  const storeMemberRole = useIDEStore((s) => s.collaborationMemberRole)
 
   useEffect(() => {
     unifiedStorage.get<string>(COLLAB_USERNAME_KEY, '').then((saved) => {
@@ -59,6 +61,24 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
 
     const roomFromUrl = new URLSearchParams(window.location.search).get('room')
     if (roomFromUrl) setRoomId(roomFromUrl)
+  }, [t])
+
+  useEffect(() => {
+    if (storeMemberRole) setMemberRole(storeMemberRole)
+  }, [storeMemberRole])
+
+  useEffect(() => {
+    const onEnded = (event: Event) => {
+      const reason = (event as CustomEvent<{ reason?: string }>).detail?.reason
+      setJoined(false)
+      setUsers([])
+      setMemberRole(null)
+      if (reason === 'kicked') {
+        setError(t('collab.m1.kicked'))
+      }
+    }
+    window.addEventListener('collab-session-ended', onEnded)
+    return () => window.removeEventListener('collab-session-ended', onEnded)
   }, [t])
 
   useEffect(() => {
@@ -101,12 +121,8 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
 
   const applyRoomPayload = (room: CollabRoomClient) => {
     const me = authService.getCurrentUser()
-    const myMember = room.members.find((m) => m.userId === me?.id)
-    const roleRaw = myMember?.role ?? (room.hostId === me?.id ? 'host' : 'editor')
-    const role: CollabMemberRole = isCollabMemberRole(roleRaw) ? roleRaw : 'editor'
+    const role = applyCollabRoomSnapshot(room, me?.id)
     setMemberRole(role)
-    setApiMembers(room.members)
-    useIDEStore.getState().setCollaborationMemberRole(role)
     return role
   }
 
@@ -187,13 +203,10 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     if (collabM1 && code && authService.getCurrentUser()) {
       void leaveCollabRoom(code, t)
     }
-    collaborationService.leaveRoom()
-    useIDEStore.getState().setCollaborationRoomId(null)
-    useIDEStore.getState().setCollaborationMemberRole(null)
+    endCollabSession('left')
     setJoined(false)
     setUsers([])
     setMemberRole(null)
-    setApiMembers([])
   }
 
   const handleMemberRoleChange = async (userId: string, role: 'editor' | 'viewer') => {

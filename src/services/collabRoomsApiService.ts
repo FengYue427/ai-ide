@@ -46,6 +46,25 @@ export async function createCollabRoom(
   return { room: json?.room }
 }
 
+export async function fetchCollabRoom(
+  code: string,
+  t?: TranslateFn,
+): Promise<{ room?: CollabRoomClient; error?: string; status?: number }> {
+  const response = await apiFetch(`/api/collab/rooms/${encodeURIComponent(code)}`, {
+    method: 'GET',
+    credentials: 'include',
+  })
+  const json = await readJsonResponse<{ room?: CollabRoomClient; message?: string }>(response)
+  if (!response.ok) {
+    return {
+      status: response.status,
+      error:
+        pickApiResponseMessage(json ?? undefined, t) ?? json?.message ?? `HTTP ${response.status}`,
+    }
+  }
+  return { room: json?.room, status: response.status }
+}
+
 export async function leaveCollabRoom(
   code: string,
   t?: TranslateFn,

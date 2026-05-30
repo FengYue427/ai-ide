@@ -7,6 +7,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.3.1] — 2026-05-29
+
+### Added
+
+- 协作 **角色轮询同步**（≈20s / 回到前台）：Host 改角色后成员自动切换只读/编辑
+- 被 **踢出** 时 Toast + 自动断开 Yjs；`fetchCollabRoom` + `useCollabRoleSync`
+- 文档：[ROADMAP_V1.1.3.x_PATCHES.md](docs/ROADMAP_V1.1.3.x_PATCHES.md)
+
+---
+
 ## [1.1.3] — 2026-05-29（协作 M1）
 
 ### Added
