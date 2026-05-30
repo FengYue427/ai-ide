@@ -95,7 +95,7 @@ var FALLBACK, cached;
 var init_releaseVersion = __esm({
   "lib/api/releaseVersion.ts"() {
     "use strict";
-    FALLBACK = "1.1.3.1";
+    FALLBACK = "1.1.3.2";
     cached = null;
   }
 });
@@ -9809,7 +9809,8 @@ async function createLivekitAccessToken(roomName, identity, displayName) {
     roomJoin: true,
     room: roomName,
     canPublish: true,
-    canSubscribe: true
+    canSubscribe: true,
+    canPublishData: true
   });
   return token.toJwt();
 }

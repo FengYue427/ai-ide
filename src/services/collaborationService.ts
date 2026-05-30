@@ -3,6 +3,9 @@ import { WebrtcProvider } from 'y-webrtc'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
 import type { CollabJoinOptions, CollabConnectionStatus, CollabStatusEvent } from './collaborationTypes'
 import type { CollabMemberRole } from '../lib/collabPermissions'
+import type { CollabYjsProvider } from './collab/collabYjsProviderTypes'
+import { shouldUseLivekitSignaling } from './collab/collabYjsProviderTypes'
+import { LivekitYjsProvider } from './collab/livekitYjsProvider'
 
 const FILES_MAP_KEY = 'workspace-files'
 const DEFAULT_SIGNALING = ['wss://signaling.yjs.dev']
@@ -11,7 +14,7 @@ const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 15000]
 
 export interface CollaborationRoom {
   roomId: string
-  provider: WebrtcProvider
+  provider: CollabYjsProvider
   doc: Y.Doc
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   awareness: any
@@ -23,6 +26,9 @@ type PersistedSession = {
   userColor: string
   signalingUrls: string[]
   webrtcRoomName: string
+  signalingMode: 'yjs-webrtc' | 'livekit'
+  livekitUrl?: string
+  livekitToken?: string
   enableReconnect: boolean
   canWrite: boolean
 }
@@ -78,12 +84,17 @@ export class CollaborationService {
     const webrtcRoomName =
       options.signaling?.roomChannel?.trim() || `ai-ide-${options.roomId}`
 
+    const useLivekit = shouldUseLivekitSignaling(options.signaling)
+
     this.session = {
       roomId: options.roomId,
       userName: options.userName,
       userColor: options.userColor,
       signalingUrls,
       webrtcRoomName,
+      signalingMode: useLivekit ? 'livekit' : 'yjs-webrtc',
+      livekitUrl: options.signaling?.livekitUrl?.trim(),
+      livekitToken: options.signaling?.livekitToken?.trim(),
       enableReconnect: options.enableReconnect !== false,
       canWrite: collabRoleCanWrite(options.memberRole),
     }
@@ -127,9 +138,7 @@ export class CollaborationService {
     this.setStatus(this.reconnectAttempt > 0 ? 'reconnecting' : 'connecting')
 
     const doc = this.currentRoom?.doc ?? new Y.Doc()
-    const provider = new WebrtcProvider(this.session.webrtcRoomName, doc, {
-      signaling: this.session.signalingUrls,
-    })
+    const provider = this.createYjsProvider(doc)
 
     provider.awareness.setLocalStateField('user', {
       name: this.session.userName,
@@ -196,6 +205,26 @@ export class CollaborationService {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
+  }
+
+  private createYjsProvider(doc: Y.Doc): CollabYjsProvider {
+    if (!this.session) {
+      throw new Error('No collaboration session')
+    }
+    if (
+      this.session.signalingMode === 'livekit' &&
+      this.session.livekitUrl &&
+      this.session.livekitToken
+    ) {
+      return new LivekitYjsProvider({
+        url: this.session.livekitUrl,
+        token: this.session.livekitToken,
+        doc,
+      })
+    }
+    return new WebrtcProvider(this.session.webrtcRoomName, doc, {
+      signaling: this.session.signalingUrls,
+    })
   }
 
   private teardownProvider(destroyDoc = false): void {

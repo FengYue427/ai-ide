@@ -28,6 +28,7 @@ export async function createLivekitAccessToken(
     room: roomName,
     canPublish: true,
     canSubscribe: true,
+    canPublishData: true,
   })
   return token.toJwt()
 }

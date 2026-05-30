@@ -7,6 +7,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.3.2] — 2026-05-29
+
+### Added
+
+- 协作 **Livekit 客户端**：API 返回 `signaling.mode: livekit` 且含 `livekitUrl` + `livekitToken` 时，Yjs 经 LiveKit data channel 同步（`LivekitYjsProvider`）；否则仍走 y-webrtc
+- 依赖：`livekit-client`
+- JWT grant 增加 `canPublishData`
+
+---
+
 ## [1.1.3.1] — 2026-05-29
 
 ### Added

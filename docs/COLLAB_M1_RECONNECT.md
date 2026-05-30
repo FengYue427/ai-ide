@@ -13,14 +13,14 @@
 |------|------|
 | `idle` | 未加入 |
 | `connecting` | 首次连接信令 |
-| `connected` | WebRTC 已连通 |
+| `connected` | Yjs 信令已连通（Livekit 或 y-webrtc） |
 | `reconnecting` | 断线后退避重连 |
 | `disconnected` | 主动离开或放弃 |
 
 - 退避间隔：`1s → 2s → 4s → 8s → 15s`（合计约 30s，满足验收「断网 30s 内重连」）
-- 重连时 **保留同一 `Y.Doc`**，仅重建 `WebrtcProvider`
+- 重连时 **保留同一 `Y.Doc`**，仅重建 Yjs provider（`LivekitYjsProvider` 或 `WebrtcProvider`）
 - `window.online` 与 `visibilitychange`（回到前台）触发 `tryReconnect()`
-- 加入时优先使用 API 返回的 `room.signaling.signalingUrls` 与 `roomChannel`
+- 加入时优先使用 API 返回的 `room.signaling`：`mode: livekit` + token/url → Livekit；否则 `signalingUrls` + `roomChannel` → y-webrtc
 
 UI：`CollaborationPanel` 显示连接状态与成员角色；离开房间时调用 `POST /api/collab/rooms/:code/leave`。
 
@@ -40,7 +40,7 @@ COLLAB_SIGNALING_URL=wss://your-signaling.example
 # 或逗号分隔多节点
 COLLAB_SIGNALING_URLS=wss://a.example,wss://b.example
 
-# 可选 Livekit（配置后 API 返回 livekitToken；客户端仍走 y-webrtc 直至 F4+）
+# 可选 Livekit（配置后 API 返回 livekitToken；客户端 **1.1.3.2+** 走 Livekit data channel）
 LIVEKIT_URL=
 LIVEKIT_API_KEY=
 LIVEKIT_API_SECRET=
@@ -59,7 +59,7 @@ VITE_COLLAB_SIGNALING_URL=wss://your-signaling.example
 1. A 创建房间，B 通过 `?room=` 加入 → 双方状态 `connected`
 2. A 断网 10s 再恢复 → 30s 内回到 `connected`，文件 map 仍在
 3. A 点击离开 → B 仍在线；A 再次加入需重新 join API
-4. 配置 `LIVEKIT_*` 后 join 响应含 `signaling.mode: livekit` 与 `livekitToken`（JWT 字符串）
+4. 配置 `LIVEKIT_*` 后 join 响应含 `signaling.mode: livekit` 与 `livekitToken`；双浏览器编辑同一文件应经 Livekit 同步
 
 ---
 

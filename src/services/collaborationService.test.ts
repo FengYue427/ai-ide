@@ -17,7 +17,23 @@ vi.mock('y-webrtc', () => ({
   })),
 }))
 
+const mockLivekitProvider = vi.fn(() => ({
+  connected: true,
+  awareness: mockAwareness,
+  on: vi.fn(),
+  off: vi.fn(),
+  destroy: vi.fn(),
+}))
+
+vi.mock('./collab/livekitYjsProvider', () => ({
+  LivekitYjsProvider: vi.fn(function LivekitYjsProviderMock() {
+    return mockLivekitProvider()
+  }),
+}))
+
 import { CollaborationService } from './collaborationService'
+import { WebrtcProvider } from 'y-webrtc'
+import { LivekitYjsProvider } from './collab/livekitYjsProvider'
 
 describe('CollaborationService workspace map', () => {
   beforeEach(() => {
@@ -78,6 +94,47 @@ describe('CollaborationService workspace map', () => {
     expect(service.canWriteToRoom()).toBe(false)
     service.applyMemberRole('editor')
     expect(service.canWriteToRoom()).toBe(true)
+    service.leaveRoom()
+  })
+
+  it('uses LivekitYjsProvider when API returns livekit signaling', () => {
+    const service = new CollaborationService()
+    service.joinRoom({
+      roomId: 'lk-room',
+      userName: 'Host',
+      userColor: '#58a6ff',
+      signaling: {
+        mode: 'livekit',
+        roomChannel: 'ai-ide-lk-room',
+        livekitUrl: 'wss://livekit.example.com',
+        livekitToken: 'eyJ.test',
+      },
+    })
+
+    expect(LivekitYjsProvider).toHaveBeenCalledWith({
+      url: 'wss://livekit.example.com',
+      token: 'eyJ.test',
+      doc: expect.any(Object),
+    })
+    expect(WebrtcProvider).not.toHaveBeenCalled()
+    service.leaveRoom()
+  })
+
+  it('falls back to WebrtcProvider when livekit token missing', () => {
+    const service = new CollaborationService()
+    service.joinRoom({
+      roomId: 'webrtc-room',
+      userName: 'Host',
+      userColor: '#58a6ff',
+      signaling: {
+        mode: 'livekit',
+        roomChannel: 'ai-ide-webrtc-room',
+        livekitUrl: 'wss://livekit.example.com',
+      },
+    })
+
+    expect(WebrtcProvider).toHaveBeenCalled()
+    expect(LivekitYjsProvider).not.toHaveBeenCalled()
     service.leaveRoom()
   })
 })
