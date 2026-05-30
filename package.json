@@ -15,7 +15,7 @@
     "build": "prisma generate && tsc && vite build",
     "copy:website": "node scripts/copy-website.mjs",
     "build:api": "node scripts/build-api.mjs",
-    "build:deploy": "npm run build:api && npm run build && npm run copy:website",
+    "build:deploy": "node scripts/migrate-if-db.mjs && npm run build:api && npm run build && npm run copy:website",
     "build:prod": "prisma generate && tsc && vite build --mode production",
     "preview": "vite preview",
     "prisma:generate": "prisma generate",
