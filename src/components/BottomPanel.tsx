@@ -91,6 +91,7 @@ const BottomPanel: FC<BottomPanelProps> = ({
     terminal: (
       <IntegratedTerminal
         embedded
+        layoutRevision={height}
         isReady={isReady}
         isLoading={isLoading}
         isRunning={isRunning}

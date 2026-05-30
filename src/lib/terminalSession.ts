@@ -43,9 +43,19 @@ export function getTerminalOutputLines(): string[] {
 }
 
 let shellInputWriter: ((data: string) => void) | null = null
+let shellResizeHandler: ((cols: number, rows: number) => void) | null = null
 
 export function registerShellInputWriter(next: ((data: string) => void) | null): void {
   shellInputWriter = next
+}
+
+export function registerShellResizeHandler(next: ((cols: number, rows: number) => void) | null): void {
+  shellResizeHandler = next
+}
+
+export function resizeShell(cols: number, rows: number): void {
+  if (!Number.isFinite(cols) || !Number.isFinite(rows)) return
+  shellResizeHandler?.(Math.max(1, Math.floor(cols)), Math.max(1, Math.floor(rows)))
 }
 
 export function sendShellInput(data: string): void {

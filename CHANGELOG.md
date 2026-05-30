@@ -7,6 +7,29 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.5.1] — 2026-05-29
+
+### Fixed
+
+- WebContainer **jsh** 终端随底栏高度 / xterm 尺寸 **resize 同步**（`shell.resize`）
+- 底栏双击恢复高度使用 `BOTTOM_PANEL_DEFAULT_HEIGHT` 常量
+
+### Added
+
+- 底栏 tab 快捷键：**Ctrl+Alt+1/2/3** → Terminal / Scripts / Tasks
+- **ja-JP** `terminal.*` 字符串覆盖
+- `scripts/publish-github-release.mjs`（UTF-8 Release 发布工具）
+
+### Removed
+
+- 废弃只读 `Terminal.tsx`（已由 `IntegratedTerminal` 取代）
+
+### Docs
+
+- [ROADMAP_V1.1.5.x_PATCHES.md](docs/ROADMAP_V1.1.5.x_PATCHES.md)
+
+---
+
 ## [1.1.5] — 2026-05-29
 
 ### Added

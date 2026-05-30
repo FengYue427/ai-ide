@@ -201,6 +201,9 @@ export function AppShell() {
     openNewFileInput: ui.openNewFileInput,
     openSearchPanel: ui.openSearchPanel,
     toggleTerminalPanel: ui.toggleTerminalPanel,
+    openTerminalPanel: ui.openTerminalPanel,
+    openScriptsPanel: ui.openScriptsPanel,
+    openTasksPanel: ui.openTasksPanel,
     onFormat: () => requestFormatDocument(),
   })
 

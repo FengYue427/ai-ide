@@ -3,7 +3,9 @@ import {
   appendTerminalOutput,
   clearTerminalOutput,
   getTerminalOutputLines,
+  registerShellResizeHandler,
   registerTerminalWriter,
+  resizeShell,
 } from './terminalSession'
 
 describe('terminalSession', () => {
@@ -26,5 +28,13 @@ describe('terminalSession', () => {
     clearTerminalOutput()
     expect(chunks).toContain('__clear__')
     registerTerminalWriter(null)
+  })
+
+  it('forwards terminal dimensions to shell resize handler', () => {
+    const sizes: Array<{ cols: number; rows: number }> = []
+    registerShellResizeHandler((cols, rows) => sizes.push({ cols, rows }))
+    resizeShell(100.7, 30.2)
+    expect(sizes).toEqual([{ cols: 100, rows: 30 }])
+    registerShellResizeHandler(null)
   })
 })

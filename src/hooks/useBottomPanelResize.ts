@@ -1,5 +1,5 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from 'react'
-import { clampBottomPanelHeight } from '../lib/bottomPanelPrefs'
+import { BOTTOM_PANEL_DEFAULT_HEIGHT, clampBottomPanelHeight } from '../lib/bottomPanelPrefs'
 
 export function useBottomPanelResize(height: number, onHeightChange: (next: number) => void) {
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null)
@@ -31,7 +31,7 @@ export function useBottomPanelResize(height: number, onHeightChange: (next: numb
   }, [])
 
   const onResizeDoubleClick = useCallback(() => {
-    onHeightChange(clampBottomPanelHeight(260))
+    onHeightChange(clampBottomPanelHeight(BOTTOM_PANEL_DEFAULT_HEIGHT))
   }, [onHeightChange])
 
   return {

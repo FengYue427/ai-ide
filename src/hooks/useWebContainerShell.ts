@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { appendTerminalOutput, registerShellInputWriter } from '../lib/terminalSession'
+import { appendTerminalOutput, registerShellInputWriter, registerShellResizeHandler } from '../lib/terminalSession'
 import { isDesktopApp } from '../services/desktopBridge'
 import { getWebContainerInstance } from './useWebContainer'
 import { useIDEStore } from '../store/ideStore'
@@ -18,6 +18,7 @@ export function useWebContainerShell({ enabled, isReady, writeFile }: UseWebCont
   useEffect(() => {
     if (!enabled || !isReady || isDesktopApp()) {
       registerShellInputWriter(null)
+      registerShellResizeHandler(null)
       return
     }
 
@@ -55,6 +56,14 @@ export function useWebContainerShell({ enabled, isReady, writeFile }: UseWebCont
           void inputWriter.write(data).catch(() => {})
         })
 
+        registerShellResizeHandler((cols, rows) => {
+          try {
+            shell.resize({ cols, rows })
+          } catch {
+            /* process exited */
+          }
+        })
+
         void shell.output.pipeTo(
           new WritableStream<string>({
             write(data) {
@@ -73,6 +82,7 @@ export function useWebContainerShell({ enabled, isReady, writeFile }: UseWebCont
     return () => {
       cancelled = true
       registerShellInputWriter(null)
+      registerShellResizeHandler(null)
       writerRef.current?.close?.()
       writerRef.current = null
       processRef.current?.kill()

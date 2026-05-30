@@ -9,6 +9,7 @@ import {
   appendTerminalOutput,
   clearTerminalOutput,
   registerTerminalWriter,
+  resizeShell,
   sendShellInput,
 } from '../lib/terminalSession'
 import { getDesktopApi, isDesktopApp } from '../services/desktopBridge'
@@ -18,6 +19,7 @@ const DESKTOP_PROMPT = '$ '
 
 interface IntegratedTerminalProps {
   embedded?: boolean
+  layoutRevision?: number
   isReady: boolean
   isLoading: boolean
   isRunning: boolean
@@ -47,6 +49,7 @@ function getXtermTheme(theme: 'vs-dark' | 'light') {
 
 const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
   embedded = false,
+  layoutRevision = 0,
   isReady,
   isLoading,
   isRunning,
@@ -63,6 +66,16 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
   const desktopLineRef = useRef('')
   const desktopBusyRef = useRef(false)
   const getProjectRootRef = useRef<() => string | null>(() => null)
+
+  const fitTerminal = useCallback(() => {
+    try {
+      fitRef.current?.fit()
+      const term = termRef.current
+      if (term) resizeShell(term.cols, term.rows)
+    } catch {
+      /* host hidden */
+    }
+  }, [])
 
   useWebContainerShell({
     enabled: !readOnly && isReady && !isDesktopApp(),
@@ -115,6 +128,7 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
     term.loadAddon(fitAddon)
     term.open(hostRef.current)
     fitAddon.fit()
+    fitTerminal()
 
     termRef.current = term
     fitRef.current = fitAddon
@@ -162,11 +176,7 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
     }
 
     const resizeObserver = new ResizeObserver(() => {
-      try {
-        fitAddon.fit()
-      } catch {
-        /* host hidden */
-      }
+      fitTerminal()
     })
     resizeObserver.observe(hostRef.current)
 
@@ -177,7 +187,11 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
       termRef.current = null
       fitRef.current = null
     }
-  }, [isLoading, isReady, readOnly, runDesktopLine, t, theme])
+  }, [fitTerminal, isLoading, isReady, readOnly, runDesktopLine, t, theme])
+
+  useEffect(() => {
+    fitTerminal()
+  }, [fitTerminal, layoutRevision])
 
   useEffect(() => {
     const term = termRef.current
