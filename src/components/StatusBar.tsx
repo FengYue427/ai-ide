@@ -16,6 +16,8 @@ interface StatusBarProps {
   isWebContainerReady: boolean
   gitBranch?: string
   gitModified?: number
+  gitUnstaged?: number
+  gitStageAllDisabled?: boolean
   aiProvider?: string
   isAIConnected?: boolean
   autoSaveEnabled: boolean
@@ -27,6 +29,7 @@ interface StatusBarProps {
     snippets?: boolean
   }
   onOpenGitPanel?: () => void
+  onStageAll?: () => void
   onOpenAISettings?: () => void
   onToggleAutoSave?: () => void
   onOpenSettings?: () => void
@@ -64,6 +67,8 @@ const StatusBar: React.FC<StatusBarProps> = ({
   isWebContainerReady,
   gitBranch,
   gitModified = 0,
+  gitUnstaged = 0,
+  gitStageAllDisabled = false,
   aiProvider,
   isAIConnected = false,
   autoSaveEnabled,
@@ -71,6 +76,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   workspaceFileCount = 0,
   activeFeatures = {},
   onOpenGitPanel,
+  onStageAll,
   onOpenAISettings,
   onToggleAutoSave,
   onOpenSettings,
@@ -186,10 +192,34 @@ const StatusBar: React.FC<StatusBarProps> = ({
         </button>
 
         {gitBranch && (
-          <button onClick={onOpenGitPanel} style={{ ...actionButtonStyle, color: gitModified > 0 ? 'var(--warning-color)' : 'var(--text-secondary)' }} title={t('status.gitTitle')}>
-            <span>{gitBranch}</span>
-            {gitModified > 0 && <span>({gitModified})</span>}
-          </button>
+          <>
+            <button
+              onClick={onOpenGitPanel}
+              style={{
+                ...actionButtonStyle,
+                color: gitModified > 0 ? 'var(--warning-color)' : 'var(--text-secondary)',
+              }}
+              title={t('status.gitTitle')}
+            >
+              <span>{gitBranch}</span>
+              {gitModified > 0 && <span>({gitModified})</span>}
+            </button>
+            {gitUnstaged > 0 && onStageAll ? (
+              <button
+                onClick={onStageAll}
+                disabled={gitStageAllDisabled}
+                style={{
+                  ...actionButtonStyle,
+                  color: gitStageAllDisabled ? 'var(--text-secondary)' : 'var(--success-color)',
+                  opacity: gitStageAllDisabled ? 0.55 : 1,
+                  cursor: gitStageAllDisabled ? 'not-allowed' : 'pointer',
+                }}
+                title={t('git.stageAllTitle')}
+              >
+                <span>{t('git.stageAll')}</span>
+              </button>
+            ) : null}
+          </>
         )}
 
         <button onClick={onOpenAISettings} style={{ ...actionButtonStyle, color: isAIConnected ? 'var(--accent-color)' : 'var(--text-secondary)' }} title={t('status.aiTitle')}>

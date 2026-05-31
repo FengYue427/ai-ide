@@ -7,6 +7,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.6] — 2026-05-29
+
+### Added
+
+- **F1** 编辑器内 Git diff tab：`GitDiffEditor` · `gitDiffTabs` · `openGitDiffTab` / `closeGitDiffTab`；`EditorTab` `kind: 'git-diff'`
+- **F2** Stage UX：`getStagedDiff` · `stageAllUnstaged` · 状态栏 / 命令面板 **Stage all**；staged diff 入口；`diffSource: 'workdir' | 'staged' | 'commit'`
+- **F3** Log drill-down：`getCommitChangedFiles` · `getCommitFileDiff`；历史 commit 展开文件列表 → commit diff tab
+- **F4** 分支：`createBranch` · `isValidBranchName`；Git 空态 `InlineStatePanel`；`shouldShowGitStatusPerfHint`（≥100 变更）
+- **F5** 全部 **`git.*`** ja-JP；**Ctrl+Shift+G** Git 面板；Welcome Git 快捷键与功能描述
+- 工具：`formatGitRelativeTime` · `gitQuickActions` · `openGitDiffTab` 测试
+
+### Changed
+
+- `GitPanel` / `RightPanel` / `EditorLayout` 联动 inline diff（modal 保留给 Agent apply）
+- 版本 **1.1.6**（`VITE_APP_VERSION` / health / 欢迎页徽章）
+
+### Docs
+
+- [RELEASE_NOTES_v1.1.6.md](docs/RELEASE_NOTES_v1.1.6.md) · [V1.1.6_GA_EXECUTION.md](docs/V1.1.6_GA_EXECUTION.md)
+
+---
+
 ## [1.1.5.5] — 2026-05-29
 
 ### Added

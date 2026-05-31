@@ -7,6 +7,7 @@ import { projectIndexManager } from '../services/projectIndexManager'
 import type { GitFileSyncUpdate } from '../services/gitService'
 import { useI18n } from '../i18n'
 import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
+import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { useIDEStore, type RightPanelView } from '../store/ideStore'
 import type { WebContainer } from '@webcontainer/api'
 import type { ToastKind } from '../components/FeedbackCenter'
@@ -38,12 +39,14 @@ export function RightPanel({
   const rightPanelView = useIDEStore((s) => s.rightPanelView)
   const backgroundJobsActiveCount = useIDEStore((s) => s.backgroundJobsActiveCount)
   const setRightPanelView = useIDEStore((s) => s.setRightPanelView)
+  const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
+  const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
   const setFiles = useIDEStore((s) => s.setFiles)
-  const setDiffContent = useIDEStore((s) => s.setDiffContent)
-  const setShowDiff = useIDEStore((s) => s.setShowDiff)
+  const openGitDiffTab = useIDEStore((s) => s.openGitDiffTab)
 
   const backgroundAgentOn = isBackgroundAgentEnabled()
   const currentFile = files[activeFile]
+  const gitReadOnly = Boolean(collaborationRoomId && !collabRoleCanWrite(collaborationMemberRole))
 
   if (!showGitPanel && !showChatPanel) {
     return null
@@ -130,10 +133,23 @@ export function RightPanel({
                 setFiles((prev) => applyGitSyncToFiles(prev, updates))
                 void applyGitSyncToWorkspace(updates)
               }}
-              onShowDiff={(oldContent, newContent) => {
-                setDiffContent({ old: oldContent, new: newContent })
-                setShowDiff(true)
+              onOpenGitDiffTab={(payload) => {
+                let tabLabel = t('git.diffTabLabel', { path: payload.path })
+                if (payload.diffSource === 'staged') {
+                  tabLabel = t('git.stagedDiffTabLabel', { path: payload.path })
+                } else if (payload.diffSource === 'commit') {
+                  tabLabel = t('git.commitDiffTabLabel', {
+                    path: payload.path,
+                    sha: payload.commitOid?.slice(0, 7) ?? '',
+                  })
+                }
+                openGitDiffTab({
+                  ...payload,
+                  diffSource: payload.diffSource ?? 'workdir',
+                  tabLabel,
+                })
               }}
+              readOnly={gitReadOnly}
               notify={notify}
             />
           </div>

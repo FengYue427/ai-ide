@@ -54,6 +54,8 @@ interface CommandPaletteProps {
   onRunCode: () => void
   onOpenSettings: () => void
   onOpenGit: () => void
+  onStageAll?: () => void
+  gitStageAllDisabled?: boolean
   onOpenShare: () => void
   onOpenAIChat: () => void
   onOpenSnippetLibrary: () => void
@@ -101,6 +103,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   onRunCode,
   onOpenSettings,
   onOpenGit,
+  onStageAll,
+  gitStageAllDisabled = false,
   onOpenShare,
   onOpenAIChat,
   onOpenSnippetLibrary,
@@ -378,11 +382,27 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
         subtitle: t('command.git.sub'),
         icon: <GitBranch size={18} />,
         category: t('command.cat.collab'),
+        shortcut: 'Ctrl+Shift+G',
         action: () => {
           onOpenGit()
           onClose()
         },
       },
+      ...(onStageAll
+        ? [
+            {
+              id: 'git-stage',
+              title: t('command.git.stage'),
+              subtitle: t('command.git.stage.sub'),
+              icon: <GitBranch size={18} />,
+              category: t('command.cat.collab'),
+              action: () => {
+                if (!gitStageAllDisabled) onStageAll()
+                onClose()
+              },
+            } satisfies Command,
+          ]
+        : []),
       {
         id: 'share',
         title: t('command.share'),

@@ -31,6 +31,9 @@ describe('ja-JP locale skeleton (F3/F4)', () => {
     const collab = rows.find((row) => row.prefix === 'collab.')
     expect(collab?.totalKeys).toBeGreaterThan(40)
     expect(collab?.jaOverrides).toBeGreaterThan(40)
+    const git = rows.find((row) => row.prefix === 'git.')
+    expect(git?.totalKeys).toBeGreaterThan(60)
+    expect(git?.jaCoveragePct).toBeGreaterThanOrEqual(JA_COVERAGE_TARGET_PCT)
   })
 
   it(`meets F4 ≥${JA_COVERAGE_TARGET_PCT}% ja coverage for Phase 2 prefixes`, () => {

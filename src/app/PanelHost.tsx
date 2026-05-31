@@ -129,6 +129,9 @@ interface PanelHostProps {
   isWebContainerReady: boolean
   gitBranch?: string
   gitModified?: number
+  gitUnstaged?: number
+  gitStageAllDisabled?: boolean
+  onStageAll?: () => void | Promise<void>
 }
 
 export function PanelHost({
@@ -174,6 +177,9 @@ export function PanelHost({
   isWebContainerReady,
   gitBranch,
   gitModified = 0,
+  gitUnstaged = 0,
+  gitStageAllDisabled = false,
+  onStageAll,
 }: PanelHostProps) {
   const { language, setLanguage, t } = useI18n()
   const planT: PlanHostTranslateFn = useCallback(
@@ -182,6 +188,12 @@ export function PanelHost({
   )
   const files = useIDEStore((s) => s.files)
   const activeFile = useIDEStore((s) => s.activeFile)
+  const activeEditorSurface = useIDEStore((s) => s.activeEditorSurface)
+  const gitDiffTabs = useIDEStore((s) => s.gitDiffTabs)
+  const activeGitDiffTab = useIDEStore((s) => s.activeGitDiffTab)
+  const activeFileTab = activeEditorSurface === 'file' ? files[activeFile] : null
+  const activeDiffTab = activeEditorSurface === 'git-diff' ? gitDiffTabs[activeGitDiffTab] : null
+  const activeTabMeta = activeDiffTab ?? activeFileTab
   const theme = useIDEStore((s) => s.theme)
   const aiConfig = useIDEStore((s) => s.aiConfig)
   const autoSaveEnabled = useIDEStore((s) => s.autoSaveEnabled)
@@ -363,11 +375,11 @@ export function PanelHost({
 
       {showAgentApplyModal && <AgentApplyModal />}
 
-      {showCodeReview && files[activeFile] && (
+      {showCodeReview && activeFileTab && (
         <CodeReviewPanel
-          code={files[activeFile].content}
-          language={files[activeFile].language}
-          filename={files[activeFile].name}
+          code={activeFileTab.content}
+          language={activeFileTab.language}
+          filename={activeFileTab.name}
           aiConfig={aiConfig}
           onClose={() => setShowCodeReview(false)}
           onTestsGenerated={onTestsGenerated}
@@ -377,11 +389,12 @@ export function PanelHost({
       {showSnippetLibrary && (
         <SnippetLibrary
           onInsert={(code) => {
+            if (!activeFileTab) return
             const next = [...files]
-            next[activeFile] = { ...next[activeFile], content: next[activeFile].content + '\n' + code }
+            next[activeFile] = { ...activeFileTab, content: activeFileTab.content + '\n' + code }
             setFiles(next)
           }}
-          currentLanguage={files[activeFile]?.language}
+          currentLanguage={activeFileTab?.language}
           notify={notify}
           requestConfirm={requestConfirm}
           onClose={() => setShowSnippetLibrary(false)}
@@ -403,6 +416,8 @@ export function PanelHost({
         onRunNpmScript={onRunNpmScript}
         onOpenSettings={openSettingsPanel}
         onOpenGit={openGitPanel}
+        onStageAll={onStageAll ? () => void onStageAll() : undefined}
+        gitStageAllDisabled={gitStageAllDisabled}
         onOpenShare={openShareDialog}
         onOpenAIChat={openChatPanel}
         onOpenSnippetLibrary={openSnippetPanel}
@@ -1127,10 +1142,10 @@ export function PanelHost({
       )}
 
       <StatusBar
-        currentFileName={files[activeFile]?.name || 'Untitled'}
-        currentFileLanguage={files[activeFile]?.language || 'plaintext'}
-        lineCount={files[activeFile]?.content.split('\n').length || 0}
-        charCount={files[activeFile]?.content.length || 0}
+        currentFileName={activeTabMeta?.name || 'Untitled'}
+        currentFileLanguage={activeTabMeta?.language || 'plaintext'}
+        lineCount={activeFileTab?.content.split('\n').length || 0}
+        charCount={activeFileTab?.content.length || 0}
         diagnosticCount={diagnosticCount}
         diagnosticErrors={diagnosticErrors}
         diagnosticWarnings={diagnosticWarnings}
@@ -1149,7 +1164,10 @@ export function PanelHost({
         }}
         gitBranch={gitBranch}
         gitModified={gitModified}
+        gitUnstaged={gitUnstaged}
+        gitStageAllDisabled={gitStageAllDisabled}
         onOpenGitPanel={openGitPanel}
+        onStageAll={onStageAll ? () => void onStageAll() : undefined}
       />
 
       {showWelcome && (

@@ -10,6 +10,7 @@ interface UseAppShortcutsOptions {
   openNewFileInput: () => void
   openSearchPanel: () => void
   toggleTerminalPanel: () => void
+  toggleGitPanel: () => void
   openTerminalPanel: () => void
   openScriptsPanel: () => void
   openTasksPanel: () => void
@@ -24,6 +25,7 @@ export function useAppShortcuts({
   openNewFileInput,
   openSearchPanel,
   toggleTerminalPanel,
+  toggleGitPanel,
   openTerminalPanel,
   openScriptsPanel,
   openTasksPanel,
@@ -48,6 +50,7 @@ export function useAppShortcuts({
       onSearch: openSearchPanel,
       onCommandPalette: openCommandPalette,
       onToggleTerminal: toggleTerminalPanel,
+      onToggleGitPanel: toggleGitPanel,
       onOpenTerminalTab: openTerminalPanel,
       onOpenScriptsTab: openScriptsPanel,
       onOpenTasksTab: openTasksPanel,

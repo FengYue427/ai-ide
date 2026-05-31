@@ -1,13 +1,15 @@
-import { FileText, Shield, Sparkles, TerminalSquare, X } from 'lucide-react'
+import { FileText, GitCompare, Shield, Sparkles, TerminalSquare, X } from 'lucide-react'
 import { isTabCompletionEnabled } from '../lib/inlineCompletionPrefs'
 import { useI18n } from '../i18n'
 import Editor from '../components/Editor'
+import { GitDiffEditor } from '../components/GitDiffEditor'
 import BottomPanel from '../components/BottomPanel'
 import type { ToastKind } from '../components/FeedbackCenter'
 import { PreviewPanel } from './lazyPanels'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { summarizeMonacoMarkers } from '../editor/summarizeMonacoMarkers'
 import { useIDEStore } from '../store/ideStore'
+import { gitDiffTabKey } from '../types/editorTab'
 import type { RunNpmScriptHandler } from '../lib/npmScriptRun'
 
 interface EditorLayoutProps {
@@ -26,6 +28,7 @@ interface EditorLayoutProps {
   onRetryRuntime: () => void
   onFileChange: (value: string | undefined) => void
   onDeleteFile: (index: number) => void
+  onCloseGitDiffTab: (index: number) => void
   onOpenSnippetPanel: () => void
   onOpenCodeReviewPanel: () => void
   onToggleTerminal: () => void
@@ -48,6 +51,7 @@ export function EditorLayout({
   onRetryRuntime,
   onFileChange,
   onDeleteFile,
+  onCloseGitDiffTab,
   onOpenSnippetPanel,
   onOpenCodeReviewPanel,
   onToggleTerminal,
@@ -55,12 +59,16 @@ export function EditorLayout({
 }: EditorLayoutProps) {
   const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
+  const gitDiffTabs = useIDEStore((s) => s.gitDiffTabs)
   const activeFile = useIDEStore((s) => s.activeFile)
+  const activeEditorSurface = useIDEStore((s) => s.activeEditorSurface)
+  const activeGitDiffTab = useIDEStore((s) => s.activeGitDiffTab)
   const theme = useIDEStore((s) => s.theme)
   const editorTarget = useIDEStore((s) => s.editorTarget)
   const showTerminal = useIDEStore((s) => s.showTerminal)
   const showPreview = useIDEStore((s) => s.showPreview)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
+  const setActiveGitDiffTab = useIDEStore((s) => s.setActiveGitDiffTab)
   const setDiagnosticSummary = useIDEStore((s) => s.setDiagnosticSummary)
   const setShowPreview = useIDEStore((s) => s.setShowPreview)
   const aiConfig = useIDEStore((s) => s.aiConfig)
@@ -71,6 +79,8 @@ export function EditorLayout({
   )
 
   const currentFile = files[activeFile]
+  const currentDiffTab = gitDiffTabs[activeGitDiffTab]
+  const showingDiff = activeEditorSurface === 'git-diff' && currentDiffTab
 
   return (
     <div className="editor-container">
@@ -95,8 +105,8 @@ export function EditorLayout({
       <div className="tabs">
         {files.map((file, idx) => (
           <div
-            key={idx}
-            className={`tab ${idx === activeFile ? 'active' : ''}`}
+            key={file.name}
+            className={`tab ${activeEditorSurface === 'file' && idx === activeFile ? 'active' : ''}`}
             onClick={() => setActiveFile(idx)}
           >
             <FileText size={13} />
@@ -112,18 +122,52 @@ export function EditorLayout({
             </span>
           </div>
         ))}
+        {gitDiffTabs.map((tab, idx) => (
+          <div
+            key={gitDiffTabKey(tab.path, tab.diffSource, tab.commitOid)}
+            className={`tab tab--git-diff ${activeEditorSurface === 'git-diff' && idx === activeGitDiffTab ? 'active' : ''}`}
+            onClick={() => setActiveGitDiffTab(idx)}
+          >
+            <GitCompare size={13} />
+            <span className="tab-label">{tab.name}</span>
+            <span
+              className="tab-close"
+              onClick={(e) => {
+                e.stopPropagation()
+                onCloseGitDiffTab(idx)
+              }}
+            >
+              <X size={12} />
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className="editor-info-bar">
         <div className="editor-info-main">
           <div className="editor-info-title">
-            <FileText size={14} />
-            <span>{currentFile?.name || 'Untitled'}</span>
+            {showingDiff ? <GitCompare size={14} /> : <FileText size={14} />}
+            <span>{showingDiff ? currentDiffTab.name : currentFile?.name || 'Untitled'}</span>
           </div>
           <div className="editor-info-meta">
-            <span>{currentFile?.language || 'plaintext'}</span>
-            <span>{t('editor.meta.lines', { count: currentFile?.content.split('\n').length || 0 })}</span>
-            <span>{t('editor.meta.chars', { count: currentFile?.content.length || 0 })}</span>
+            {showingDiff ? (
+              <>
+                <span>{currentDiffTab.language}</span>
+                <span>{t('git.diffTabBadge')}</span>
+                <span>
+                  {t('git.diffStats', {
+                    added: currentDiffTab.newContent.split('\n').length,
+                    removed: currentDiffTab.oldContent.split('\n').length,
+                  })}
+                </span>
+              </>
+            ) : (
+              <>
+                <span>{currentFile?.language || 'plaintext'}</span>
+                <span>{t('editor.meta.lines', { count: currentFile?.content.split('\n').length || 0 })}</span>
+                <span>{t('editor.meta.chars', { count: currentFile?.content.length || 0 })}</span>
+              </>
+            )}
           </div>
         </div>
         <div className="editor-info-actions">
@@ -149,25 +193,34 @@ export function EditorLayout({
       ) : null}
 
       <div className="monaco-wrapper">
-        <Editor
-          readOnly={collabReadOnly}
-          value={currentFile?.content || ''}
-          language={currentFile?.language || 'javascript'}
-          filename={currentFile?.name || 'untitled'}
-          theme={theme}
-          target={editorTarget}
-          aiConfig={aiConfig}
-          allFiles={files.map((file) => ({
-            name: file.name,
-            content: file.content,
-            language: file.language,
-          }))}
-          inlineCompletionEnabled={
-            isTabCompletionEnabled() && (!!aiConfig.apiKey || aiConfig.provider === 'ollama')
-          }
-          onChange={onFileChange}
-          onDiagnosticsChange={(markers) => setDiagnosticSummary(summarizeMonacoMarkers(markers))}
-        />
+        {showingDiff ? (
+          <GitDiffEditor
+            original={currentDiffTab.oldContent}
+            modified={currentDiffTab.newContent}
+            language={currentDiffTab.language}
+            theme={theme}
+          />
+        ) : (
+          <Editor
+            readOnly={collabReadOnly}
+            value={currentFile?.content || ''}
+            language={currentFile?.language || 'javascript'}
+            filename={currentFile?.name || 'untitled'}
+            theme={theme}
+            target={editorTarget}
+            aiConfig={aiConfig}
+            allFiles={files.map((file) => ({
+              name: file.name,
+              content: file.content,
+              language: file.language,
+            }))}
+            inlineCompletionEnabled={
+              isTabCompletionEnabled() && (!!aiConfig.apiKey || aiConfig.provider === 'ollama')
+            }
+            onChange={onFileChange}
+            onDiagnosticsChange={(markers) => setDiagnosticSummary(summarizeMonacoMarkers(markers))}
+          />
+        )}
       </div>
 
       {showTerminal && (
@@ -188,10 +241,10 @@ export function EditorLayout({
         />
       )}
 
-      {showPreview && (
+      {showPreview && currentFile && (
         <PreviewPanel
-          content={currentFile?.content || ''}
-          fileName={currentFile?.name || ''}
+          content={currentFile.content}
+          fileName={currentFile.name}
           onClose={() => setShowPreview(false)}
           onRefresh={() => {}}
         />

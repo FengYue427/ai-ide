@@ -5,7 +5,11 @@ import { BOTTOM_PANEL_DEFAULT_HEIGHT } from '../lib/bottomPanelPrefs'
 import { modelOptions, type AIModel } from '../services/aiService'
 import type { User as AuthUser } from '../services/authService'
 import type { RecentProject } from '../services/recentFilesService'
+import { openGitDiffTabState, type OpenGitDiffTabInput } from '../lib/openGitDiffTab'
+import type { GitDiffTab } from '../types/editorTab'
 import type { FileItem } from '../types/file'
+
+export type ActiveEditorSurface = 'file' | 'git-diff'
 
 export type EditorTheme = 'vs-dark' | 'light'
 
@@ -85,6 +89,9 @@ function resolveFiles(value: FilesUpdater, prev: FileItem[]): FileItem[] {
 
 export interface IDEState {
   files: FileItem[]
+  gitDiffTabs: GitDiffTab[]
+  activeEditorSurface: ActiveEditorSurface
+  activeGitDiffTab: number
   activeFile: number
   newFileName: string
   theme: EditorTheme
@@ -152,7 +159,10 @@ export interface IDEState {
   pluginModal: PluginModalState | null
 
   setFiles: (files: FilesUpdater) => void
+  openGitDiffTab: (input: OpenGitDiffTabInput) => void
+  closeGitDiffTab: (index: number) => void
   setActiveFile: (index: number) => void
+  setActiveGitDiffTab: (index: number) => void
   setNewFileName: (name: string) => void
   setTheme: (theme: EditorTheme) => void
   setAutoSaveEnabled: (enabled: boolean | ((prev: boolean) => boolean)) => void
@@ -247,6 +257,9 @@ export interface QueuedPlanExecution {
 
 export const useIDEStore = create<IDEState>()((set) => ({
   files: defaultFiles,
+  gitDiffTabs: [],
+  activeEditorSurface: 'file',
+  activeGitDiffTab: 0,
   activeFile: 0,
   newFileName: '',
   theme: 'vs-dark',
@@ -308,7 +321,42 @@ export const useIDEStore = create<IDEState>()((set) => ({
   pluginModal: null,
 
   setFiles: (files) => set((state) => ({ files: resolveFiles(files, state.files) })),
-  setActiveFile: (activeFile) => set({ activeFile }),
+  openGitDiffTab: (input) =>
+    set((state) => {
+      const result = openGitDiffTabState(state.gitDiffTabs, input)
+      return {
+        gitDiffTabs: result.tabs,
+        activeGitDiffTab: result.activeIndex,
+        activeEditorSurface: 'git-diff',
+      }
+    }),
+  closeGitDiffTab: (index) =>
+    set((state) => {
+      const nextTabs = state.gitDiffTabs.filter((_, tabIndex) => tabIndex !== index)
+      let nextActive = state.activeGitDiffTab
+      let nextSurface = state.activeEditorSurface
+
+      if (state.activeEditorSurface === 'git-diff') {
+        if (index === state.activeGitDiffTab) {
+          if (nextTabs.length === 0) {
+            nextSurface = 'file'
+            nextActive = 0
+          } else {
+            nextActive = Math.min(state.activeGitDiffTab, nextTabs.length - 1)
+          }
+        } else if (index < state.activeGitDiffTab) {
+          nextActive = state.activeGitDiffTab - 1
+        }
+      }
+
+      return {
+        gitDiffTabs: nextTabs,
+        activeGitDiffTab: nextActive,
+        activeEditorSurface: nextSurface,
+      }
+    }),
+  setActiveFile: (activeFile) => set({ activeFile, activeEditorSurface: 'file' }),
+  setActiveGitDiffTab: (activeGitDiffTab) => set({ activeGitDiffTab, activeEditorSurface: 'git-diff' }),
   setNewFileName: (newFileName) => set({ newFileName }),
   setTheme: (theme) => set({ theme }),
   setAutoSaveEnabled: (enabled) =>

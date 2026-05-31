@@ -5,6 +5,9 @@ describe('ideStore', () => {
   beforeEach(() => {
     useIDEStore.setState({
       files: [{ name: 'index.js', content: '// test', language: 'javascript' }],
+      gitDiffTabs: [],
+      activeEditorSurface: 'file',
+      activeGitDiffTab: 0,
       activeFile: 0,
       showChatPanel: false,
       showGitPanel: false,
@@ -55,5 +58,28 @@ describe('ideStore', () => {
     expect(first?.prompt).toBe('first')
     expect(second?.prompt).toBe('second')
     expect(useIDEStore.getState().queuedSpecExecutions).toHaveLength(0)
+  })
+
+  it('opens git diff tab from store action', () => {
+    const { openGitDiffTab } = useIDEStore.getState()
+    openGitDiffTab({
+      path: 'app.ts',
+      diffSource: 'workdir',
+      oldContent: 'old',
+      newContent: 'new',
+      language: 'typescript',
+      tabLabel: 'app.ts (diff)',
+    })
+
+    const state = useIDEStore.getState()
+    expect(state.gitDiffTabs).toHaveLength(1)
+    expect(state.activeEditorSurface).toBe('git-diff')
+    expect(state.activeGitDiffTab).toBe(0)
+    expect(state.gitDiffTabs[0]).toMatchObject({
+      kind: 'git-diff',
+      path: 'app.ts',
+      diffSource: 'workdir',
+      name: 'app.ts (diff)',
+    })
   })
 })

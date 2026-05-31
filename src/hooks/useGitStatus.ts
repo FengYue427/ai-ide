@@ -7,11 +7,13 @@ const DEBOUNCE_MS = 500
 export function useGitStatus(fs: any, files: FileItem[]) {
   const [branch, setBranch] = useState<string | undefined>()
   const [modifiedCount, setModifiedCount] = useState(0)
+  const [unstagedCount, setUnstagedCount] = useState(0)
 
   useEffect(() => {
     if (!fs) {
       setBranch(undefined)
       setModifiedCount(0)
+      setUnstagedCount(0)
       return
     }
 
@@ -29,10 +31,12 @@ export function useGitStatus(fs: any, files: FileItem[]) {
           if (cancelled) return
           setBranch(currentBranch ?? undefined)
           setModifiedCount(status.length)
+          setUnstagedCount(status.filter((item) => !item.staged).length)
         } catch {
           if (!cancelled) {
             setBranch(undefined)
             setModifiedCount(0)
+            setUnstagedCount(0)
           }
         }
       })()
@@ -44,5 +48,5 @@ export function useGitStatus(fs: any, files: FileItem[]) {
     }
   }, [fs, files])
 
-  return { branch, modifiedCount }
+  return { branch, modifiedCount, unstagedCount }
 }

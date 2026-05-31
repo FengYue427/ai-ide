@@ -1,9 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, GitBranch, History, Plus, RefreshCw, RotateCcw } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  GitBranch,
+  GitCompare,
+  History,
+  Minus,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+} from 'lucide-react'
 import * as gitService from '../services/gitService'
-import type { GitFileSyncUpdate } from '../services/gitService'
+import type { GitCommitFileChange, GitFileSyncUpdate } from '../services/gitService'
 import type { FileItem } from '../types/file'
+import { getLanguageFromExt } from '../app/getLanguageFromExt'
+import { formatGitRelativeTime } from '../lib/formatGitRelativeTime'
+import { isValidBranchName } from '../lib/isValidBranchName'
+import { shouldShowGitStatusPerfHint } from '../lib/gitStatusPerfHint'
 import { useI18n } from '../i18n'
+import { InlineStatePanel } from './InlineStatePanel'
 import { workspaceContextService } from '../services/workspaceContextService'
 import styles from './GitPanel.module.css'
 
@@ -12,12 +27,28 @@ interface GitPanelProps {
   files: FileItem[]
   onFilesChange: () => void
   onEditorSync?: (updates: GitFileSyncUpdate[]) => void
-  onShowDiff?: (oldContent: string, newContent: string) => void
+  onOpenGitDiffTab?: (payload: {
+    path: string
+    diffSource?: 'workdir' | 'staged' | 'commit'
+    commitOid?: string
+    oldContent: string
+    newContent: string
+    language: string
+  }) => void
+  readOnly?: boolean
   notify?: (kind: 'success' | 'error' | 'info', title: string, detail?: string) => void
 }
 
-const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorSync, onShowDiff, notify }) => {
-  const { t } = useI18n()
+const GitPanel: React.FC<GitPanelProps> = ({
+  fs,
+  files,
+  onFilesChange,
+  onEditorSync,
+  onOpenGitDiffTab,
+  readOnly = false,
+  notify,
+}) => {
+  const { t, locale } = useI18n()
   const [status, setStatus] = useState<gitService.GitStatus[]>([])
   const [commits, setCommits] = useState<gitService.GitCommit[]>([])
   const [commitMessage, setCommitMessage] = useState('')
@@ -27,6 +58,11 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
   const [error, setError] = useState<string | null>(null)
   const [branch, setBranch] = useState<string | null>(null)
   const [branches, setBranches] = useState<string[]>([])
+  const [newBranchName, setNewBranchName] = useState('')
+  const [showNewBranchForm, setShowNewBranchForm] = useState(false)
+  const [expandedCommitOid, setExpandedCommitOid] = useState<string | null>(null)
+  const [commitFilesByOid, setCommitFilesByOid] = useState<Record<string, GitCommitFileChange[]>>({})
+  const [commitFilesLoadingOid, setCommitFilesLoadingOid] = useState<string | null>(null)
 
   const syncWorkspaceToFs = useCallback(async () => {
     if (!fs) return
@@ -60,7 +96,7 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
   }, [refresh, files])
 
   const runGitAction = async (action: () => Promise<void>) => {
-    if (!fs || isBusy) return
+    if (!fs || isBusy || readOnly) return
     setIsBusy(true)
     try {
       setError(null)
@@ -104,16 +140,65 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
     notify?.('success', t('git.unstaged'), filepath)
   })
 
-  const handleShowDiff = async (filepath: string) => {
+  const openDiffTab = async (
+    filepath: string,
+    diffSource: 'workdir' | 'staged' | 'commit',
+    loadDiff: () => Promise<{ oldContent: string; newContent: string }>,
+    commitOid?: string,
+  ) => {
     if (!fs || isBusy) return
     try {
-      await syncWorkspaceToFs()
-      const diff = await gitService.getFileDiff(fs, '/', filepath)
-      onShowDiff?.(diff.oldContent, diff.newContent)
+      if (diffSource !== 'commit') {
+        await syncWorkspaceToFs()
+      }
+      const diff = await loadDiff()
+      onOpenGitDiffTab?.({
+        path: filepath,
+        diffSource,
+        commitOid,
+        oldContent: diff.oldContent,
+        newContent: diff.newContent,
+        language: getLanguageFromExt(filepath),
+      })
     } catch (diffError) {
       const message = diffError instanceof Error ? diffError.message : t('git.diffReadFailed')
       setError(message)
       notify?.('error', t('git.diffViewFailed'), message)
+    }
+  }
+
+  const handleShowWorkdirDiff = (filepath: string) =>
+    openDiffTab(filepath, 'workdir', () => gitService.getFileDiff(fs, '/', filepath))
+
+  const handleShowStagedDiff = (filepath: string) =>
+    openDiffTab(filepath, 'staged', () => gitService.getStagedDiff(fs, '/', filepath))
+
+  const handleShowCommitDiff = (commitOid: string, filepath: string) =>
+    openDiffTab(
+      filepath,
+      'commit',
+      () => gitService.getCommitFileDiff(fs, '/', commitOid, filepath),
+      commitOid,
+    )
+
+  const toggleCommitExpand = async (commitOid: string) => {
+    if (expandedCommitOid === commitOid) {
+      setExpandedCommitOid(null)
+      return
+    }
+
+    setExpandedCommitOid(commitOid)
+    if (commitFilesByOid[commitOid] || !fs) return
+
+    setCommitFilesLoadingOid(commitOid)
+    try {
+      const changedFiles = await gitService.getCommitChangedFiles(fs, '/', commitOid)
+      setCommitFilesByOid((prev) => ({ ...prev, [commitOid]: changedFiles }))
+    } catch (loadError) {
+      const message = loadError instanceof Error ? loadError.message : t('git.commitFilesFailed')
+      notify?.('error', t('git.commitFilesFailed'), message)
+    } finally {
+      setCommitFilesLoadingOid(null)
     }
   }
 
@@ -146,8 +231,39 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
     onFilesChange()
   })
 
+  const handleCreateBranch = () => runGitAction(async () => {
+    const name = newBranchName.trim()
+    if (!name) {
+      notify?.('info', t('git.branchNameRequired'))
+      return
+    }
+    if (!isValidBranchName(name)) {
+      throw new Error(t('git.branchNameInvalid'))
+    }
+    if (branches.includes(name)) {
+      throw new Error(t('git.branchExists'))
+    }
+
+    await gitService.createBranch(fs, '/', name, true)
+    setNewBranchName('')
+    setShowNewBranchForm(false)
+    notify?.('success', t('git.branchCreated'), name)
+    onFilesChange()
+  })
+
   const staged = useMemo(() => status.filter((item) => item.staged), [status])
   const unstaged = useMemo(() => status.filter((item) => !item.staged), [status])
+
+  const badgeForCommitChange = (changeStatus: GitCommitFileChange['status']) => {
+    switch (changeStatus) {
+      case 'added':
+        return { label: 'A', color: '#33c58e' }
+      case 'deleted':
+        return { label: 'D', color: '#ff6b81' }
+      default:
+        return { label: 'M', color: '#ffb648' }
+    }
+  }
 
   const badgeForStatus = (fileStatus: gitService.GitStatus['status']) => {
     switch (fileStatus) {
@@ -164,45 +280,97 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
 
   if (!fs) {
     return (
-      <div className={styles.waitRuntime}>
-        {t('git.waitRuntime')}
+      <div className={styles.stateContainer}>
+        <InlineStatePanel
+          compact
+          tone="hint"
+          icon={GitBranch}
+          title={t('git.waitRuntimeTitle')}
+          description={t('git.waitRuntime')}
+        />
       </div>
     )
   }
 
   if (!isInit) {
     return (
-      <div className={styles.notInitContainer}>
-        <div className={styles.notInitCard}>
-          <div className={styles.notInitTitle}>{t('git.notInit.title')}</div>
-          <div className={styles.notInitDesc}>{t('git.notInit.desc')}</div>
-          {error && <div className={styles.notInitError}>{error}</div>}
-        </div>
-        <button className="btn btn-primary" onClick={handleInit} disabled={isBusy}>
-          <GitBranch size={14} className={styles.initButtonIcon} />
-          {isBusy ? t('git.initBusy') : t('git.initRepo')}
-        </button>
+      <div className={styles.stateContainer}>
+        <InlineStatePanel
+          tone="empty"
+          icon={GitBranch}
+          title={t('git.notInit.title')}
+          description={error ?? t('git.notInit.desc')}
+          primaryAction={
+            readOnly
+              ? undefined
+              : {
+                  label: isBusy ? t('git.initBusy') : t('git.initRepo'),
+                  onClick: handleInit,
+                }
+          }
+        />
       </div>
     )
   }
 
   return (
     <div className={styles.panel}>
+      {readOnly ? (
+        <div className={styles.readOnlyBanner} role="status">
+          {t('git.readOnlyBanner')}
+        </div>
+      ) : null}
+
       <div className={styles.header}>
-        <div className={styles.branchSelector}>
-          <GitBranch size={14} className={styles.branchIcon} />
-          <select
-            value={branch ?? 'main'}
-            onChange={(event) => void handleCheckoutBranch(event.target.value)}
-            disabled={isBusy}
-            className={styles.branchSelect}
-          >
-            {(branches.length > 0 ? branches : [branch ?? 'main']).map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+        <div className={styles.branchBlock}>
+          <div className={styles.branchSelector}>
+            <GitBranch size={14} className={styles.branchIcon} />
+            <select
+              value={branch ?? 'main'}
+              onChange={(event) => handleCheckoutBranch(event.target.value)}
+              disabled={isBusy || readOnly}
+              className={styles.branchSelect}
+            >
+              {(branches.length > 0 ? branches : [branch ?? 'main']).map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            {!readOnly ? (
+              <button
+                type="button"
+                className={styles.newBranchToggle}
+                onClick={() => setShowNewBranchForm((prev) => !prev)}
+                disabled={isBusy}
+                title={t('git.createBranchTitle')}
+                aria-expanded={showNewBranchForm}
+              >
+                <Plus size={14} />
+              </button>
+            ) : null}
+          </div>
+          {showNewBranchForm && !readOnly ? (
+            <div className={styles.newBranchForm}>
+              <input
+                type="text"
+                value={newBranchName}
+                onChange={(event) => setNewBranchName(event.target.value)}
+                onKeyDown={(event) => event.key === 'Enter' && void handleCreateBranch()}
+                placeholder={t('git.newBranchPlaceholder')}
+                className={styles.newBranchInput}
+                disabled={isBusy}
+              />
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => void handleCreateBranch()}
+                disabled={isBusy || !newBranchName.trim()}
+              >
+                {t('git.createBranch')}
+              </button>
+            </div>
+          ) : null}
         </div>
         <button
           type="button"
@@ -240,21 +408,103 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
             </div>
           )}
 
-          {unstaged.length > 0 && (
-            <section className={styles.section}>
+          {shouldShowGitStatusPerfHint(status.length) ? (
+            <InlineStatePanel
+              compact
+              tone="hint"
+              title={t('git.statusPerfHintTitle')}
+              description={t('git.statusPerfHintDesc', { count: status.length })}
+              tips={[t('git.statusPerfHintTip')]}
+            />
+          ) : null}
+
+          {staged.length > 0 && (
+            <section className={`${styles.section} ${styles.sectionStaged}`}>
               <div className={styles.sectionHeader}>
                 <div className={styles.sectionHeaderLeft}>
-                  <div className={styles.sectionLabel}>{t('git.unstagedLabel')}</div>
+                  <div className={styles.sectionLabel}>{t('git.stagedLabel')}</div>
+                  <div className={styles.sectionCount}>{t('git.stagedCount', { count: staged.length })}</div>
+                </div>
+              </div>
+
+              <div className={styles.fileList}>
+                {staged.map((item) => {
+                  const badge = badgeForStatus(item.status)
+                  return (
+                    <div key={item.filepath} className={styles.fileItem}>
+                      <span className={styles.fileBadge} style={{ color: badge.color }}>
+                        {badge.label}
+                      </span>
+                      <span className={styles.fileName}>{item.filepath}</span>
+                      <button
+                        type="button"
+                        className={`btn btn-secondary ${styles.fileButton}`}
+                        disabled={isBusy}
+                        onClick={() => handleShowStagedDiff(item.filepath)}
+                        title={t('git.stagedDiffTitle')}
+                      >
+                        <GitCompare size={12} />
+                        {t('git.stagedDiff')}
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-secondary ${styles.fileButton}`}
+                        disabled={isBusy || readOnly}
+                        onClick={() => handleUnstage(item.filepath)}
+                      >
+                        <Minus size={12} />
+                        {t('git.unstage')}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {!readOnly ? (
+                <div className={styles.commitSection}>
+                  <input
+                    type="text"
+                    value={commitMessage}
+                    onChange={(event) => setCommitMessage(event.target.value)}
+                    onKeyDown={(event) => event.key === 'Enter' && handleCommit()}
+                    placeholder={t('git.commitPlaceholder')}
+                    className={styles.commitInput}
+                    disabled={isBusy}
+                  />
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleCommit}
+                    disabled={!commitMessage.trim() || isBusy}
+                  >
+                    {isBusy ? t('git.committing') : t('git.commit')}
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          )}
+
+          {unstaged.length > 0 && (
+            <section className={`${styles.section} ${styles.sectionChanges}`}>
+              <div className={styles.sectionHeader}>
+                <div className={styles.sectionHeaderLeft}>
+                  <div className={styles.sectionLabel}>{t('git.changesLabel')}</div>
                   <div className={styles.sectionCount}>{t('git.unstagedCount', { count: unstaged.length })}</div>
                 </div>
-                <div className={styles.sectionActions}>
-                  <button type="button" className="btn btn-secondary" onClick={handleDiscardAllUnstaged} disabled={isBusy}>
-                    {t('git.discardAll')}
-                  </button>
-                  <button type="button" className="btn btn-secondary" onClick={handleStageAll} disabled={isBusy}>
-                    {t('git.stageAll')}
-                  </button>
-                </div>
+                {!readOnly ? (
+                  <div className={styles.sectionActions}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleDiscardAllUnstaged}
+                      disabled={isBusy}
+                    >
+                      {t('git.discardAll')}
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={handleStageAll} disabled={isBusy}>
+                      {t('git.stageAll')}
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               <div className={styles.fileList}>
@@ -270,28 +520,32 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
                         type="button"
                         className={`btn btn-secondary ${styles.fileButton}`}
                         disabled={isBusy}
-                        onClick={() => handleShowDiff(item.filepath)}
+                        onClick={() => handleShowWorkdirDiff(item.filepath)}
                       >
                         {t('git.diff')}
                       </button>
-                      <button
-                        type="button"
-                        className={`btn btn-secondary ${styles.fileButton}`}
-                        disabled={isBusy}
-                        onClick={() => handleDiscard(item)}
-                        title={t('git.discardFileTitle')}
-                      >
-                        <RotateCcw size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => handleStage(item.filepath)}
-                        className={styles.fileIconButton}
-                        title={t('git.stageTitle')}
-                      >
-                        <Plus size={14} />
-                      </button>
+                      {!readOnly ? (
+                        <>
+                          <button
+                            type="button"
+                            className={`btn btn-secondary ${styles.fileButton}`}
+                            disabled={isBusy}
+                            onClick={() => handleDiscard(item)}
+                            title={t('git.discardFileTitle')}
+                          >
+                            <RotateCcw size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => handleStage(item.filepath)}
+                            className={styles.fileIconButton}
+                            title={t('git.stageTitle')}
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   )
                 })}
@@ -299,61 +553,95 @@ const GitPanel: React.FC<GitPanelProps> = ({ fs, files, onFilesChange, onEditorS
             </section>
           )}
 
-          {staged.length > 0 && (
-            <section className={styles.section}>
-              <div className={styles.sectionLabel}>{t('git.stagedLabel')}</div>
-              <div className={styles.fileList} style={{ marginBottom: '12px' }}>
-                {staged.map((item) => (
-                  <div key={item.filepath} className={styles.stagedFileItem}>
-                    <Check size={14} className={styles.stagedCheckIcon} />
-                    <span className={styles.stagedFileName}>{item.filepath}</span>
-                    <button className={`btn btn-secondary ${styles.fileButton}`} onClick={() => handleUnstage(item.filepath)} disabled={isBusy}>
-                      {t('git.unstage')}
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className={styles.commitSection}>
-                <input
-                  type="text"
-                  value={commitMessage}
-                  onChange={(event) => setCommitMessage(event.target.value)}
-                  onKeyDown={(event) => event.key === 'Enter' && handleCommit()}
-                  placeholder={t('git.commitPlaceholder')}
-                  className={styles.commitInput}
-                />
-                <button className="btn btn-primary" onClick={handleCommit} disabled={!commitMessage.trim() || isBusy}>
-                  {isBusy ? t('git.committing') : t('git.commit')}
-                </button>
-              </div>
-            </section>
-          )}
-
           {status.length === 0 && (
-            <div className={styles.emptyState}>
-              {t('git.noChanges')}
-            </div>
+            <InlineStatePanel
+              compact
+              tone="empty"
+              icon={History}
+              title={t('git.noChangesTitle')}
+              description={t('git.noChanges')}
+            />
           )}
         </div>
       )}
 
       {activeTab === 'history' && (
         <div className={styles.content}>
-          {commits.map((commit) => (
-            <div key={commit.oid} className={styles.commitItem}>
-              <div className={styles.commitMessage}>{commit.commit.message}</div>
-              <div className={styles.commitMeta}>
-                {commit.commit.author.name} · {new Date(commit.commit.author.timestamp * 1000).toLocaleString()}
+          {commits.map((commit) => {
+            const oid = commit.oid
+            const isExpanded = expandedCommitOid === oid
+            const changedFiles = commitFilesByOid[oid]
+            const isLoadingFiles = commitFilesLoadingOid === oid
+
+            return (
+              <div key={oid} className={`${styles.commitItem} ${isExpanded ? styles.commitItemExpanded : ''}`}>
+                <button
+                  type="button"
+                  className={styles.commitHeader}
+                  onClick={() => void toggleCommitExpand(oid)}
+                  aria-expanded={isExpanded}
+                >
+                  <span className={styles.commitExpandIcon}>
+                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </span>
+                  <div className={styles.commitHeaderMain}>
+                    <div className={styles.commitMessage}>{commit.commit.message.trim() || t('git.emptyCommitMessage')}</div>
+                    <div className={styles.commitMeta}>
+                      <span>{commit.commit.author.name}</span>
+                      <span>·</span>
+                      <span title={new Date(commit.commit.author.timestamp * 1000).toLocaleString()}>
+                        {formatGitRelativeTime(commit.commit.author.timestamp, locale)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={styles.commitOid}>{oid.slice(0, 7)}</div>
+                </button>
+
+                {isExpanded ? (
+                  <div className={styles.commitFilesPanel}>
+                    {isLoadingFiles ? (
+                      <div className={styles.commitFilesLoading}>{t('git.commitFilesLoading')}</div>
+                    ) : changedFiles && changedFiles.length > 0 ? (
+                      <div className={styles.fileList}>
+                        {changedFiles.map((item) => {
+                          const badge = badgeForCommitChange(item.status)
+                          return (
+                            <div key={`${oid}:${item.filepath}`} className={styles.fileItem}>
+                              <span className={styles.fileBadge} style={{ color: badge.color }}>
+                                {badge.label}
+                              </span>
+                              <span className={styles.fileName}>{item.filepath}</span>
+                              <button
+                                type="button"
+                                className={`btn btn-secondary ${styles.fileButton}`}
+                                disabled={isBusy}
+                                onClick={() => handleShowCommitDiff(oid, item.filepath)}
+                                title={t('git.commitDiffTitle', { sha: oid.slice(0, 7) })}
+                              >
+                                <GitCompare size={12} />
+                                {t('git.diff')}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className={styles.commitFilesEmpty}>{t('git.commitFilesEmpty')}</div>
+                    )}
+                  </div>
+                ) : null}
               </div>
-              <div className={styles.commitOid}>{commit.oid.slice(0, 7)}</div>
-            </div>
-          ))}
+            )
+          })}
 
           {commits.length === 0 && (
-            <div className={styles.emptyState}>
-              {t('git.noCommits')}
-            </div>
+            <InlineStatePanel
+              compact
+              tone="empty"
+              icon={History}
+              title={t('git.noCommitsTitle')}
+              description={t('git.noCommits')}
+            />
           )}
         </div>
       )}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { FeedbackCenter } from '../components/FeedbackCenter'
 import { PluginModal } from '../components/PluginModal'
 import { useBillingReturn } from '../hooks/useBillingReturn'
@@ -43,6 +43,8 @@ import { useAppFeedback } from './useAppFeedback'
 import { OPEN_BACKGROUND_JOBS_PANEL_EVENT } from '../lib/backgroundJobsPanelEvents'
 import { loadWorkspaceByRef } from '../services/workspaceLoader'
 import { markWorkspaceHydrated } from '../services/workspaceSession'
+import { collabRoleCanWrite } from '../lib/collabPermissions'
+import { stageAllInWorkspace } from '../lib/gitQuickActions'
 import type { EditorTheme } from '../store/ideStore'
 
 export function AppShell() {
@@ -61,6 +63,7 @@ export function AppShell() {
   const setShowSearchPanel = useIDEStore((s) => s.setShowSearchPanel)
   const setFiles = useIDEStore((s) => s.setFiles)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
+  const closeGitDiffTab = useIDEStore((s) => s.closeGitDiffTab)
   const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
   const setNewFileName = useIDEStore((s) => s.setNewFileName)
   const setShowDropZone = useIDEStore((s) => s.setShowDropZone)
@@ -123,6 +126,30 @@ export function AppShell() {
   useMcpBootstrap()
   useProjectIndexSync()
   const gitStatus = useGitStatus(fs, files)
+  const gitWriteDisabled = Boolean(collaborationRoomId && !collabRoleCanWrite(collaborationMemberRole))
+
+  const handleStageAll = useCallback(async () => {
+    if (!fs) {
+      notify('info', t('git.waitRuntime'))
+      return
+    }
+    if (gitWriteDisabled) {
+      notify('info', t('git.readOnlyStage'))
+      return
+    }
+
+    try {
+      const { stagedCount, unstagedCount } = await stageAllInWorkspace({ fs, files })
+      if (unstagedCount === 0 || stagedCount === 0) {
+        notify('info', t('git.noUnstaged'))
+        return
+      }
+      notify('success', t('git.stagedAll'), t('git.stagedAllDetail', { count: stagedCount }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('git.actionFailed')
+      notify('error', t('git.actionFailed'), message)
+    }
+  }, [files, fs, gitWriteDisabled, notify, t])
   useCollaborationSync()
   useCollabRoleSync(notify, t)
   useBillingReturn(notify, t)
@@ -201,6 +228,7 @@ export function AppShell() {
     openNewFileInput: ui.openNewFileInput,
     openSearchPanel: ui.openSearchPanel,
     toggleTerminalPanel: ui.toggleTerminalPanel,
+    toggleGitPanel: ui.toggleGitPanel,
     openTerminalPanel: ui.openTerminalPanel,
     openScriptsPanel: ui.openScriptsPanel,
     openTasksPanel: ui.openTasksPanel,
@@ -335,6 +363,7 @@ export function AppShell() {
           }}
           onFileChange={handleFileChange}
           onDeleteFile={handleDeleteFile}
+          onCloseGitDiffTab={closeGitDiffTab}
           onOpenSnippetPanel={ui.openSnippetPanel}
           onOpenCodeReviewPanel={ui.openCodeReviewPanel}
           onToggleTerminal={ui.toggleTerminalPanel}
@@ -394,6 +423,9 @@ export function AppShell() {
         isWebContainerReady={isReady}
         gitBranch={gitStatus.branch}
         gitModified={gitStatus.modifiedCount}
+        gitUnstaged={gitStatus.unstagedCount}
+        gitStageAllDisabled={gitWriteDisabled}
+        onStageAll={handleStageAll}
       />
 
       <FeedbackCenter
