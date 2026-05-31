@@ -8,4 +8,14 @@ describe('getDefaultShortcuts', () => {
     shortcuts['ctrl+shift+g']()
     expect(onToggleGitPanel).toHaveBeenCalledOnce()
   })
+
+  it('maps debug execution shortcuts', () => {
+    const onDebugContinue = vi.fn()
+    const onDebugStop = vi.fn()
+    const shortcuts = getDefaultShortcuts({ onDebugContinue, onDebugStop })
+    shortcuts.f5()
+    shortcuts['shift+f5']()
+    expect(onDebugContinue).toHaveBeenCalledOnce()
+    expect(onDebugStop).toHaveBeenCalledOnce()
+  })
 })

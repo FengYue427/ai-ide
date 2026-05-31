@@ -1,6 +1,6 @@
 # v1.1.x 长期路线（1.1.5 → 1.1.9.x）
 
-> **更新**：2026-05-30 — 用户决策：**v1.1 至少延续至 1.1.9.x**，不以 v1.1.4 收官。  
+> **更新**：2026-05-29 — **v1.1.6 GA** · **1.1.6.x 前瞻** · **v1.1.7 调试器规划**  
 > **北极星**：**多维度、创新式** 比肩大型 IDE，而非单一竞品分数或硬性功能表对打。
 
 ---
@@ -30,7 +30,7 @@
 | **v1.1.4** | 编辑器深度 + UX 跃迁 + i18n Phase 2 | B | ✅ [RELEASE_NOTES_v1.1.4.md](./RELEASE_NOTES_v1.1.4.md) |
 | **v1.1.5** | **终端 + 任务**（集成 shell、npm scripts 面板） | B | ✅ [RELEASE_NOTES_v1.1.5.md](./RELEASE_NOTES_v1.1.5.md) |
 | **v1.1.6** | **Git 可视化**（diff、stage、log 基础） | B | ✅ [RELEASE_NOTES_v1.1.6.md](./RELEASE_NOTES_v1.1.6.md) |
-| **v1.1.7** | **调试器 MVP**（Node / 浏览器 attach 择一） | B | 📋 |
+| **v1.1.7** | **调试器 MVP**（Node / WebContainer attach 优先） | B | 📋 [V1.1.7_KICKOFF.md](./V1.1.7_KICKOFF.md) |
 | **v1.1.8** | **插件 SDK 2.0** + 扩展 API 稳定 | B | 📋 |
 | **v1.1.9** | **多根工作区 + 远程 SSH 探索**（或产品另选主轴） | B | 📋 |
 
@@ -59,8 +59,9 @@
 
 | 文档 | 范围 |
 |------|------|
-| [V1.1.4_MASTER_PLAN.md](./V1.1.4_MASTER_PLAN.md) | 下一 B 轨 |
-| [ROADMAP_V1.1.4.x_PATCHES.md](./ROADMAP_V1.1.4.x_PATCHES.md) | v1.1.4 后 patch |
+| [V1.1.4_MASTER_PLAN.md](./V1.1.4_MASTER_PLAN.md) | v1.1.4 B 轨 |
+| [ROADMAP_V1.1.6.x_PATCHES.md](./ROADMAP_V1.1.6.x_PATCHES.md) | 1.1.6.x Git patch |
+| [V1.1.7_MASTER_PLAN.md](./V1.1.7_MASTER_PLAN.md) | 下一 B 轨 |
 | [ROADMAP_V1.1.x.md](./ROADMAP_V1.1.x.md) | 世代总览 |
 | [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) | 网关 |
 

@@ -8,9 +8,13 @@ import type { RunNpmScriptHandler } from '../lib/npmScriptRun'
 import { InlineStatePanel } from './InlineStatePanel'
 import type { FileItem } from '../types/file'
 import {
+  ArrowDownToLine,
+  ArrowRightToLine,
+  ArrowUpFromLine,
   AlignLeft,
   Activity,
   Bot,
+  Bug,
   CheckSquare,
   Code2,
   Download,
@@ -79,6 +83,13 @@ interface CommandPaletteProps {
   onOpenThemeSelector: () => void
   onOpenWelcome: () => void
   onRunNpmScript?: RunNpmScriptHandler
+  onOpenDebug?: () => void
+  onStartDebug?: () => void
+  onStopDebug?: () => void
+  onDebugContinue?: () => void
+  onDebugStepOver?: () => void
+  onDebugStepInto?: () => void
+  onDebugStepOut?: () => void
   theme: 'vs-dark' | 'light'
   autoSaveEnabled: boolean
 }
@@ -128,6 +139,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   onOpenThemeSelector,
   onOpenWelcome,
   onRunNpmScript,
+  onOpenDebug,
+  onStartDebug,
+  onStopDebug,
+  onDebugContinue,
+  onDebugStepOver,
+  onDebugStepInto,
+  onDebugStepOut,
   theme,
   autoSaveEnabled,
 }) => {
@@ -327,6 +345,97 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
               category: t('command.cat.tasks'),
               action: () => {
                 onOpenTasks()
+                onClose()
+              },
+            } satisfies Command,
+          ]
+        : []),
+      ...(onOpenDebug
+        ? [
+            {
+              id: 'open-debug-panel',
+              title: t('command.debug.panel'),
+              subtitle: t('command.debug.panel.sub'),
+              icon: <Bug size={18} />,
+              shortcut: 'Ctrl+Alt+4',
+              category: t('command.cat.debug'),
+              action: () => {
+                onOpenDebug()
+                onClose()
+              },
+            } satisfies Command,
+          ]
+        : []),
+      ...(onStartDebug
+        ? [
+            {
+              id: 'start-debug',
+              title: t('command.debug.start'),
+              subtitle: t('command.debug.start.sub'),
+              icon: <Bug size={18} />,
+              category: t('command.cat.debug'),
+              action: () => {
+                onStartDebug()
+                onClose()
+              },
+            } satisfies Command,
+            {
+              id: 'stop-debug',
+              title: t('command.debug.stop'),
+              subtitle: t('command.debug.stop.sub'),
+              icon: <Terminal size={18} />,
+              shortcut: 'Shift+F5',
+              category: t('command.cat.debug'),
+              action: () => {
+                onStopDebug?.()
+                onClose()
+              },
+            } satisfies Command,
+            {
+              id: 'debug-continue',
+              title: t('command.debug.continue'),
+              subtitle: t('command.debug.continue.sub'),
+              icon: <Play size={18} />,
+              shortcut: 'F5',
+              category: t('command.cat.debug'),
+              action: () => {
+                onDebugContinue?.()
+                onClose()
+              },
+            } satisfies Command,
+            {
+              id: 'debug-step-over',
+              title: t('command.debug.stepOver'),
+              subtitle: t('command.debug.stepOver.sub'),
+              icon: <ArrowDownToLine size={18} />,
+              shortcut: 'F10',
+              category: t('command.cat.debug'),
+              action: () => {
+                onDebugStepOver?.()
+                onClose()
+              },
+            } satisfies Command,
+            {
+              id: 'debug-step-into',
+              title: t('command.debug.stepInto'),
+              subtitle: t('command.debug.stepInto.sub'),
+              icon: <ArrowRightToLine size={18} />,
+              shortcut: 'F11',
+              category: t('command.cat.debug'),
+              action: () => {
+                onDebugStepInto?.()
+                onClose()
+              },
+            } satisfies Command,
+            {
+              id: 'debug-step-out',
+              title: t('command.debug.stepOut'),
+              subtitle: t('command.debug.stepOut.sub'),
+              icon: <ArrowUpFromLine size={18} />,
+              shortcut: 'Shift+F11',
+              category: t('command.cat.debug'),
+              action: () => {
+                onDebugStepOut?.()
                 onClose()
               },
             } satisfies Command,
@@ -544,6 +653,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       onOpenWorkspaceImport,
       onOpenThemeSelector,
       onOpenWelcome,
+      onOpenDebug,
+      onStartDebug,
+      onStopDebug,
+      onDebugContinue,
+      onDebugStepOver,
+      onDebugStepInto,
+      onDebugStepOut,
       t,
       theme,
     ],

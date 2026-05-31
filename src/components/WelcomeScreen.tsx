@@ -93,6 +93,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       { key: 'Ctrl+Shift+F', action: t('welcome.shortcut.search') },
       { key: 'Ctrl+`', action: t('welcome.shortcut.terminal') },
       { key: 'Ctrl+Shift+G', action: t('welcome.shortcut.git') },
+      { key: 'Ctrl+Alt+4', action: t('welcome.shortcut.debugPanel') },
+      { key: 'F5', action: t('welcome.shortcut.debugContinue') },
+      { key: 'Shift+F5', action: t('welcome.shortcut.debugStop') },
     ]
   }, [shortcutsProp, t])
 

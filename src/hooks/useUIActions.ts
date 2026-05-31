@@ -82,6 +82,10 @@ export function useUIActions() {
     setShowTerminal(true)
     setBottomPanelTab('tasks')
   }, [setBottomPanelTab, setShowTerminal])
+  const openDebugPanel = useCallback(() => {
+    setShowTerminal(true)
+    setBottomPanelTab('debug')
+  }, [setBottomPanelTab, setShowTerminal])
   const openWorkspaceManagerModal = useCallback(() => setShowWorkspaceManager(true), [setShowWorkspaceManager])
   const openWorkspacePanelModal = useCallback(() => setShowWorkspacePanel(true), [setShowWorkspacePanel])
   const openTemplateModal = useCallback(() => setShowTemplateModal(true), [setShowTemplateModal])
@@ -122,6 +126,7 @@ export function useUIActions() {
     openTerminalPanel,
     openScriptsPanel,
     openTasksPanel,
+    openDebugPanel,
     openWorkspaceManagerModal,
     openWorkspacePanelModal,
     openTemplateModal,

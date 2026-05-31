@@ -25,6 +25,13 @@ interface EditorLayoutProps {
   onOpenTaskFile: (path: string, line?: number) => void
   onCreateProjectTasks: () => void
   onSendOpenTasksToAgent: () => void
+  onStartDebug: () => void
+  onStopDebug: () => void
+  onDebugContinue: () => void
+  onDebugStepOver: () => void
+  onDebugStepInto: () => void
+  onDebugStepOut: () => void
+  debugSessionActive: boolean
   onRetryRuntime: () => void
   onFileChange: (value: string | undefined) => void
   onDeleteFile: (index: number) => void
@@ -48,6 +55,13 @@ export function EditorLayout({
   onOpenTaskFile,
   onCreateProjectTasks,
   onSendOpenTasksToAgent,
+  onStartDebug,
+  onStopDebug,
+  onDebugContinue,
+  onDebugStepOver,
+  onDebugStepInto,
+  onDebugStepOut,
+  debugSessionActive,
   onRetryRuntime,
   onFileChange,
   onDeleteFile,
@@ -165,6 +179,11 @@ export function EditorLayout({
                   })}
                 </span>
                 {currentDiffTab.truncated ? <span>{t('git.diffTruncatedBadge')}</span> : null}
+                {currentDiffTab.layout === 'inline' ? (
+                  <span>{t('git.diffLayoutInline')}</span>
+                ) : (
+                  <span>{t('git.diffLayoutSideBySide')}</span>
+                )}
               </>
             ) : (
               <>
@@ -215,6 +234,7 @@ export function EditorLayout({
             modified={currentDiffTab.newContent}
             language={currentDiffTab.language}
             theme={theme}
+            layout={currentDiffTab.layout ?? 'sideBySide'}
           />
         ) : (
           <Editor
@@ -254,6 +274,13 @@ export function EditorLayout({
           onOpenTaskFile={onOpenTaskFile}
           onCreateProjectTasks={onCreateProjectTasks}
           onSendOpenTasksToAgent={onSendOpenTasksToAgent}
+          onStartDebug={onStartDebug}
+          onStopDebug={onStopDebug}
+          onDebugContinue={onDebugContinue}
+          onDebugStepOver={onDebugStepOver}
+          onDebugStepInto={onDebugStepInto}
+          onDebugStepOut={onDebugStepOut}
+          debugSessionActive={debugSessionActive}
         />
       )}
 

@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('aiIdeDesktop', {
     return () => ipcRenderer.removeListener('desktop:pty-exit', listener)
   },
   getInfo: () => ipcRenderer.invoke('desktop:info'),
+  readGitReadonlySnapshot: (rootPath) =>
+    ipcRenderer.invoke('desktop:git-readonly-snapshot', { rootPath }),
   checkForUpdates: () => ipcRenderer.invoke('desktop:check-updates'),
   onUpdateStatus: (callback) => {
     const listener = (_event, payload) => callback(payload)

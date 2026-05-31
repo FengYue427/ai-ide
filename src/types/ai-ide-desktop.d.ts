@@ -51,6 +51,19 @@ export type DesktopPtySpawnResult = {
   reason?: string
 }
 
+export type DesktopGitReadonlySnapshot =
+  | {
+      ok: true
+      statusPorcelain: string
+      branch: string
+      branches: string[]
+    }
+  | {
+      ok: false
+      reason: string
+      detail?: string
+    }
+
 export interface AiIdeDesktopApi {
   isDesktop: true
   shellMode: () => Promise<{ mode: DesktopShellMode; appUrl?: string }>
@@ -64,6 +77,7 @@ export interface AiIdeDesktopApi {
     endLine?: number,
   ) => Promise<string>
   writeFile: (rootPath: string, relPath: string, content: string) => Promise<{ ok: boolean }>
+  readGitReadonlySnapshot: (rootPath: string) => Promise<DesktopGitReadonlySnapshot>
   runCommand: (rootPath: string, commandLine: string) => Promise<DesktopRunResult>
   ptyCapabilities: () => Promise<DesktopPtyCapabilities>
   ptySpawn: (payload: {

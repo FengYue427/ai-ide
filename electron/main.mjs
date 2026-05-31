@@ -21,6 +21,7 @@ import {
   writePtySession,
 } from './ptyBridge.mjs'
 import { checkForUpdates, installDesktopCrashLog, setupDesktopUpdater } from './updater.mjs'
+import { readGitReadonlySnapshot } from './gitCli.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PRODUCTION_APP_URL =
@@ -291,6 +292,12 @@ function registerIpc() {
     if (!root) throw new Error('LOCAL_PROJECT_NOT_BOUND')
     await writeProjectFile(root, relPath, content)
     return { ok: true }
+  })
+
+  ipcMain.handle('desktop:git-readonly-snapshot', async (_e, { rootPath }) => {
+    const root = rootPath ?? projectRoot
+    if (!root) return { ok: false, reason: 'NO_ROOT' }
+    return readGitReadonlySnapshot(root)
   })
 
   ipcMain.handle('desktop:run-command', async (_e, { rootPath, commandLine }) => {

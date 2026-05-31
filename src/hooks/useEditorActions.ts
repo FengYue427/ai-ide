@@ -10,6 +10,18 @@ import { resultFromCommandOutcome, detectCommandOutcome, type NpmScriptRunResult
 import { waitForTerminalCommandOutcome } from '../lib/waitForTerminalCommandOutcome'
 import { runTerminalCommand } from '../services/terminalBridge'
 import { useIDEStore } from '../store/ideStore'
+import { canUseDebugExecutionControls, isDebugSessionActive } from '../lib/debugSessionActive'
+import { isCollaborationDebugBlocked } from '../lib/collabDebugGuard'
+import {
+  executeDebugContinue,
+  executeDebugStepInto,
+  executeDebugStepOut,
+  executeDebugStepOver,
+} from '../services/debugExecutionService'
+import {
+  startDebugSessionWithBreakpoints,
+  stopActiveDebugSession,
+} from '../services/debugSessionService'
 import { StorageLayer, unifiedStorage } from '../services/unifiedStorage'
 import type { TranslateFn } from '../i18n'
 import type { FileItem } from '../types/file'
@@ -22,6 +34,9 @@ interface UseEditorActionsOptions {
   isReady: boolean
   notify: Notify
   runNode: (entry?: string) => Promise<number | undefined>
+  spawnNodeInspectSession: (
+    entry?: string,
+  ) => Promise<import('../hooks/useWebContainer').NodeInspectSessionHandle>
   setActiveFile: (index: number) => void
   setAiConfig: (config: { provider: AIModel; apiKey: string; model: string; endpoint: string }) => void
   setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>
@@ -40,6 +55,7 @@ export function useEditorActions({
   isReady,
   notify,
   runNode,
+  spawnNodeInspectSession,
   setActiveFile,
   setAiConfig,
   setFiles,
@@ -83,6 +99,11 @@ export function useEditorActions({
   }, [notify, setTheme, t, theme])
 
   const handleRunCode = useCallback(async () => {
+    if (isDebugSessionActive(useIDEStore.getState().debugSession.phase)) {
+      notify('info', t('debug.runBlockedTitle'), t('debug.runBlockedDetail'))
+      return
+    }
+
     if (!isReady) {
       notify('info', t('notify.runtimeInit'), t('notify.runtimeInitFile'))
       return
@@ -119,8 +140,195 @@ export function useEditorActions({
     clearTerminalOutput()
   }, [])
 
+  const notifyCollaborationDebugBlocked = useCallback(() => {
+    notify('info', t('debug.viewerBlockedTitle'), t('debug.viewerBlockedDetail'))
+  }, [notify, t])
+
+  const handleStartDebug = useCallback(async () => {
+    const storeSnapshot = useIDEStore.getState()
+    if (
+      isCollaborationDebugBlocked(
+        storeSnapshot.collaborationRoomId,
+        storeSnapshot.collaborationMemberRole,
+      )
+    ) {
+      notifyCollaborationDebugBlocked()
+      return
+    }
+
+    if (isDebugSessionActive(storeSnapshot.debugSession.phase)) {
+      notify('info', t('debug.alreadyActiveTitle'), t('debug.alreadyActiveDetail'))
+      return
+    }
+
+    if (!isReady) {
+      notify('info', t('notify.runtimeInit'), t('debug.waitRuntimeDesc'))
+      return
+    }
+
+    const file = files[activeFile]
+    if (!file) return
+
+    setShowTerminal(true)
+    const store = useIDEStore.getState()
+    store.setBottomPanelTab('debug')
+    store.resetDebugSession()
+    store.setDebugSession({
+      phase: 'starting',
+      entryFile: file.name,
+      error: null,
+      inspectUrl: null,
+      syncMode: null,
+      registeredBreakpointCount: 0,
+      pausedAt: null,
+      callStack: [],
+      locals: [],
+      activeStackFrameIndex: 0,
+    })
+
+    try {
+      store.setDebugSession({ phase: 'listening' })
+      const result = await startDebugSessionWithBreakpoints({
+        files,
+        entryFile: file.name,
+        breakpoints: store.debugBreakpoints,
+        writeFile,
+        spawnInspect: (entry) => spawnNodeInspectSession(entry),
+        onPaused: (inspection) => {
+          const state = useIDEStore.getState()
+          state.setDebugSession({
+            phase: 'paused',
+            pausedAt: inspection.location,
+            callStack: inspection.callStack,
+            locals: inspection.locals,
+            activeStackFrameIndex: 0,
+          })
+          const fileIndex = files.findIndex((item) => item.name === inspection.location.path)
+          if (fileIndex >= 0) {
+            state.setActiveFile(fileIndex)
+            state.setEditorTarget({ line: inspection.location.line, column: 1, nonce: Date.now() })
+          }
+        },
+        onResumed: () => {
+          useIDEStore.getState().setDebugSession({
+            phase: 'running',
+            pausedAt: null,
+            callStack: [],
+            locals: [],
+            activeStackFrameIndex: 0,
+          })
+        },
+        onEnded: () => {
+          useIDEStore.getState().setDebugSession({ phase: 'ended' })
+        },
+      })
+
+      if (!result.inspectUrl) {
+        store.setDebugSession({
+          phase: 'failed',
+          error: t('debug.attachFailedNoUrl'),
+        })
+        notify('error', t('debug.attachFailed'), t('debug.attachFailedNoUrl'))
+        return
+      }
+
+      store.setDebugSession({
+        phase: result.syncMode === 'injected' ? 'running' : 'running',
+        inspectUrl: result.inspectUrl,
+        syncMode: result.syncMode,
+        registeredBreakpointCount: result.registeredBreakpointCount,
+      })
+
+      if (result.syncMode === 'cdp') {
+        notify(
+          'success',
+          t('debug.attachSuccess'),
+          t('debug.breakpointsRegistered', { count: result.registeredBreakpointCount }),
+        )
+      } else if (result.syncMode === 'injected') {
+        notify('info', t('debug.injectFallbackTitle'), t('debug.injectFallbackDetail'))
+      } else {
+        notify('success', t('debug.attachSuccess'), result.inspectUrl)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('notify.commandFailed')
+      store.setDebugSession({ phase: 'failed', error: message })
+      notify('error', t('debug.attachFailed'), message)
+    }
+  }, [activeFile, files, isReady, notify, notifyCollaborationDebugBlocked, setShowTerminal, spawnNodeInspectSession, t, writeFile])
+
+  const handleStopDebug = useCallback(() => {
+    stopActiveDebugSession()
+    useIDEStore.getState().resetDebugSession()
+    notify('info', t('debug.stopped'), t('debug.stoppedDetail'))
+  }, [notify, t])
+
+  const applyDebugRunningState = useCallback(() => {
+    useIDEStore.getState().setDebugSession({
+      phase: 'running',
+      pausedAt: null,
+      callStack: [],
+      locals: [],
+      activeStackFrameIndex: 0,
+    })
+  }, [])
+
+  const runDebugExecution = useCallback(
+    async (action: () => Promise<boolean>, failureKey: 'debug.executionFailed' | 'debug.executionRequiresCdp') => {
+      const storeSnapshot = useIDEStore.getState()
+      if (
+        isCollaborationDebugBlocked(
+          storeSnapshot.collaborationRoomId,
+          storeSnapshot.collaborationMemberRole,
+        )
+      ) {
+        notifyCollaborationDebugBlocked()
+        return
+      }
+
+      const session = storeSnapshot.debugSession
+      if (!canUseDebugExecutionControls(session)) {
+        notify('info', t('debug.executionRequiresCdpTitle'), t(failureKey))
+        return
+      }
+      try {
+        const ok = await action()
+        if (ok) {
+          applyDebugRunningState()
+        } else {
+          notify('error', t('debug.executionFailedTitle'), t('debug.executionFailed'))
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t('debug.executionFailed')
+        notify('error', t('debug.executionFailedTitle'), message)
+      }
+    },
+    [applyDebugRunningState, notify, notifyCollaborationDebugBlocked, t],
+  )
+
+  const handleDebugContinue = useCallback(async () => {
+    await runDebugExecution(executeDebugContinue, 'debug.executionRequiresCdp')
+  }, [runDebugExecution])
+
+  const handleDebugStepOver = useCallback(async () => {
+    await runDebugExecution(executeDebugStepOver, 'debug.executionRequiresCdp')
+  }, [runDebugExecution])
+
+  const handleDebugStepInto = useCallback(async () => {
+    await runDebugExecution(executeDebugStepInto, 'debug.executionRequiresCdp')
+  }, [runDebugExecution])
+
+  const handleDebugStepOut = useCallback(async () => {
+    await runDebugExecution(executeDebugStepOut, 'debug.executionRequiresCdp')
+  }, [runDebugExecution])
+
   const handleRunNpmScript = useCallback(
     async (scriptName: string): Promise<NpmScriptRunResult> => {
+      if (isDebugSessionActive(useIDEStore.getState().debugSession.phase)) {
+        notify('info', t('debug.runBlockedTitle'), t('debug.runBlockedDetail'))
+        return { scriptName, status: 'skipped', detail: t('debug.runBlockedDetail') }
+      }
+
       if (!isReady) {
         notify('info', t('notify.runtimeInit'), t('notify.runtimeInitNpm'))
         return { scriptName, status: 'skipped', detail: t('notify.runtimeInitNpm') }
@@ -198,6 +406,12 @@ export function useEditorActions({
     clearTerminal,
     handleApplyTemplate,
     handleRunCode,
+    handleStartDebug,
+    handleStopDebug,
+    handleDebugContinue,
+    handleDebugStepOver,
+    handleDebugStepInto,
+    handleDebugStepOut,
     handleRunNpmScript,
     handleSaveAISettings,
     toggleTheme,

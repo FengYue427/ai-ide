@@ -219,6 +219,13 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'git.statusPerfHintTitle': '変更が多い — 更新に時間がかかる場合があります',
   'git.statusPerfHintDesc': '現在 {count} ファイルが変更されています。',
   'git.statusPerfHintTip': '一部をステージするか、更新ボタンで手動同期してください。',
+  'git.manualRefreshOnly': 'Git 状態は手動更新のみ',
+  'git.manualRefreshOnlyHint':
+    '保存時の自動更新を停止中。「更新」または Git 操作後に同期されます。',
+  'git.desktopCliToggle': 'ネイティブ git で状態を読み取る（Electron）',
+  'git.desktopCliBadge': 'ディスク Git',
+  'git.desktopCliHint':
+    '読み取り専用：status/branch はローカルフォルダから。履歴と diff は WebContainer。PATH に git が必要です。',
   'git.waitRuntime': 'ランタイム準備完了後、Git パネルが接続されます。',
   'git.notInit.title': 'このワークスペースは Git 未初期化',
   'git.notInit.desc': '初期化すると変更の確認、ステージ、コミットができます。',
@@ -237,6 +244,8 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'git.diffTabBadge': 'Git 差分',
   'git.diffStats': '削除 {removed} 行 · 追加 {added} 行',
   'git.diffTruncatedBadge': '省略表示',
+  'git.diffLayoutInline': 'インライン差分',
+  'git.diffLayoutSideBySide': '左右差分',
   'git.diffTruncatedBanner':
     '差分が大きいため、旧 {oldShown}/{oldTotal} 行・新 {newShown}/{newTotal} 行のみ表示。全体はターミナル git diff を利用してください。',
   'git.discardFileTitle': 'このファイルの未ステージ変更を破棄',
@@ -266,4 +275,11 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'git.historyLoadMore': '履歴をさらに読み込む',
   'git.historyLoadingMore': '読み込み中…',
   'git.historyLoadFailed': '履歴をさらに読み込めません',
+  'git.historyFilterPlaceholder': 'メッセージ・作者・SHA・パスで絞り込み…',
+  'git.historyFilterClear': '絞り込みをクリア',
+  'git.historyFilterEmpty': '一致するコミットがありません',
+  'git.historyFilterEmptyDesc': '別のキーワードを試すか、履歴をさらに読み込んでから絞り込んでください。',
+  'git.historyFilterPathHint':
+    'パス絞り込みは展開済みでファイル一覧を読み込んだコミットのみ対象です。コミットを展開するか、履歴を追加読み込みしてください。',
+  'git.tab.historyFiltered': '履歴 {shown}/{total}',
 }

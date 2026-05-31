@@ -23,6 +23,7 @@ import { useWorkspacePersistence } from '../hooks/useWorkspacePersistence'
 import { useBackgroundJobsTracker } from '../hooks/useBackgroundJobsTracker'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
+import { isDebugSessionActive } from '../lib/debugSessionActive'
 import {
   buildOpenTasksAgentPrompt,
   collectAllTaskSources,
@@ -77,6 +78,7 @@ export function AppShell() {
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
   const setShowWelcome = useIDEStore((s) => s.setShowWelcome)
   const showWelcome = useIDEStore((s) => s.showWelcome)
+  const debugSessionPhase = useIDEStore((s) => s.debugSession.phase)
 
   const { toasts, confirmRequest, dismissToast, notify, requestConfirm, resolveConfirm } = useAppFeedback()
   useBackgroundJobsTracker(notify)
@@ -114,9 +116,13 @@ export function AppShell() {
     isRunning,
     writeFile,
     runNode,
+    spawnNodeInspectSession,
     retry: retryRuntime,
     fs,
   } = useWebContainer()
+
+  const debugSessionActive = isDebugSessionActive(debugSessionPhase)
+  const runtimeBusy = isRunning || debugSessionActive
 
   useAppBootstrap()
   useDesktopBootstrap()
@@ -195,13 +201,26 @@ export function AppShell() {
     t,
   })
 
-  const { clearTerminal, handleApplyTemplate, handleRunCode, handleRunNpmScript, handleSaveAISettings, toggleTheme } =
-    useEditorActions({
+  const {
+    clearTerminal,
+    handleApplyTemplate,
+    handleRunCode,
+    handleStartDebug,
+    handleStopDebug,
+    handleDebugContinue,
+    handleDebugStepOver,
+    handleDebugStepInto,
+    handleDebugStepOut,
+    handleRunNpmScript,
+    handleSaveAISettings,
+    toggleTheme,
+  } = useEditorActions({
       activeFile,
       files,
       isReady,
       notify,
       runNode,
+      spawnNodeInspectSession,
       setActiveFile,
       setAiConfig,
       setFiles,
@@ -223,6 +242,11 @@ export function AppShell() {
   useAppShortcuts({
     files,
     handleRunCode,
+    handleDebugContinue,
+    handleDebugStepOver,
+    handleDebugStepInto,
+    handleDebugStepOut,
+    handleStopDebug,
     openCommandPalette: ui.openCommandPalette,
     openImportDialog: ui.openImportDialog,
     openNewFileInput: ui.openNewFileInput,
@@ -232,24 +256,29 @@ export function AppShell() {
     openTerminalPanel: ui.openTerminalPanel,
     openScriptsPanel: ui.openScriptsPanel,
     openTasksPanel: ui.openTasksPanel,
+    openDebugPanel: ui.openDebugPanel,
     onFormat: () => requestFormatDocument(),
   })
 
   const runStatusText = runtimeError
     ? t('runtime.status.error')
-    : isRunning
-      ? t('runtime.status.running')
-      : isReady
-        ? t('runtime.status.ready')
-        : isRuntimeLoading
-          ? t('runtime.status.loading')
-          : t('runtime.status.notReady')
+    : debugSessionPhase === 'paused'
+      ? t('debug.phase.paused')
+      : debugSessionActive
+        ? t(`debug.phase.${debugSessionPhase}`)
+        : isRunning
+          ? t('runtime.status.running')
+          : isReady
+            ? t('runtime.status.ready')
+            : isRuntimeLoading
+              ? t('runtime.status.loading')
+              : t('runtime.status.notReady')
 
   return (
     <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
       <AppToolbar
         isReady={isReady}
-        isRunning={isRunning}
+        isRunning={runtimeBusy}
         runtimeError={runtimeError}
         runStatusText={runStatusText}
         onRunCode={handleRunCode}
@@ -290,7 +319,7 @@ export function AppShell() {
         <EditorLayout
           isReady={isReady}
           isRuntimeLoading={isRuntimeLoading}
-          isRunning={isRunning}
+          isRunning={runtimeBusy}
           runtimeError={runtimeError}
           writeFile={writeFile}
           onRunCode={handleRunCode}
@@ -343,6 +372,13 @@ export function AppShell() {
             setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
             useIDEStore.getState().setBottomPanelTab('tasks')
           }}
+          onStartDebug={handleStartDebug}
+          onStopDebug={handleStopDebug}
+          onDebugContinue={handleDebugContinue}
+          onDebugStepOver={handleDebugStepOver}
+          onDebugStepInto={handleDebugStepInto}
+          onDebugStepOut={handleDebugStepOut}
+          debugSessionActive={debugSessionActive}
           onSendOpenTasksToAgent={() => {
             const sources = collectAllTaskSources(
               files.map((file) => ({ name: file.name, content: file.content })),
@@ -390,6 +426,12 @@ export function AppShell() {
         onExportZip={handleExportZip}
         onRunCode={handleRunCode}
         onRunNpmScript={handleRunNpmScript}
+        onStartDebug={handleStartDebug}
+        onStopDebug={handleStopDebug}
+        onDebugContinue={handleDebugContinue}
+        onDebugStepOver={handleDebugStepOver}
+        onDebugStepInto={handleDebugStepInto}
+        onDebugStepOut={handleDebugStepOut}
         onToggleTheme={toggleTheme}
         closeCommandPalette={ui.closeCommandPalette}
         closeSettingsPanel={ui.closeSettingsPanel}
@@ -403,6 +445,7 @@ export function AppShell() {
         openTerminalPanel={ui.openTerminalPanel}
         openScriptsPanel={ui.openScriptsPanel}
         openTasksPanel={ui.openTasksPanel}
+        openDebugPanel={ui.openDebugPanel}
         openPreviewPanel={ui.openPreviewPanel}
         openCodeReviewPanel={ui.openCodeReviewPanel}
         openPerformanceDialog={ui.openPerformanceDialog}
@@ -418,7 +461,7 @@ export function AppShell() {
         openWelcomeScreen={ui.openWelcomeScreen}
         onOpenRecentWorkspace={handleOpenRecentWorkspace}
         onTestsGenerated={handleTestsGenerated}
-        isRunning={isRunning}
+        isRunning={runtimeBusy}
         output={output}
         isWebContainerReady={isReady}
         gitBranch={gitStatus.branch}

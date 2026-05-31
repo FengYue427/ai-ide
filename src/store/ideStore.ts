@@ -8,8 +8,47 @@ import type { RecentProject } from '../services/recentFilesService'
 import { openGitDiffTabState, type OpenGitDiffTabInput } from '../lib/openGitDiffTab'
 import type { GitDiffTab } from '../types/editorTab'
 import type { FileItem } from '../types/file'
+import {
+  loadDebugBreakpoints,
+  saveDebugBreakpoints,
+  setBreakpointEnabledInList,
+  toggleBreakpointInList,
+  type DebugBreakpoint,
+} from '../lib/debugBreakpoints'
+import type { DebugAttachPhase, DebugSyncMode } from '../services/debugAlphaService'
+import type { DebugLocalVariable, DebugStackFrame } from '../types/debugInspect'
+import {
+  loadGitStatusRefreshPrefs,
+  saveGitStatusRefreshPrefs,
+} from '../lib/gitStatusRefreshPrefs'
 
 export type ActiveEditorSurface = 'file' | 'git-diff'
+
+export interface DebugSessionState {
+  phase: DebugAttachPhase
+  entryFile: string | null
+  inspectUrl: string | null
+  error: string | null
+  syncMode: DebugSyncMode | null
+  registeredBreakpointCount: number
+  pausedAt: { path: string; line: number } | null
+  callStack: DebugStackFrame[]
+  locals: DebugLocalVariable[]
+  activeStackFrameIndex: number
+}
+
+const defaultDebugSession: DebugSessionState = {
+  phase: 'idle',
+  entryFile: null,
+  inspectUrl: null,
+  error: null,
+  syncMode: null,
+  registeredBreakpointCount: 0,
+  pausedAt: null,
+  callStack: [],
+  locals: [],
+  activeStackFrameIndex: 0,
+}
 
 export type EditorTheme = 'vs-dark' | 'light'
 
@@ -53,7 +92,7 @@ export interface PluginModalState {
 
 export type RightPanelView = 'chat' | 'backgroundJobs'
 
-export type BottomPanelTab = 'terminal' | 'scripts' | 'tasks'
+export type BottomPanelTab = 'terminal' | 'scripts' | 'tasks' | 'debug'
 
 function buildDefaultFiles(): FileItem[] {
   const t = createTranslator(readStoredApiLanguage())
@@ -127,6 +166,10 @@ export interface IDEState {
   showTerminal: boolean
   bottomPanelTab: BottomPanelTab
   bottomPanelHeight: number
+  debugBreakpoints: DebugBreakpoint[]
+  debugSession: DebugSessionState
+  gitManualRefreshOnly: boolean
+  gitStatusRefreshNonce: number
   showTemplateModal: boolean
   showShareModal: boolean
   showGitPanel: boolean
@@ -200,6 +243,12 @@ export interface IDEState {
   setShowTerminal: (show: BooleanUpdater) => void
   setBottomPanelTab: (tab: BottomPanelTab) => void
   setBottomPanelHeight: (height: number) => void
+  toggleDebugBreakpoint: (path: string, line: number) => void
+  setDebugBreakpointEnabled: (path: string, line: number, enabled: boolean) => void
+  setDebugSession: (patch: Partial<DebugSessionState>) => void
+  resetDebugSession: () => void
+  setGitManualRefreshOnly: (enabled: boolean) => void
+  bumpGitStatusRefresh: () => void
   setShowTemplateModal: (show: boolean) => void
   setShowShareModal: (show: boolean) => void
   setShowGitPanel: (show: BooleanUpdater) => void
@@ -289,6 +338,10 @@ export const useIDEStore = create<IDEState>()((set) => ({
   showTerminal: false,
   bottomPanelTab: 'terminal',
   bottomPanelHeight: BOTTOM_PANEL_DEFAULT_HEIGHT,
+  debugBreakpoints: loadDebugBreakpoints(),
+  debugSession: { ...defaultDebugSession },
+  gitManualRefreshOnly: loadGitStatusRefreshPrefs().manualRefreshOnly,
+  gitStatusRefreshNonce: 0,
   showTemplateModal: false,
   showShareModal: false,
   showGitPanel: false,
@@ -421,6 +474,29 @@ export const useIDEStore = create<IDEState>()((set) => ({
     set((state) => ({ showTerminal: resolveBoolean(value, state.showTerminal) })),
   setBottomPanelTab: (tab) => set({ bottomPanelTab: tab }),
   setBottomPanelHeight: (height) => set({ bottomPanelHeight: height }),
+  toggleDebugBreakpoint: (path, line) =>
+    set((state) => {
+      const debugBreakpoints = toggleBreakpointInList(state.debugBreakpoints, path, line)
+      saveDebugBreakpoints(debugBreakpoints)
+      return { debugBreakpoints }
+    }),
+  setDebugBreakpointEnabled: (path, line, enabled) =>
+    set((state) => {
+      const debugBreakpoints = setBreakpointEnabledInList(state.debugBreakpoints, path, line, enabled)
+      saveDebugBreakpoints(debugBreakpoints)
+      return { debugBreakpoints }
+    }),
+  setDebugSession: (patch) =>
+    set((state) => ({
+      debugSession: { ...state.debugSession, ...patch },
+    })),
+  resetDebugSession: () => set({ debugSession: { ...defaultDebugSession } }),
+  setGitManualRefreshOnly: (enabled) => {
+    saveGitStatusRefreshPrefs({ manualRefreshOnly: enabled })
+    set({ gitManualRefreshOnly: enabled })
+  },
+  bumpGitStatusRefresh: () =>
+    set((state) => ({ gitStatusRefreshNonce: state.gitStatusRefreshNonce + 1 })),
   setShowTemplateModal: (showTemplateModal) => set({ showTemplateModal }),
   setShowShareModal: (showShareModal) => set({ showShareModal }),
   setShowGitPanel: (value) =>

@@ -143,6 +143,23 @@
   font-weight: 700;
 }
 
+.desktopCliBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+  color: var(--accent-color);
+}
+
+.desktopCliHint {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 .refreshButton {
   padding: 6px 10px;
   font-size: 11px;
@@ -462,4 +479,77 @@
 
 .historyLoadMoreButton {
   min-width: 140px;
+}
+
+.historyFilterBar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.historyFilterIcon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.historyFilterInput {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+
+.historyFilterInput::placeholder {
+  color: var(--text-secondary);
+}
+
+.historyFilterClear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.historyFilterClear:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.manualRefreshToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.manualRefreshToggle input {
+  accent-color: var(--accent-color);
+}
+
+.manualRefreshHint {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
 }

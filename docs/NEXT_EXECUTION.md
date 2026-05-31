@@ -1,27 +1,41 @@
 # 当前执行入口
 
-> **更新**：2026-05-29 — **v1.1.6.4** patch · Git ja 补全
+> **更新**：2026-05-29 — **v1.1.7 GA ✅**
 
 ---
 
 ## 世代状态
 
-| 线 | 状态 |
-|----|------|
-| **v1.1.6** | ✅ **GA** · tag `v1.1.6` |
-| **v1.1.6.x** | ✅ **1.1.6.1～1.1.6.4** · [ROADMAP_V1.1.6.x_PATCHES.md](./ROADMAP_V1.1.6.x_PATCHES.md) |
-| **v1.1.7** | 📋 调试器 MVP |
+| 线 | 状态 | 文档 |
+|----|------|------|
+| **v1.1.6** | ✅ GA · tag `v1.1.6` | [RELEASE_NOTES_v1.1.6.md](./RELEASE_NOTES_v1.1.6.md) |
+| **v1.1.6.x** | ✅ **1.1.6.8** 完成 · patch 线收口 | [ROADMAP_V1.1.6.x_PATCHES.md](./ROADMAP_V1.1.6.x_PATCHES.md) |
+| **v1.1.7** | ✅ **GA** · tag `v1.1.7` | [RELEASE_NOTES_v1.1.7.md](./RELEASE_NOTES_v1.1.7.md) |
+| **v1.1.8～9** | 📋 长期 | [ROADMAP_V1.1_LONG_HORIZON.md](./ROADMAP_V1.1_LONG_HORIZON.md) |
 
 ---
 
-## 1.1.6.x 收官
+## 建议下一步
 
-P0～P1 patch 已完成；**1.1.6.5+** 为 P2 探索（桌面原生 git），不阻断 v1.1.7。
+### 轨道 A — v1.1.7.x patch（可选）
 
-可选：**commit + push + deploy** 1.1.6.1～1.1.6.4 合并发布。
+| 顺序 | 主题 |
+|:----:|------|
+| 1 | Electron 桌面 `--inspect-brk` attach |
+| 2 | 条件断点 · step 抛光 |
+| 3 | `debug.*` ja 漏翻扫尾 |
+
+### 轨道 B — v1.1.8 插件 SDK 2.0
+
+见 [ROADMAP_V1.1_LONG_HORIZON.md](./ROADMAP_V1.1_LONG_HORIZON.md)。
 
 ---
 
-## 版本
+## 发版命令（待执行）
 
-**`1.1.6.4`**（Git UI ja 全覆盖测试）
+```bash
+npm run test:local
+git tag v1.1.7
+npm run deploy
+npm run smoke:report
+```

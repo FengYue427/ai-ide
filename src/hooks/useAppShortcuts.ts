@@ -5,6 +5,11 @@ import type { FileItem } from '../types/file'
 interface UseAppShortcutsOptions {
   files: FileItem[]
   handleRunCode: () => Promise<void>
+  handleDebugContinue: () => Promise<void>
+  handleDebugStepOver: () => Promise<void>
+  handleDebugStepInto: () => Promise<void>
+  handleDebugStepOut: () => Promise<void>
+  handleStopDebug: () => void
   openCommandPalette: () => void
   openImportDialog: () => void
   openNewFileInput: () => void
@@ -14,12 +19,18 @@ interface UseAppShortcutsOptions {
   openTerminalPanel: () => void
   openScriptsPanel: () => void
   openTasksPanel: () => void
+  openDebugPanel: () => void
   onFormat?: () => void
 }
 
 export function useAppShortcuts({
   files,
   handleRunCode,
+  handleDebugContinue,
+  handleDebugStepOver,
+  handleDebugStepInto,
+  handleDebugStepOut,
+  handleStopDebug,
   openCommandPalette,
   openImportDialog,
   openNewFileInput,
@@ -29,6 +40,7 @@ export function useAppShortcuts({
   openTerminalPanel,
   openScriptsPanel,
   openTasksPanel,
+  openDebugPanel,
   onFormat,
 }: UseAppShortcutsOptions) {
   useKeyboardShortcuts(
@@ -54,7 +66,21 @@ export function useAppShortcuts({
       onOpenTerminalTab: openTerminalPanel,
       onOpenScriptsTab: openScriptsPanel,
       onOpenTasksTab: openTasksPanel,
+      onOpenDebugTab: openDebugPanel,
       onFormat,
+      onDebugContinue: () => {
+        void handleDebugContinue()
+      },
+      onDebugStepOver: () => {
+        void handleDebugStepOver()
+      },
+      onDebugStepInto: () => {
+        void handleDebugStepInto()
+      },
+      onDebugStepOut: () => {
+        void handleDebugStepOut()
+      },
+      onDebugStop: handleStopDebug,
     }),
     true,
   )

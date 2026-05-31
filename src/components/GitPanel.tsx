@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown,
   ChevronRight,
@@ -9,6 +9,8 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  Search,
+  X,
 } from 'lucide-react'
 import * as gitService from '../services/gitService'
 import type { GitCommitFileChange, GitFileSyncUpdate } from '../services/gitService'
@@ -18,7 +20,20 @@ import { formatGitRelativeTime } from '../lib/formatGitRelativeTime'
 import { getLogContinueRef, gitLogHasMore, mergeGitLogPages } from '../lib/gitLogPagination'
 import { isValidBranchName } from '../lib/isValidBranchName'
 import { shouldShowGitStatusPerfHint } from '../lib/gitStatusPerfHint'
+import {
+  filterGitCommitsByHistoryQuery,
+  isGitHistoryFilterActive,
+} from '../lib/gitHistoryFilter'
+import { gitStatusRefreshDelayMs } from '../lib/gitStatusRefreshPrefs'
+import { loadGitReadonlySnapshot } from '../lib/gitReadonlySnapshot'
+import type { GitReadonlySnapshotSource } from '../services/desktopGitReadonly'
+import {
+  isDesktopGitCliEnabled,
+  setDesktopGitCliEnabled,
+} from '../services/desktopGitReadonly'
+import { isDesktopApp } from '../services/desktopBridge'
 import { useI18n } from '../i18n'
+import { useIDEStore } from '../store/ideStore'
 import { InlineStatePanel } from './InlineStatePanel'
 import { workspaceContextService } from '../services/workspaceContextService'
 import styles from './GitPanel.module.css'
@@ -66,6 +81,20 @@ const GitPanel: React.FC<GitPanelProps> = ({
   const [commitFilesLoadingOid, setCommitFilesLoadingOid] = useState<string | null>(null)
   const [historyHasMore, setHistoryHasMore] = useState(false)
   const [historyLoadingMore, setHistoryLoadingMore] = useState(false)
+  const [historyFilterQuery, setHistoryFilterQuery] = useState('')
+  const [gitSnapshotSource, setGitSnapshotSource] = useState<GitReadonlySnapshotSource>('isomorphic')
+  const [desktopGitCliEnabled, setDesktopGitCliEnabledState] = useState(isDesktopGitCliEnabled)
+
+  const filteredCommits = useMemo(
+    () => filterGitCommitsByHistoryQuery(commits, historyFilterQuery, commitFilesByOid),
+    [commitFilesByOid, commits, historyFilterQuery],
+  )
+
+  const historyFilterActive = isGitHistoryFilterActive(historyFilterQuery)
+  const gitManualRefreshOnly = useIDEStore((s) => s.gitManualRefreshOnly)
+  const setGitManualRefreshOnly = useIDEStore((s) => s.setGitManualRefreshOnly)
+  const bumpGitStatusRefresh = useIDEStore((s) => s.bumpGitStatusRefresh)
+  const prevFsRef = useRef<typeof fs>(null)
 
   const syncWorkspaceToFs = useCallback(async () => {
     if (!fs) return
@@ -74,19 +103,23 @@ const GitPanel: React.FC<GitPanelProps> = ({
     }
   }, [files, fs])
 
-  const refresh = useCallback(async () => {
+  const refreshCore = useCallback(async () => {
     if (!fs) return
     try {
-      await syncWorkspaceToFs()
-      const nextStatus = await gitService.getStatus(fs, '/')
+      const snapshot = await loadGitReadonlySnapshot(fs, syncWorkspaceToFs)
+      if (!snapshot) return
+
+      if (snapshot.source === 'desktop-cli') {
+        await syncWorkspaceToFs()
+      }
+
       const nextLog = await gitService.getLog(fs, '/')
-      const nextBranch = await gitService.getCurrentBranch(fs, '/')
-      const nextBranches = await gitService.listBranches(fs, '/')
-      setStatus(nextStatus)
+      setStatus(snapshot.status)
       setCommits(nextLog)
       setHistoryHasMore(gitLogHasMore(nextLog))
-      setBranch(nextBranch)
-      setBranches(nextBranches)
+      setBranch(snapshot.branch)
+      setBranches(snapshot.branches)
+      setGitSnapshotSource(snapshot.source)
       setIsInit(true)
       setError(null)
     } catch (refreshError) {
@@ -94,6 +127,11 @@ const GitPanel: React.FC<GitPanelProps> = ({
       setError(refreshError instanceof Error ? refreshError.message : t('git.statusReadFailed'))
     }
   }, [fs, syncWorkspaceToFs, t])
+
+  const refresh = useCallback(async () => {
+    await refreshCore()
+    bumpGitStatusRefresh()
+  }, [bumpGitStatusRefresh, refreshCore])
 
   const loadMoreHistory = useCallback(async () => {
     if (!fs || historyLoadingMore || !historyHasMore) return
@@ -119,8 +157,28 @@ const GitPanel: React.FC<GitPanelProps> = ({
   }, [commits, fs, historyHasMore, historyLoadingMore, notify, t])
 
   useEffect(() => {
-    refresh()
-  }, [refresh, files])
+    if (!fs) {
+      prevFsRef.current = null
+      return
+    }
+
+    const fsJustReady = prevFsRef.current !== fs
+    prevFsRef.current = fs
+
+    if (gitManualRefreshOnly && !fsJustReady) {
+      return
+    }
+
+    let cancelled = false
+    const timer = setTimeout(() => {
+      if (!cancelled) void refreshCore()
+    }, fsJustReady ? 0 : gitStatusRefreshDelayMs('auto'))
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [files, fs, gitManualRefreshOnly, refreshCore])
 
   const runGitAction = async (action: () => Promise<void>) => {
     if (!fs || isBusy || readOnly) return
@@ -376,6 +434,11 @@ const GitPanel: React.FC<GitPanelProps> = ({
                 <Plus size={14} />
               </button>
             ) : null}
+            {gitSnapshotSource === 'desktop-cli' ? (
+              <span className={styles.desktopCliBadge} title={t('git.desktopCliHint')}>
+                {t('git.desktopCliBadge')}
+              </span>
+            ) : null}
           </div>
           {showNewBranchForm && !readOnly ? (
             <div className={styles.newBranchForm}>
@@ -414,7 +477,9 @@ const GitPanel: React.FC<GitPanelProps> = ({
       <div className={styles.tabs}>
         {[
           { id: 'changes' as const, icon: History, label: t('git.tab.changes', { count: status.length }) },
-          { id: 'history' as const, icon: History, label: t('git.tab.history', { count: commits.length }) },
+          { id: 'history' as const, icon: History, label: historyFilterActive
+            ? t('git.tab.historyFiltered', { shown: filteredCommits.length, total: commits.length })
+            : t('git.tab.history', { count: commits.length }) },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -443,6 +508,39 @@ const GitPanel: React.FC<GitPanelProps> = ({
               description={t('git.statusPerfHintDesc', { count: status.length })}
               tips={[t('git.statusPerfHintTip')]}
             />
+          ) : null}
+
+          <label className={styles.manualRefreshToggle}>
+            <input
+              type="checkbox"
+              checked={gitManualRefreshOnly}
+              onChange={(event) => setGitManualRefreshOnly(event.target.checked)}
+            />
+            <span>{t('git.manualRefreshOnly')}</span>
+          </label>
+          {gitManualRefreshOnly ? (
+            <p className={styles.manualRefreshHint}>{t('git.manualRefreshOnlyHint')}</p>
+          ) : null}
+
+          {isDesktopApp() ? (
+            <>
+              <label className={styles.manualRefreshToggle}>
+                <input
+                  type="checkbox"
+                  checked={desktopGitCliEnabled}
+                  onChange={(event) => {
+                    const enabled = event.target.checked
+                    setDesktopGitCliEnabled(enabled)
+                    setDesktopGitCliEnabledState(enabled)
+                    void refresh()
+                  }}
+                />
+                <span>{t('git.desktopCliToggle')}</span>
+              </label>
+              {gitSnapshotSource === 'desktop-cli' ? (
+                <p className={styles.desktopCliHint}>{t('git.desktopCliHint')}</p>
+              ) : null}
+            </>
           ) : null}
 
           {staged.length > 0 && (
@@ -594,7 +692,46 @@ const GitPanel: React.FC<GitPanelProps> = ({
 
       {activeTab === 'history' && (
         <div className={styles.content}>
-          {commits.map((commit) => {
+          {commits.length > 0 ? (
+            <div className={styles.historyFilterBar}>
+              <Search size={14} className={styles.historyFilterIcon} aria-hidden />
+              <input
+                type="search"
+                className={styles.historyFilterInput}
+                value={historyFilterQuery}
+                onChange={(event) => setHistoryFilterQuery(event.target.value)}
+                placeholder={t('git.historyFilterPlaceholder')}
+                aria-label={t('git.historyFilterPlaceholder')}
+              />
+              {historyFilterActive ? (
+                <button
+                  type="button"
+                  className={styles.historyFilterClear}
+                  onClick={() => setHistoryFilterQuery('')}
+                  title={t('git.historyFilterClear')}
+                  aria-label={t('git.historyFilterClear')}
+                >
+                  <X size={14} />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {historyFilterActive && filteredCommits.length === 0 && commits.length > 0 ? (
+            <InlineStatePanel
+              compact
+              tone="hint"
+              icon={Search}
+              title={t('git.historyFilterEmpty')}
+              description={
+                historyFilterQuery.includes('/')
+                  ? t('git.historyFilterPathHint')
+                  : t('git.historyFilterEmptyDesc')
+              }
+            />
+          ) : null}
+
+          {filteredCommits.map((commit) => {
             const oid = commit.oid
             const isExpanded = expandedCommitOid === oid
             const changedFiles = commitFilesByOid[oid]

@@ -21,6 +21,8 @@ export interface GitDiffTab {
   originalNewLines?: number
   shownOldLines?: number
   shownNewLines?: number
+  /** Monaco diff layout (v1.1.6.5). */
+  layout?: 'sideBySide' | 'inline'
 }
 
 export function gitDiffTabKey(

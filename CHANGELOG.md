@@ -7,6 +7,97 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.7] — 2026-05-29 · 调试器 MVP GA
+
+### Added
+
+- **Debug 面板**：WebContainer `node --inspect-brk` attach · 断点 gutter · CDP 同步 + 注入回退
+- **调用栈与 locals**：暂停时只读展示 · 栈帧跳转编辑器
+- **执行控制**：Continue / Step Over·Into·Out · F5/F10/F11 快捷键 · Run 互斥
+- **命令面板**：`command.debug.*` · ja-JP 全量 · `Ctrl+Alt+4` Debug tab
+- **协作**：Viewer 不可调试（断点 gutter / 启动 / 单步均拦截）
+
+See [RELEASE_NOTES_v1.1.7.md](docs/RELEASE_NOTES_v1.1.7.md).
+
+---
+
+## [1.1.7.4] — 2026-05-29 · v1.1.7 F5
+
+### Added
+
+- **i18n F5**：`debug.*` / `command.debug.*` / `panel.debug.*` 全量 ja 覆盖 + `debugI18nJa.test.ts`
+- **命令面板**：开始调试 · 打开调试面板 · 继续/单步/停止（含快捷键提示）
+- **快捷键**：`Ctrl+Alt+4` 打开调试底栏；欢迎页调试快捷键说明
+
+---
+
+## [1.1.7.3] — 2026-05-29 · v1.1.7 F4
+
+### Added
+
+- **执行控制 F4**：Continue（F5）· Step Over（F10）· Step Into/Out（F11 / Shift+F11）
+- CDP `Debugger.resume` / `stepOver` / `stepInto` / `stepOut`
+- 调试中与 Run / npm 脚本互斥；工具栏与终端 Run 禁用
+
+---
+
+## [1.1.7.2] — 2026-05-29 · v1.1.7 F3
+
+### Added
+
+- **调用栈 F3**：CDP `Debugger.paused` 解析 `callFrames`；Debug 面板列表 · 点击跳转编辑器
+- **局部变量 F3**：`Runtime.getProperties` 只读展示；对象一层预览
+- **注入回退**：栈/变量区提示需 CDP 同步
+
+---
+
+## [1.1.7.1] — 2026-05-29 · v1.1.7 F2
+
+### Added
+
+- **断点 F2**：启用/禁用（Alt+点击 · 面板 checkbox · 灰色 gutter）
+- **CDP 断点同步**：连接 inspect 后 `Debugger.setBreakpointByUrl` + `resume`
+- **回退**：CDP 不可用时 `debugger;` 注入；会话 `running` / `paused` 状态
+
+---
+
+## [1.1.6.8] — 2026-05-29
+
+### Added
+
+- **Electron git spike（只读）**：本地文件夹 bound 时优先 `git status` / `branch` CLI；失败回退 isomorphic-git
+- `parseGitPorcelain` · `desktop:git-readonly-snapshot` · 面板「磁盘 Git」徽章与开关
+
+See [GIT_DESKTOP_CLI_SPIKE.md](docs/GIT_DESKTOP_CLI_SPIKE.md).
+
+---
+
+## [1.1.6.7] — 2026-05-29
+
+### Added
+
+- Git status **防抖**（300ms）：`GitPanel` / `useGitStatus` 文件保存风暴合并刷新
+- **仅手动刷新**开关（localStorage）：跳过后台自动 status 同步，保留刷新按钮与 Git 操作后同步
+
+---
+
+## [1.1.6.6] — 2026-05-29
+
+### Added
+
+- Git **历史筛选**：已加载 commit 客户端过滤（message / author / SHA / 已展开提交的路径）；搜索框 + 空状态提示
+
+---
+
+## [1.1.6.5] — 2026-05-29
+
+### Added
+
+- **1.1.6.5** 大 diff 自动切换 **内联** Monaco 布局（`gitDiffLayout`）；保留 1.1.6.1 截断兜底
+- **v1.1.7 Alpha**：底栏 **调试** 面板、编辑器断点 gutter、`node --inspect-brk` WebContainer 附着实验（`debugAlphaService`）
+
+---
+
 ## [1.1.6.4] — 2026-05-29
 
 ### Added

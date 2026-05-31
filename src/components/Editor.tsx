@@ -15,6 +15,7 @@ import { useI18n } from '../i18n'
 import { useCollabEditorPresence } from '../hooks/useCollabEditorPresence'
 import { canFormatFile, formatActiveFileInStore } from '../lib/editorFormat'
 import { useIDEStore } from '../store/ideStore'
+import { breakpointsForFileDecorations } from '../lib/debugBreakpoints'
 import { SkeletonLoader } from './SkeletonLoader'
 
 interface EditorTarget {
@@ -61,6 +62,9 @@ const Editor: React.FC<EditorProps> = ({
   const aiConfigRef = useRef(aiConfig)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
+  const debugBreakpoints = useIDEStore((s) => s.debugBreakpoints)
+  const toggleDebugBreakpoint = useIDEStore((s) => s.toggleDebugBreakpoint)
+  const setDebugBreakpointEnabled = useIDEStore((s) => s.setDebugBreakpointEnabled)
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
   const formatDocumentNonce = useIDEStore((s) => s.formatDocumentNonce)
   aiConfigRef.current = aiConfig
@@ -179,6 +183,52 @@ const Editor: React.FC<EditorProps> = ({
     void runFormat()
   }, [formatDocumentNonce, readOnly, filename, language])
 
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    const fileBreakpoints = breakpointsForFileDecorations(debugBreakpoints, filename)
+    const decorations = fileBreakpoints.map((bp) => ({
+      range: new monaco.Range(bp.line, 1, bp.line, 1),
+      options: {
+        isWholeLine: true,
+        glyphMarginClassName: bp.enabled
+          ? 'debug-breakpoint-glyph'
+          : 'debug-breakpoint-glyph debug-breakpoint-glyph--disabled',
+        glyphMarginHoverMessage: {
+          value: bp.enabled
+            ? t('debug.breakpointHover', { line: bp.line })
+            : t('debug.breakpointDisabledHover', { line: bp.line }),
+        },
+      },
+    }))
+
+    const collection = editor.createDecorationsCollection(decorations)
+    return () => collection.clear()
+  }, [debugBreakpoints, filename, mountedEditor, t])
+
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor || readOnly) return
+
+    const subscription = editor.onMouseDown((event) => {
+      if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return
+      const line = event.target.position?.lineNumber
+      if (!line) return
+
+      const key = `${filename}:${line}`
+      const existing = useIDEStore.getState().debugBreakpoints.find((bp) => bp.id === key)
+      if (event.event.altKey && existing) {
+        setDebugBreakpointEnabled(filename, line, !existing.enabled)
+        return
+      }
+
+      toggleDebugBreakpoint(filename, line)
+    })
+
+    return () => subscription.dispose()
+  }, [filename, mountedEditor, readOnly, setDebugBreakpointEnabled, toggleDebugBreakpoint])
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       {isLoading && (
@@ -224,6 +274,7 @@ const Editor: React.FC<EditorProps> = ({
           fontSize: 14,
           fontFamily: "'SF Mono', Monaco, 'Cascadia Code', monospace",
           lineNumbers: 'on',
+          glyphMargin: !readOnly,
           roundedSelection: false,
           scrollBeyondLastLine: false,
           automaticLayout: true,

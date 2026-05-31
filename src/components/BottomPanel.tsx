@@ -1,5 +1,5 @@
 import { useEffect, type CSSProperties, type FC, type ReactNode } from 'react'
-import { CheckSquare, Package, TerminalSquare } from 'lucide-react'
+import { Bug, CheckSquare, Package, TerminalSquare } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { useBottomPanelPersistence } from '../hooks/useBottomPanelPersistence'
 import { useBottomPanelResize } from '../hooks/useBottomPanelResize'
@@ -9,6 +9,7 @@ import { useIDEStore, type BottomPanelTab } from '../store/ideStore'
 import IntegratedTerminal from './IntegratedTerminal'
 import { NpmScriptsPanel } from './NpmScriptsPanel'
 import { TasksPanel } from './TasksPanel'
+import { DebugPanel } from './DebugPanel'
 
 interface BottomPanelProps {
   isReady: boolean
@@ -24,12 +25,20 @@ interface BottomPanelProps {
   onOpenTaskFile: (path: string, line?: number) => void
   onCreateProjectTasks: () => void
   onSendOpenTasksToAgent: () => void
+  onStartDebug: () => void
+  onStopDebug: () => void
+  onDebugContinue: () => void
+  onDebugStepOver: () => void
+  onDebugStepInto: () => void
+  onDebugStepOut: () => void
+  debugSessionActive: boolean
 }
 
 const TAB_ICONS: Record<BottomPanelTab, typeof TerminalSquare> = {
   terminal: TerminalSquare,
   scripts: Package,
   tasks: CheckSquare,
+  debug: Bug,
 }
 
 const BottomPanel: FC<BottomPanelProps> = ({
@@ -46,6 +55,13 @@ const BottomPanel: FC<BottomPanelProps> = ({
   onOpenTaskFile,
   onCreateProjectTasks,
   onSendOpenTasksToAgent,
+  onStartDebug,
+  onStopDebug,
+  onDebugContinue,
+  onDebugStepOver,
+  onDebugStepInto,
+  onDebugStepOut,
+  debugSessionActive,
 }) => {
   const { t } = useI18n()
   const tab = useIDEStore((s) => s.bottomPanelTab)
@@ -81,6 +97,7 @@ const BottomPanel: FC<BottomPanelProps> = ({
     { id: 'terminal', label: t('bottomPanel.tab.terminal') },
     { id: 'scripts', label: t('bottomPanel.tab.scripts') },
     { id: 'tasks', label: t('bottomPanel.tab.tasks') },
+    { id: 'debug', label: t('bottomPanel.tab.debug') },
   ]
 
   const handleRunScript = (scriptName: string) => {
@@ -118,6 +135,20 @@ const BottomPanel: FC<BottomPanelProps> = ({
         onOpenTaskFile={onOpenTaskFile}
         onCreateProjectTasks={onCreateProjectTasks}
         onSendOpenTasksToAgent={onSendOpenTasksToAgent}
+      />
+    ),
+    debug: (
+      <DebugPanel
+        isReady={isReady}
+        isRunning={isRunning}
+        debugSessionActive={debugSessionActive}
+        readOnly={readOnly}
+        onStartDebug={onStartDebug}
+        onStopDebug={onStopDebug}
+        onDebugContinue={onDebugContinue}
+        onDebugStepOver={onDebugStepOver}
+        onDebugStepInto={onDebugStepInto}
+        onDebugStepOut={onDebugStepOut}
       />
     ),
   }

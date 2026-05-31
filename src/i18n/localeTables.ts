@@ -23,6 +23,7 @@ export const I18N_PHASE2_PREFIXES = [
   'toolbar.',
   'command.',
   'git.',
+  'debug.',
 ] as const
 
 export interface LocalePrefixAuditRow {

@@ -4,6 +4,13 @@ import { createTranslator } from '../i18n'
 import { registerTerminalBridge } from '../services/terminalBridge'
 import { isDesktopApp } from '../services/desktopBridge'
 import { appendTerminalOutput, getTerminalOutputLines } from '../lib/terminalSession'
+import { nodeInspectBrkArgs, parseInspectUrlFromOutput } from '../services/debugAlphaService'
+
+export interface NodeInspectSessionHandle {
+  inspectUrl: string | null
+  kill: () => void
+  done: Promise<number | undefined>
+}
 import { getWorkspaceLocale } from '../services/workspaceErrors'
 
 let webcontainerInstance: WebContainer | null = null
@@ -23,6 +30,10 @@ export interface UseWebContainerReturn {
   mkdir: (path: string) => Promise<void>
   runCommand: (command: string, args?: string[]) => Promise<number | undefined>
   runNode: (fileName?: string) => Promise<number | undefined>
+  runNodeInspect: (
+    fileName?: string,
+  ) => Promise<{ inspectUrl: string | null; exitCode: number | undefined }>
+  spawnNodeInspectSession: (fileName?: string) => Promise<NodeInspectSessionHandle>
   installDependencies: () => Promise<number | undefined>
   retry: () => void
   fs: typeof WebContainer.prototype.fs | null
@@ -158,6 +169,91 @@ export function useWebContainer(): UseWebContainerReturn {
     return runCommand('node', [fileName])
   }, [runCommand])
 
+  const spawnNodeInspectSession = useCallback(
+    async (fileName = 'index.js'): Promise<NodeInspectSessionHandle> => {
+      const instance = ensureReady()
+      if (isRunning) {
+        throw new Error(createTranslator(getWorkspaceLocale())('runtime.webcontainer.busy'))
+      }
+
+      setIsRunning(true)
+      outputRef.current = []
+      setOutput([])
+      const args = nodeInspectBrkArgs(fileName)
+      appendTerminalOutput(`\r\n\x1b[90m$ node ${args.join(' ')}\x1b[0m\r\n`)
+
+      let inspectUrl: string | null = null
+      let resolveInspectUrl: ((url: string | null) => void) | undefined
+      const inspectUrlPromise = new Promise<string | null>((resolve) => {
+        resolveInspectUrl = resolve
+        window.setTimeout(() => resolve(null), 10_000)
+      })
+
+      try {
+        const process = await instance.spawn('node', args)
+
+        const done = (async () => {
+          try {
+            await process.output.pipeTo(
+              new WritableStream({
+                write(data) {
+                  if (mountedRef.current) {
+                    outputRef.current = [...outputRef.current, data]
+                    setOutput(outputRef.current)
+                    appendTerminalOutput(data)
+                    if (!inspectUrl) {
+                      const parsed = parseInspectUrlFromOutput(data)
+                      if (parsed) {
+                        inspectUrl = parsed
+                        if (resolveInspectUrl) {
+                          resolveInspectUrl(parsed)
+                          resolveInspectUrl = undefined
+                        }
+                      }
+                    }
+                  }
+                },
+              }),
+            )
+            return await process.exit
+          } finally {
+            if (mountedRef.current) {
+              setIsRunning(false)
+            }
+          }
+        })()
+
+        const resolvedUrl = await inspectUrlPromise
+        if (!inspectUrl) {
+          inspectUrl = resolvedUrl
+        }
+
+        return {
+          inspectUrl,
+          kill: () => process.kill(),
+          done,
+        }
+      } catch (err) {
+        console.error('[useWebContainer] Node inspect failed:', err)
+        if (resolveInspectUrl) resolveInspectUrl(null)
+        if (mountedRef.current) {
+          setIsRunning(false)
+        }
+        throw err
+      }
+    },
+    [isRunning],
+  )
+
+  const runNodeInspect = useCallback(
+    async (fileName = 'index.js') => {
+      const session = await spawnNodeInspectSession(fileName)
+      const exitCode = await session.done
+      return { inspectUrl: session.inspectUrl, exitCode }
+    },
+    [spawnNodeInspectSession],
+  )
+
   useEffect(() => {
     if (isDesktopApp()) return
     if (isReady) {
@@ -184,6 +280,8 @@ export function useWebContainer(): UseWebContainerReturn {
     mkdir,
     runCommand,
     runNode,
+    runNodeInspect,
+    spawnNodeInspectSession,
     installDependencies,
     retry,
     fs: webcontainerInstance?.fs || null,

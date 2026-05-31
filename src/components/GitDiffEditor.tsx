@@ -2,12 +2,14 @@ import React, { useState } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
 import { configureMonaco } from '../editor/monacoSetup'
 import { SkeletonLoader } from './SkeletonLoader'
+import type { GitDiffRenderLayout } from '../lib/gitDiffLayout'
 
 interface GitDiffEditorProps {
   original: string
   modified: string
   language: string
   theme?: 'vs-dark' | 'light'
+  layout?: GitDiffRenderLayout
 }
 
 configureMonaco()
@@ -17,8 +19,10 @@ export const GitDiffEditor: React.FC<GitDiffEditorProps> = ({
   modified,
   language,
   theme = 'vs-dark',
+  layout = 'sideBySide',
 }) => {
   const [isLoading, setIsLoading] = useState(true)
+  const renderSideBySide = layout === 'sideBySide'
 
   return (
     <div className="git-diff-editor" style={{ height: '100%', width: '100%', position: 'relative' }}>
@@ -36,7 +40,7 @@ export const GitDiffEditor: React.FC<GitDiffEditorProps> = ({
         onMount={() => setIsLoading(false)}
         options={{
           readOnly: true,
-          renderSideBySide: true,
+          renderSideBySide,
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
           fontSize: 14,

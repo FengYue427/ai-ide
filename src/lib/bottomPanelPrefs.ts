@@ -11,7 +11,7 @@ export type BottomPanelPrefs = {
   height: number
 }
 
-const VALID_TABS = new Set<BottomPanelTab>(['terminal', 'scripts', 'tasks'])
+const VALID_TABS = new Set<BottomPanelTab>(['terminal', 'scripts', 'tasks', 'debug'])
 
 function defaultViewportHeight(): number {
   if (typeof window !== 'undefined' && Number.isFinite(window.innerHeight)) {

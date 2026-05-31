@@ -96,6 +96,12 @@ interface PanelHostProps {
   onExportZip: () => void
   onRunCode: () => void
   onRunNpmScript: RunNpmScriptHandler
+  onStartDebug?: () => void
+  onStopDebug?: () => void
+  onDebugContinue?: () => void
+  onDebugStepOver?: () => void
+  onDebugStepInto?: () => void
+  onDebugStepOut?: () => void
   onToggleTheme: () => void
   closeCommandPalette: () => void
   closeSettingsPanel: () => void
@@ -109,6 +115,7 @@ interface PanelHostProps {
   openTerminalPanel: () => void
   openScriptsPanel: () => void
   openTasksPanel: () => void
+  openDebugPanel: () => void
   openPreviewPanel: () => void
   openCodeReviewPanel: () => void
   openPerformanceDialog: () => void
@@ -144,6 +151,12 @@ export function PanelHost({
   onExportZip,
   onRunCode,
   onRunNpmScript,
+  onStartDebug,
+  onStopDebug,
+  onDebugContinue,
+  onDebugStepOver,
+  onDebugStepInto,
+  onDebugStepOut,
   onToggleTheme,
   closeCommandPalette,
   closeSettingsPanel,
@@ -157,6 +170,7 @@ export function PanelHost({
   openTerminalPanel,
   openScriptsPanel,
   openTasksPanel,
+  openDebugPanel,
   openPreviewPanel,
   openCodeReviewPanel,
   openPerformanceDialog,
@@ -440,6 +454,13 @@ export function PanelHost({
         onOpenWorkspaceImport={openWorkspacePanelModal}
         onOpenThemeSelector={openThemeSelector}
         onOpenWelcome={openWelcomeScreen}
+        onOpenDebug={openDebugPanel}
+        onStartDebug={onStartDebug}
+        onStopDebug={onStopDebug}
+        onDebugContinue={onDebugContinue}
+        onDebugStepOver={onDebugStepOver}
+        onDebugStepInto={onDebugStepInto}
+        onDebugStepOut={onDebugStepOut}
         theme={theme}
         autoSaveEnabled={autoSaveEnabled}
       />
