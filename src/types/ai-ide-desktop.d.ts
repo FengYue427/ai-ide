@@ -39,6 +39,18 @@ export type DesktopUpdateStatus = {
   total?: number
 }
 
+export type DesktopPtyCapabilities = {
+  available: boolean
+  reason?: string
+  platform?: string
+}
+
+export type DesktopPtySpawnResult = {
+  ok: boolean
+  shell?: string
+  reason?: string
+}
+
 export interface AiIdeDesktopApi {
   isDesktop: true
   shellMode: () => Promise<{ mode: DesktopShellMode; appUrl?: string }>
@@ -53,6 +65,18 @@ export interface AiIdeDesktopApi {
   ) => Promise<string>
   writeFile: (rootPath: string, relPath: string, content: string) => Promise<{ ok: boolean }>
   runCommand: (rootPath: string, commandLine: string) => Promise<DesktopRunResult>
+  ptyCapabilities: () => Promise<DesktopPtyCapabilities>
+  ptySpawn: (payload: {
+    sessionId: string
+    cwd?: string
+    cols?: number
+    rows?: number
+  }) => Promise<DesktopPtySpawnResult>
+  ptyWrite: (payload: { sessionId: string; data: string }) => Promise<{ ok: boolean }>
+  ptyResize: (payload: { sessionId: string; cols: number; rows: number }) => Promise<{ ok: boolean }>
+  ptyKill: (payload: { sessionId: string }) => Promise<{ ok: boolean }>
+  onPtyData: (callback: (payload: { sessionId: string; data: string }) => void) => () => void
+  onPtyExit: (callback: (payload: { sessionId: string; exitCode: number }) => void) => () => void
   getInfo: () => Promise<{
     version: string
     platform: string
@@ -60,6 +84,8 @@ export interface AiIdeDesktopApi {
     shellMode?: DesktopShellMode
     packaged?: boolean
     autoUpdate?: boolean
+    ptyAvailable?: boolean
+    ptyReason?: string
   }>
   checkForUpdates: () => Promise<{ ok: boolean; reason?: string; error?: string }>
   onUpdateStatus: (callback: (status: DesktopUpdateStatus) => void) => () => void

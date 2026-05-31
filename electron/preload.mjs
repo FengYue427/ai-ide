@@ -12,6 +12,21 @@ contextBridge.exposeInMainWorld('aiIdeDesktop', {
     ipcRenderer.invoke('desktop:write-file', { rootPath, relPath, content }),
   runCommand: (rootPath, commandLine) =>
     ipcRenderer.invoke('desktop:run-command', { rootPath, commandLine }),
+  ptyCapabilities: () => ipcRenderer.invoke('desktop:pty-capabilities'),
+  ptySpawn: (payload) => ipcRenderer.invoke('desktop:pty-spawn', payload),
+  ptyWrite: (payload) => ipcRenderer.invoke('desktop:pty-write', payload),
+  ptyResize: (payload) => ipcRenderer.invoke('desktop:pty-resize', payload),
+  ptyKill: (payload) => ipcRenderer.invoke('desktop:pty-kill', payload),
+  onPtyData: (callback) => {
+    const listener = (_event, payload) => callback(payload)
+    ipcRenderer.on('desktop:pty-data', listener)
+    return () => ipcRenderer.removeListener('desktop:pty-data', listener)
+  },
+  onPtyExit: (callback) => {
+    const listener = (_event, payload) => callback(payload)
+    ipcRenderer.on('desktop:pty-exit', listener)
+    return () => ipcRenderer.removeListener('desktop:pty-exit', listener)
+  },
   getInfo: () => ipcRenderer.invoke('desktop:info'),
   checkForUpdates: () => ipcRenderer.invoke('desktop:check-updates'),
   onUpdateStatus: (callback) => {

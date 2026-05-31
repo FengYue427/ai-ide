@@ -1,45 +1,34 @@
-/** Shared terminal output buffer + xterm writer bridge (v1.1.5 F1). */
+/** Shared terminal output buffer + xterm writer bridge (v1.1.5 F1, multi-session 1.1.5.4). */
+
+import {
+  appendToActiveSession,
+  clearActiveSessionBuffer,
+  getActiveSessionOutputLines,
+} from './terminalSessionsManager'
 
 export type TerminalWriter = {
   write: (data: string) => void
   clear: () => void
 }
 
-const MAX_BUFFER_LINES = 2000
-
 let writer: TerminalWriter | null = null
-const outputLines: string[] = []
-let pendingChunks = ''
 
 export function registerTerminalWriter(next: TerminalWriter | null): void {
   writer = next
 }
 
 export function appendTerminalOutput(data: string): void {
-  if (!data) return
-
-  pendingChunks += data
-  const parts = pendingChunks.split(/\r?\n/)
-  pendingChunks = parts.pop() ?? ''
-  for (const part of parts) {
-    if (part.length > 0) outputLines.push(part)
-  }
-  if (outputLines.length > MAX_BUFFER_LINES) {
-    outputLines.splice(0, outputLines.length - MAX_BUFFER_LINES)
-  }
-
+  appendToActiveSession(data)
   writer?.write(data)
 }
 
 export function clearTerminalOutput(): void {
-  outputLines.length = 0
-  pendingChunks = ''
+  clearActiveSessionBuffer()
   writer?.clear()
 }
 
 export function getTerminalOutputLines(): string[] {
-  const tail = pendingChunks.trim()
-  return tail ? [...outputLines, tail] : [...outputLines]
+  return getActiveSessionOutputLines()
 }
 
 let shellInputWriter: ((data: string) => void) | null = null

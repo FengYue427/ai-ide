@@ -9,13 +9,86 @@
 
 .integrated-terminal-toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-secondary);
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.integrated-terminal-toolbar-start {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.integrated-terminal-sessions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.integrated-terminal-session {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.integrated-terminal-session--active {
+  border-color: var(--accent-color);
+}
+
+.integrated-terminal-session-tab {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.integrated-terminal-session--active .integrated-terminal-session-tab {
+  color: var(--text-primary);
+}
+
+.integrated-terminal-session-close,
+.integrated-terminal-session-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.integrated-terminal-session-add {
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+}
+
+.integrated-terminal-session-close:hover,
+.integrated-terminal-session-add:hover {
+  color: var(--accent-color);
+  background: var(--bg-tertiary);
+}
+
+.integrated-terminal-pty-badge {
+  margin: 0;
+  padding: 4px 12px 8px;
+  font-size: 10px;
+  color: var(--accent-color);
 }
 
 .integrated-terminal-title {

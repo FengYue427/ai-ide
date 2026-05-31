@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, type FC } from 'react'
+import { useCallback, useEffect, useRef, useState, type FC } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
-import { Play, Square, Trash2 } from 'lucide-react'
+import { Play, Plus, Square, Trash2, X } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { useDesktopPtyShell } from '../hooks/useDesktopPtyShell'
+import { useTerminalSessions } from '../hooks/useTerminalSessions'
 import { useWebContainerShell } from '../hooks/useWebContainerShell'
 import {
   appendTerminalOutput,
@@ -66,22 +68,53 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
   const desktopLineRef = useRef('')
   const desktopBusyRef = useRef(false)
   const getProjectRootRef = useRef<() => string | null>(() => null)
+  const [termSize, setTermSize] = useState({ cols: 80, rows: 24 })
+
+  const {
+    sessions,
+    activeId,
+    canAddSession,
+    switchSession,
+    addSession,
+    removeSession,
+  } = useTerminalSessions()
 
   const fitTerminal = useCallback(() => {
     try {
       fitRef.current?.fit()
       const term = termRef.current
-      if (term) resizeShell(term.cols, term.rows)
+      if (term) {
+        setTermSize({ cols: term.cols, rows: term.rows })
+        resizeShell(term.cols, term.rows)
+      }
     } catch {
       /* host hidden */
     }
   }, [])
 
+  const applyReplay = useCallback((replay: string) => {
+    const term = termRef.current
+    if (!term) return
+    term.clear()
+    if (replay) term.write(replay)
+  }, [])
+
   useWebContainerShell({
     enabled: !readOnly && isReady && !isDesktopApp(),
     isReady,
+    activeSessionId: activeId,
     writeFile,
   })
+
+  const ptyCaps = useDesktopPtyShell({
+    enabled: !readOnly && isReady && isDesktopApp(),
+    activeSessionId: activeId,
+    getProjectRoot: () => getProjectRootRef.current?.() ?? null,
+    cols: termSize.cols,
+    rows: termSize.rows,
+  })
+
+  const useDesktopLineRepl = isDesktopApp() && !readOnly && !ptyCaps.available
 
   useEffect(() => {
     void import('../services/localProjectService').then((mod) => {
@@ -138,7 +171,7 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
       clear: () => term.clear(),
     })
 
-    if (isDesktopApp() && !readOnly) {
+    if (useDesktopLineRepl) {
       term.writeln(t('terminal.desktopHint'))
       term.write(DESKTOP_PROMPT)
       term.onData((data) => {
@@ -175,6 +208,10 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
       term.writeln(t('terminal.hint'))
     }
 
+    if (ptyCaps.available) {
+      term.writeln(t('terminal.ptyHint'))
+    }
+
     const resizeObserver = new ResizeObserver(() => {
       fitTerminal()
     })
@@ -187,7 +224,7 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
       termRef.current = null
       fitRef.current = null
     }
-  }, [fitTerminal, isLoading, isReady, readOnly, runDesktopLine, t, theme])
+  }, [fitTerminal, isLoading, isReady, ptyCaps.available, readOnly, runDesktopLine, t, theme, useDesktopLineRepl])
 
   useEffect(() => {
     fitTerminal()
@@ -203,15 +240,75 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
   const handleClear = () => {
     clearTerminalOutput()
     onClear()
-    if (isDesktopApp() && !readOnly && isTerminalBridgeReady()) {
+    if (useDesktopLineRepl && isTerminalBridgeReady()) {
       appendTerminalOutput(DESKTOP_PROMPT)
     }
+  }
+
+  const handleSwitchSession = (id: string) => {
+    if (id === activeId) return
+    const replay = switchSession(id)
+    applyReplay(replay)
+  }
+
+  const handleAddSession = () => {
+    const result = addSession()
+    if (!result) return
+    applyReplay(result.replay)
+  }
+
+  const handleCloseSession = (id: string) => {
+    const replay = removeSession(id)
+    if (replay !== null) applyReplay(replay)
   }
 
   return (
     <div className={`integrated-terminal${embedded ? ' integrated-terminal--embedded' : ''}`}>
       <div className="integrated-terminal-toolbar">
-        <span className="integrated-terminal-title">{t('terminal.title')}</span>
+        <div className="integrated-terminal-toolbar-start">
+          <span className="integrated-terminal-title">{t('terminal.title')}</span>
+          {!readOnly ? (
+            <div className="integrated-terminal-sessions" role="tablist" aria-label={t('terminal.sessionsAria')}>
+              {sessions.map((session) => {
+                const active = session.id === activeId
+                return (
+                  <div key={session.id} className={`integrated-terminal-session${active ? ' integrated-terminal-session--active' : ''}`}>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      className="integrated-terminal-session-tab"
+                      onClick={() => handleSwitchSession(session.id)}
+                    >
+                      {t('terminal.sessionLabel', { label: session.label })}
+                    </button>
+                    {sessions.length > 1 ? (
+                      <button
+                        type="button"
+                        className="integrated-terminal-session-close"
+                        aria-label={t('terminal.closeSession')}
+                        onClick={() => handleCloseSession(session.id)}
+                      >
+                        <X size={10} />
+                      </button>
+                    ) : null}
+                  </div>
+                )
+              })}
+              {canAddSession ? (
+                <button
+                  type="button"
+                  className="integrated-terminal-session-add"
+                  aria-label={t('terminal.newSession')}
+                  title={t('terminal.newSession')}
+                  onClick={handleAddSession}
+                >
+                  <Plus size={12} />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
         <div className="integrated-terminal-actions">
           {!readOnly ? (
             <button
@@ -232,6 +329,9 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
       </div>
       <div className="integrated-terminal-body" ref={hostRef} />
       {readOnly ? <p className="integrated-terminal-readonly">{t('terminal.readOnly')}</p> : null}
+      {isDesktopApp() && ptyCaps.available ? (
+        <p className="integrated-terminal-pty-badge">{t('terminal.ptyActive')}</p>
+      ) : null}
     </div>
   )
 }

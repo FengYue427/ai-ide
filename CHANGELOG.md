@@ -7,6 +7,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.5.5] — 2026-05-29
+
+### Added
+
+- **Electron PTY spike**：`electron/ptyBridge.mjs` + IPC 流式终端；无 `node-pty` 时回退 line REPL
+- 文档：[PTY_SPIKE_v1.1.5.5.md](docs/PTY_SPIKE_v1.1.5.5.md)
+- `node-pty` 列为 **optionalDependency**
+
+## [1.1.5.4] — 2026-05-29
+
+### Added
+
+- 终端 **多 session**（最多 4 个）：tab 切换 · scrollback 分 session 保存 · 元数据持久化
+- 切换 session 时 WebContainer **jsh 重建**（仅活动 session 占 live shell）
+
+---
+
 ## [1.1.5.3] — 2026-05-29
 
 ### Added

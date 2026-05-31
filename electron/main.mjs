@@ -12,6 +12,14 @@ import {
   scanProjectFolder,
   writeProjectFile,
 } from './fsProject.mjs'
+import {
+  getPtyCapabilities,
+  killAllPtySessions,
+  killPtySession,
+  resizePtySession,
+  spawnPtySession,
+  writePtySession,
+} from './ptyBridge.mjs'
 import { checkForUpdates, installDesktopCrashLog, setupDesktopUpdater } from './updater.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -206,14 +214,50 @@ function registerIpc() {
     appUrl: shellMode === 'remote' ? PRODUCTION_APP_URL : undefined,
   }))
 
-  ipcMain.handle('desktop:info', () => ({
+  ipcMain.handle('desktop:info', async () => {
+    const pty = await getPtyCapabilities()
+    return {
     version: app.getVersion(),
     platform: process.platform,
     maxImportFiles: DESKTOP_MAX_IMPORT_FILES,
     shellMode,
     packaged: app.isPackaged,
     autoUpdate: app.isPackaged && process.env.AI_IDE_AUTO_UPDATE !== '0',
-  }))
+    ptyAvailable: pty.available,
+    ptyReason: pty.reason,
+  }
+  })
+
+  ipcMain.handle('desktop:pty-capabilities', async () => getPtyCapabilities())
+
+  ipcMain.handle('desktop:pty-spawn', async (_e, { sessionId, cwd, cols, rows }) => {
+    const id = String(sessionId ?? 'main')
+    return spawnPtySession({
+      sessionId: id,
+      cwd: cwd || projectRoot || process.cwd(),
+      cols,
+      rows,
+      onData: (data) => {
+        mainWindow?.webContents.send('desktop:pty-data', { sessionId: id, data })
+      },
+      onExit: (exitCode) => {
+        mainWindow?.webContents.send('desktop:pty-exit', { sessionId: id, exitCode })
+      },
+    })
+  })
+
+  ipcMain.handle('desktop:pty-write', async (_e, { sessionId, data }) => {
+    return { ok: writePtySession(String(sessionId ?? 'main'), String(data ?? '')) }
+  })
+
+  ipcMain.handle('desktop:pty-resize', async (_e, { sessionId, cols, rows }) => {
+    return { ok: resizePtySession(String(sessionId ?? 'main'), cols, rows) }
+  })
+
+  ipcMain.handle('desktop:pty-kill', async (_e, { sessionId }) => {
+    killPtySession(String(sessionId ?? 'main'))
+    return { ok: true }
+  })
 
   ipcMain.handle('desktop:check-updates', async () => checkForUpdates(true))
 
@@ -295,5 +339,6 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  killAllPtySessions()
   if (process.platform !== 'darwin') app.quit()
 })

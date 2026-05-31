@@ -7,11 +7,17 @@ import { useIDEStore } from '../store/ideStore'
 interface UseWebContainerShellOptions {
   enabled: boolean
   isReady: boolean
+  activeSessionId: string
   writeFile: (path: string, content: string) => Promise<void>
 }
 
-/** Interactive jsh shell via WebContainer ↔ xterm (browser only). */
-export function useWebContainerShell({ enabled, isReady, writeFile }: UseWebContainerShellOptions) {
+/** Interactive jsh shell via WebContainer ↔ xterm (browser only). One shell per active session. */
+export function useWebContainerShell({
+  enabled,
+  isReady,
+  activeSessionId,
+  writeFile,
+}: UseWebContainerShellOptions) {
   const processRef = useRef<{ kill: () => void } | null>(null)
   const writerRef = useRef<{ write: (chunk: string) => void; close: () => void } | null>(null)
 
@@ -88,5 +94,5 @@ export function useWebContainerShell({ enabled, isReady, writeFile }: UseWebCont
       processRef.current?.kill()
       processRef.current = null
     }
-  }, [enabled, isReady, writeFile])
+  }, [activeSessionId, enabled, isReady, writeFile])
 }
