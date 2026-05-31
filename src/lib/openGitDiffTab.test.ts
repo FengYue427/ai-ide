@@ -71,6 +71,20 @@ describe('openGitDiffTabState', () => {
     expect(both.tabs.map((tab) => tab.diffSource)).toEqual(['workdir', 'staged'])
   })
 
+  it('truncates oversized diff content for Monaco', () => {
+    const huge = `${'line\n'.repeat(2500)}`
+    const result = openGitDiffTabState([], {
+      ...diffInput,
+      oldContent: huge,
+      newContent: 'small',
+    })
+
+    expect(result.tabs[0]?.truncated).toBe(true)
+    expect(result.tabs[0]?.shownOldLines).toBe(2000)
+    expect(result.tabs[0]?.originalOldLines).toBe(2501)
+    expect(result.tabs[0]?.oldContent.split('\n').length).toBe(2000)
+  })
+
   it('keeps separate tabs for different paths', () => {
     const first = openGitDiffTabState([], diffInput)
     const second = openGitDiffTabState(first.tabs, {

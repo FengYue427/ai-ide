@@ -15,6 +15,12 @@ export interface GitDiffTab {
   oldContent: string
   newContent: string
   language: string
+  /** True when either side was truncated for Monaco performance (v1.1.6.1). */
+  truncated?: boolean
+  originalOldLines?: number
+  originalNewLines?: number
+  shownOldLines?: number
+  shownNewLines?: number
 }
 
 export function gitDiffTabKey(

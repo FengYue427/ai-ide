@@ -1,4 +1,5 @@
 import type { GitDiffTab } from '../types/editorTab'
+import { prepareGitDiffForEditor } from './gitDiffContentLimits'
 
 export interface OpenGitDiffTabInput {
   path: string
@@ -21,15 +22,21 @@ export function openGitDiffTabState(
   input: OpenGitDiffTabInput,
 ): OpenGitDiffTabResult {
   const diffSource = input.diffSource ?? 'workdir'
+  const prepared = prepareGitDiffForEditor(input.oldContent, input.newContent)
   const nextTab: GitDiffTab = {
     kind: 'git-diff',
     path: input.path,
     diffSource,
     commitOid: diffSource === 'commit' ? input.commitOid : undefined,
     name: input.tabLabel,
-    oldContent: input.oldContent,
-    newContent: input.newContent,
+    oldContent: prepared.oldContent,
+    newContent: prepared.newContent,
     language: input.language,
+    truncated: prepared.truncated,
+    originalOldLines: prepared.originalOldLines,
+    originalNewLines: prepared.originalNewLines,
+    shownOldLines: prepared.shownOldLines,
+    shownNewLines: prepared.shownNewLines,
   }
 
   const existingIndex = tabs.findIndex(

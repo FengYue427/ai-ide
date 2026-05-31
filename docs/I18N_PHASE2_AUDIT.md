@@ -62,6 +62,6 @@ npm run test:unit -- src/i18n lib/i18n
 
 ## F5+ 剩余
 
-- 非 Phase 2 区域 ja（Git 面板、Plan/Spec 等）按需扩展  
-- gloss 质量人工润色（可选）  
+- ~~非 Phase 2 区域 ja（Git 面板）~~ → **v1.1.6.4 ✅**（`git.*` + `empty.git` + `status.gitTitle`）
+- gloss 质量人工润色（可选）
 - E2E 三语 smoke（可选 CI job）

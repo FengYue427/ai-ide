@@ -1,6 +1,13 @@
 import git from 'isomorphic-git'
 import http from 'isomorphic-git/http/web'
 import { isValidBranchName } from '../lib/isValidBranchName'
+import {
+  mapStatusMatrixRow,
+  normalizeGitPath,
+  rowHasStagedChange,
+  type StatusMatrixRow,
+} from '../lib/gitStatusMatrix'
+import { GIT_LOG_PAGE_SIZE } from '../lib/gitLogPagination'
 
 export interface GitStatus {
   filepath: string
@@ -12,6 +19,7 @@ export interface GitCommit {
   oid: string
   commit: {
     message: string
+    parent?: string[]
     author: {
       name: string
       email: string
@@ -75,28 +83,23 @@ export async function commit(
 }
 
 export async function getStatus(fs: any, dir: string): Promise<GitStatus[]> {
-  const matrix = await git.statusMatrix({ fs, dir })
+  const matrix = (await git.statusMatrix({ fs, dir })) as StatusMatrixRow[]
   return matrix
-    .map(([filepath, head, workdir, stage]) => {
-      let status: GitStatus['status']
-      if (head === 0 && workdir === 1 && stage === 1) status = 'added'
-      else if (head === 1 && workdir === 1 && stage === 1) status = 'unmodified'
-      else if (head === 1 && workdir === 2 && stage === 1) status = 'modified'
-      else if (head === 1 && workdir === 0 && stage === 1) status = 'deleted'
-      else if (head === 0 && workdir === 1 && stage === 0) status = 'untracked'
-      else status = 'modified'
-
-      return {
-        filepath: filepath as string,
-        staged: stage !== 0 && stage !== head,
-        status,
-      }
-    })
-    .filter((item) => item.status !== 'unmodified')
+    .map((row) => mapStatusMatrixRow(row))
+    .filter((item): item is GitStatus => item !== null)
 }
 
-export async function getLog(fs: any, dir: string): Promise<GitCommit[]> {
-  const commits = await git.log({ fs, dir, depth: 50 })
+export async function getLog(
+  fs: any,
+  dir: string,
+  options?: { ref?: string; depth?: number },
+): Promise<GitCommit[]> {
+  const commits = await git.log({
+    fs,
+    dir,
+    ref: options?.ref ?? 'HEAD',
+    depth: options?.depth ?? GIT_LOG_PAGE_SIZE,
+  })
   return commits as GitCommit[]
 }
 
@@ -242,52 +245,89 @@ export async function stageAllUnstaged(fs: any, dir: string, items: GitStatus[])
   return targets.length
 }
 
+async function readTreeBlobContent(
+  fs: any,
+  dir: string,
+  entry: any,
+  decoder: TextDecoder,
+): Promise<string> {
+  if (!entry) return ''
+  try {
+    const type = await entry.type()
+    if (type !== 'blob') return ''
+    const content = await entry.content()
+    if (content) return decoder.decode(content)
+    const oid = await entry.oid()
+    const { blob } = await git.readBlob({ fs, dir, oid })
+    return decoder.decode(blob)
+  } catch {
+    return ''
+  }
+}
+
+async function walkStagedDiffSide(
+  fs: any,
+  dir: string,
+  filepath: string,
+  includeHead: boolean,
+): Promise<{ visited: boolean; oldContent: string; newContent: string }> {
+  const decoder = new TextDecoder()
+  let visited = false
+  let oldContent = ''
+  let newContent = ''
+
+  const trees = includeHead ? [git.TREE({ ref: 'HEAD' }), git.STAGE()] : [git.STAGE()]
+
+  await git.walk({
+    fs,
+    dir,
+    trees,
+    map: async (path, entries) => {
+      if (path !== filepath) return null
+      visited = true
+
+      const head = includeHead ? entries[0] ?? undefined : undefined
+      const stage = (includeHead ? entries[1] : entries[0]) ?? undefined
+
+      oldContent = includeHead ? await readTreeBlobContent(fs, dir, head, decoder) : ''
+      newContent = await readTreeBlobContent(fs, dir, stage, decoder)
+      return true
+    },
+  })
+
+  return { visited, oldContent, newContent }
+}
+
 export async function getStagedDiff(
   fs: any,
   dir: string,
   filepath: string,
 ): Promise<{ oldContent: string; newContent: string }> {
-  const decoder = new TextDecoder()
-  let oldContent = ''
-  let newContent = ''
-  let found = false
+  const normalized = normalizeGitPath(filepath)
 
-  await git.walk({
-    fs,
-    dir,
-    trees: [git.TREE({ ref: 'HEAD' }), git.STAGE()],
-    map: async (path, [head, stage]) => {
-      if (path !== filepath) return null
-      found = true
-
-      if (head) {
-        try {
-          const content = await head.content()
-          oldContent = content ? decoder.decode(content) : ''
-        } catch {
-          oldContent = ''
-        }
-      }
-
-      if (stage) {
-        try {
-          const oid = await stage.oid()
-          const { blob } = await git.readBlob({ fs, dir, oid })
-          newContent = decoder.decode(blob)
-        } catch {
-          newContent = ''
-        }
-      }
-
-      return true
-    },
-  })
-
-  if (!found) {
-    throw new Error(`Staged diff unavailable for ${filepath}`)
+  const matrix = (await git.statusMatrix({ fs, dir, filepaths: [normalized] })) as StatusMatrixRow[]
+  const row = matrix.find(([path]) => path === normalized)
+  if (!row || !rowHasStagedChange(row)) {
+    throw new Error(`Staged diff unavailable for ${normalized}`)
   }
 
-  return { oldContent, newContent }
+  let result = { visited: false, oldContent: '', newContent: '' }
+
+  try {
+    result = await walkStagedDiffSide(fs, dir, normalized, true)
+  } catch {
+    result = await walkStagedDiffSide(fs, dir, normalized, false)
+  }
+
+  if (!result.visited) {
+    result = await walkStagedDiffSide(fs, dir, normalized, false)
+  }
+
+  if (!result.visited) {
+    throw new Error(`Staged diff unavailable for ${normalized}`)
+  }
+
+  return { oldContent: result.oldContent, newContent: result.newContent }
 }
 
 export interface GitCommitFileChange {

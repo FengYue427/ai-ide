@@ -11,14 +11,23 @@ v1.1.6.x 是 **轨道 A** 小 patch，在 v1.1.6 整包 GA 后持续抛光 Git U
 
 ---
 
+## 已完成
+
+| 版本 | 主题 | 状态 |
+|------|------|:----:|
+| **1.1.6.1** | diff tab **截断**（≤2000 行 / 512KB 每侧 + 提示条） | ✅ |
+| **1.1.6.2** | **statusMatrix** 解析 + staged diff（无 HEAD / 暂存删除 / 新文件） | ✅ |
+| **1.1.6.3** | 历史 **load more**（50 条/页 · parent 续拉） | ✅ |
+| **1.1.6.4** | Git **ja 漏翻**（empty.git · status.gitTitle · 全 git.* 覆盖测试） | ✅ |
+
 ## 建议 backlog（草案 · GA 后填充）
 
 | 版本 | 主题 | 说明 | 优先级 |
 |------|------|------|:------:|
-| **1.1.6.1** | diff tab **性能** | 大文件 diff 懒加载 / 截断提示 | P0 |
-| **1.1.6.2** | **staged diff** 热修 | index diff 边界 case | P0 |
-| **1.1.6.3** | log **分页** | depth > 50 load more | P1 |
-| **1.1.6.4** | Git **i18n 漏翻** | ja 补全 | P1 |
+| **1.1.6.1** | diff tab **性能** | 大文件 diff 懒加载 / 截断提示 | ✅ |
+| **1.1.6.2** | **staged diff** 热修 | index diff 边界 case | ✅ |
+| **1.1.6.3** | log **分页** | depth > 50 load more | ✅ |
+| **1.1.6.4** | Git **i18n 漏翻** | ja 补全 | ✅ |
 | **1.1.6.5+** | 桌面 **原生 git** 探索 | Electron 本地 repo 只读 status | P2 |
 
 ---

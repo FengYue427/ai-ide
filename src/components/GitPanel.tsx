@@ -15,6 +15,7 @@ import type { GitCommitFileChange, GitFileSyncUpdate } from '../services/gitServ
 import type { FileItem } from '../types/file'
 import { getLanguageFromExt } from '../app/getLanguageFromExt'
 import { formatGitRelativeTime } from '../lib/formatGitRelativeTime'
+import { getLogContinueRef, gitLogHasMore, mergeGitLogPages } from '../lib/gitLogPagination'
 import { isValidBranchName } from '../lib/isValidBranchName'
 import { shouldShowGitStatusPerfHint } from '../lib/gitStatusPerfHint'
 import { useI18n } from '../i18n'
@@ -63,6 +64,8 @@ const GitPanel: React.FC<GitPanelProps> = ({
   const [expandedCommitOid, setExpandedCommitOid] = useState<string | null>(null)
   const [commitFilesByOid, setCommitFilesByOid] = useState<Record<string, GitCommitFileChange[]>>({})
   const [commitFilesLoadingOid, setCommitFilesLoadingOid] = useState<string | null>(null)
+  const [historyHasMore, setHistoryHasMore] = useState(false)
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false)
 
   const syncWorkspaceToFs = useCallback(async () => {
     if (!fs) return
@@ -81,6 +84,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
       const nextBranches = await gitService.listBranches(fs, '/')
       setStatus(nextStatus)
       setCommits(nextLog)
+      setHistoryHasMore(gitLogHasMore(nextLog))
       setBranch(nextBranch)
       setBranches(nextBranches)
       setIsInit(true)
@@ -89,7 +93,30 @@ const GitPanel: React.FC<GitPanelProps> = ({
       setIsInit(false)
       setError(refreshError instanceof Error ? refreshError.message : t('git.statusReadFailed'))
     }
-  }, [fs, syncWorkspaceToFs])
+  }, [fs, syncWorkspaceToFs, t])
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!fs || historyLoadingMore || !historyHasMore) return
+    const continueRef = getLogContinueRef(commits)
+    if (!continueRef) {
+      setHistoryHasMore(false)
+      return
+    }
+
+    setHistoryLoadingMore(true)
+    try {
+      const nextPage = await gitService.getLog(fs, '/', { ref: continueRef })
+      const merged = mergeGitLogPages(commits, nextPage)
+      setCommits(merged)
+      setHistoryHasMore(gitLogHasMore(merged))
+    } catch (loadError) {
+      const message = loadError instanceof Error ? loadError.message : t('git.historyLoadFailed')
+      notify?.('error', t('git.historyLoadFailed'), message)
+      setHistoryHasMore(false)
+    } finally {
+      setHistoryLoadingMore(false)
+    }
+  }, [commits, fs, historyHasMore, historyLoadingMore, notify, t])
 
   useEffect(() => {
     refresh()
@@ -633,6 +660,19 @@ const GitPanel: React.FC<GitPanelProps> = ({
               </div>
             )
           })}
+
+          {historyHasMore ? (
+            <div className={styles.historyLoadMore}>
+              <button
+                type="button"
+                className={`btn btn-secondary ${styles.historyLoadMoreButton}`}
+                disabled={isBusy || historyLoadingMore}
+                onClick={() => void loadMoreHistory()}
+              >
+                {historyLoadingMore ? t('git.historyLoadingMore') : t('git.historyLoadMore')}
+              </button>
+            </div>
+          ) : null}
 
           {commits.length === 0 && (
             <InlineStatePanel

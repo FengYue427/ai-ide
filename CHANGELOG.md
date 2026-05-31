@@ -7,6 +7,45 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.6.4] — 2026-05-29
+
+### Added
+
+- **ja-JP** 补全：`empty.git.*` · `status.gitTitle`；`command.git` bulk 修正
+- `gitI18nJa.test.ts`：断言全部 Git 相关 UI 键有显式 ja 覆盖
+
+---
+
+## [1.1.6.3] — 2026-05-29
+
+### Added
+
+- Git 历史 **load more**：默认 50 条/页，从末条 commit 的 parent 续拉；`gitLogPagination` 去重合并
+
+---
+
+## [1.1.6.2] — 2026-05-29
+
+### Fixed
+
+- **statusMatrix** 按 isomorphic-git 语义重映射：暂存删除（`D `）、未暂存删除（` D`）、新文件暂存等
+- **getStagedDiff**：无 HEAD 仓库、暂存删除（index 侧为空）、仅 index 新文件；打开前校验 HEAD≠STAGE
+
+### Added
+
+- `gitStatusMatrix.ts` 单元测试（官方 matrix 用例表）
+
+---
+
+## [1.1.6.1] — 2026-05-29
+
+### Added
+
+- Git diff tab **截断**：单侧超过 **2000 行** 或 **512KB** 时仅渲染前缀，编辑器提示条 + 「已截断」徽章
+- `gitDiffContentLimits` · `prepareGitDiffForEditor` 单元测试
+
+---
+
 ## [1.1.6] — 2026-05-29
 
 ### Added

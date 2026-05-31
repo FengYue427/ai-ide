@@ -186,6 +186,11 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'command.git.stage': 'すべてステージ',
   'command.git.stage.sub': '未コミットの変更をすべてステージ',
 
+  'empty.git.title': 'Git パネルはプロジェクト待機中',
+  'empty.git.desc': 'リポジトリを開くと、変更・コミット・履歴がここに表示されます。',
+
+  'status.gitTitle': 'Git パネルを開く',
+
   'panel.git.subtitle': '変更とコミット履歴',
 
   'git.statusReadFailed': 'Git 状態の読み取りに失敗',
@@ -231,6 +236,9 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'git.diffTabLabel': '{path}（差分）',
   'git.diffTabBadge': 'Git 差分',
   'git.diffStats': '削除 {removed} 行 · 追加 {added} 行',
+  'git.diffTruncatedBadge': '省略表示',
+  'git.diffTruncatedBanner':
+    '差分が大きいため、旧 {oldShown}/{oldTotal} 行・新 {newShown}/{newTotal} 行のみ表示。全体はターミナル git diff を利用してください。',
   'git.discardFileTitle': 'このファイルの未ステージ変更を破棄',
   'git.stageTitle': 'ステージ',
   'git.stagedLabel': 'ステージ済み',
@@ -255,4 +263,7 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'git.commitFilesFailed': 'コミット変更を読み込めません',
   'git.commitDiffTitle': 'コミット {sha} の差分',
   'git.commitDiffTabLabel': '{path} @{sha}',
+  'git.historyLoadMore': '履歴をさらに読み込む',
+  'git.historyLoadingMore': '読み込み中…',
+  'git.historyLoadFailed': '履歴をさらに読み込めません',
 }

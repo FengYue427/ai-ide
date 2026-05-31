@@ -156,10 +156,15 @@ export function EditorLayout({
                 <span>{t('git.diffTabBadge')}</span>
                 <span>
                   {t('git.diffStats', {
-                    added: currentDiffTab.newContent.split('\n').length,
-                    removed: currentDiffTab.oldContent.split('\n').length,
+                    added: currentDiffTab.truncated
+                      ? (currentDiffTab.originalNewLines ?? currentDiffTab.newContent.split('\n').length)
+                      : currentDiffTab.newContent.split('\n').length,
+                    removed: currentDiffTab.truncated
+                      ? (currentDiffTab.originalOldLines ?? currentDiffTab.oldContent.split('\n').length)
+                      : currentDiffTab.oldContent.split('\n').length,
                   })}
                 </span>
+                {currentDiffTab.truncated ? <span>{t('git.diffTruncatedBadge')}</span> : null}
               </>
             ) : (
               <>
@@ -189,6 +194,17 @@ export function EditorLayout({
       {collabReadOnly ? (
         <div className="collab-readonly-banner" role="status">
           {t('collab.readOnlyBanner')}
+        </div>
+      ) : null}
+
+      {showingDiff && currentDiffTab.truncated ? (
+        <div className="git-diff-truncated-banner" role="status">
+          {t('git.diffTruncatedBanner', {
+            oldShown: currentDiffTab.shownOldLines ?? currentDiffTab.oldContent.split('\n').length,
+            oldTotal: currentDiffTab.originalOldLines ?? currentDiffTab.oldContent.split('\n').length,
+            newShown: currentDiffTab.shownNewLines ?? currentDiffTab.newContent.split('\n').length,
+            newTotal: currentDiffTab.originalNewLines ?? currentDiffTab.newContent.split('\n').length,
+          })}
         </div>
       ) : null}
 

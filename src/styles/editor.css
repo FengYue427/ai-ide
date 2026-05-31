@@ -261,6 +261,15 @@
   background: color-mix(in srgb, var(--bg-secondary) 84%, transparent);
 }
 
+.git-diff-truncated-banner {
+  padding: 8px 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--warning-color) 12%, var(--bg-secondary));
+  border-bottom: 1px solid color-mix(in srgb, var(--warning-color) 28%, var(--border-color));
+}
+
 .editor-info-main {
   display: flex;
   align-items: center;
