@@ -7,6 +7,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.5.3] — 2026-05-29
+
+### Added
+
+- Tasks 面板 **分组折叠**（持久化 `tasks-panel-collapse`）
+- 大清单每组默认 preview **12 项** +「再显示 N 项」
+- 已完成分组在 ≥24 项时 **自动折叠**
+- 全完成 / 无匹配 **InlineStatePanel** 空态与 i18n
+
+---
+
 ## [1.1.5.2] — 2026-05-29
 
 ### Added
