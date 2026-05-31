@@ -30,7 +30,7 @@
 | **v1.1.4** | 编辑器深度 + UX 跃迁 + i18n Phase 2 | B | ✅ [RELEASE_NOTES_v1.1.4.md](./RELEASE_NOTES_v1.1.4.md) |
 | **v1.1.5** | **终端 + 任务**（集成 shell、npm scripts 面板） | B | ✅ [RELEASE_NOTES_v1.1.5.md](./RELEASE_NOTES_v1.1.5.md) |
 | **v1.1.6** | **Git 可视化**（diff、stage、log 基础） | B | ✅ [RELEASE_NOTES_v1.1.6.md](./RELEASE_NOTES_v1.1.6.md) |
-| **v1.1.7** | **调试器 MVP**（Node / WebContainer attach 优先） | B | 📋 [V1.1.7_KICKOFF.md](./V1.1.7_KICKOFF.md) |
+| **v1.1.7** | **调试器 MVP**（Node / WebContainer attach 优先） | B | ✅ [RELEASE_NOTES_v1.1.7.md](./RELEASE_NOTES_v1.1.7.md) |
 | **v1.1.8** | **插件 SDK 2.0** + 扩展 API 稳定 | B | 📋 |
 | **v1.1.9** | **多根工作区 + 远程 SSH 探索**（或产品另选主轴） | B | 📋 |
 
@@ -61,7 +61,7 @@
 |------|------|
 | [V1.1.4_MASTER_PLAN.md](./V1.1.4_MASTER_PLAN.md) | v1.1.4 B 轨 |
 | [ROADMAP_V1.1.6.x_PATCHES.md](./ROADMAP_V1.1.6.x_PATCHES.md) | 1.1.6.x Git patch |
-| [V1.1.7_MASTER_PLAN.md](./V1.1.7_MASTER_PLAN.md) | 下一 B 轨 |
+| [ROADMAP_V1.1.7.x_PATCHES.md](./ROADMAP_V1.1.7.x_PATCHES.md) | 1.1.7.x 调试 patch |
 | [ROADMAP_V1.1.x.md](./ROADMAP_V1.1.x.md) | 世代总览 |
 | [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) | 网关 |
 
@@ -72,4 +72,4 @@
 | 版本 | 日期 | AI | 协作 | 编辑器 | 扩展 | 部署 | i18n | 备注 |
 |------|------|:--:|:----:|:------:|:----:|:----:|:----:|------|
 | v1.1.3 | 2026-05 | — | — | — | — | — | — | 协作 M1 生产验证 |
-| v1.1.4 | 2026-05-30 | 4 | 4 | 4 | 3 | 4 | 4 | 编辑器深度 + ja MVP + UX F5 |
+| v1.1.7 | 2026-05-31 | 4 | 4 | 4 | 3 | 4 | 4 | 调试 MVP · Git patch 收口 |

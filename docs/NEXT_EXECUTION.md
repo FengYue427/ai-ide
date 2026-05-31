@@ -25,7 +25,11 @@
 | 2 | 条件断点 · step 抛光 |
 | 3 | `debug.*` ja 漏翻扫尾 |
 
-### 轨道 B — v1.1.8 插件 SDK 2.0
+### 轨道 B — v1.1.7.x patch（推荐先做）
+
+见 [ROADMAP_V1.1.7.x_PATCHES.md](./ROADMAP_V1.1.7.x_PATCHES.md)：**1.1.7.2 桌面 attach** 优先。
+
+### 轨道 C — v1.1.8 插件 SDK 2.0
 
 见 [ROADMAP_V1.1_LONG_HORIZON.md](./ROADMAP_V1.1_LONG_HORIZON.md)。
 
