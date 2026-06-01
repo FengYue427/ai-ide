@@ -30,6 +30,13 @@ contextBridge.exposeInMainWorld('aiIdeDesktop', {
   getInfo: () => ipcRenderer.invoke('desktop:info'),
   readGitReadonlySnapshot: (rootPath) =>
     ipcRenderer.invoke('desktop:git-readonly-snapshot', { rootPath }),
+  spawnNodeInspect: (payload) => ipcRenderer.invoke('desktop:spawn-node-inspect', payload),
+  killNodeInspect: (sessionId) => ipcRenderer.invoke('desktop:kill-node-inspect', { sessionId }),
+  onNodeInspectExit: (callback) => {
+    const listener = (_event, payload) => callback(payload)
+    ipcRenderer.on('desktop:node-inspect-exit', listener)
+    return () => ipcRenderer.removeListener('desktop:node-inspect-exit', listener)
+  },
   checkForUpdates: () => ipcRenderer.invoke('desktop:check-updates'),
   onUpdateStatus: (callback) => {
     const listener = (_event, payload) => callback(payload)

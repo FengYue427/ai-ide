@@ -43,7 +43,11 @@ export function useAppBootstrap() {
 
       const validModels = modelOptions[savedAIConfig.provider].models
       const model = validModels.includes(savedAIConfig.model) ? savedAIConfig.model : validModels[0]
-      setAiConfig({ ...savedAIConfig, model })
+      setAiConfig({
+        ...savedAIConfig,
+        model,
+        keyMode: savedAIConfig.keyMode === 'byok' ? 'byok' : 'platform',
+      })
     }
 
     loadSettings()
@@ -66,6 +70,17 @@ export function useAppBootstrap() {
 
     if (roomId) {
       setShowCollaboration(true)
+    }
+
+    const authView = params.get('auth')
+    if (authView === 'register' || authView === 'login') {
+      const { setShowAuthModal, setAuthModalTab } = useIDEStore.getState()
+      setAuthModalTab(authView)
+      setShowAuthModal(true)
+      params.delete('auth')
+      const next = params.toString()
+      const path = window.location.pathname
+      window.history.replaceState({}, '', next ? `${path}?${next}` : path)
     }
   }, [])
 

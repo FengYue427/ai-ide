@@ -6,6 +6,7 @@ import { isForgotPasswordEnabled, isOAuthEnabled } from '../lib/authFeatures'
 import { authService, type User } from '../services/authService'
 
 interface AuthModalProps {
+  initialTab?: AuthTab
   onClose: () => void
   onAuthenticated?: (user: User) => void
 }
@@ -18,9 +19,9 @@ interface ValidationState {
   confirmPassword: { valid: boolean; message: string }
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'login', onClose, onAuthenticated }) => {
   const { t } = useI18n()
-  const [activeTab, setActiveTab] = useState<AuthTab>('login')
+  const [activeTab, setActiveTab] = useState<AuthTab>(initialTab)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -30,6 +31,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthenticated }) => {
   const [message, setMessage] = useState('')
   const [focusedField, setFocusedField] = useState<string | null>(null)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    setActiveTab(initialTab)
+  }, [initialTab])
 
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)

@@ -2,16 +2,12 @@ import React, { useState } from 'react'
 import { Bot, Sparkles } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { AIModel, modelOptions, modelProviderTranslationKey, defaultEndpoints } from '../services/aiService'
+import type { AIConfigState } from '../store/ideStore'
 import { ModalShell } from './ui/ModalShell'
 
 interface AISettingsModalProps {
-  config: {
-    provider: AIModel
-    apiKey: string
-    model: string
-    endpoint: string
-  }
-  onSave: (config: { provider: AIModel; apiKey: string; model: string; endpoint: string }) => void
+  config: AIConfigState
+  onSave: (config: AIConfigState) => void
   onClose: () => void
 }
 
@@ -35,6 +31,7 @@ const AISettingsModal: React.FC<AISettingsModalProps> = ({ config, onSave, onClo
       apiKey,
       model,
       endpoint: endpoint.trim() || defaultEndpoints[provider],
+      keyMode: config.keyMode ?? 'platform',
     })
   }
 

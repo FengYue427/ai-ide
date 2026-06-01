@@ -15,7 +15,7 @@ import {
   toggleBreakpointInList,
   type DebugBreakpoint,
 } from '../lib/debugBreakpoints'
-import type { DebugAttachPhase, DebugSyncMode } from '../services/debugAlphaService'
+import type { DebugAttachPhase, DebugRuntimeKind, DebugSyncMode } from '../services/debugAlphaService'
 import type { DebugLocalVariable, DebugStackFrame } from '../types/debugInspect'
 import {
   loadGitStatusRefreshPrefs,
@@ -26,6 +26,7 @@ export type ActiveEditorSurface = 'file' | 'git-diff'
 
 export interface DebugSessionState {
   phase: DebugAttachPhase
+  runtimeKind: DebugRuntimeKind | null
   entryFile: string | null
   inspectUrl: string | null
   error: string | null
@@ -39,6 +40,7 @@ export interface DebugSessionState {
 
 const defaultDebugSession: DebugSessionState = {
   phase: 'idle',
+  runtimeKind: null,
   entryFile: null,
   inspectUrl: null,
   error: null,
@@ -52,11 +54,14 @@ const defaultDebugSession: DebugSessionState = {
 
 export type EditorTheme = 'vs-dark' | 'light'
 
+export type AiKeyMode = 'byok' | 'platform'
+
 export interface AIConfigState {
   provider: AIModel
   apiKey: string
   model: string
   endpoint: string
+  keyMode: AiKeyMode
 }
 
 export interface EditorTarget {
@@ -108,10 +113,11 @@ function buildDefaultFiles(): FileItem[] {
 const defaultFiles: FileItem[] = buildDefaultFiles()
 
 const defaultAiConfig: AIConfigState = {
-  provider: 'openai',
+  provider: 'deepseek',
   apiKey: '',
-  model: modelOptions.openai.models[0],
+  model: modelOptions.deepseek.models[0],
   endpoint: '',
+  keyMode: 'platform',
 }
 
 type BooleanUpdater = boolean | ((prev: boolean) => boolean)
@@ -194,6 +200,7 @@ export interface IDEState {
   showThemeSelector: boolean
   showWelcome: boolean
   showAuthModal: boolean
+  authModalTab: 'login' | 'register' | 'forgot'
   showSubscriptionModal: boolean
   showAgentApplyModal: boolean
   agentApplyQueue: AgentApplyItem[] | null
@@ -273,6 +280,7 @@ export interface IDEState {
   setShowThemeSelector: (show: boolean) => void
   setShowWelcome: (show: boolean) => void
   setShowAuthModal: (show: boolean) => void
+  setAuthModalTab: (tab: 'login' | 'register' | 'forgot') => void
   setShowSubscriptionModal: (show: boolean) => void
   setShowAgentApplyModal: (show: boolean) => void
   setAgentApplyQueue: (queue: AgentApplyItem[] | null) => void
@@ -366,6 +374,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   showThemeSelector: false,
   showWelcome: false,
   showAuthModal: false,
+  authModalTab: 'login',
   showSubscriptionModal: false,
   showAgentApplyModal: false,
   agentApplyQueue: null,
@@ -522,6 +531,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setShowThemeSelector: (showThemeSelector) => set({ showThemeSelector }),
   setShowWelcome: (showWelcome) => set({ showWelcome }),
   setShowAuthModal: (showAuthModal) => set({ showAuthModal }),
+  setAuthModalTab: (authModalTab) => set({ authModalTab }),
   setShowSubscriptionModal: (showSubscriptionModal) => set({ showSubscriptionModal }),
   setShowAgentApplyModal: (showAgentApplyModal) => set({ showAgentApplyModal }),
   setAgentApplyQueue: (agentApplyQueue) => set({ agentApplyQueue, agentApplyIndex: 0 }),

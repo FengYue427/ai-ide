@@ -4,6 +4,7 @@ import { useI18n } from '../i18n'
 import { canUseDebugExecutionControls } from '../lib/debugSessionActive'
 import { inspectDebugStackFrame } from '../services/debugInspectService'
 import { getActiveDebugClient, getCachedDebugCallStack } from '../services/debugSessionService'
+import { canUseDesktopDebug } from '../services/desktopDebug'
 import { useIDEStore } from '../store/ideStore'
 import { InlineStatePanel } from './InlineStatePanel'
 
@@ -40,7 +41,16 @@ export const DebugPanel: FC<DebugPanelProps> = ({
   const activeFile = useIDEStore((s) => s.activeFile)
   const entryName = files[activeFile]?.name ?? 'index.js'
 
+  const runtimeReady = isReady || canUseDesktopDebug()
   const phaseLabel = t(`debug.phase.${debugSession.phase}`)
+  const runtimeLabel =
+    debugSession.runtimeKind === 'desktop'
+      ? t('debug.runtimeDesktop')
+      : debugSession.runtimeKind === 'webcontainer'
+        ? t('debug.runtimeWebContainer')
+        : canUseDesktopDebug()
+          ? t('debug.runtimeDesktop')
+          : null
   const syncLabel =
     debugSession.syncMode === 'cdp'
       ? t('debug.syncModeCdp')
@@ -78,7 +88,7 @@ export const DebugPanel: FC<DebugPanelProps> = ({
         <span className="debug-panel-phase">{phaseLabel}</span>
       </div>
 
-      {!isReady ? (
+      {!runtimeReady ? (
         <InlineStatePanel
           compact
           tone="hint"
@@ -150,9 +160,9 @@ export const DebugPanel: FC<DebugPanelProps> = ({
             </button>
           </div>
 
-          {syncLabel ? (
+          {runtimeLabel || syncLabel ? (
             <p className="debug-panel-meta">
-              {syncLabel}
+              {[runtimeLabel, syncLabel].filter(Boolean).join(' · ')}
               {debugSession.registeredBreakpointCount > 0
                 ? ` · ${t('debug.breakpointsRegistered', { count: debugSession.registeredBreakpointCount })}`
                 : null}

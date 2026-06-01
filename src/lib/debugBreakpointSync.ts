@@ -1,10 +1,9 @@
 import type { DebugBreakpoint } from './debugBreakpoints'
+import { buildCdpBreakpointAttempts, breakpointUrlPatternsForPath } from './debugBreakpointPatterns'
 
 /** Escape a workspace-relative path for CDP `urlRegex` (Node inspect). */
 export function breakpointUrlRegexForPath(filePath: string): string {
-  const normalized = filePath.replace(/\\/g, '/').replace(/^\.\//, '')
-  const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return `${escaped}$`
+  return breakpointUrlPatternsForPath(filePath)[0] ?? `${filePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
 }
 
 export function enabledBreakpointsForFile(
@@ -23,7 +22,8 @@ export interface CdpSetBreakpointParams {
 export function buildCdpBreakpointParams(
   breakpoint: DebugBreakpoint,
 ): CdpSetBreakpointParams {
-  return {
+  const attempt = buildCdpBreakpointAttempts(breakpoint)[0]
+  return attempt ?? {
     lineNumber: Math.max(0, breakpoint.line - 1),
     urlRegex: breakpointUrlRegexForPath(breakpoint.path),
   }

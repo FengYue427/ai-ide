@@ -22,6 +22,11 @@ import {
 } from './ptyBridge.mjs'
 import { checkForUpdates, installDesktopCrashLog, setupDesktopUpdater } from './updater.mjs'
 import { readGitReadonlySnapshot } from './gitCli.mjs'
+import {
+  killNodeInspectSession,
+  spawnNodeInspectSession,
+  validateInspectEntry,
+} from './nodeInspect.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PRODUCTION_APP_URL =
@@ -298,6 +303,25 @@ function registerIpc() {
     const root = rootPath ?? projectRoot
     if (!root) return { ok: false, reason: 'NO_ROOT' }
     return readGitReadonlySnapshot(root)
+  })
+
+  ipcMain.handle('desktop:spawn-node-inspect', async (_e, { rootPath, entryFile }) => {
+    const root = rootPath ?? projectRoot
+    if (!root) return { ok: false, reason: 'NO_ROOT' }
+    const valid = await validateInspectEntry(root, entryFile ?? 'index.js')
+    if (!valid.ok) return valid
+    return spawnNodeInspectSession({
+      rootPath: root,
+      entryFile: valid.entryFile,
+      onExit: (sessionId, exitCode) => {
+        mainWindow?.webContents.send('desktop:node-inspect-exit', { sessionId, exitCode })
+      },
+    })
+  })
+
+  ipcMain.handle('desktop:kill-node-inspect', async (_e, { sessionId }) => {
+    if (!sessionId) return { ok: false }
+    return { ok: killNodeInspectSession(sessionId) }
   })
 
   ipcMain.handle('desktop:run-command', async (_e, { rootPath, commandLine }) => {

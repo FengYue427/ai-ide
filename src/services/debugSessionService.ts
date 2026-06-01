@@ -1,3 +1,4 @@
+import type { DebugRuntimeKind } from './debugAlphaService'
 import type { DebugCdpClient } from './debugCdpClient'
 import { tryOpenDebuggerSession } from './debugCdpClient'
 import { buildDebugPauseInspection } from './debugInspectService'
@@ -41,6 +42,7 @@ export function clearCachedDebugCallStack(): void {
 export interface StartDebugSessionInput {
   files: FileItem[]
   entryFile: string
+  runtimeKind: DebugRuntimeKind
   breakpoints: DebugBreakpoint[]
   writeFile: (path: string, content: string) => Promise<void>
   spawnInspect: (fileName: string) => Promise<NodeInspectSessionHandle>
@@ -52,6 +54,7 @@ export interface StartDebugSessionInput {
 export interface StartDebugSessionResult {
   inspectUrl: string | null
   syncMode: DebugSyncMode | null
+  runtimeKind: DebugRuntimeKind
   registeredBreakpointCount: number
 }
 
@@ -68,13 +71,26 @@ export async function startDebugSessionWithBreakpoints(
   let session = await input.spawnInspect(input.entryFile)
 
   if (!session.inspectUrl) {
-    return { inspectUrl: null, syncMode: null, registeredBreakpointCount: 0 }
+    return {
+      inspectUrl: null,
+      syncMode: null,
+      runtimeKind: input.runtimeKind,
+      registeredBreakpointCount: 0,
+    }
   }
 
-  const opened = await tryOpenDebuggerSession(session.inspectUrl, enabledBreakpoints)
+  const opened = await tryOpenDebuggerSession(session.inspectUrl, enabledBreakpoints, {
+    retryCount: 1,
+    connectTimeoutMs: input.runtimeKind === 'desktop' ? 10_000 : 8_000,
+  })
   if (opened) {
     activeClient = opened.client
     activeKill = session.kill
+
+    opened.client.onDisconnect(() => {
+      stopActiveDebugSession()
+      input.onEnded()
+    })
 
     opened.client.onNotification((method, params) => {
       if (method === 'Debugger.paused') {
@@ -98,6 +114,7 @@ export async function startDebugSessionWithBreakpoints(
     return {
       inspectUrl: session.inspectUrl,
       syncMode: 'cdp',
+      runtimeKind: input.runtimeKind,
       registeredBreakpointCount: opened.registered,
     }
   }
@@ -125,6 +142,7 @@ export async function startDebugSessionWithBreakpoints(
   return {
     inspectUrl: session.inspectUrl,
     syncMode: session.inspectUrl ? 'injected' : null,
+    runtimeKind: input.runtimeKind,
     registeredBreakpointCount: enabledBreakpoints.length,
   }
 }

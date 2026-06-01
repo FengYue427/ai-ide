@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /signup
+Allow: /login
+Allow: /legal/
+
+Sitemap: https://ai-ide-flame.vercel.app/sitemap.xml

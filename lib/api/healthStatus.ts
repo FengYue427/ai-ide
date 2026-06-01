@@ -11,6 +11,10 @@ export type HealthPayload = {
     stripe: boolean
     devMock: boolean
   }
+  platformAi?: {
+    configured: boolean
+    provider?: string
+  }
 }
 
 export async function buildHealthCheck(options: {
@@ -18,6 +22,7 @@ export async function buildHealthCheck(options: {
   hasDatabaseUrl: boolean
   pingDatabase: () => Promise<void>
   billing?: HealthPayload['billing']
+  platformAi?: HealthPayload['platformAi']
 }): Promise<{ payload: HealthPayload; statusCode: number }> {
   const payload: HealthPayload = {
     status: 'ok',
@@ -25,6 +30,7 @@ export async function buildHealthCheck(options: {
     version: options.version ?? '1.0.0-rc.1',
     timestamp: new Date().toISOString(),
     billing: options.billing,
+    platformAi: options.platformAi,
   }
 
   if (!options.hasDatabaseUrl) {

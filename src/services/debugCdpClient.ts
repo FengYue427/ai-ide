@@ -1,4 +1,4 @@
-import { buildCdpBreakpointParams } from '../lib/debugBreakpointSync'
+import { buildCdpBreakpointAttempts } from '../lib/debugBreakpointPatterns'
 import type { DebugBreakpoint } from '../lib/debugBreakpoints'
 
 export interface CdpPendingRequest {
@@ -12,6 +12,7 @@ export interface CdpPausedLocation {
 }
 
 type CdpNotificationHandler = (method: string, params: unknown) => void
+type CdpDisconnectHandler = () => void
 
 /** Minimal Chrome DevTools Protocol client for Node inspect (v1.1.7 F2). */
 export class DebugCdpClient {
@@ -19,6 +20,7 @@ export class DebugCdpClient {
   private nextId = 1
   private readonly pending = new Map<number, CdpPendingRequest>()
   private notificationHandler: CdpNotificationHandler | null = null
+  private disconnectHandler: CdpDisconnectHandler | null = null
 
   connect(inspectUrl: string, timeoutMs = 8_000): Promise<void> {
     if (typeof WebSocket === 'undefined') {
@@ -60,12 +62,17 @@ export class DebugCdpClient {
           pending.reject(new Error('CDP socket closed'))
         }
         this.pending.clear()
+        this.disconnectHandler?.()
       }
     })
   }
 
   onNotification(handler: CdpNotificationHandler): void {
     this.notificationHandler = handler
+  }
+
+  onDisconnect(handler: CdpDisconnectHandler): void {
+    this.disconnectHandler = handler
   }
 
   close(): void {
@@ -142,13 +149,18 @@ export async function registerBreakpointsOnDebugger(
   let registered = 0
 
   for (const breakpoint of enabled) {
-    const params = buildCdpBreakpointParams(breakpoint)
-    try {
-      await client.send('Debugger.setBreakpointByUrl', { ...params } as Record<string, unknown>)
-      registered += 1
-    } catch {
-      /* skip unmatched paths in container */
+    const attempts = buildCdpBreakpointAttempts(breakpoint)
+    let placed = false
+    for (const params of attempts) {
+      try {
+        await client.send('Debugger.setBreakpointByUrl', { ...params } as Record<string, unknown>)
+        placed = true
+        break
+      } catch {
+        /* try next url pattern */
+      }
     }
+    if (placed) registered += 1
   }
 
   return registered
@@ -168,14 +180,24 @@ export async function bootstrapDebuggerSession(
 export async function tryOpenDebuggerSession(
   inspectUrl: string,
   breakpoints: DebugBreakpoint[],
+  options?: { connectTimeoutMs?: number; retryCount?: number },
 ): Promise<{ client: DebugCdpClient; registered: number } | null> {
-  const client = new DebugCdpClient()
-  try {
-    await client.connect(inspectUrl)
-    const registered = await bootstrapDebuggerSession(client, breakpoints)
-    return { client, registered }
-  } catch {
-    client.close()
-    return null
+  const retries = options?.retryCount ?? 1
+  const connectTimeoutMs = options?.connectTimeoutMs ?? 8_000
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const client = new DebugCdpClient()
+    try {
+      await client.connect(inspectUrl, connectTimeoutMs)
+      const registered = await bootstrapDebuggerSession(client, breakpoints)
+      return { client, registered }
+    } catch {
+      client.close()
+      if (attempt < retries) {
+        await new Promise((resolve) => window.setTimeout(resolve, 180))
+      }
+    }
   }
+
+  return null
 }

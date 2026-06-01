@@ -56,6 +56,7 @@ import { formatChatErrorMessage } from '../services/chatErrorMessages'
 import { useI18n } from '../i18n'
 import { trackEvent } from '../lib/observability'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
+import { isAiConfigured } from '../lib/aiPlatformMode'
 import { useIDEStore } from '../store/ideStore'
 import { appendSpecsContext, collectSpecSources } from '../services/specsService'
 import { loadAgentRunHistory, saveAgentRunHistoryItem } from '../services/agentRunHistoryService'
@@ -330,7 +331,7 @@ ${t('ai.chat.prompt')}`
     })
   }, [queueSessionStatsHydrated, queueSuccessStats, queueFailureStats, recentDoneQueueItems])
 
-  const isConfigured = !!aiConfig.apiKey || aiConfig.provider === 'ollama'
+  const isConfigured = isAiConfigured(aiConfig, Boolean(currentUser))
 
   const projectRules = useMemo(() => {
     const sources = collectRulesSources(

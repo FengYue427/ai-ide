@@ -459,6 +459,7 @@ export function AppShell() {
         openTemplateModal={ui.openTemplateModal}
         openThemeSelector={ui.openThemeSelector}
         openWelcomeScreen={ui.openWelcomeScreen}
+        openRegisterDialog={ui.openRegisterDialog}
         onOpenRecentWorkspace={handleOpenRecentWorkspace}
         onTestsGenerated={handleTestsGenerated}
         isRunning={runtimeBusy}

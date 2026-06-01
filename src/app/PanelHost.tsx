@@ -129,6 +129,7 @@ interface PanelHostProps {
   openTemplateModal: () => void
   openThemeSelector: () => void
   openWelcomeScreen: () => void
+  openRegisterDialog: () => void
   onOpenRecentWorkspace: (workspaceId: string) => void | Promise<void>
   onTestsGenerated: (fileName: string, content: string) => void
   isRunning: boolean
@@ -184,6 +185,7 @@ export function PanelHost({
   openTemplateModal,
   openThemeSelector,
   openWelcomeScreen,
+  openRegisterDialog,
   onOpenRecentWorkspace,
   onTestsGenerated,
   isRunning,
@@ -223,6 +225,7 @@ export function PanelHost({
   const showShareModal = useIDEStore((s) => s.showShareModal)
   const showAISettings = useIDEStore((s) => s.showAISettings)
   const showAuthModal = useIDEStore((s) => s.showAuthModal)
+  const authModalTab = useIDEStore((s) => s.authModalTab)
   const showSubscriptionModal = useIDEStore((s) => s.showSubscriptionModal)
   const showImportModal = useIDEStore((s) => s.showImportModal)
   const showCollaboration = useIDEStore((s) => s.showCollaboration)
@@ -370,6 +373,7 @@ export function PanelHost({
 
       {showAuthModal && (
         <AuthModal
+          initialTab={authModalTab}
           onAuthenticated={(user) => {
             setCurrentUser(user)
             setShowAuthModal(false)
@@ -527,10 +531,11 @@ export function PanelHost({
             setAutoSaveEnabled(true)
             setFormatOnSaveEnabled(false)
             const defaultAi = {
-              provider: 'openai' as const,
+              provider: 'deepseek' as const,
               apiKey: '',
-              model: modelOptions.openai.models[0],
+              model: modelOptions.deepseek.models[0],
               endpoint: '',
+              keyMode: 'platform' as const,
             }
             setAiConfig(defaultAi)
             await unifiedStorage.set('ai-config', defaultAi)
@@ -1204,6 +1209,7 @@ export function PanelHost({
           onOpenTerminal={() => closeWelcomeAnd(openTerminalPanel)}
           onOpenGit={() => closeWelcomeAnd(openGitPanel)}
           onOpenCollaboration={() => closeWelcomeAnd(openCollaborationDialog)}
+          onRegister={() => closeWelcomeAnd(openRegisterDialog)}
         />
       )}
     </>

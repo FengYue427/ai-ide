@@ -7,6 +7,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.8] — 2026-05-31 · 平台 AI + 注册 SEO + 调试抛光
+
+### Added
+
+- **平台 AI（Cursor 模式）**：`POST /api/ai/chat` · 服务端 Key · 设置「平台 AI / BYOK」· Chat + Agent 无 Key 可用 · `health.platformAi`
+- **可发现注册**：`/signup` · `/login` · `robots.txt` · `sitemap.xml` · `?auth=register` · 欢迎页注册 CTA
+- **调试 1.1.7.2**：Electron 本地文件夹 `node --inspect-brk` · Desktop / WebContainer 标签
+- **调试 1.1.7.3**：断点多 `urlRegex` · CDP 断开清理 · inspect 连接重试
+
+See [RELEASE_NOTES_v1.1.8.md](docs/RELEASE_NOTES_v1.1.8.md).
+
+---
+
 ## [1.1.7] — 2026-05-29 · 调试器 MVP GA
 
 ### Added

@@ -40,7 +40,16 @@ export function useUIActions() {
     [setShowWelcome],
   )
 
-  const openAuthDialog = useCallback(() => setShowAuthModal(true), [setShowAuthModal])
+  const setAuthModalTab = useIDEStore((s) => s.setAuthModalTab)
+  const openAuthDialog = useCallback(() => {
+    setAuthModalTab('login')
+    setShowAuthModal(true)
+  }, [setAuthModalTab, setShowAuthModal])
+
+  const openRegisterDialog = useCallback(() => {
+    setAuthModalTab('register')
+    setShowAuthModal(true)
+  }, [setAuthModalTab, setShowAuthModal])
   const openChatPanel = useCallback(() => {
     setShowGitPanel(false)
     setShowChatPanel(true)
@@ -106,6 +115,7 @@ export function useUIActions() {
     closeSettingsPanel,
     closeWelcomeAnd,
     openAuthDialog,
+    openRegisterDialog,
     openChatPanel,
     openBackgroundJobsPanel,
     openCodeReviewPanel,

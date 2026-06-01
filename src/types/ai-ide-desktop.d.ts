@@ -51,6 +51,21 @@ export type DesktopPtySpawnResult = {
   reason?: string
 }
 
+export type DesktopSpawnNodeInspectResult =
+  | {
+      ok: true
+      sessionId: string
+      inspectUrl: string
+      port?: number
+      entryFile?: string
+    }
+  | {
+      ok: false
+      reason: string
+      detail?: string
+      sessionId?: string
+    }
+
 export type DesktopGitReadonlySnapshot =
   | {
       ok: true
@@ -78,6 +93,14 @@ export interface AiIdeDesktopApi {
   ) => Promise<string>
   writeFile: (rootPath: string, relPath: string, content: string) => Promise<{ ok: boolean }>
   readGitReadonlySnapshot: (rootPath: string) => Promise<DesktopGitReadonlySnapshot>
+  spawnNodeInspect: (payload: {
+    rootPath: string
+    entryFile: string
+  }) => Promise<DesktopSpawnNodeInspectResult>
+  killNodeInspect: (sessionId: string) => Promise<{ ok: boolean }>
+  onNodeInspectExit?: (
+    callback: (payload: { sessionId: string; exitCode?: number }) => void,
+  ) => () => void
   runCommand: (rootPath: string, commandLine: string) => Promise<DesktopRunResult>
   ptyCapabilities: () => Promise<DesktopPtyCapabilities>
   ptySpawn: (payload: {

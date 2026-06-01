@@ -1,10 +1,16 @@
 export type AIModel = 'openai' | 'deepseek' | 'claude' | 'google' | 'ollama' | 'qwen' | 'zhipu' | 'minimax' | 'grok'
 
+import type { AiKeyMode } from '../lib/aiPlatformMode'
+import { shouldUsePlatformAi } from '../lib/aiPlatformMode'
+import { sendPlatformMessage } from './platformAiService'
+
 export interface AIConfig {
   provider: AIModel
   apiKey: string
   endpoint?: string  // 用于自定义 API 端点
   model?: string     // 具体模型名称
+  /** platform = server-held key (v1.2); byok = user key in browser */
+  keyMode?: AiKeyMode
 }
 
 // ==================== 用量限制管理 ====================
@@ -74,6 +80,17 @@ export const modelOptions: Record<AIModel, ModelOptionMeta> = {
   },
 }
 
+/** Avoid static ideStore import (cycle with modelOptions). */
+async function shouldUsePlatformAiForConfig(
+  config: AIConfig,
+  loggedInOverride?: boolean,
+): Promise<boolean> {
+  const loggedIn =
+    loggedInOverride ??
+    Boolean((await import('../store/ideStore')).useIDEStore.getState().currentUser)
+  return shouldUsePlatformAi(config, loggedIn)
+}
+
 export function modelProviderTranslationKey(
   provider: AIModel,
   field: 'name' | 'desc',
@@ -104,8 +121,12 @@ export async function sendMessage(
   config: AIConfig,
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
   onStream?: (chunk: string) => void,
-  options?: { skipQuotaCheck?: boolean; signal?: AbortSignal },
+  options?: { skipQuotaCheck?: boolean; signal?: AbortSignal; loggedIn?: boolean },
 ): Promise<string> {
+  if (await shouldUsePlatformAiForConfig(config, options?.loggedIn)) {
+    return sendPlatformMessage(config, messages, onStream, options?.signal)
+  }
+
   await reserveQuotaBeforeRequest(options?.skipQuotaCheck)
 
   const endpoint = config.endpoint || defaultEndpoints[config.provider]
@@ -191,8 +212,13 @@ export async function sendMessageWithDebounce(
     debounceMs?: number
     skipDebounce?: boolean
     skipQuotaCheck?: boolean
+    loggedIn?: boolean
   }
 ): Promise<string> {
+  if (await shouldUsePlatformAiForConfig(config, options?.loggedIn)) {
+    return sendPlatformMessage(config, messages, onStream)
+  }
+
   await reserveQuotaBeforeRequest(options?.skipQuotaCheck)
 
   const requestKey = generateRequestKey(config, messages)

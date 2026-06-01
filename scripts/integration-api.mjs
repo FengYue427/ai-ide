@@ -101,6 +101,33 @@ async function run() {
     fail('session', e.message)
   }
 
+  // 3b. SEO signup page (v1.1.8)
+  try {
+    const res = await fetch(`${apiBase}/signup`, { signal: AbortSignal.timeout(10000) })
+    if (res.ok && (await res.text()).includes('注册')) pass('signup page', 'HTTP 200')
+    else fail('signup page', `HTTP ${res.status}`)
+  } catch (e) {
+    fail('signup page', e.message)
+  }
+
+  // 3c. Platform AI gateway (200 with key, 503 without — both acceptable in CI)
+  try {
+    const { res, json } = await api('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'integration ping' }],
+        stream: false,
+      }),
+    })
+    if (res.status === 200) pass('platform ai chat', 'upstream ok')
+    else if (res.status === 503) pass('platform ai chat', json?.errorKey || 'not configured')
+    else if (res.status === 429) pass('platform ai chat', 'quota')
+    else if (res.status === 502) pass('platform ai chat', 'upstream error (key may be invalid)')
+    else fail('platform ai chat', json?.errorKey || `HTTP ${res.status}`)
+  } catch (e) {
+    fail('platform ai chat', e.message)
+  }
+
   // 4. Save workspace
   const sampleFiles = JSON.stringify([
     { name: 'main.js', content: "console.log('cloud sync');", language: 'javascript' },

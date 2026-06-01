@@ -45,7 +45,8 @@ import { canUseEmbeddings } from '../services/embeddingService'
 import { projectIndexManager } from '../services/projectIndexManager'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { workspaceContextService } from '../services/workspaceContextService'
-import { useIDEStore, type AIConfigState } from '../store/ideStore'
+import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
+import { useIDEStore, type AIConfigState, type AiKeyMode } from '../store/ideStore'
 import type { ProjectTaskItem } from '../services/projectTasksService'
 import type { PlanCatalogItem } from '../services/planCatalogService'
 import type { PlanTemplateItem } from '../services/planTemplateService'
@@ -402,6 +403,30 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 <QuotaIndicator quota={quota} showPlan compact={false} />
 
                 <div className="settings-card settings-card--grid">
+                  {isAiGatewayEnabled() ? (
+                    <div className="settings-field">
+                      <label className="settings-label">{t('settings.ai.keyMode')}</label>
+                      <select
+                        className="settings-select"
+                        value={localAIConfig.keyMode}
+                        onChange={(event) =>
+                          setLocalAIConfig({
+                            ...localAIConfig,
+                            keyMode: event.target.value as AiKeyMode,
+                          })
+                        }
+                      >
+                        <option value="platform">{t('settings.ai.keyModePlatform')}</option>
+                        <option value="byok">{t('settings.ai.keyModeByok')}</option>
+                      </select>
+                      <p className="settings-privacy-text">
+                        {localAIConfig.keyMode === 'platform'
+                          ? t('settings.ai.keyModePlatformHint')
+                          : t('settings.ai.keyModeByokHint')}
+                      </p>
+                    </div>
+                  ) : null}
+
                   <div className="settings-field">
                     <label className="settings-label">{t('settings.ai.provider')}</label>
                     <select
@@ -425,16 +450,18 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     <p className="settings-privacy-text">{t(modelProviderTranslationKey(localAIConfig.provider, 'desc'))}</p>
                   </div>
 
-                  <div className="settings-field">
-                    <label className="settings-label">{t('settings.ai.apiKey')}</label>
-                    <input
-                      type="password"
-                      className="settings-input"
-                      value={localAIConfig.apiKey}
-                      onChange={(event) => setLocalAIConfig({ ...localAIConfig, apiKey: event.target.value })}
-                      placeholder={t('settings.ai.keyPlaceholder')}
-                    />
-                  </div>
+                  {localAIConfig.keyMode !== 'platform' || !isAiGatewayEnabled() ? (
+                    <div className="settings-field">
+                      <label className="settings-label">{t('settings.ai.apiKey')}</label>
+                      <input
+                        type="password"
+                        className="settings-input"
+                        value={localAIConfig.apiKey}
+                        onChange={(event) => setLocalAIConfig({ ...localAIConfig, apiKey: event.target.value })}
+                        placeholder={t('settings.ai.keyPlaceholder')}
+                      />
+                    </div>
+                  ) : null}
 
                   <div className="settings-field">
                     <label className="settings-label">{t('settings.ai.model')}</label>

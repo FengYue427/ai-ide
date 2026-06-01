@@ -54,6 +54,14 @@
   ],
   "rewrites": [
     {
+      "source": "/signup",
+      "destination": "/signup.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
       "source": "/website/(.*)",
       "destination": "/website/$1"
     },

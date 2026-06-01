@@ -23,9 +23,9 @@ export const BILLING_PLANS: PlanDefinition[] = [
     price: 0,
     currency: 'CNY',
     features: [
-      '基础 AI 对话（自带 API Key）',
+      '平台 AI 对话（登录即用，每日 200 次）',
+      '可选自带 API Key（BYOK）',
       '最多 10 个云工作区',
-      '每日 200 次服务端配额计数',
       '3GB 云存储额度（规划）',
     ],
     limits: { aiRequestsPerDay: 200, workspaces: 10, storageGB: 3 },
@@ -38,7 +38,8 @@ export const BILLING_PLANS: PlanDefinition[] = [
     price: 19,
     currency: 'CNY',
     features: [
-      '全部 AI 模型与 Agent',
+      '平台 AI + Agent（高配额）',
+      '全部模型与 BYOK',
       '无限云工作区',
       '每日 5000 次配额（宽松）',
       '30GB 云存储额度（规划）',

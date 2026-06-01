@@ -1,5 +1,4 @@
 import { useCallback } from 'react'
-import { type AIModel } from '../services/aiService'
 import {
   clearTerminalOutput,
   getTerminalOutputLines,
@@ -9,7 +8,7 @@ import {
 import { resultFromCommandOutcome, detectCommandOutcome, type NpmScriptRunResult } from '../lib/npmScriptRun'
 import { waitForTerminalCommandOutcome } from '../lib/waitForTerminalCommandOutcome'
 import { runTerminalCommand } from '../services/terminalBridge'
-import { useIDEStore } from '../store/ideStore'
+import { useIDEStore, type AIConfigState } from '../store/ideStore'
 import { canUseDebugExecutionControls, isDebugSessionActive } from '../lib/debugSessionActive'
 import { isCollaborationDebugBlocked } from '../lib/collabDebugGuard'
 import {
@@ -18,10 +17,13 @@ import {
   executeDebugStepOut,
   executeDebugStepOver,
 } from '../services/debugExecutionService'
+import { canUseDesktopDebug } from '../services/desktopDebug'
+import { spawnDesktopNodeInspectSession } from '../services/desktopNodeInspect'
 import {
   startDebugSessionWithBreakpoints,
   stopActiveDebugSession,
 } from '../services/debugSessionService'
+import { syncToLocalDisk } from '../services/localProjectSync'
 import { StorageLayer, unifiedStorage } from '../services/unifiedStorage'
 import type { TranslateFn } from '../i18n'
 import type { FileItem } from '../types/file'
@@ -38,7 +40,7 @@ interface UseEditorActionsOptions {
     entry?: string,
   ) => Promise<import('../hooks/useWebContainer').NodeInspectSessionHandle>
   setActiveFile: (index: number) => void
-  setAiConfig: (config: { provider: AIModel; apiKey: string; model: string; endpoint: string }) => void
+  setAiConfig: (config: AIConfigState | ((prev: AIConfigState) => AIConfigState)) => void
   setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>
   setShowAISettings: (show: boolean) => void
   setShowTemplateModal: (show: boolean) => void
@@ -68,7 +70,7 @@ export function useEditorActions({
   writeFile,
 }: UseEditorActionsOptions) {
   const handleSaveAISettings = useCallback(
-    async (config: { provider: AIModel; apiKey: string; model: string; endpoint: string }) => {
+    async (config: AIConfigState) => {
       setAiConfig(config)
       await unifiedStorage.set('ai-config', config)
       setShowAISettings(false)
@@ -161,7 +163,8 @@ export function useEditorActions({
       return
     }
 
-    if (!isReady) {
+    const useDesktop = canUseDesktopDebug()
+    if (!isReady && !useDesktop) {
       notify('info', t('notify.runtimeInit'), t('debug.waitRuntimeDesc'))
       return
     }
@@ -175,6 +178,7 @@ export function useEditorActions({
     store.resetDebugSession()
     store.setDebugSession({
       phase: 'starting',
+      runtimeKind: useDesktop ? 'desktop' : 'webcontainer',
       entryFile: file.name,
       error: null,
       inspectUrl: null,
@@ -191,9 +195,14 @@ export function useEditorActions({
       const result = await startDebugSessionWithBreakpoints({
         files,
         entryFile: file.name,
+        runtimeKind: useDesktop ? 'desktop' : 'webcontainer',
         breakpoints: store.debugBreakpoints,
-        writeFile,
-        spawnInspect: (entry) => spawnNodeInspectSession(entry),
+        writeFile: async (path, content) => {
+          await writeFile(path, content)
+          await syncToLocalDisk(path, content)
+        },
+        spawnInspect: (entry) =>
+          useDesktop ? spawnDesktopNodeInspectSession(entry) : spawnNodeInspectSession(entry),
         onPaused: (inspection) => {
           const state = useIDEStore.getState()
           state.setDebugSession({
@@ -234,6 +243,7 @@ export function useEditorActions({
 
       store.setDebugSession({
         phase: result.syncMode === 'injected' ? 'running' : 'running',
+        runtimeKind: result.runtimeKind,
         inspectUrl: result.inspectUrl,
         syncMode: result.syncMode,
         registeredBreakpointCount: result.registeredBreakpointCount,

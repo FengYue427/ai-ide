@@ -14,6 +14,7 @@ import {
   Sparkles,
   Terminal,
 } from 'lucide-react'
+import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
 import { shouldShowNetworkTips, useCloudHealth } from '../hooks/useCloudHealth'
 import { getPublicAppOrigin } from '../lib/appOrigin'
 import { dismissWelcomeOnboarding, shouldShowWelcomeOnboarding } from '../lib/welcomeOnboarding'
@@ -41,6 +42,7 @@ interface WelcomeScreenProps {
   onOpenTerminal?: () => void
   onOpenGit?: () => void
   onOpenCollaboration?: () => void
+  onRegister?: () => void
   shortcuts?: { key: string; action: string }[]
 }
 
@@ -72,6 +74,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onOpenTerminal,
   onOpenGit,
   onOpenCollaboration,
+  onRegister,
   shortcuts: shortcutsProp,
 }) => {
   const { t, locale } = useI18n()
@@ -227,6 +230,18 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               </div>
             </div>
             <p className="welcome-lead">{t('welcome.lead')}</p>
+            {isAiGatewayEnabled() && onRegister ? (
+              <div className="welcome-platform-cta">
+                <p className="welcome-platform-cta-text">{t('welcome.platformCta')}</p>
+                <button type="button" className="welcome-platform-cta-btn" onClick={onRegister}>
+                  {t('welcome.platformCtaButton')}
+                  <ArrowRight size={16} />
+                </button>
+                <a className="welcome-platform-cta-link" href="/signup">
+                  {t('welcome.platformCtaSignupPage')}
+                </a>
+              </div>
+            ) : null}
           </div>
 
           <button type="button" className="welcome-settings-btn" onClick={onOpenSettings}>

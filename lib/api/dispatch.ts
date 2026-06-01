@@ -140,6 +140,7 @@ const routes: RouteEntry[] = [
   },
   { method: 'GET', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'GET' },
   { method: 'POST', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'POST' },
+  { method: 'POST', match: (p) => (p === '/api/ai/chat' ? {} : null), load: () => import('./handlers/ai/chat'), export: 'POST' },
   { method: 'POST', match: (p) => (p === '/api/mcp/proxy' ? {} : null), load: () => import('./handlers/mcp/proxy'), export: 'POST' },
   { method: 'GET', match: (p) => (p === '/api/jobs' ? {} : null), load: () => import('./handlers/jobs/index'), export: 'GET' },
   { method: 'POST', match: (p) => (p === '/api/jobs' ? {} : null), load: () => import('./handlers/jobs/index'), export: 'POST' },

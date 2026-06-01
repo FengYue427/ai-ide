@@ -8,6 +8,7 @@ import { createTranslator, type TranslationKey } from '../i18n'
 import { getApiLanguage } from '../lib/apiLanguage'
 import type { ChatCompletionResult, ChatMessage } from './agentChatTypes'
 import type { OpenAIToolDefinition } from './agentTools/types'
+import { shouldUsePlatformAi } from '../lib/aiPlatformMode'
 import { reserveAIUsageFromStore } from './usageService'
 
 const TOOL_PROVIDERS: AIModel[] = ['openai', 'deepseek', 'grok', 'zhipu', 'minimax']
@@ -111,6 +112,61 @@ async function parseApiError(response: Response): Promise<string> {
 /**
  * Non-streaming chat completion with optional OpenAI-compatible tools.
  */
+async function isUserLoggedIn(): Promise<boolean> {
+  const { useIDEStore } = await import('../store/ideStore')
+  return Boolean(useIDEStore.getState().currentUser)
+}
+
+async function sendPlatformAgentCompletionViaGateway(
+  config: AIConfig,
+  messages: ChatMessage[],
+  options?: {
+    tools?: OpenAIToolDefinition[]
+    signal?: AbortSignal
+  },
+): Promise<ChatCompletionResult> {
+  const { parsePlatformError } = await import('./platformAiService')
+  const response = await fetch('/api/ai/chat', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      provider:
+        config.provider === 'openai' || config.provider === 'deepseek' ? config.provider : 'deepseek',
+      model: resolveAgentModelId(config),
+      messages: serializeMessagesForApi(messages),
+      tools: options?.tools ?? [],
+      stream: false,
+    }),
+    signal: options?.signal,
+  })
+
+  if (!response.ok) {
+    throw await parsePlatformError(response)
+  }
+
+  const data = (await response.json()) as {
+    choices?: Array<{
+      finish_reason?: string
+      message?: {
+        content?: string | null
+        tool_calls?: ChatCompletionResult['tool_calls']
+        reasoning_content?: string | null
+      }
+    }>
+  }
+
+  const choice = data.choices?.[0]
+  const message = choice?.message ?? {}
+
+  return {
+    content: message.content ?? null,
+    tool_calls: message.tool_calls,
+    reasoning_content: message.reasoning_content ?? null,
+    finish_reason: choice?.finish_reason,
+  }
+}
+
 export async function sendChatCompletion(
   config: AIConfig,
   messages: ChatMessage[],
@@ -118,8 +174,14 @@ export async function sendChatCompletion(
     tools?: OpenAIToolDefinition[]
     skipQuotaCheck?: boolean
     signal?: AbortSignal
+    loggedIn?: boolean
   },
 ): Promise<ChatCompletionResult> {
+  const loggedIn = options?.loggedIn ?? (await isUserLoggedIn())
+  if (shouldUsePlatformAi(config, loggedIn)) {
+    return sendPlatformAgentCompletionViaGateway(config, messages, options)
+  }
+
   await reserveQuotaBeforeRequest(options?.skipQuotaCheck)
 
   if (!supportsAgentToolCalling(config.provider)) {

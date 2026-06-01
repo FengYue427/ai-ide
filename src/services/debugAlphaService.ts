@@ -17,6 +17,8 @@ export type DebugAttachPhase =
 
 export type DebugSyncMode = 'cdp' | 'injected'
 
+export type DebugRuntimeKind = 'webcontainer' | 'desktop'
+
 export interface DebugAttachResult {
   phase: DebugAttachPhase
   inspectUrl: string | null
