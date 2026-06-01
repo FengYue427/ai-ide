@@ -21,7 +21,9 @@ import {
   Puzzle,
   Save,
   Shield,
+  Sparkles,
   X,
+  Zap,
 } from 'lucide-react'
 import { modelOptions, modelProviderTranslationKey, type AIModel, type QuotaCheck } from '../services/aiService'
 import { BILLING_SYNC_EVENT } from '../hooks/useBillingSync'
@@ -46,6 +48,7 @@ import { projectIndexManager } from '../services/projectIndexManager'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
+import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
 import { useIDEStore, type AIConfigState, type AiKeyMode } from '../store/ideStore'
 import type { ProjectTaskItem } from '../services/projectTasksService'
 import type { PlanCatalogItem } from '../services/planCatalogService'
@@ -203,6 +206,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   const [semanticSearchEnabled, setSemanticSearchEnabledState] = useState(isSemanticSearchEnabled)
   const [tabCompletionEnabled, setTabCompletionEnabledState] = useState(isTabCompletionEnabled)
   const [tabMaxLines, setTabMaxLines] = useState(getTabCompletionMaxLines)
+  const aiGatewayEnabled = isAiGatewayEnabled()
+  const platformAiHealth = usePlatformAiHealth(aiGatewayEnabled && activeTab === 'ai')
 
   const tabs = useMemo(
     () =>
@@ -402,8 +407,34 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
               <>
                 <QuotaIndicator quota={quota} showPlan compact={false} />
 
+                {aiGatewayEnabled ? (
+                  <div className="settings-card" data-testid="settings-platform-ai-health">
+                    <div className="settings-privacy-row">
+                      <Sparkles size={16} color="var(--accent-color)" />
+                      <strong>{t('settings.ai.platformStatus')}</strong>
+                    </div>
+                    <p className="settings-privacy-text">
+                      {platformAiHealth.status === 'loading'
+                        ? t('settings.ai.platformChecking')
+                        : platformAiHealth.status === 'unreachable'
+                          ? t('settings.ai.platformUnreachable')
+                          : platformAiHealth.configured
+                            ? t('settings.ai.platformReady', {
+                                provider: platformAiHealth.provider ?? '—',
+                              })
+                            : t('settings.ai.platformNotConfigured')}
+                    </p>
+                    {platformAiHealth.status === 'ready' && platformAiHealth.configured ? (
+                      <div className="settings-privacy-row" style={{ marginTop: 8 }}>
+                        <Zap size={14} color="var(--success-color)" />
+                        <span>{t('settings.ai.platformReadyBadge')}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="settings-card settings-card--grid">
-                  {isAiGatewayEnabled() ? (
+                  {aiGatewayEnabled ? (
                     <div className="settings-field">
                       <label className="settings-label">{t('settings.ai.keyMode')}</label>
                       <select
@@ -450,7 +481,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     <p className="settings-privacy-text">{t(modelProviderTranslationKey(localAIConfig.provider, 'desc'))}</p>
                   </div>
 
-                  {localAIConfig.keyMode !== 'platform' || !isAiGatewayEnabled() ? (
+                  {localAIConfig.keyMode !== 'platform' || !aiGatewayEnabled ? (
                     <div className="settings-field">
                       <label className="settings-label">{t('settings.ai.apiKey')}</label>
                       <input

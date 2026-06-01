@@ -134,6 +134,14 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
             <div className="plugins-card-head">
               <span className="plugins-card-title">{plugin.name}</span>
               <span className="status-pill">v{plugin.version}</span>
+              {plugin.manifest?.sdkVersion ? (
+                <span
+                  className="status-pill"
+                  title={t('plugin.market.sdkBadge', { version: plugin.manifest.sdkVersion })}
+                >
+                  {t('plugin.market.sdkBadge', { version: plugin.manifest.sdkVersion })}
+                </span>
+              ) : null}
               {plugin.builtin && <span className="status-pill">{t('plugin.builtin')}</span>}
               {isActive && (
                 <span className="status-pill" style={{ color: 'var(--success-color)' }}>
@@ -186,6 +194,16 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
         <>
           <span className="plugins-footer-note">{t('plugin.footer')}</span>
           <a
+            href="https://github.com/FengYue427/ai-ide/blob/main/docs/PLUGIN_SDK_V2.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="plugins-footer-note"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent-color)', textDecoration: 'none' }}
+          >
+            {t('plugin.sdkDoc')}
+            <ExternalLink size={13} />
+          </a>
+          <a
             href="https://github.com/FengYue427/ai-ide"
             target="_blank"
             rel="noopener noreferrer"
@@ -201,6 +219,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       <div className="plugins-hero">
         <div className="plugins-hero__title">{t('plugin.hero.title')}</div>
         <p className="plugins-hero__desc">{t('plugin.hero.desc')}</p>
+        <p className="plugins-hero__desc plugins-hero__desc--muted">{t('plugin.hero.sdk2')}</p>
         <div className="plugins-hero__meta">
           <span className="status-pill">{t('plugin.count.installed', { count: plugins.length })}</span>
           <span className="status-pill">{t('plugin.count.running', { count: activeCount })}</span>

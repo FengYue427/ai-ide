@@ -70,6 +70,24 @@ async function checkSubscriptionApi() {
   }
 }
 
+async function checkHealthPlatformAi() {
+  try {
+    const res = await fetch(`${apiBase}/api/health`, { signal: AbortSignal.timeout(5000) })
+    if (!res.ok) {
+      fail('API /api/health', `HTTP ${res.status}`)
+      return
+    }
+    const data = await res.json()
+    if (!data?.platformAi || typeof data.platformAi.configured !== 'boolean') {
+      fail('API health platformAi', 'missing platformAi.configured')
+      return
+    }
+    pass('API /api/health platformAi', `configured=${data.platformAi.configured}`)
+  } catch (error) {
+    fail('API /api/health', error instanceof Error ? error.message : 'failed')
+  }
+}
+
 async function checkWorkspacesUnauthorized() {
   try {
     const res = await fetch(`${apiBase}/api/workspaces`, { signal: AbortSignal.timeout(5000) })
@@ -87,6 +105,7 @@ console.log('--- AI IDE Smoke Test ---\n')
 
 await checkBuildArtifacts()
 await checkApiHealth()
+await checkHealthPlatformAi()
 await checkSubscriptionApi()
 await checkWorkspacesUnauthorized()
 

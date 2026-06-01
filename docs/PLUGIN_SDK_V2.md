@@ -38,6 +38,11 @@
 
 不包含 CDP 控制（不能代替调试器 UI）。
 
+## IDE 内可见性（v1.1.9.1+）
+
+- **官方市场**与**已安装**列表均显示 `sdkVersion` 徽章。
+- 插件面板底部链接至本文档。
+
 ## 示例
 
 - [examples/plugins/sdk-v2-status.plugin.json](../examples/plugins/sdk-v2-status.plugin.json)

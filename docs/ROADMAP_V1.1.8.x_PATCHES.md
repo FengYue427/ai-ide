@@ -18,12 +18,13 @@
 | **1.1.8.1** | 插件 `ai.complete` + Tab 补全支持平台 AI | ✅ |
 | **1.1.8.2** | Chat 未登录 + 平台模式提示 | ✅ |
 | **1.1.8.3** | GSC 验证文件已合入 · sitemap 维护 | ✅ |
-| **1.1.8.4** | 订阅/设置文案与 `health.platformAi` 文档 | 待办 |
+| **1.1.8.4** | 设置页 `health.platformAi` 状态卡片 | ✅ |
 
 ---
 
 ## 验收
 
-- [ ] 已登录、平台模式：插件 `context.ai.complete` 可用
-- [ ] Tab 补全在无 BYOK 时可用（平台 + 登录）
-- [ ] 未登录点 Chat：提示注册而非「配置 Key」
+- [x] 已登录、平台模式：插件 `context.ai.complete` 可用
+- [x] Tab 补全在无 BYOK 时可用（平台 + 登录）
+- [x] 未登录点 Chat：提示注册而非「配置 Key」
+- [x] 设置 → AI：展示 `platformAi.configured` / provider

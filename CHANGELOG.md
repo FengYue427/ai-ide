@@ -7,6 +7,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.9.1] — 2026-06-01 · SDK 2 抛光
+
+### Added
+
+- **v1.1.8.4**：设置页展示 `GET /api/health` → `platformAi` 状态
+- **插件 UI**：已安装列表 SDK 徽章、SDK 2 说明与文档链接
+- **协作 E2E**：`data-testid="collab-create-join-primary"` 稳定选择器
+- **Smoke**：`/api/health` → `platformAi.configured`
+
+### Docs
+
+- [RELEASE_NOTES_v1.1.9.1.md](docs/RELEASE_NOTES_v1.1.9.1.md)
+- [ROADMAP_V1.1.9.x_PATCHES.md](docs/ROADMAP_V1.1.9.x_PATCHES.md)
+- [PRODUCT_STATE_REVIEW_2026-06.md](docs/PRODUCT_STATE_REVIEW_2026-06.md) — 产品深审与增长路径
+
+---
+
 ## [1.1.9] — 2026-06-01 · 插件 SDK 2.0
 
 ### Added

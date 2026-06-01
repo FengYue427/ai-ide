@@ -69,7 +69,7 @@ export async function createCollabRoomAsHost(page: Page): Promise<string> {
   const modal = page.locator('.modal--collab')
   // Secondary "生成/创建房间" (btn-secondary) and primary footer action share the same label
   // when roomId is empty. Target the primary footer button (class on the element itself).
-  await modal.locator('button.btn-primary').filter({ hasText: /创建房间|Create room/i }).click()
+  await modal.getByTestId('collab-create-join-primary').click()
   await expect(page.locator('.modal--collab .collab-leave-btn')).toBeVisible({ timeout: 30_000 })
   const code = await page.getByTestId('collab-room-code').locator('strong').textContent()
   expect(code?.trim().length).toBeGreaterThanOrEqual(6)

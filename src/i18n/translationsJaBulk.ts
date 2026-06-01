@@ -14,6 +14,16 @@ export const JA_JP_BULK_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'settings.ai.keyModeByok': '自带 API Key',
   'settings.ai.keyModePlatformHint': 'ログイン後、サーバー経由で利用（日次クォータ）。Cursor のようにすぐ使えます。',
   'settings.ai.keyModeByokHint': 'Key はブラウザにのみ保存し、プロバイダへ直接接続します。',
+  'settings.ai.platformStatus': 'プラットフォーム AI 状態',
+  'settings.ai.platformChecking': 'デプロイ設定を確認中…',
+  'settings.ai.platformReady': 'サーバーでプラットフォーム AI 設定済み（{provider}）。ログイン後に利用できます。',
+  'settings.ai.platformReadyBadge': 'Chat / Agent / Tab 補完 / プラグインがゲートウェイ経由で利用可能',
+  'settings.ai.platformNotConfigured':
+    'PLATFORM_DEEPSEEK_API_KEY が未設定です。プラットフォームモードは利用できません（BYOK に切替可）。',
+  'settings.ai.platformUnreachable': '/api/health に接続できません。ネットワークを確認してください。',
+  'plugin.hero.sdk2':
+    'SDK 2.0: AI モードとデバッグ要約を読み取れます。マーケットの「SDK v2 状態」デモを試してください。',
+  'plugin.sdkDoc': 'プラグイン SDK 2.0 ドキュメント',
   'settings.ai.endpoint': 'Local endpoint',
   'settings.ai.keyPlaceholder': 'Enter your API key',
   'settings.ai.model': 'モデル',

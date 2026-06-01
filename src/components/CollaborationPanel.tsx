@@ -384,6 +384,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
             type="button"
             onClick={() => void handleJoin()}
             className="btn btn-primary"
+            data-testid="collab-create-join-primary"
             disabled={!userName.trim() || busy}
           >
             <Share2 size={14} className="btn-icon-gap" />
