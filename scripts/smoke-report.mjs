@@ -50,10 +50,13 @@ for (const check of checks) {
     let detail = `HTTP ${res.status}`
 
     if (check.kind === 'health') {
-      detail = `${json?.status ?? '?'} db=${json?.database ?? '?'}`
+      detail = `v=${json?.version ?? '?'} ${json?.status ?? '?'} db=${json?.database ?? '?'}`
       if (json?.checks) {
         detail += ` authSecret=${json.checks.authSecretConfigured ? 'yes' : 'no'}`
         detail += ` prismaRouter=${json.checks.prismaRouter ?? '?'}`
+      }
+      if (json?.plugins) {
+        detail += ` pluginPublish=${json.plugins.publishEnabled} officialKey=${json.plugins.officialKeyConfigured}`
       }
       ok = res.ok && json?.status === 'ok' && json?.database === 'connected'
       if (json?.hints?.length) detail += ` — ${json.hints[0]}`

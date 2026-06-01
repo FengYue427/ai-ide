@@ -17,7 +17,7 @@
 - **大文件树**：≥250 折叠 · ≥500 虚拟滚动
 - **插件信任**：Ed25519 签名 · 市场 `trustTier` · 发布 API 草案
 
-详见 [RELEASE_NOTES_v1.2.0.md](./docs/RELEASE_NOTES_v1.2.0.md) · 开关 [V1.2_ENV.md](./docs/V1.2_ENV.md)
+详见 [RELEASE_NOTES_v1.2.0.md](./docs/RELEASE_NOTES_v1.2.0.md) · 开关 [V1.2_ENV.md](./docs/V1.2_ENV.md) · **上架清单** [LAUNCH_V1.2.0_FULL.md](./docs/LAUNCH_V1.2.0_FULL.md)
 
 ## v1.1.1 计划系统（GA）
 

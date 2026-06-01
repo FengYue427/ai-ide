@@ -35,7 +35,10 @@ for (const check of checks) {
       json = await res.json()
       if (check.name === 'health') {
         const billing = json.billing ? ` billing=${JSON.stringify(json.billing)}` : ''
-        detail = `${json.status} db=${json.database}${billing}`
+        const plugins = json.plugins
+          ? ` plugins.publish=${json.plugins.publishEnabled} officialKey=${json.plugins.officialKeyConfigured}`
+          : ''
+        detail = `v=${json.version ?? '?'} ${json.status} db=${json.database}${billing}${plugins}`
       } else if (check.name === 'session') {
         detail = json.user ? `user=${json.user.email}` : 'anonymous'
       } else if (check.expectSubscriptionFree) {
@@ -54,7 +57,11 @@ for (const check of checks) {
     if (check.name === 'health' && json) {
       const dbOk = json.database === 'connected'
       const statusOk = json.status === 'ok'
-      ok = res.ok && dbOk && statusOk
+      const versionOk = !json.version || json.version === '1.2.0' || json.version.startsWith('1.2.')
+      ok = res.ok && dbOk && statusOk && versionOk
+      if (!versionOk) {
+        detail += ` — expected v1.2.x, got ${json.version}`
+      }
       if (!dbOk) {
         detail += ' — set DATABASE_URL on Vercel (Neon pooler, sslmode=require)'
       }

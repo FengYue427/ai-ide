@@ -9,7 +9,7 @@
 | 线 | 状态 | 文档 |
 |----|------|------|
 | **v1.1.9.x** | ✅ 收口 | [ROADMAP_V1.1.9.x_PATCHES.md](./ROADMAP_V1.1.9.x_PATCHES.md) |
-| **v1.2.0** | ✅ **GA** | [RELEASE_NOTES_v1.2.0.md](./RELEASE_NOTES_v1.2.0.md) |
+| **v1.2.0** | ✅ **已上架** | [LAUNCH_V1.2.0_FULL.md](./LAUNCH_V1.2.0_FULL.md) · [RELEASE_NOTES_v1.2.0.md](./RELEASE_NOTES_v1.2.0.md) |
 | **v1.2.1 / v1.2.2** | 📋 **下一 B 轨** | [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
 
 ---
