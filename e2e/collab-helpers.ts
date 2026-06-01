@@ -6,10 +6,28 @@ export type RegisteredUser = {
   password: string
 }
 
+async function waitForApiReady(page: Page): Promise<void> {
+  const origin = new URL(page.url()).origin
+  let lastStatus: number | null = null
+  for (let i = 0; i < 40; i++) {
+    try {
+      const res = await page.request.get(`${origin}/api/auth/session`, { timeout: 5_000 })
+      lastStatus = res.status()
+      // 200 (anon session) is fine; other 2xx/4xx means server is responding.
+      if (lastStatus >= 200 && lastStatus < 500) return
+    } catch {
+      // keep trying
+    }
+    await page.waitForTimeout(500)
+  }
+  throw new Error(`API not ready (lastStatus=${lastStatus ?? 'n/a'})`)
+}
+
 export function uniqueCollabUser(prefix: string): RegisteredUser {
   const stamp = Date.now().toString(36)
   return {
-    email: `${prefix}-${stamp}@ai-ide.local`,
+    // Must pass frontend email validation (requires a dot in domain).
+    email: `${prefix}-${stamp}@ai-ide.local.test`,
     password: 'TestPass123!',
   }
 }
@@ -17,6 +35,7 @@ export function uniqueCollabUser(prefix: string): RegisteredUser {
 /** Register + login via auth modal (full stack). */
 export async function registerAndLogin(page: Page, user: RegisteredUser): Promise<void> {
   await gotoApp(page)
+  await waitForApiReady(page)
 
   await page.getByRole('button', { name: /登录|Sign in/i }).click()
   await page.getByText(/立即注册|Sign up/i).click()
@@ -25,7 +44,16 @@ export async function registerAndLogin(page: Page, user: RegisteredUser): Promis
   await page.getByPlaceholder(/再次输入|Confirm/i).fill(user.password)
   await page.getByRole('button', { name: /创建账号|Create account/i }).click()
 
-  await expect(page.locator(`button[title="${user.email}"]`)).toBeVisible({ timeout: 30_000 })
+  // If registration fails, surface the inline error (helps CI diagnostics).
+  const errorAlert = page.locator('.auth-alert-error')
+  await Promise.race([
+    expect(page.locator(`button[title="${user.email}"]`)).toBeVisible({ timeout: 45_000 }),
+    expect(errorAlert).toBeVisible({ timeout: 15_000 }),
+  ])
+  if (await errorAlert.isVisible()) {
+    const text = (await errorAlert.textContent())?.trim() || 'register failed'
+    throw new Error(text)
+  }
 }
 
 export async function openCollabPanel(page: Page): Promise<void> {
@@ -38,9 +66,12 @@ export async function openCollabPanel(page: Page): Promise<void> {
 /** Host creates a server-backed room (M1). Returns invite code. */
 export async function createCollabRoomAsHost(page: Page): Promise<string> {
   await openCollabPanel(page)
-  await page
-    .locator('.modal--collab')
+  const modal = page.locator('.modal--collab')
+  // The modal currently renders both secondary + primary actions with the same label.
+  // Prefer the primary action to avoid Playwright strict-mode violations.
+  await modal
     .getByRole('button', { name: /创建房间|Create room/i })
+    .filter({ has: page.locator('.btn-primary') })
     .click()
   await expect(page.locator('.modal--collab .collab-leave-btn')).toBeVisible({ timeout: 30_000 })
   const code = await page.getByTestId('collab-room-code').locator('strong').textContent()
