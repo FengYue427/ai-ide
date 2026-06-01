@@ -6,6 +6,8 @@ export interface QuotaIndicatorProps {
   quota: Pick<QuotaCheck, 'used' | 'limit' | 'remaining' | 'plan' | 'allowed'>
   label?: string
   compact?: boolean
+  /** Minimal pill for chat control strip (label + value + thin bar only). */
+  inline?: boolean
   showPlan?: boolean
   className?: string
 }
@@ -14,6 +16,7 @@ export function QuotaIndicator({
   quota,
   label,
   compact = false,
+  inline = false,
   showPlan = false,
   className = '',
 }: QuotaIndicatorProps) {
@@ -25,7 +28,7 @@ export function QuotaIndicator({
 
   return (
     <div
-      className={`quota-indicator ${compact ? 'quota-indicator--compact' : ''} ${exhausted ? 'quota-indicator--exhausted' : ''} ${className}`.trim()}
+      className={`quota-indicator ${compact ? 'quota-indicator--compact' : ''} ${inline ? 'quota-indicator--inline' : ''} ${exhausted ? 'quota-indicator--exhausted' : ''} ${className}`.trim()}
       role="status"
       aria-label={`${displayLabel} ${formatQuotaLabel(quota.used, quota.limit, t)}`}
     >

@@ -21,8 +21,8 @@
 
   :root {
     --sidebar-width: 220px;
-    --right-panel-width-chat: 320px;
-    --right-panel-width-chat-wide: 360px;
+    --right-panel-width-chat: 340px;
+    --right-panel-width-chat-wide: 380px;
     --right-panel-width-git: 340px;
   }
 

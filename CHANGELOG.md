@@ -7,6 +7,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.9.3] — 2026-06-01 · AI 聊天区布局
+
+### Changed
+
+- 单行控制条（模型 / 用量 / Agent·Plan·工作区图标）
+- 索引与扩展信息默认折叠
+- `QuotaIndicator` 支持 `inline` 变体
+
+See [RELEASE_NOTES_v1.1.9.3.md](docs/RELEASE_NOTES_v1.1.9.3.md).
+
+---
+
 ## [1.1.9.1] — 2026-06-01 · SDK 2 抛光
 
 ### Added
