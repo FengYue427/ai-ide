@@ -9,3 +9,13 @@ export function collabRoleCanWrite(role: CollabMemberRole | string | null | unde
 export function isCollabMemberRole(value: string): value is CollabMemberRole {
   return value === 'host' || value === 'editor' || value === 'viewer'
 }
+
+export function collabRoleLabel(
+  role: string,
+  t: (key: 'collab.role.host' | 'collab.role.editor' | 'collab.role.viewer') => string,
+): string {
+  if (role === 'host') return t('collab.role.host')
+  if (role === 'editor') return t('collab.role.editor')
+  if (role === 'viewer') return t('collab.role.viewer')
+  return role
+}

@@ -25,11 +25,17 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      # node-gyp (node-pty) requires distutils (removed in Python 3.12+ on Windows runners).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - run: npm ci
 
       - name: Build & publish Windows to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHON: python
         run: node scripts/electron-builder-run.mjs --win portable nsis --publish always
 
   mac-desktop:

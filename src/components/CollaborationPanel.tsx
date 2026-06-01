@@ -3,7 +3,8 @@ import { Check, Copy, Radio, Share2, Users } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { isCollabM1Enabled } from '../lib/collabM1Features'
 import { applyCollabRoomSnapshot, endCollabSession } from '../lib/collabRoomState'
-import type { CollabMemberRole } from '../lib/collabPermissions'
+import { collabRoleLabel, type CollabMemberRole } from '../lib/collabPermissions'
+import { shouldUseLivekitSignaling } from '../services/collab/collabYjsProviderTypes'
 import { authService } from '../services/authService'
 import { useCollabConnection } from '../hooks/useCollabConnection'
 import {
@@ -25,16 +26,6 @@ interface CollaborationPanelProps {
 
 const COLLAB_USERNAME_KEY = 'collab-username'
 
-function collabRoleLabel(
-  role: string,
-  t: (key: 'collab.role.host' | 'collab.role.editor' | 'collab.role.viewer') => string,
-): string {
-  if (role === 'host') return t('collab.role.host')
-  if (role === 'editor') return t('collab.role.editor')
-  if (role === 'viewer') return t('collab.role.viewer')
-  return role
-}
-
 const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const { t } = useI18n()
   const [roomId, setRoomId] = useState('')
@@ -47,6 +38,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const signalingModeFromRoomRef = useRef<'livekit' | 'yjs-webrtc' | null>(null)
   const collabM1 = isCollabM1Enabled()
   const { status: connStatus, reconnectAttempt } = useCollabConnection(joined)
   const [signalingMode, setSignalingMode] = useState<'livekit' | 'yjs-webrtc' | null>(null)
@@ -76,6 +68,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
       setJoined(false)
       setUsers([])
       setMemberRole(null)
+      signalingModeFromRoomRef.current = null
       if (reason === 'kicked') {
         setError(t('collab.m1.kicked'))
       }
@@ -89,7 +82,9 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
       setSignalingMode(null)
       return
     }
-    setSignalingMode(collaborationService.getSignalingMode())
+    setSignalingMode(
+      collaborationService.getSignalingMode() ?? signalingModeFromRoomRef.current,
+    )
   }, [joined, connStatus])
 
   useEffect(() => {
@@ -144,6 +139,10 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
 
   const connectSignaling = (code: string, room: CollabRoomClient, color: string) => {
     const role = applyRoomPayload(room)
+    signalingModeFromRoomRef.current = shouldUseLivekitSignaling(room.signaling)
+      ? 'livekit'
+      : 'yjs-webrtc'
+    setSignalingMode(signalingModeFromRoomRef.current)
 
     collaborationService.joinRoom({
       roomId: code,
@@ -223,6 +222,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     setJoined(false)
     setUsers([])
     setMemberRole(null)
+    signalingModeFromRoomRef.current = null
   }
 
   const handleMemberRoleChange = async (userId: string, role: 'editor' | 'viewer') => {

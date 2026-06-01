@@ -1,8 +1,11 @@
 import React from 'react'
-import { Activity, AlertCircle, Bot, CheckCircle2, CircleDot, Globe, Save, Settings2, Shield, Sparkles, Zap } from 'lucide-react'
+import { Activity, AlertCircle, Bot, CheckCircle2, CircleDot, Globe, Radio, Save, Settings2, Shield, Sparkles, Zap } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { collabRoleLabel } from '../lib/collabPermissions'
 import { normalizeLanguage } from '../lib/language'
 import { shouldShowWorkspacePerformanceHint } from '../lib/welcomeOnboarding'
+import { useCollabSignalingDisplay } from '../hooks/useCollabSignalingDisplay'
+import { useIDEStore } from '../store/ideStore'
 
 interface StatusBarProps {
   currentFileName: string
@@ -82,6 +85,9 @@ const StatusBar: React.FC<StatusBarProps> = ({
   onOpenSettings,
 }) => {
   const { t } = useI18n()
+  const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
+  const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
+  const { signalingMode, connStatus } = useCollabSignalingDisplay(collaborationRoomId)
   const uiLocale = normalizeLanguage(language)
   const showPerformanceHint = shouldShowWorkspacePerformanceHint(workspaceFileCount)
   const localeLabel =
@@ -104,8 +110,16 @@ const StatusBar: React.FC<StatusBarProps> = ({
     return map[currentFileLanguage] ?? currentFileLanguage
   }
 
+  const signalingLabel =
+    signalingMode === 'livekit'
+      ? t('collab.m1.signaling.livekit')
+      : signalingMode === 'yjs-webrtc'
+        ? t('collab.m1.signaling.webrtc')
+        : ''
+
   return (
     <div
+      className="app-status-bar"
       style={{
         minHeight: '36px',
         borderTop: '1px solid var(--border-color)',
@@ -178,6 +192,28 @@ const StatusBar: React.FC<StatusBarProps> = ({
             <span>{t('status.feature.performance')}</span>
           </div>
         )}
+
+        {collaborationRoomId && collaborationMemberRole ? (
+          <div style={{ ...pillStyle, color: 'var(--accent-color)' }} data-testid="collab-role-badge">
+            <span>{collabRoleLabel(collaborationMemberRole, t)}</span>
+          </div>
+        ) : null}
+
+        {collaborationRoomId && signalingMode ? (
+          <div
+            style={{ ...pillStyle, color: 'var(--text-secondary)' }}
+            data-testid="collab-signaling-badge"
+            title={t('collab.m1.signaling.label')}
+          >
+            <Radio size={12} />
+            <span>{signalingLabel}</span>
+            {connStatus === 'connected' ? (
+              <CheckCircle2 size={12} color="var(--success-color)" />
+            ) : connStatus === 'connecting' || connStatus === 'reconnecting' ? (
+              <Activity size={12} color="var(--warning-color)" />
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

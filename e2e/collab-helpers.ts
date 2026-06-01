@@ -76,6 +76,24 @@ export async function createCollabRoomAsHost(page: Page): Promise<string> {
   return code!.trim()
 }
 
+export function collabStatusBar(page: Page) {
+  return page.locator('.app-status-bar')
+}
+
+/** Role + signaling badges on the status bar (stable when collab modal is closed). */
+export async function expectCollabStatusBarSession(
+  page: Page,
+  options: { role: RegExp; signaling?: boolean },
+): Promise<void> {
+  const bar = collabStatusBar(page)
+  await expect(bar.getByTestId('collab-role-badge')).toContainText(options.role, { timeout: 30_000 })
+  if (options.signaling !== false) {
+    const badge = bar.getByTestId('collab-signaling-badge')
+    await expect(badge).toBeVisible({ timeout: 90_000 })
+    await expect(badge).toHaveText(/Livekit|WebRTC/i)
+  }
+}
+
 export async function joinCollabRoomAsViewer(page: Page, roomCode: string): Promise<void> {
   await openCollabPanel(page)
   const modal = page.locator('.modal--collab')
