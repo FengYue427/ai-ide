@@ -67,12 +67,9 @@ export async function openCollabPanel(page: Page): Promise<void> {
 export async function createCollabRoomAsHost(page: Page): Promise<string> {
   await openCollabPanel(page)
   const modal = page.locator('.modal--collab')
-  // The modal currently renders both secondary + primary actions with the same label.
-  // Prefer the primary action to avoid Playwright strict-mode violations.
-  await modal
-    .getByRole('button', { name: /创建房间|Create room/i })
-    .filter({ has: page.locator('.btn-primary') })
-    .click()
+  // Secondary "生成/创建房间" (btn-secondary) and primary footer action share the same label
+  // when roomId is empty. Target the primary footer button (class on the element itself).
+  await modal.locator('button.btn-primary').filter({ hasText: /创建房间|Create room/i }).click()
   await expect(page.locator('.modal--collab .collab-leave-btn')).toBeVisible({ timeout: 30_000 })
   const code = await page.getByTestId('collab-room-code').locator('strong').textContent()
   expect(code?.trim().length).toBeGreaterThanOrEqual(6)

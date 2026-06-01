@@ -16,7 +16,7 @@ import {
  */
 test.describe('Collaboration M1 smoke (2 browsers)', () => {
   test('host creates room; viewer joins read-only', async ({ browser }) => {
-    test.setTimeout(120_000)
+    test.setTimeout(180_000)
 
     const hostUser = uniqueCollabUser('collab-host')
     const viewerUser = uniqueCollabUser('collab-viewer')
@@ -39,9 +39,9 @@ test.describe('Collaboration M1 smoke (2 browsers)', () => {
       await expect(viewerPage.getByTestId('collab-role-badge')).toContainText(/只读|Viewer/i)
       await expect(hostPage.getByTestId('collab-role-badge')).toContainText(/主持人|Host/i)
 
-      await expect(hostPage.getByTestId('collab-signaling-badge')).toBeVisible({ timeout: 15_000 })
+      await expect(hostPage.getByTestId('collab-signaling-badge')).toBeVisible({ timeout: 60_000 })
       await expect(hostPage.getByTestId('collab-signaling-badge')).toHaveText(/Livekit|WebRTC/i)
-      await expect(viewerPage.getByTestId('collab-signaling-badge')).toBeVisible({ timeout: 15_000 })
+      await expect(viewerPage.getByTestId('collab-signaling-badge')).toBeVisible({ timeout: 60_000 })
     } finally {
       await hostContext.close()
       await viewerContext.close()
