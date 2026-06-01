@@ -56,11 +56,18 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      # node-gyp (node-pty) currently requires distutils which is absent in Python 3.12.
+      # Pin to Python 3.11 for macOS builds.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - run: npm ci
 
       - name: Build macOS desktop (unsigned smoke)
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          PYTHON: python3
         run: node scripts/electron-builder-run.mjs --mac dmg zip --publish never
 
       - name: Upload macOS artifacts
