@@ -2,11 +2,28 @@ import { defineConfig, devices } from '@playwright/test'
 
 const uiPort = 4173
 const stackPort = 3000
+const apiPort = 3001
 const isCi = !!process.env.CI
 const e2eTarget = (process.env.E2E_TARGET || '').toLowerCase()
 
 /** Always preview production build — matches CI and avoids dev-server flake on Windows. */
 const uiWebServerCommand = `npx vite preview --host 127.0.0.1 --port ${uiPort} --strictPort`
+
+/** UI E2E hits /api/* via Vite preview proxy — API must listen on 3001 (see vite.config preview.proxy). */
+const uiWebServers = [
+  {
+    command: 'npm run dev:api',
+    url: `http://127.0.0.1:${apiPort}/api/auth/session`,
+    reuseExistingServer: !isCi,
+    timeout: 120_000,
+  },
+  {
+    command: uiWebServerCommand,
+    url: `http://127.0.0.1:${uiPort}`,
+    reuseExistingServer: !isCi,
+    timeout: 180_000,
+  },
+] as const
 
 export default defineConfig({
   testDir: 'e2e',
@@ -25,12 +42,7 @@ export default defineConfig({
           reuseExistingServer: !isCi,
           timeout: 180_000,
         }
-      : {
-          command: uiWebServerCommand,
-          url: `http://127.0.0.1:${uiPort}`,
-          reuseExistingServer: !isCi,
-          timeout: 180_000,
-        },
+      : uiWebServers,
   projects: [
     {
       name: 'ui',

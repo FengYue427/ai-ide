@@ -5,7 +5,7 @@ test.describe('Navigation & welcome', () => {
   test('command palette opens template modal from welcome flow', async ({ page }) => {
     await gotoApp(page)
 
-    await page.getByRole('button', { name: /命令面板/ }).click()
+    await page.getByRole('button', { name: /命令面板|Command palette/i }).click()
     await page.getByPlaceholder(/命令|文件名|@/).fill('模板')
     await page.getByRole('button', { name: '从模板新建项目' }).click()
 
@@ -15,7 +15,7 @@ test.describe('Navigation & welcome', () => {
   test('return to welcome screen from command palette', async ({ page }) => {
     await gotoApp(page)
 
-    await page.getByRole('button', { name: /命令面板/ }).click()
+    await page.getByRole('button', { name: /命令面板|Command palette/i }).click()
     await page.getByPlaceholder(/命令|文件名|@/).fill('欢迎')
     await page
       .getByRole('button', { name: '返回欢迎页 快速开始、模板与最近项目' })
@@ -34,7 +34,7 @@ test.describe('Navigation & welcome', () => {
 
   test('welcome feature card opens settings', async ({ page }) => {
     await gotoApp(page)
-    await page.getByRole('button', { name: /命令面板/ }).click()
+    await page.getByRole('button', { name: /命令面板|Command palette/i }).click()
     await page.getByPlaceholder(/命令|文件名|@/).fill('欢迎')
     await page
       .getByRole('button', { name: '返回欢迎页 快速开始、模板与最近项目' })

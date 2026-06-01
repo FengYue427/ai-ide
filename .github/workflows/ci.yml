@@ -157,6 +157,7 @@ jobs:
         env:
           CI: 'true'
           E2E_TARGET: ui
+          AUTH_SECRET: ci-e2e-ui-test-secret-change-me-32chars
 
       - name: Upload Playwright report on failure
         if: failure()

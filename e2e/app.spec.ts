@@ -10,7 +10,7 @@ test.describe('AI IDE shell', () => {
 
   test('opens command palette from toolbar', async ({ page }) => {
     await gotoApp(page)
-    await page.getByRole('button', { name: /命令面板/ }).click()
+    await page.getByRole('button', { name: /命令面板|Command palette/i }).click()
     await expect(page.getByPlaceholder(/命令|文件名|@/)).toBeVisible({ timeout: 10_000 })
   })
 })

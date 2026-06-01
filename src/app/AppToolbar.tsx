@@ -147,16 +147,34 @@ export function AppToolbar({
         </button>
       ) : null}
 
-      <button type="button" onClick={onOpenCommandPalette} className="toolbar-cmd-btn" title={t('toolbar.commandPalette')}>
+      <button
+        type="button"
+        onClick={onOpenCommandPalette}
+        className="toolbar-cmd-btn"
+        title={t('toolbar.commandPalette')}
+        aria-label={t('toolbar.commandPalette')}
+      >
         <Command size={14} />
         <kbd className="toolbar-kbd">Ctrl+Shift+P</kbd>
       </button>
 
-      <button type="button" onClick={onOpenWelcome} className="toolbar-ghost-icon" title={t('toolbar.welcome')}>
+      <button
+        type="button"
+        onClick={onOpenWelcome}
+        className="toolbar-ghost-icon"
+        title={t('toolbar.welcome')}
+        aria-label={t('toolbar.welcome')}
+      >
         <Home size={18} />
       </button>
 
-      <button type="button" onClick={onOpenSettings} className="toolbar-ghost-icon" title={t('toolbar.settings')}>
+      <button
+        type="button"
+        onClick={onOpenSettings}
+        className="toolbar-ghost-icon"
+        title={t('toolbar.settings')}
+        aria-label={t('toolbar.settings')}
+      >
         <SettingsIcon size={18} />
       </button>
 
