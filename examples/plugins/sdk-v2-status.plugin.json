@@ -1,0 +1,26 @@
+{
+  "manifest": {
+    "id": "sdk-v2-status",
+    "name": "SDK v2 Status",
+    "version": "1.0.0",
+    "description": "Shows AI mode and debug session summary (SDK 2.0 demo).",
+    "author": "AI IDE",
+    "icon": "puzzle",
+    "sdkVersion": 2,
+    "permissions": ["ai", "debug:read", "ui"],
+    "i18n": {
+      "zh-CN": {
+        "toolbar.label": "SDK 状态",
+        "notify.ai": "AI 模式: {mode}",
+        "notify.debug": "调试: {phase} · 运行中={active}"
+      },
+      "en-US": {
+        "toolbar.label": "SDK status",
+        "notify.ai": "AI mode: {mode}",
+        "notify.debug": "Debug: {phase} · active={active}"
+      }
+    },
+    "entry": "main.js"
+  },
+  "source": "function activate(context) {\n  context.ui.addToolbarButton({\n    icon: 'puzzle',\n    label: context.t('toolbar.label'),\n    onClick: async function () {\n      var mode = context.ai.getMode();\n      context.ui.showNotification(context.t('notify.ai', { mode: mode }), 'info');\n      try {\n        var summary = context.debug.getSummary();\n        context.ui.showNotification(\n          context.t('notify.debug', {\n            phase: summary.phase,\n            active: String(summary.active),\n          }),\n          'info'\n        );\n      } catch (e) {\n        context.ui.showNotification(String(e.message || e), 'error');\n      }\n    },\n  });\n}"
+}

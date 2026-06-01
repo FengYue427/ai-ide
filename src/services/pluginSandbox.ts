@@ -3,6 +3,7 @@ import { pluginError } from './pluginErrors'
 import { validatePluginI18n } from './pluginI18n'
 import {
   hasAi,
+  hasDebugRead,
   hasEditorRead,
   hasEditorWrite,
   hasFilesRead,
@@ -50,6 +51,11 @@ export function validateManifest(manifest: PluginManifest): string | null {
   if (!manifest.version?.trim()) return pluginError('plugin.sandbox.versionRequired')
   const permError = validateExtendedPermissions(manifest.permissions)
   if (permError) return permError
+  if (manifest.sdkVersion != null) {
+    if (!Number.isInteger(manifest.sdkVersion) || manifest.sdkVersion < 1 || manifest.sdkVersion > 2) {
+      return pluginError('plugin.sandbox.invalidSdkVersion')
+    }
+  }
   return validatePluginI18n(manifest.i18n)
 }
 
@@ -106,6 +112,10 @@ export function createSandboxedContext(
     },
     ai: {
       complete: hasAi(perms) ? base.ai.complete : deny('ai.complete'),
+      getMode: hasAi(perms) ? base.ai.getMode : deny('ai.getMode'),
+    },
+    debug: {
+      getSummary: hasDebugRead(perms) ? base.debug.getSummary : deny('debug.getSummary'),
     },
     ui: {
       showNotification: hasUi(perms) ? base.ui.showNotification : deny('ui.showNotification'),

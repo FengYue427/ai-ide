@@ -1,6 +1,8 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import type { AIConfig } from '../services/aiService'
+import { isAiConfigured } from '../lib/aiPlatformMode'
 import { inlineCompletionService } from '../services/inlineCompletionService'
+import { useIDEStore } from '../store/ideStore'
 
 export interface InlineCompletionOptions {
   language: string
@@ -40,7 +42,8 @@ export function registerInlineCompletionProvider(options: InlineCompletionOption
       }
 
       const config = getConfig()
-      if (!config.apiKey?.trim() && config.provider !== 'ollama') {
+      const loggedIn = Boolean(useIDEStore.getState().currentUser)
+      if (!isAiConfigured(config, loggedIn)) {
         return { items: [] }
       }
 
@@ -65,6 +68,7 @@ export function registerInlineCompletionProvider(options: InlineCompletionOption
               language,
               filename,
               config,
+              loggedIn,
             })
             .then((text) => {
               if (token.isCancellationRequested || seq !== requestSeq || !text) {

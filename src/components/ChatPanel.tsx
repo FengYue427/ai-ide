@@ -56,7 +56,7 @@ import { formatChatErrorMessage } from '../services/chatErrorMessages'
 import { useI18n } from '../i18n'
 import { trackEvent } from '../lib/observability'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
-import { isAiConfigured } from '../lib/aiPlatformMode'
+import { isAiConfigured, isAiGatewayEnabled } from '../lib/aiPlatformMode'
 import { useIDEStore } from '../store/ideStore'
 import { appendSpecsContext, collectSpecSources } from '../services/specsService'
 import { loadAgentRunHistory, saveAgentRunHistoryItem } from '../services/agentRunHistoryService'
@@ -332,6 +332,9 @@ ${t('ai.chat.prompt')}`
   }, [queueSessionStatsHydrated, queueSuccessStats, queueFailureStats, recentDoneQueueItems])
 
   const isConfigured = isAiConfigured(aiConfig, Boolean(currentUser))
+  const needsPlatformSignIn =
+    !isConfigured && isAiGatewayEnabled() && aiConfig.keyMode === 'platform' && !currentUser
+  const chatConfigHint = needsPlatformSignIn ? t('chat.needSignInForPlatform') : t('chat.needConfig')
 
   const projectRules = useMemo(() => {
     const sources = collectRulesSources(
@@ -484,7 +487,7 @@ ${t('ai.chat.prompt')}`
       return
     }
     if (!isConfigured) {
-      notify?.('error', t('chat.needConfig'))
+      notify?.('error', chatConfigHint)
       return
     }
 
@@ -512,6 +515,7 @@ ${t('ai.chat.prompt')}`
   }, [
     backgroundSubmitting,
     buildAgentWorkspaceSummary,
+    chatConfigHint,
     currentUser,
     input,
     isConfigured,
@@ -983,7 +987,7 @@ ${t('ai.chat.prompt')}`
     }
 
     if (!isConfigured) {
-      appendError(t('chat.needConfig'))
+      appendError(chatConfigHint)
       return
     }
     const forceSlim = !!options?.forceSlim
@@ -1535,7 +1539,11 @@ ${t('ai.chat.prompt')}`
             <span className="chat-chip">{aiConfig.provider}</span>
             <span className="chat-chip">{aiConfig.model || t('chat.noModel')}</span>
             <span className={`chat-chip ${isConfigured ? 'chat-chip--success' : 'chat-chip--warning'}`}>
-              {isConfigured ? t('chat.configured') : t('chat.pendingConfig')}
+              {isConfigured
+                ? t('chat.configured')
+                : needsPlatformSignIn
+                  ? t('chat.pendingPlatformSignIn')
+                  : t('chat.pendingConfig')}
             </span>
           </div>
         </div>

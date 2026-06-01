@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Language } from '../i18n'
+import type { AiRuntimeMode } from '../lib/aiPlatformMode'
 
 export type { ExtendedPluginPermission as PluginPermission } from './pluginPermissions'
 export { ALL_PLUGIN_PERMISSIONS } from './pluginPermissions'
@@ -18,6 +19,15 @@ export interface PluginManifest {
   permissions: string[]
   /** Optional localized strings resolved via `context.t(key)` in plugin source. */
   i18n?: PluginI18nTable
+  /** Plugin SDK major version (2 = ai.getMode + debug.getSummary). */
+  sdkVersion?: number
+}
+
+export interface PluginDebugSummary {
+  active: boolean
+  phase: string
+  runtimeKind: string | null
+  syncMode: string | null
 }
 
 export interface PluginContext {
@@ -46,6 +56,10 @@ export interface PluginContext {
   }
   ai: {
     complete: (prompt: string) => Promise<string>
+    getMode: () => AiRuntimeMode
+  }
+  debug: {
+    getSummary: () => PluginDebugSummary
   }
   ui: {
     showNotification: (message: string, type?: 'info' | 'success' | 'error') => void

@@ -1,4 +1,5 @@
 import { getTabCompletionMaxLines } from '../lib/inlineCompletionPrefs'
+import { isAiConfigured } from '../lib/aiPlatformMode'
 import { sendMessageWithDebounce, type AIConfig } from './aiService'
 import { fetchFimCompletion, supportsFimApi, trimCompletionToMaxLines } from './fimCompletionService'
 
@@ -13,6 +14,7 @@ export interface InlineCompletionRequest {
   language: string
   filename: string
   config: AIConfig
+  loggedIn?: boolean
 }
 
 const cache = new Map<string, string>()
@@ -74,7 +76,7 @@ export const inlineCompletionService = {
   debounceMs: DEBOUNCE_MS,
 
   async fetchCompletion(request: InlineCompletionRequest): Promise<string | null> {
-    if (!request.config.apiKey?.trim() && request.config.provider !== 'ollama') {
+    if (!isAiConfigured(request.config, Boolean(request.loggedIn))) {
       return null
     }
 
@@ -101,7 +103,12 @@ export const inlineCompletionService = {
           request.config,
           [{ role: 'user', content: buildChatFimPrompt(request, prefix, suffix, maxLines) }],
           undefined,
-          { debounceMs: DEBOUNCE_MS, skipDebounce: true, skipQuotaCheck: true },
+          {
+            debounceMs: DEBOUNCE_MS,
+            skipDebounce: true,
+            skipQuotaCheck: true,
+            loggedIn: request.loggedIn,
+          },
         )
         const cleaned = stripCodeFences(raw)
         result = cleaned.length > 0 ? trimCompletionToMaxLines(cleaned, maxLines) : null

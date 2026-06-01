@@ -18,7 +18,10 @@ const fullContext: PluginContext = {
     open: () => {},
   },
   terminal: { execute: async () => '', getHistory: () => [] },
-  ai: { complete: async () => '' },
+  ai: { complete: async () => '', getMode: () => 'unconfigured' as const },
+  debug: {
+    getSummary: () => ({ active: false, phase: 'idle', runtimeKind: null, syncMode: null }),
+  },
   ui: {
     showNotification: () => {},
     showModal: () => {},
@@ -58,6 +61,30 @@ describe('pluginSandbox', () => {
   it('blocks unsafe terminal commands in terminal:safe mode', async () => {
     const sandboxed = createSandboxedContext(fullContext, ['terminal:safe'])
     await expect(sandboxed.terminal.execute('curl https://evil.test')).rejects.toThrow(/无权/)
+  })
+
+  it('rejects invalid sdkVersion in manifests', () => {
+    expect(
+      validateManifest({
+        id: 'bad-sdk',
+        name: 'x',
+        version: '1',
+        description: 'd',
+        entry: 'main.js',
+        permissions: ['ui'],
+        sdkVersion: 9,
+      }),
+    ).toMatch(/sdkVersion/i)
+  })
+
+  it('denies debug API without debug:read permission', () => {
+    const sandboxed = createSandboxedContext(fullContext, ['ai', 'ui'])
+    expect(() => sandboxed.debug.getSummary()).toThrow(/无权|denied/i)
+  })
+
+  it('allows debug summary with debug:read permission', () => {
+    const sandboxed = createSandboxedContext(fullContext, ['debug:read'])
+    expect(sandboxed.debug.getSummary().phase).toBe('idle')
   })
 
   it('rejects legacy terminal full permission in manifests', () => {

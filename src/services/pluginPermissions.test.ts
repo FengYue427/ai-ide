@@ -4,6 +4,7 @@ import {
   hasEditorWrite,
   hasFilesRead,
   hasFilesWrite,
+  hasDebugRead,
   hasTerminalSafe,
   normalizePluginPermissions,
   validateExtendedPermissions,
@@ -39,5 +40,11 @@ describe('pluginPermissions', () => {
 
   it('rejects legacy terminal full scope', () => {
     expect(validateExtendedPermissions(['terminal', 'ui'])).toMatch(/terminal:safe/)
+  })
+
+  it('accepts debug read scope', () => {
+    expect(validateExtendedPermissions(['debug:read', 'ai'])).toBeNull()
+    const perms = new Set(normalizePluginPermissions(['debug:read']))
+    expect(hasDebugRead(perms)).toBe(true)
   })
 })

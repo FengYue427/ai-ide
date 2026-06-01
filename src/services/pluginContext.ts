@@ -1,9 +1,12 @@
+import { getAiRuntimeMode, isAiConfigured } from '../lib/aiPlatformMode'
+import { isDebugSessionActive } from '../lib/debugSessionActive'
 import { sendMessage, type AIConfig } from './aiService'
-import type { PluginContext } from './pluginService'
+import type { PluginContext } from './pluginTypes'
 import type { FileItem } from '../types/file'
 import { getLanguageFromExt } from '../app/getLanguageFromExt'
 import { getApiLanguage } from '../lib/apiLanguage'
 import { pluginError } from './pluginErrors'
+import type { DebugSessionState } from '../store/ideStore'
 
 export interface PluginHostDeps {
   getFiles: () => FileItem[]
@@ -11,6 +14,8 @@ export interface PluginHostDeps {
   setFiles: (updater: (prev: FileItem[]) => FileItem[]) => void
   setActiveFile: (index: number) => void
   getAiConfig: () => AIConfig
+  isLoggedIn: () => boolean
+  getDebugSession: () => DebugSessionState
   notify: (message: string, type?: 'info' | 'success' | 'error') => void
   showModal: (title: string, body: string) => void
   addToolbarButton: (
@@ -26,6 +31,16 @@ export function createPluginContext(deps: PluginHostDeps): PluginContext {
     const files = deps.getFiles()
     const index = deps.getActiveFileIndex()
     return files[index] ?? null
+  }
+
+  const resolveAiConfigError = (): string => {
+    const config = deps.getAiConfig()
+    const loggedIn = deps.isLoggedIn()
+    if (isAiConfigured(config, loggedIn)) return ''
+    if (config.keyMode === 'platform' && !loggedIn) {
+      return pluginError('plugin.context.signInForPlatform')
+    }
+    return pluginError('plugin.context.apiKeyRequired')
   }
 
   return {
@@ -80,12 +95,26 @@ export function createPluginContext(deps: PluginHostDeps): PluginContext {
       getHistory: () => deps.getTerminalHistory?.() ?? [],
     },
     ai: {
+      getMode: () => getAiRuntimeMode(deps.getAiConfig(), deps.isLoggedIn()),
       complete: async (prompt) => {
         const config = deps.getAiConfig()
-        if (!config.apiKey?.trim() && config.provider !== 'ollama') {
-          throw new Error(pluginError('plugin.context.apiKeyRequired'))
+        const loggedIn = deps.isLoggedIn()
+        const configError = resolveAiConfigError()
+        if (configError) {
+          throw new Error(configError)
         }
-        return sendMessage(config, [{ role: 'user', content: prompt }])
+        return sendMessage(config, [{ role: 'user', content: prompt }], undefined, { loggedIn })
+      },
+    },
+    debug: {
+      getSummary: () => {
+        const session = deps.getDebugSession()
+        return {
+          active: isDebugSessionActive(session.phase),
+          phase: session.phase,
+          runtimeKind: session.runtimeKind,
+          syncMode: session.syncMode,
+        }
       },
     },
     ui: {

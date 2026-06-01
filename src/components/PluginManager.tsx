@@ -290,6 +290,11 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                       </span>
                       <span className="plugins-market-badge">{t('plugin.official')}</span>
                       <span className="status-pill">v{entry.version}</span>
+                      {entry.sdkVersion ? (
+                        <span className="status-pill" title={t('plugin.market.sdkBadge', { version: entry.sdkVersion })}>
+                          {t('plugin.market.sdkBadge', { version: entry.sdkVersion })}
+                        </span>
+                      ) : null}
                       <span
                         className="status-pill"
                         style={{ color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.35)' }}

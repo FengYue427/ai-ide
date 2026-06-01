@@ -1,6 +1,6 @@
 # 当前执行入口
 
-> **更新**：2026-05-31 — **v1.1.8 开发完成（待 deploy）**
+> **更新**：2026-06-01 — **v1.1.9 开发完成（待 tag / deploy）**
 
 ---
 
@@ -8,57 +8,33 @@
 
 | 线 | 状态 | 文档 |
 |----|------|------|
-| **v1.1.7** | ✅ GA · tag `v1.1.7` | [RELEASE_NOTES_v1.1.7.md](./RELEASE_NOTES_v1.1.7.md) |
-| **v1.1.7.x** | ✅ 1.1.7.2/3 合入 1.1.8 | [ROADMAP_V1.1.7.x_PATCHES.md](./ROADMAP_V1.1.7.x_PATCHES.md) |
-| **v1.1.8** | 🚧 **待 deploy / tag** | [V1.1.8_KICKOFF.md](./V1.1.8_KICKOFF.md) |
-| **v1.1.9+** | 📋 插件 SDK 等 | [ROADMAP_V1.1_LONG_HORIZON.md](./ROADMAP_V1.1_LONG_HORIZON.md) |
+| **v1.1.8** | ✅ GA · tag `v1.1.8` | [RELEASE_NOTES_v1.1.8.md](./RELEASE_NOTES_v1.1.8.md) |
+| **v1.1.8.x** | ✅ 抛光合入 1.1.9 | [ROADMAP_V1.1.8.x_PATCHES.md](./ROADMAP_V1.1.8.x_PATCHES.md) |
+| **v1.1.9** | 🚧 **待 tag** `v1.1.9` | [RELEASE_NOTES_v1.1.9.md](./RELEASE_NOTES_v1.1.9.md) |
 | **v1.2+** | 📋 大拓展占位 | [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
 
 ---
 
-## 立即执行（v1.1.8 GA）
-
-### 1. 本地验证
+## 立即执行（v1.1.9 GA）
 
 ```bash
 npm run test:local
-# 可选：dev:full + DATABASE_URL
-API_BASE=http://localhost:3000 node scripts/integration-api.mjs
-```
-
-### 2. Vercel Production 环境变量
-
-```bash
-VITE_AI_GATEWAY=true
-PLATFORM_DEEPSEEK_API_KEY=sk-...
-```
-
-### 3. 发版
-
-```bash
-git add -A
-git commit -m "release: v1.1.8 platform AI, auth SEO, debug patches"
-git tag v1.1.8
+git commit -m "release: v1.1.9 plugin SDK 2.0"
+git tag v1.1.9
 git push origin main --tags
-npm run deploy
-npm run smoke:report
+npm run smoke:report   # 可选
 ```
 
-### 4. 手工冒烟
+### 手工冒烟
 
-1. https://ai-ide-flame.vercel.app/signup → 注册 → IDE 内 Chat（无 Key）
-2. Agent：让 AI 改一个文件
-3. 设置切换 BYOK 仍可用
-4. （桌面）打开本地文件夹 → 调试
-
-### 5. SEO
-
-- Google Search Console 提交 `https://ai-ide-flame.vercel.app/sitemap.xml`
+1. 插件市场 → 安装 **SDK v2 状态** → 启用 → 工具栏按钮
+2. 已登录 + 平台 AI：通知显示 `platform`
+3. 开始调试后再次点击：显示 `paused` / `active=true`
 
 ---
 
-## 下一世代（v1.1.9 建议）
+## 下一迭代建议
 
-- 插件 SDK 2.0（原 v1.1.8 长期规划）
-- Tab 补全走平台网关（可选）
-- 条件断点 / Watch（1.1.7.x P1/P2）
+- **1.1.8.4**：设置页 `health.platformAi` 展示
+- **1.1.7.x**：条件断点、Watch
+- **v1.2**：插件签名 / 更大平台能力

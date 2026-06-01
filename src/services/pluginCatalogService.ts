@@ -4,6 +4,7 @@ import jsonFormatterPlugin from '../../examples/plugins/json-formatter.plugin.js
 import todoScannerPlugin from '../../examples/plugins/todo-scanner.plugin.json'
 import lineCounterPlugin from '../../examples/plugins/line-counter.plugin.json'
 import mdPreviewPlusPlugin from '../../examples/plugins/md-preview-plus.plugin.json'
+import sdkV2StatusPlugin from '../../examples/plugins/sdk-v2-status.plugin.json'
 import type { PluginPackage } from './pluginService'
 import { pluginManager } from './pluginService'
 import { workspaceError } from './workspaceErrors'
@@ -17,6 +18,8 @@ export interface PluginCatalogEntry {
   author: string
   tags: string[]
   permissions: string[]
+  /** Plugin SDK major version when declared in manifest. */
+  sdkVersion?: number
   /** Curated score 1–5 for market display (v1.0.6.3). */
   rating: number
   package: PluginPackage
@@ -34,6 +37,7 @@ function entryFromPackage(
     author: meta.author ?? pkg.manifest.author ?? 'AI IDE',
     tags: meta.tags,
     permissions: pkg.manifest.permissions,
+    sdkVersion: pkg.manifest.sdkVersion,
     rating: meta.rating,
     package: pkg,
   }
@@ -46,6 +50,11 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
   entryFromPackage(todoScannerPlugin as PluginPackage, { tags: ['tools', 'productivity'], rating: 4.6 }),
   entryFromPackage(lineCounterPlugin as PluginPackage, { tags: ['tools', 'productivity'], rating: 4.3 }),
   entryFromPackage(mdPreviewPlusPlugin as PluginPackage, { tags: ['tools', 'markdown', 'ui'], rating: 4.5 }),
+  entryFromPackage(sdkV2StatusPlugin as PluginPackage, {
+    tags: ['demo', 'sdk', 'ui'],
+    rating: 4.7,
+    author: 'AI IDE',
+  }),
 ]
 
 export const PLUGIN_CATALOG_TAGS = Array.from(new Set(PLUGIN_CATALOG.flatMap((e) => e.tags))).sort()

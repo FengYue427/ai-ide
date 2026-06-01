@@ -24,6 +24,8 @@ export function usePluginHost({ notify }: UsePluginHostOptions) {
       setFiles: (updater) => useIDEStore.getState().setFiles(updater),
       setActiveFile: (index) => useIDEStore.getState().setActiveFile(index),
       getAiConfig: () => useIDEStore.getState().aiConfig,
+      isLoggedIn: () => Boolean(useIDEStore.getState().currentUser),
+      getDebugSession: () => useIDEStore.getState().debugSession,
       notify: (message, type = 'info') => notify(type, message),
       showModal: (title, body) => useIDEStore.getState().setPluginModal({ title, body }),
       addToolbarButton: (pluginId, config) => {

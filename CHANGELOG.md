@@ -7,6 +7,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.9] — 2026-06-01 · 插件 SDK 2.0
+
+### Added
+
+- **插件 SDK 2.0**：`context.ai.getMode()`、`context.debug.getSummary()`、权限 `debug:read`
+- **官方市场**：示例插件 `sdk-v2-status`（SDK 2 徽章）
+- **v1.1.8.x 抛光**：插件/Tab 补全平台 AI、Chat 未登录平台提示
+
+See [RELEASE_NOTES_v1.1.9.md](docs/RELEASE_NOTES_v1.1.9.md) · [PLUGIN_SDK_V2.md](docs/PLUGIN_SDK_V2.md).
+
+---
+
 ## [1.1.8] — 2026-05-31 · 平台 AI + 注册 SEO + 调试抛光
 
 ### Added

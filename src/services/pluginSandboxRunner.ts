@@ -1,5 +1,6 @@
 import {
   hasAi,
+  hasDebugRead,
   hasEditorRead,
   hasEditorWrite,
   hasFilesRead,
@@ -116,6 +117,10 @@ function createContext() {
     },
     ai: {
       complete: (prompt) => apiCall("ai.complete", [prompt]),
+      getMode: () => apiCall("ai.getMode", []),
+    },
+    debug: {
+      getSummary: () => apiCall("debug.getSummary", []),
     },
     ui: {
       showNotification: (message, type) => {
@@ -207,6 +212,8 @@ function isApiPathAllowed(path: string, permissions: readonly string[]): boolean
       return hasTerminalAny(perms)
     case 'ai':
       return hasAi(perms)
+    case 'debug':
+      return method === 'getSummary' && hasDebugRead(perms)
     case 'ui':
       return hasUi(perms)
     default:
@@ -239,6 +246,10 @@ function dispatchContextCall(
     }
     case 'ai': {
       const api = context.ai as Record<string, (...a: unknown[]) => unknown>
+      return api[method]?.(...args)
+    }
+    case 'debug': {
+      const api = context.debug as Record<string, (...a: unknown[]) => unknown>
       return api[method]?.(...args)
     }
     case 'ui': {

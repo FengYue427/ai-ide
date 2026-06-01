@@ -31,8 +31,9 @@
 | **v1.1.5** | **终端 + 任务**（集成 shell、npm scripts 面板） | B | ✅ [RELEASE_NOTES_v1.1.5.md](./RELEASE_NOTES_v1.1.5.md) |
 | **v1.1.6** | **Git 可视化**（diff、stage、log 基础） | B | ✅ [RELEASE_NOTES_v1.1.6.md](./RELEASE_NOTES_v1.1.6.md) |
 | **v1.1.7** | **调试器 MVP**（Node / WebContainer attach 优先） | B | ✅ [RELEASE_NOTES_v1.1.7.md](./RELEASE_NOTES_v1.1.7.md) |
-| **v1.1.8** | **平台 AI + 注册 SEO + 调试 patch** | B | 🚧 待 tag |
-| **v1.1.9** | **插件 SDK 2.0** + 扩展 API 稳定 | B | 📋 |
+| **v1.1.8** | **平台 AI + 注册 SEO + 调试 patch** | B | ✅ tag `v1.1.8` |
+| **v1.1.8.x** | 平台 AI 抛光（插件/Tab/登录提示） | A | 🚧 |
+| **v1.1.9** | **插件 SDK 2.0** + 市场示例 | B | ✅ 待 tag |
 | **v1.2+** | 多根工作区 · SSH · DAP 深化 · 企业 | B | 📋 见 [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
 
 每个 B 轨版本配套 **1.1.N.x** patch 线（轨道 A），用于热修与小抛光。

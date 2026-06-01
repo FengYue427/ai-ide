@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { isAiConfigured, shouldUsePlatformAi } from './aiPlatformMode'
+import { getAiRuntimeMode, isAiConfigured, shouldUsePlatformAi } from './aiPlatformMode'
 import type { AIConfig } from '../services/aiService'
 
 describe('aiPlatformMode', () => {
@@ -21,6 +21,15 @@ describe('aiPlatformMode', () => {
     vi.stubEnv('VITE_AI_GATEWAY', 'true')
     expect(isAiConfigured({ ...base, keyMode: 'byok' }, true)).toBe(false)
     expect(isAiConfigured({ ...base, keyMode: 'byok', apiKey: 'sk-x' }, true)).toBe(true)
+    vi.unstubAllEnvs()
+  })
+
+  it('reports runtime mode for plugins', () => {
+    vi.stubEnv('VITE_AI_GATEWAY', 'true')
+    expect(getAiRuntimeMode(base, true)).toBe('platform')
+    expect(getAiRuntimeMode({ ...base, keyMode: 'byok', apiKey: 'sk' }, true)).toBe('byok')
+    expect(getAiRuntimeMode(base, false)).toBe('unconfigured')
+    expect(getAiRuntimeMode({ ...base, provider: 'ollama' }, false)).toBe('ollama')
     vi.unstubAllEnvs()
   })
 })

@@ -10,6 +10,7 @@ export const ALL_PLUGIN_PERMISSIONS = [
   'files:write',
   'terminal:safe',
   'ai',
+  'debug:read',
   'ui',
 ] as const
 
@@ -58,6 +59,10 @@ export function hasTerminalAny(perms: Set<ExtendedPluginPermission>): boolean {
 
 export function hasAi(perms: Set<ExtendedPluginPermission>): boolean {
   return perms.has('ai')
+}
+
+export function hasDebugRead(perms: Set<ExtendedPluginPermission>): boolean {
+  return perms.has('debug:read')
 }
 
 export function hasUi(perms: Set<ExtendedPluginPermission>): boolean {
