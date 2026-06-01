@@ -15,8 +15,10 @@ function toFileItems(raw: StoredFile[] | null | undefined): FileItem[] | null {
 }
 
 /** Local autosave key + optional auto-backup (whichever has more files). */
-export async function loadLocalAutosaveFiles(): Promise<FileItem[] | null> {
-  const autosave = await unifiedStorage.get<StoredFile[] | null>('autosave-default', null)
+export async function loadLocalAutosaveFiles(
+  autosaveKey = 'autosave-default',
+): Promise<FileItem[] | null> {
+  const autosave = await unifiedStorage.get<StoredFile[] | null>(autosaveKey, null)
   const backup = await cloudSyncService.getAutoBackup()
   const merged = pickRicherFileSet(autosave, backup?.files)
   return toFileItems(merged)

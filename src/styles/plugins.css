@@ -135,6 +135,21 @@
   color: var(--accent-color);
 }
 
+.plugins-trust-badge--verified {
+  background: color-mix(in srgb, var(--success-color) 16%, transparent);
+  color: var(--success-color);
+}
+
+.plugins-trust-badge--community {
+  background: color-mix(in srgb, #fbbf24 16%, transparent);
+  color: #fbbf24;
+}
+
+.plugins-trust-badge--unsigned {
+  background: color-mix(in srgb, var(--error-color) 14%, transparent);
+  color: var(--error-color);
+}
+
 .plugins-tag {
   padding: 2px 8px;
   border-radius: 999px;

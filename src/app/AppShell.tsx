@@ -20,6 +20,7 @@ import { useProjectIndexSync } from '../hooks/useProjectIndexSync'
 import { useApiErrorFeedback } from '../hooks/useApiErrorFeedback'
 import { useSessionGuard } from '../hooks/useSessionGuard'
 import { useWorkspacePersistence } from '../hooks/useWorkspacePersistence'
+import { useWorkspaceRootsMeta } from '../hooks/useWorkspaceRootsMeta'
 import { useBackgroundJobsTracker } from '../hooks/useBackgroundJobsTracker'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
@@ -126,6 +127,7 @@ export function AppShell() {
   const runtimeBusy = isRunning || debugSessionActive
 
   useAppBootstrap()
+  useWorkspaceRootsMeta()
   useDesktopBootstrap()
   useBillingSync()
   useSessionGuard(notify, t)

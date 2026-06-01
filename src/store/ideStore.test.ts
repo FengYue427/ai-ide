@@ -1,10 +1,16 @@
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
+import { defaultWorkspaceRoot } from '../lib/workspaceRoots'
 import { useIDEStore } from './ideStore'
 
 describe('ideStore', () => {
   beforeEach(() => {
+    const root = defaultWorkspaceRoot([
+      { name: 'index.js', content: '// test', language: 'javascript' },
+    ])
     useIDEStore.setState({
-      files: [{ name: 'index.js', content: '// test', language: 'javascript' }],
+      files: root.files,
+      workspaceRoots: [root],
+      activeRootId: root.id,
       gitDiffTabs: [],
       activeEditorSurface: 'file',
       activeGitDiffTab: 0,
@@ -58,6 +64,21 @@ describe('ideStore', () => {
     expect(first?.prompt).toBe('first')
     expect(second?.prompt).toBe('second')
     expect(useIDEStore.getState().queuedSpecExecutions).toHaveLength(0)
+  })
+
+  it('switches workspace roots when multi-root enabled', () => {
+    vi.stubEnv('VITE_MULTI_ROOT', 'true')
+    const { addWorkspaceRoot, setActiveWorkspaceRoot, setFiles } = useIDEStore.getState()
+    setFiles([{ name: 'main.js', content: 'main', language: 'javascript' }])
+    addWorkspaceRoot('secondary')
+    expect(useIDEStore.getState().workspaceRoots).toHaveLength(2)
+    expect(useIDEStore.getState().files[0].name).toBe('index.js')
+
+    setFiles([{ name: 'sec.js', content: 'sec', language: 'javascript' }])
+    const primaryId = useIDEStore.getState().workspaceRoots[0].id
+    setActiveWorkspaceRoot(primaryId)
+    expect(useIDEStore.getState().files[0].name).toBe('main.js')
+    vi.unstubAllEnvs()
   })
 
   it('opens git diff tab from store action', () => {

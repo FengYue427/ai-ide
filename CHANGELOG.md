@@ -7,6 +7,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.0] — 2026-06-01 · 多根工作区 + 插件可信市场
+
+### Added
+
+- **F1** 多根工作区：`workspaceRoots` · 侧栏根切换 · 按根 autosave · 协作绑定根 · E2E `multi-root.spec.ts`
+- **F2** 大文件树：≥250 默认折叠 · ≥500 虚拟滚动 · `projectIndexManager` 按根隔离
+- **F3** 插件信任：`trustTier` · Ed25519 签名校验 · 市场信任徽章 · `scripts/sign-plugin-manifest.mjs`
+- **F4** `POST /api/plugins/publish` 草案 · health `plugins` 块 · `PLUGIN_PUBLISH_ENABLED`
+- **F5** E2E：`plugin-market.spec.ts` · `v12-workspace-plugins.spec.ts` · localStorage 功能开关
+
+### Docs
+
+- [V1.2_KICKOFF.md](docs/V1.2_KICKOFF.md) · [V1.2_MASTER_PLAN.md](docs/V1.2_MASTER_PLAN.md) · [RELEASE_NOTES_v1.2.0.md](docs/RELEASE_NOTES_v1.2.0.md)
+- 功能开关：[V1.2_ENV.md](docs/V1.2_ENV.md) · `src/lib/v12Features.ts`（默认 **关**：`VITE_MULTI_ROOT` · `VITE_PLUGIN_TRUST_MARKET` · `VITE_VIRTUAL_FILE_TREE`）
+
+See [RELEASE_NOTES_v1.2.0.md](docs/RELEASE_NOTES_v1.2.0.md).
+
+---
+
 ## [1.1.9.3] — 2026-06-01 · AI 聊天区布局
 
 ### Changed

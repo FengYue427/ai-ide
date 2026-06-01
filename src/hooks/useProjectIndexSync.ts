@@ -36,10 +36,16 @@ export function useProjectIndexSync(): void {
       }, DEBOUNCE_MS)
     }
 
+    projectIndexManager.setWorkspaceScope(useIDEStore.getState().activeRootId)
     syncNow()
 
     const unsubWorkspace = workspaceContextService.onChange(syncNow)
     const unsubStore = useIDEStore.subscribe((state, prev) => {
+      if (state.activeRootId !== prev.activeRootId) {
+        projectIndexManager.setWorkspaceScope(state.activeRootId)
+        syncNow()
+        return
+      }
       if (state.files !== prev.files) scheduleSync()
     })
 

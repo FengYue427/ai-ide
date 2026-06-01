@@ -118,6 +118,8 @@ jobs:
           SKIP_DB_SETUP: '1'
           NODE_ENV: development
           CRON_SECRET: ci-integration-cron-secret
+          PLUGIN_PUBLISH_ENABLED: 'true'
+          PLUGIN_OFFICIAL_PUBLIC_KEY: '0b/3O2Xi1DnGOcc907JnK3OCxfpzRjk7WYP24XOggKI='
 
       - name: Security baseline (P0')
         run: node scripts/security-baseline.mjs

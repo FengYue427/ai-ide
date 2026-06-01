@@ -2,7 +2,7 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.1.3**（协作 M1）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP](./docs/ROADMAP.md)
+**当前版本：v1.2.0**（多根工作区 · 插件可信市场）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.2](./docs/ROADMAP_V1.2.md)
 
 | 入口 | 链接 |
 |--|--|
@@ -10,6 +10,14 @@
 | Releases | https://github.com/FengYue427/ai-ide/releases |
 | 最新桌面包 | https://github.com/FengYue427/ai-ide/releases/latest |
 | 问题反馈 | https://github.com/FengYue427/ai-ide/issues |
+
+## v1.2.0 工作区与插件市场（GA）
+
+- **多根工作区**：侧栏根切换 · 按根 autosave（`VITE_MULTI_ROOT`，默认关）
+- **大文件树**：≥250 折叠 · ≥500 虚拟滚动
+- **插件信任**：Ed25519 签名 · 市场 `trustTier` · 发布 API 草案
+
+详见 [RELEASE_NOTES_v1.2.0.md](./docs/RELEASE_NOTES_v1.2.0.md) · 开关 [V1.2_ENV.md](./docs/V1.2_ENV.md)
 
 ## v1.1.1 计划系统（GA）
 

@@ -8,6 +8,11 @@ export { ALL_PLUGIN_PERMISSIONS } from './pluginPermissions'
 /** Author-provided UI strings per app locale (keys are plugin-defined, e.g. `toolbar.label`). */
 export type PluginI18nTable = Partial<Record<Language, Record<string, string>>>
 
+export interface PluginManifestSignature {
+  keyId: string
+  value: string
+}
+
 export interface PluginManifest {
   id: string
   name: string
@@ -21,6 +26,10 @@ export interface PluginManifest {
   i18n?: PluginI18nTable
   /** Plugin SDK major version (2 = ai.getMode + debug.getSummary). */
   sdkVersion?: number
+  /** Publisher id for signed marketplace packages (v1.2 F3). */
+  publisher?: string
+  /** Ed25519 signature over canonical manifest fields (excludes signature). */
+  signature?: PluginManifestSignature
 }
 
 export interface PluginDebugSummary {

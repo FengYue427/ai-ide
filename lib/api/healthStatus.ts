@@ -15,6 +15,10 @@ export type HealthPayload = {
     configured: boolean
     provider?: string
   }
+  plugins?: {
+    publishEnabled: boolean
+    officialKeyConfigured: boolean
+  }
 }
 
 export async function buildHealthCheck(options: {
@@ -23,6 +27,7 @@ export async function buildHealthCheck(options: {
   pingDatabase: () => Promise<void>
   billing?: HealthPayload['billing']
   platformAi?: HealthPayload['platformAi']
+  plugins?: HealthPayload['plugins']
 }): Promise<{ payload: HealthPayload; statusCode: number }> {
   const payload: HealthPayload = {
     status: 'ok',
@@ -31,6 +36,7 @@ export async function buildHealthCheck(options: {
     timestamp: new Date().toISOString(),
     billing: options.billing,
     platformAi: options.platformAi,
+    plugins: options.plugins,
   }
 
   if (!options.hasDatabaseUrl) {

@@ -13,5 +13,11 @@ describe('pluginCatalogService', () => {
     expect(entry?.sdkVersion).toBe(2)
     expect(entry?.package.source).toContain('getMode')
     expect(entry?.permissions).toContain('debug:read')
+    expect(entry?.trustTier).toBe('verified')
+    expect(entry?.package.manifest.signature?.value).toBeTruthy()
+  })
+
+  it('marks built-in catalog rows as official trust tier', () => {
+    expect(getCatalogEntry('json-formatter')?.trustTier).toBe('official')
   })
 })

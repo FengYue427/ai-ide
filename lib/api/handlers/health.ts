@@ -10,6 +10,10 @@ import { buildHealthCheck } from '../healthStatus'
 import { jsonResponse } from '../http'
 import { getReleaseVersion } from '../releaseVersion'
 import { getBillingCapabilities } from '../../billing/billingMode'
+import {
+  isPluginOfficialPublicKeyConfigured,
+  isPluginPublishEnabled,
+} from '../pluginPublishConfig'
 import { sanitizeDatabaseUrl, shouldUseNeonAdapter } from '../../../src/lib/dbUrl'
 
 export async function GET(_req: Request) {
@@ -39,6 +43,10 @@ export async function GET(_req: Request) {
       wechat: billing.wechat,
       stripe: billing.stripe,
       devMock: billing.devMock,
+    },
+    plugins: {
+      publishEnabled: isPluginPublishEnabled(),
+      officialKeyConfigured: isPluginOfficialPublicKeyConfigured(),
     },
   })
 

@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, Check, Download, ExternalLink, Plus, Puzzle, Trash2 } from 'lucide-react'
 import helloPluginExample from '../../examples/hello.plugin.json'
+import type { PluginTrustTier } from '../lib/pluginTrust'
+import { isPluginTrustMarketEnabled } from '../lib/v12Features'
 import {
   installCatalogEntry,
   isPluginInstalled,
   PLUGIN_CATALOG,
   PLUGIN_CATALOG_TAGS,
 } from '../services/pluginCatalogService'
+import { trustTierLabelKey } from '../services/pluginTrustService'
 import { pluginManager, type Plugin } from '../services/pluginService'
 import { loadInstalledPluginPackages, saveInstalledPluginPackages } from '../services/pluginStorage'
 import { useI18n, type TranslationKey } from '../i18n'
@@ -39,6 +42,8 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [tagFilter, setTagFilter] = useState<string>('all')
+  const [pendingCommunityInstallId, setPendingCommunityInstallId] = useState<string | null>(null)
+  const trustMarketOn = isPluginTrustMarketEnabled()
 
   const filteredCatalog = useMemo(() => {
     if (tagFilter === 'all') return PLUGIN_CATALOG
@@ -104,17 +109,41 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     setTab('installed')
   }
 
-  const handleInstallCatalog = async (entryId: string) => {
+  const handleInstallCatalog = async (entryId: string, userConfirmedCommunity = false) => {
     setError(null)
     setSuccess(null)
-    const result = await installCatalogEntry(entryId)
+    const result = await installCatalogEntry(entryId, { userConfirmedCommunity })
     if (!result.ok) {
+      if (result.requiresCommunityConfirm) {
+        setPendingCommunityInstallId(entryId)
+        flash('error', result.error || t('plugin.trust.communityConfirmRequired'))
+        return
+      }
+      setPendingCommunityInstallId(null)
       flash('error', result.error || t('plugin.installFailed'))
       return
     }
+    setPendingCommunityInstallId(null)
     refreshState()
     flash('success', t('plugin.flash.marketInstalled'))
     setTab('installed')
+  }
+
+  const renderTrustBadge = (tier: PluginTrustTier) => {
+    const labelKey = trustTierLabelKey(tier)
+    const className =
+      tier === 'verified'
+        ? 'plugins-market-badge plugins-trust-badge plugins-trust-badge--verified'
+        : tier === 'community'
+          ? 'plugins-market-badge plugins-trust-badge plugins-trust-badge--community'
+          : tier === 'unsigned'
+            ? 'plugins-market-badge plugins-trust-badge plugins-trust-badge--unsigned'
+            : 'plugins-market-badge'
+    return (
+      <span className={className} title={t(labelKey)}>
+        {t(labelKey)}
+      </span>
+    )
   }
 
   const removePlugin = async (pluginId: string) => {
@@ -299,6 +328,8 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
           ) : null}
           {filteredCatalog.map((entry) => {
             const installed = isPluginInstalled(entry.id, installedIds)
+            const needsCommunityConfirm =
+              pendingCommunityInstallId === entry.id && entry.trustTier === 'community'
             return (
               <div key={entry.id} className="plugins-panel">
                 <div className="plugins-row">
@@ -307,7 +338,9 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                       <span className="plugins-card-title">
                         {catalogText(entry.id, 'name', entry.name, t)}
                       </span>
-                      <span className="plugins-market-badge">{t('plugin.official')}</span>
+                      {trustMarketOn ? renderTrustBadge(entry.trustTier) : (
+                        <span className="plugins-market-badge">{t('plugin.official')}</span>
+                      )}
                       <span className="status-pill">v{entry.version}</span>
                       {entry.sdkVersion ? (
                         <span className="status-pill" title={t('plugin.market.sdkBadge', { version: entry.sdkVersion })}>
@@ -342,6 +375,15 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                       <span className="status-pill" style={{ color: 'var(--success-color)' }}>
                         {t('plugin.badge.installed')}
                       </span>
+                    ) : needsCommunityConfirm ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => void handleInstallCatalog(entry.id, true)}
+                      >
+                        <Download size={14} className="btn-icon-gap" />
+                        {t('plugin.trust.confirmInstall')}
+                      </button>
                     ) : (
                       <button
                         type="button"

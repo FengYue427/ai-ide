@@ -34,7 +34,8 @@
 | **v1.1.8** | **平台 AI + 注册 SEO + 调试 patch** | B | ✅ tag `v1.1.8` |
 | **v1.1.8.x** | 平台 AI 抛光（含设置页 health） | A | ✅ |
 | **v1.1.9** | **插件 SDK 2.0** + 市场示例 | B | ✅ tag `v1.1.9` |
-| **v1.2+** | 多根工作区 · SSH · DAP 深化 · 企业 | B | 📋 见 [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
+| **v1.2.0** | 多根工作区 · 插件可信市场 · 大仓 UI | B | 🔨 [V1.2_KICKOFF.md](./V1.2_KICKOFF.md) |
+| **v1.2.1+** | DAP/LSP · SSH · 企业 | B | 📋 [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
 
 每个 B 轨版本配套 **1.1.N.x** patch 线（轨道 A），用于热修与小抛光。
 

@@ -4,8 +4,10 @@ import { authService } from '../services/authService'
 import { recentFilesService } from '../services/recentFilesService'
 import { getShare } from '../services/shareService'
 import { loadLocalAutosaveFiles } from '../services/workspaceAutosave'
+import { loadWorkspaceRootsForBootstrap } from '../services/workspaceRootsService'
 import { markWorkspaceHydrated, pickRicherFileSet } from '../services/workspaceSession'
 import { useIDEStore } from '../store/ideStore'
+import { isMultiRootWorkspaceEnabled } from '../lib/v12Features'
 import { unifiedStorage } from '../services/unifiedStorage'
 import { loadBottomPanelPrefs } from '../services/bottomPanelPrefsService'
 import type { FileItem } from '../types/file'
@@ -121,7 +123,7 @@ export function useAppBootstrap() {
     initialWorkspaceLoadedRef.current = true
 
     const loadWorkspace = async () => {
-      const { setShowWelcome, setFiles } = useIDEStore.getState()
+      const { setShowWelcome, setFiles, setWorkspaceRootsState } = useIDEStore.getState()
 
       const localFiles = await loadLocalAutosaveFiles()
       let cloudFiles: FileItem[] | null = null
@@ -138,6 +140,21 @@ export function useAppBootstrap() {
       }
 
       const best = pickRicherFileSet(localFiles, cloudFiles)
+      if (isMultiRootWorkspaceEnabled()) {
+        const fallback = best && best.length > 0 ? best : useIDEStore.getState().files
+        const { roots, activeRootId } = await loadWorkspaceRootsForBootstrap(fallback)
+        const active = roots.find((root) => root.id === activeRootId) ?? roots[0]
+        const activeFiles =
+          active.files.length > 0 ? active.files : best && best.length > 0 ? best : null
+        if (activeFiles && activeFiles.length > 0) {
+          setWorkspaceRootsState(roots, activeRootId, activeFiles)
+          markWorkspaceHydrated()
+          return
+        }
+        setShowWelcome(true)
+        return
+      }
+
       if (best && best.length > 0) {
         setFiles(best)
         markWorkspaceHydrated()

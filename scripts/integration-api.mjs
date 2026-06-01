@@ -121,6 +121,65 @@ async function run() {
     fail('signup page', e.message)
   }
 
+  // 3d. Plugin publish API (v1.2 F4)
+  const publishSample = {
+    package: {
+      manifest: {
+        id: 'integration-publish-demo',
+        name: 'Integration Publish Demo',
+        version: '0.0.1',
+        entry: 'main.js',
+        permissions: ['ui'],
+        publisher: 'integration-test',
+      },
+      source: 'function activate(context) { context.ui.showNotification("ok", "info"); }',
+    },
+  }
+  const publishEnabled = process.env.PLUGIN_PUBLISH_ENABLED === 'true'
+  try {
+    if (!publishEnabled) {
+      const { res } = await api('/api/plugins/publish', {
+        method: 'POST',
+        body: JSON.stringify(publishSample),
+      })
+      if (res.status === 503) pass('plugin publish disabled', '503')
+      else fail('plugin publish disabled', `expected 503, got ${res.status}`)
+    } else {
+      const savedCookie = cookie
+      cookie = ''
+      const unauth = await api('/api/plugins/publish', {
+        method: 'POST',
+        body: JSON.stringify(publishSample),
+      })
+      cookie = savedCookie
+      if (unauth.res.status === 401) pass('plugin publish requires auth', '401')
+      else fail('plugin publish requires auth', `HTTP ${unauth.res.status}`)
+
+      const { res, json } = await api('/api/plugins/publish', {
+        method: 'POST',
+        body: JSON.stringify(publishSample),
+      })
+      if (res.status === 202 && json?.reviewId?.startsWith('rev_') && json?.status === 'pending') {
+        pass('plugin publish accepted', json.reviewId)
+      } else {
+        fail('plugin publish accepted', json?.errorKey || json?.error || `HTTP ${res.status}`)
+      }
+    }
+  } catch (e) {
+    fail('plugin publish', e.message)
+  }
+
+  try {
+    const { res, json } = await api('/api/health')
+    if (res.ok && json?.plugins && typeof json.plugins.publishEnabled === 'boolean') {
+      pass('health plugins block', `publish=${json.plugins.publishEnabled}`)
+    } else {
+      fail('health plugins block', json?.error || `HTTP ${res.status}`)
+    }
+  } catch (e) {
+    fail('health plugins block', e.message)
+  }
+
   // 3c. Platform AI gateway (200 with key, 503 without — both acceptable in CI)
   try {
     const { res, json } = await api('/api/ai/chat', {

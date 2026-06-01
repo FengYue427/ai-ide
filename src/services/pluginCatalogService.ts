@@ -5,8 +5,10 @@ import todoScannerPlugin from '../../examples/plugins/todo-scanner.plugin.json'
 import lineCounterPlugin from '../../examples/plugins/line-counter.plugin.json'
 import mdPreviewPlusPlugin from '../../examples/plugins/md-preview-plus.plugin.json'
 import sdkV2StatusPlugin from '../../examples/plugins/sdk-v2-status.plugin.json'
+import type { PluginTrustTier } from '../lib/pluginTrust'
 import type { PluginPackage } from './pluginService'
 import { pluginManager } from './pluginService'
+import { assessPluginCatalogInstall } from './pluginTrustService'
 import { workspaceError } from './workspaceErrors'
 import { loadInstalledPluginPackages, saveInstalledPluginPackages } from './pluginStorage'
 
@@ -22,12 +24,14 @@ export interface PluginCatalogEntry {
   sdkVersion?: number
   /** Curated score 1–5 for market display (v1.0.6.3). */
   rating: number
+  /** Install policy when VITE_PLUGIN_TRUST_MARKET=true (v1.2 F3). */
+  trustTier: PluginTrustTier
   package: PluginPackage
 }
 
 function entryFromPackage(
   pkg: PluginPackage,
-  meta: { tags: string[]; rating: number; author?: string },
+  meta: { tags: string[]; rating: number; author?: string; trustTier?: PluginTrustTier },
 ): PluginCatalogEntry {
   return {
     id: pkg.manifest.id,
@@ -39,6 +43,7 @@ function entryFromPackage(
     permissions: pkg.manifest.permissions,
     sdkVersion: pkg.manifest.sdkVersion,
     rating: meta.rating,
+    trustTier: meta.trustTier ?? 'official',
     package: pkg,
   }
 }
@@ -54,6 +59,7 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     tags: ['demo', 'sdk', 'ui'],
     rating: 4.7,
     author: 'AI IDE',
+    trustTier: 'verified',
   }),
 ]
 
@@ -70,9 +76,19 @@ export function isPluginInstalled(pluginId: string, installedIds: Iterable<strin
 /** Install a curated catalog package (bypasses loadPlugin JSON paste gate in production). */
 export async function installCatalogEntry(
   entryId: string,
-): Promise<{ ok: boolean; error?: string }> {
+  options?: { userConfirmedCommunity?: boolean },
+): Promise<{ ok: boolean; error?: string; requiresCommunityConfirm?: boolean }> {
   const entry = getCatalogEntry(entryId)
   if (!entry) return { ok: false, error: workspaceError('plugin.catalog.notFound') }
+
+  const trust = await assessPluginCatalogInstall(entry, options)
+  if (!trust.allowed) {
+    return {
+      ok: false,
+      error: trust.error,
+      requiresCommunityConfirm: trust.requiresCommunityConfirm,
+    }
+  }
 
   const result = pluginManager.registerPackage(entry.package)
   if (!result.ok) return { ok: false, error: result.error }

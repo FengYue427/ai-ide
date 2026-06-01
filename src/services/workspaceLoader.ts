@@ -32,8 +32,9 @@ function normalizeFiles(
 
 /** Load a workspace snapshot from local IndexedDB (no server required). */
 export async function loadWorkspaceSnapshot(id: string): Promise<LoadedWorkspace | null> {
-  if (id === 'autosave-default' || id === 'local-autosave') {
-    const localFiles = await loadLocalAutosaveFiles()
+  if (id === 'autosave-default' || id === 'local-autosave' || id.startsWith('autosave-')) {
+    const key = id === 'local-autosave' ? 'autosave-default' : id
+    const localFiles = await loadLocalAutosaveFiles(key)
     if (localFiles && localFiles.length > 0) {
       const appSettings = await unifiedStorage.get<{ autosave?: boolean }>('settings', { autosave: true })
       const theme = await unifiedStorage.get<'vs-dark' | 'light'>('theme', 'vs-dark')

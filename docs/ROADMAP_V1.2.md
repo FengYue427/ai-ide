@@ -1,43 +1,71 @@
-# v1.2+ 规划（大拓展 · 占位）
+# v1.2 规划（大拓展 · B 轨）
 
-> **更新**：2026-05-31  
-> **状态**：**推迟** — 平台 AI 与 SEO 注册已并入 **v1.1.8**  
-> **勿与 v1.1.8 混用版本号**
+> **更新**：2026-06-01  
+> **状态**：**v1.2.0 GA** ✅ · **下一 B 轨**：v1.2.1  
+> **Kickoff**：[V1.2_KICKOFF.md](./V1.2_KICKOFF.md) · **Release**：[RELEASE_NOTES_v1.2.0.md](./RELEASE_NOTES_v1.2.0.md)
 
 ---
 
 ## 1. 定位
 
-v1.2 保留给 **跨模块、大工程量** 能力，不与 v1.1.x B 轨小版本抢节奏。
+v1.2 为 **跨模块、大工程量** B 轨，在 v1.1.9（SDK 2.0 + 布局）与 **Smoke/Deploy Ready** 后启动。
+
+| 子版本 | 主题 |
+|--------|------|
+| **v1.2.0** ✅ | 多根工作区 · 大文件树 · 插件可信市场 |
+| **v1.2.1** 📋 | DAP 骨架 · 条件断点/Watch · LSP 统一 |
+| **v1.2.2** 📋 | SSH 远程 · 平台 AI 成本仪表盘 · 企业 SSO |
+
+轨道 A：**1.2.0.x** patch（热修）。
+
+---
+
+## 2. v1.2.0 能力表
 
 | 主题 | 说明 |
 |------|------|
-| 插件生态 2.0 | 稳定扩展 API、沙箱、市场 |
-| 完整 DAP / 语言服务深化 | 多调试目标、LSP 统一 |
-| 远程 SSH / 多根工作区 | 大型 IDE 对标能力 |
-| 平台 AI 运维 | 成本仪表盘、多模型路由、RPM 细粒度 |
+| 多根工作区 | `WorkspaceRoot[]` · 侧栏切换 · [ADR_V1.2_MULTI_ROOT.md](./ADR_V1.2_MULTI_ROOT.md) |
+| 大仓 UI | 虚拟列表 / ≥250 文件折叠 |
+| 插件可信 | Ed25519 签名 · `trustTier` · [ADR_V1.2_PLUGIN_TRUST.md](./ADR_V1.2_PLUGIN_TRUST.md) |
+| 开关 | [V1.2_ENV.md](./V1.2_ENV.md) · `src/lib/v12Features.ts` |
+
+---
+
+## 3. 已下沉（勿重复）
+
+| 能力 | 版本 |
+|------|------|
+| 平台 AI 网关、`/signup` SEO | v1.1.8 |
+| 插件 SDK 2.0 API（`getMode` / `debug.getSummary`） | v1.1.9 |
+| ActivityBar 布局 · AI 聊天紧凑条 | v1.1.9.3 |
+
+---
+
+## 4. v1.2.1 / v1.2.2（规划）
+
+| 主题 | 说明 |
+|------|------|
+| 插件生态 2.0+ | 第三方审核 API · `debug.*` 扩展 |
+| DAP / LSP | 多调试目标 · 全语言跳定义/引用 |
+| 远程 SSH / 多根 | 远程目录挂载为根 |
+| 平台 AI 运维 | 成本仪表盘、多模型路由、RPM |
 | 企业 | SSO、专属模型、审计 |
 
 ---
 
-## 2. 已下沉到 v1.1.8 的内容（勿重复开发）
+## 5. 启动条件
 
-- `POST /api/ai/chat` 平台网关
-- Chat + Agent 无 Key
-- `/signup` `/login` SEO
-- 欢迎页注册 CTA
-
-详见 [V1.1.8_KICKOFF.md](./V1.1.8_KICKOFF.md)。
+- [x] v1.1.8 / v1.1.9 GA
+- [x] 生产 Smoke / Deploy Ready
+- [x] 插件 SDK 2.0 与权限模型
+- [x] CI E2E（含 `e2e-ui` API+preview）
 
 ---
 
-## 3. 建议启动条件
+## 6. 文档索引
 
-- v1.1.8 GA 且平台 AI 生产稳定 2 周+
-- 插件目录与权限模型评审完成
-
----
-
-## 4. 参考（历史草案）
-
-- [ROADMAP_V1.1.3_GATEWAY.md](./ROADMAP_V1.1.3_GATEWAY.md) — 网关 F1～F5 原始设计
+| 文档 | 用途 |
+|------|------|
+| [V1.2_GA_EXECUTION.md](./V1.2_GA_EXECUTION.md) | 发版清单 |
+| [ROADMAP_V1.1_LONG_HORIZON.md](./ROADMAP_V1.1_LONG_HORIZON.md) | 1.1.x 世代 |
+| [ROADMAP_V1.1.3_GATEWAY.md](./ROADMAP_V1.1.3_GATEWAY.md) | 网关历史草案 |

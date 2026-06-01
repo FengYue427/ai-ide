@@ -67,6 +67,26 @@ function shouldUseIndexWorker(sourceCount: number): boolean {
 
 type IndexSourceRow = { path: string; content: string; language?: string }
 
+type ScopeSnapshot = {
+  index: ProjectIndex
+  stats: IndexBuildStats
+  fileSignatures: Map<string, string>
+  status: IndexBuildStatus
+  lastError: string | null
+  progress: IndexBuildProgress | null
+}
+
+function emptyScopeSnapshot(): ScopeSnapshot {
+  return {
+    index: EMPTY_INDEX,
+    stats: EMPTY_STATS,
+    fileSignatures: new Map(),
+    status: 'idle',
+    lastError: null,
+    progress: null,
+  }
+}
+
 class ProjectIndexManager {
   private index: ProjectIndex = EMPTY_INDEX
   private stats: IndexBuildStats = EMPTY_STATS
@@ -80,6 +100,44 @@ class ProjectIndexManager {
   private syncTimer: ReturnType<typeof setTimeout> | null = null
   private buildGeneration = 0
   private worker: Worker | null = null
+  private activeScopeId = 'default'
+  private scopeCache = new Map<string, ScopeSnapshot>()
+
+  getWorkspaceScope(): string {
+    return this.activeScopeId
+  }
+
+  /** v1.2 F2 — isolate symbol index per workspace root. */
+  setWorkspaceScope(scopeId: string): void {
+    const next = scopeId.trim() || 'default'
+    if (next === this.activeScopeId) return
+    this.buildGeneration += 1
+    this.terminateWorker()
+    this.scopeCache.set(this.activeScopeId, this.snapshotScope())
+    this.activeScopeId = next
+    this.restoreScope(this.scopeCache.get(next) ?? emptyScopeSnapshot())
+    this.emit()
+  }
+
+  private snapshotScope(): ScopeSnapshot {
+    return {
+      index: this.index,
+      stats: this.stats,
+      fileSignatures: new Map(this.fileSignatures),
+      status: this.status,
+      lastError: this.lastError,
+      progress: this.progress,
+    }
+  }
+
+  private restoreScope(snapshot: ScopeSnapshot): void {
+    this.index = snapshot.index
+    this.stats = snapshot.stats
+    this.fileSignatures = new Map(snapshot.fileSignatures)
+    this.status = snapshot.status
+    this.lastError = snapshot.lastError
+    this.progress = snapshot.progress
+  }
 
   getIndex(): ProjectIndex {
     return this.index
@@ -332,6 +390,16 @@ class ProjectIndexManager {
   /** Exposed for docs/tests — current cap from indexLimits. */
   getMaxFilesCap(): number {
     return getMaxIndexFiles()
+  }
+
+  /** Test helper — reset all scopes. */
+  resetScopesForTests(): void {
+    this.buildGeneration += 1
+    this.terminateWorker()
+    this.scopeCache.clear()
+    this.activeScopeId = 'default'
+    this.restoreScope(emptyScopeSnapshot())
+    this.emit()
   }
 }
 

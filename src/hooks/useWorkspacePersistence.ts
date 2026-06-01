@@ -8,7 +8,7 @@ import { cloudSyncService } from '../services/cloudSyncService'
 import { recentFilesService } from '../services/recentFilesService'
 import { isWorkspaceHydrated } from '../services/workspaceSession'
 import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
-import { useIDEStore } from '../store/ideStore'
+import { selectActiveAutosaveKey, useIDEStore } from '../store/ideStore'
 import type { FileItem } from '../types/file'
 
 interface UseWorkspacePersistenceOptions {
@@ -74,7 +74,8 @@ export function useWorkspacePersistence({
         lastModified: Date.now(),
       }))
 
-      await unifiedStorage.set('autosave-default', ideFiles, { layer: StorageLayer.INDEXED })
+      const autosaveKey = selectActiveAutosaveKey(useIDEStore.getState())
+      await unifiedStorage.set(autosaveKey, ideFiles, { layer: StorageLayer.INDEXED })
 
       await cloudSyncService.autoBackup(
         ideFiles.map(({ name, content, language }) => ({ name, content, language })),
@@ -83,11 +84,13 @@ export function useWorkspacePersistence({
 
       const projectName =
         files.length === 1 ? files[0].name : t('notify.autosaveProjectName', { count: files.length })
+      const store = useIDEStore.getState()
+      const activeRoot = store.workspaceRoots.find((root) => root.id === store.activeRootId)
       await recentFilesService.addRecentProject({
-        id: 'autosave-default',
-        name: projectName,
+        id: autosaveKey,
+        name: activeRoot?.name ? `${activeRoot.name} · ${projectName}` : projectName,
         fileCount: files.length,
-        workspaceId: 'autosave-default',
+        workspaceId: autosaveKey,
       })
 
       if (currentUser) {

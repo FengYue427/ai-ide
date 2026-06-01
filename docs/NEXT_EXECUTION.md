@@ -1,6 +1,6 @@
 # 当前执行入口
 
-> **更新**：2026-06-01 — **v1.1.9 GA** · **1.1.8.x 收口** · 见 [PRODUCT_STATE_REVIEW_2026-06.md](./PRODUCT_STATE_REVIEW_2026-06.md)
+> **更新**：2026-06-01 — **v1.2.0 GA** ✅
 
 ---
 
@@ -8,29 +8,18 @@
 
 | 线 | 状态 | 文档 |
 |----|------|------|
-| **v1.1.8** | ✅ GA | [RELEASE_NOTES_v1.1.8.md](./RELEASE_NOTES_v1.1.8.md) |
-| **v1.1.8.x** | ✅ 含 1.1.8.4 设置页 platformAi | [ROADMAP_V1.1.8.x_PATCHES.md](./ROADMAP_V1.1.8.x_PATCHES.md) |
-| **v1.1.9** | ✅ tag `v1.1.9` | [RELEASE_NOTES_v1.1.9.md](./RELEASE_NOTES_v1.1.9.md) |
-| **v1.2+** | 📋 大拓展 | [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
+| **v1.1.9.x** | ✅ 收口 | [ROADMAP_V1.1.9.x_PATCHES.md](./ROADMAP_V1.1.9.x_PATCHES.md) |
+| **v1.2.0** | ✅ **GA** | [RELEASE_NOTES_v1.2.0.md](./RELEASE_NOTES_v1.2.0.md) |
+| **v1.2.1 / v1.2.2** | 📋 **下一 B 轨** | [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
 
 ---
 
-## 建议下一迭代（择一主线）
+## 当前迭代：v1.2.1 预览（DAP / LSP）
 
-### A. 调试 patch（1.1.7.1 条件断点 MVP）
+1. 读 [V1.2_MASTER_PLAN.md](./V1.2_MASTER_PLAN.md) §3 v1.2.1
+2. DAP ADR · 条件断点/Watch 升格 · LSP 统一跳定义
 
-见 [ROADMAP_V1.1.7.x_PATCHES.md](./ROADMAP_V1.1.7.x_PATCHES.md)
-
-### B. 增长与稳定（推荐 2 周）
-
-1. 生产 `VITE_AI_GATEWAY` + `PLATFORM_DEEPSEEK_API_KEY` 巡检  
-2. `npm run smoke:report` 每周  
-3. 教程 + GSC 关键词维护  
-4. Collab CI 全绿后对外宣传协作
-
-### C. v1.2 预研
-
-插件签名 · 多根工作区 · DAP — **勿与 A/B 并行开大**
+**v1.2.0 功能开关**（生产逐步开）：[V1.2_ENV.md](./V1.2_ENV.md)
 
 ---
 
@@ -38,5 +27,21 @@
 
 ```bash
 npm run test:local
-npm run test:e2e:collab   # 需 dev:stack:collab + DATABASE_URL
+npm run build
+npm run test:e2e
 ```
+
+生产（部署后）：
+
+```bash
+$env:APP_URL="https://ai-ide-flame.vercel.app"
+npm run smoke:production -- $env:APP_URL
+git tag -a v1.2.0 -m "v1.2.0: multi-root workspace and plugin trust market"
+```
+
+---
+
+## 勿并行
+
+- SSH / 企业 SSO（→ v1.2.2）
+- 完整 DAP 多目标（→ v1.2.1）

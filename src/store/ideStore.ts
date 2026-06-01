@@ -8,6 +8,16 @@ import type { RecentProject } from '../services/recentFilesService'
 import { openGitDiffTabState, type OpenGitDiffTabInput } from '../lib/openGitDiffTab'
 import type { GitDiffTab } from '../types/editorTab'
 import type { FileItem } from '../types/file'
+import type { WorkspaceRoot } from '../types/workspaceRoot'
+import { isMultiRootWorkspaceEnabled } from '../lib/v12Features'
+import {
+  createWorkspaceRoot,
+  defaultWorkspaceRoot,
+  getActiveWorkspaceRoot,
+  MAX_WORKSPACE_ROOTS,
+  nextWorkspaceRootName,
+  syncFilesToActiveRoot,
+} from '../lib/workspaceRoots'
 import {
   loadDebugBreakpoints,
   saveDebugBreakpoints,
@@ -111,6 +121,25 @@ function buildDefaultFiles(): FileItem[] {
 }
 
 const defaultFiles: FileItem[] = buildDefaultFiles()
+const initialWorkspaceRoot = defaultWorkspaceRoot(defaultFiles)
+
+function applyFilesUpdate(
+  state: { files: FileItem[]; workspaceRoots: WorkspaceRoot[]; activeRootId: string },
+  files: FilesUpdater,
+) {
+  const nextFiles = resolveFiles(files, state.files)
+  return {
+    files: nextFiles,
+    workspaceRoots: syncFilesToActiveRoot(state.workspaceRoots, state.activeRootId, nextFiles),
+  }
+}
+
+export function selectActiveAutosaveKey(state: {
+  workspaceRoots: WorkspaceRoot[]
+  activeRootId: string
+}): string {
+  return getActiveWorkspaceRoot(state.workspaceRoots, state.activeRootId)?.autosaveKey ?? 'autosave-default'
+}
 
 const defaultAiConfig: AIConfigState = {
   provider: 'deepseek',
@@ -134,6 +163,8 @@ function resolveFiles(value: FilesUpdater, prev: FileItem[]): FileItem[] {
 
 export interface IDEState {
   files: FileItem[]
+  workspaceRoots: WorkspaceRoot[]
+  activeRootId: string
   gitDiffTabs: GitDiffTab[]
   activeEditorSurface: ActiveEditorSurface
   activeGitDiffTab: number
@@ -154,6 +185,8 @@ export interface IDEState {
   authChecked: boolean
   currentPlan: string
   collaborationRoomId: string | null
+  /** Workspace root bound when the collab room was joined (v1.2 F1). */
+  collaborationWorkspaceRootId: string | null
   collaborationMemberRole: 'host' | 'editor' | 'viewer' | null
   collaborationSignalingMode: 'livekit' | 'yjs-webrtc' | null
   collaborationRoomMembers: Array<{
@@ -210,6 +243,11 @@ export interface IDEState {
   pluginModal: PluginModalState | null
 
   setFiles: (files: FilesUpdater) => void
+  setWorkspaceRootsState: (roots: WorkspaceRoot[], activeRootId: string, files: FileItem[]) => void
+  setActiveWorkspaceRoot: (rootId: string) => void
+  addWorkspaceRoot: (name?: string) => void
+  removeWorkspaceRoot: (rootId: string) => void
+  renameWorkspaceRoot: (rootId: string, name: string) => void
   openGitDiffTab: (input: OpenGitDiffTabInput) => void
   closeGitDiffTab: (index: number) => void
   setActiveFile: (index: number) => void
@@ -316,6 +354,8 @@ export interface QueuedPlanExecution {
 
 export const useIDEStore = create<IDEState>()((set) => ({
   files: defaultFiles,
+  workspaceRoots: [initialWorkspaceRoot],
+  activeRootId: initialWorkspaceRoot.id,
   gitDiffTabs: [],
   activeEditorSurface: 'file',
   activeGitDiffTab: 0,
@@ -336,6 +376,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   authChecked: false,
   currentPlan: 'free',
   collaborationRoomId: null,
+  collaborationWorkspaceRootId: null,
   collaborationMemberRole: null,
   collaborationSignalingMode: null,
   collaborationRoomMembers: null,
@@ -385,7 +426,86 @@ export const useIDEStore = create<IDEState>()((set) => ({
   pluginToolbarButtons: [],
   pluginModal: null,
 
-  setFiles: (files) => set((state) => ({ files: resolveFiles(files, state.files) })),
+  setFiles: (files) => set((state) => applyFilesUpdate(state, files)),
+  setWorkspaceRootsState: (workspaceRoots, activeRootId, files) =>
+    set({
+      workspaceRoots,
+      activeRootId,
+      files,
+      activeFile: 0,
+      gitDiffTabs: [],
+      activeEditorSurface: 'file',
+      activeGitDiffTab: 0,
+    }),
+  setActiveWorkspaceRoot: (rootId) =>
+    set((state) => {
+      if (!isMultiRootWorkspaceEnabled() || state.activeRootId === rootId) return state
+      if (state.collaborationRoomId) return state
+      const syncedRoots = syncFilesToActiveRoot(state.workspaceRoots, state.activeRootId, state.files)
+      const target = syncedRoots.find((root) => root.id === rootId)
+      if (!target) return state
+      const nextFiles = target.files.length > 0 ? target.files : buildDefaultFiles()
+      const next = {
+        workspaceRoots: syncedRoots.map((root) =>
+          root.id === rootId ? { ...root, files: nextFiles } : root,
+        ),
+        activeRootId: rootId,
+        files: nextFiles,
+        activeFile: 0,
+        gitDiffTabs: [],
+        activeEditorSurface: 'file' as const,
+        activeGitDiffTab: 0,
+        showNewFileInput: false,
+      }
+      return next
+    }),
+  addWorkspaceRoot: (name) =>
+    set((state) => {
+      if (!isMultiRootWorkspaceEnabled() || state.collaborationRoomId) return state
+      if (state.workspaceRoots.length >= MAX_WORKSPACE_ROOTS) return state
+      const syncedRoots = syncFilesToActiveRoot(state.workspaceRoots, state.activeRootId, state.files)
+      const rootName = name?.trim() || nextWorkspaceRootName(syncedRoots)
+      const newRoot = createWorkspaceRoot(rootName, buildDefaultFiles())
+      return {
+        workspaceRoots: [...syncedRoots, newRoot],
+        activeRootId: newRoot.id,
+        files: newRoot.files,
+        activeFile: 0,
+        gitDiffTabs: [],
+        activeEditorSurface: 'file',
+        activeGitDiffTab: 0,
+        showNewFileInput: false,
+      }
+    }),
+  removeWorkspaceRoot: (rootId) =>
+    set((state) => {
+      if (!isMultiRootWorkspaceEnabled() || state.workspaceRoots.length <= 1) return state
+      if (state.collaborationRoomId) return state
+      const syncedRoots = syncFilesToActiveRoot(state.workspaceRoots, state.activeRootId, state.files)
+      const nextRoots = syncedRoots.filter((root) => root.id !== rootId)
+      if (nextRoots.length === syncedRoots.length) return state
+      const fallback = nextRoots[0]
+      const switchingAway = state.activeRootId === rootId
+      return {
+        workspaceRoots: nextRoots,
+        activeRootId: switchingAway ? fallback.id : state.activeRootId,
+        files: switchingAway ? fallback.files : state.files,
+        activeFile: switchingAway ? 0 : state.activeFile,
+        ...(switchingAway
+          ? { gitDiffTabs: [], activeEditorSurface: 'file' as const, activeGitDiffTab: 0 }
+          : {}),
+      }
+    }),
+  renameWorkspaceRoot: (rootId, name) =>
+    set((state) => {
+      const trimmed = name.trim()
+      if (!trimmed) return state
+      return {
+        workspaceRoots: state.workspaceRoots.map((root) =>
+          root.id === rootId ? { ...root, name: trimmed } : root,
+        ),
+      }
+    }),
   openGitDiffTab: (input) =>
     set((state) => {
       const result = openGitDiffTabState(state.gitDiffTabs, input)
@@ -448,8 +568,9 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setAuthChecked: (authChecked) => set({ authChecked }),
   setCurrentPlan: (currentPlan) => set({ currentPlan }),
   setCollaborationRoomId: (collaborationRoomId) =>
-    set({
+    set((state) => ({
       collaborationRoomId,
+      collaborationWorkspaceRootId: collaborationRoomId ? state.activeRootId : null,
       ...(collaborationRoomId
         ? {}
         : {
@@ -457,7 +578,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
             collaborationSignalingMode: null,
             collaborationRoomMembers: null,
           }),
-    }),
+    })),
   setCollaborationMemberRole: (collaborationMemberRole) => set({ collaborationMemberRole }),
   setCollaborationSignalingMode: (collaborationSignalingMode) => set({ collaborationSignalingMode }),
   setCollaborationRoomMembers: (collaborationRoomMembers) => set({ collaborationRoomMembers }),

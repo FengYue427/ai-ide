@@ -84,7 +84,8 @@ export function resolveRateLimitOptions(
     | 'auth:forgot'
     | 'usage:ai'
     | 'ai:chat'
-    | 'workspaces:write',
+    | 'workspaces:write'
+    | 'plugins:publish',
 ): RateLimitOptions {
   const defaults: Record<string, RateLimitOptions> = {
     'auth:register': { key: 'auth:register', limit: 5, windowMs: 15 * 60_000 },
@@ -93,6 +94,7 @@ export function resolveRateLimitOptions(
     'usage:ai': { key: 'usage:ai', limit: 120, windowMs: 60_000 },
     'ai:chat': { key: 'ai:chat', limit: 60, windowMs: 60_000 },
     'workspaces:write': { key: 'workspaces:write', limit: 60, windowMs: 60_000 },
+    'plugins:publish': { key: 'plugins:publish', limit: 10, windowMs: 60 * 60_000 },
   }
   return defaults[kind]
 }
