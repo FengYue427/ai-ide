@@ -155,6 +155,7 @@ export interface IDEState {
   currentPlan: string
   collaborationRoomId: string | null
   collaborationMemberRole: 'host' | 'editor' | 'viewer' | null
+  collaborationSignalingMode: 'livekit' | 'yjs-webrtc' | null
   collaborationRoomMembers: Array<{
     id: string
     userId: string
@@ -229,6 +230,7 @@ export interface IDEState {
   setCurrentPlan: (plan: string) => void
   setCollaborationRoomId: (roomId: string | null) => void
   setCollaborationMemberRole: (role: 'host' | 'editor' | 'viewer' | null) => void
+  setCollaborationSignalingMode: (mode: 'livekit' | 'yjs-webrtc' | null) => void
   setCollaborationRoomMembers: (
     members: Array<{
       id: string
@@ -335,6 +337,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   currentPlan: 'free',
   collaborationRoomId: null,
   collaborationMemberRole: null,
+  collaborationSignalingMode: null,
   collaborationRoomMembers: null,
   queuedChatPrompt: null,
   queuedSpecBackfill: null,
@@ -447,9 +450,16 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setCollaborationRoomId: (collaborationRoomId) =>
     set({
       collaborationRoomId,
-      ...(collaborationRoomId ? {} : { collaborationMemberRole: null, collaborationRoomMembers: null }),
+      ...(collaborationRoomId
+        ? {}
+        : {
+            collaborationMemberRole: null,
+            collaborationSignalingMode: null,
+            collaborationRoomMembers: null,
+          }),
     }),
   setCollaborationMemberRole: (collaborationMemberRole) => set({ collaborationMemberRole }),
+  setCollaborationSignalingMode: (collaborationSignalingMode) => set({ collaborationSignalingMode }),
   setCollaborationRoomMembers: (collaborationRoomMembers) => set({ collaborationRoomMembers }),
   setQueuedChatPrompt: (queuedChatPrompt) => set({ queuedChatPrompt }),
   setQueuedSpecBackfill: (queuedSpecBackfill) => set({ queuedSpecBackfill }),

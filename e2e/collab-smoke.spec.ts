@@ -17,7 +17,7 @@ import {
  */
 test.describe('Collaboration M1 smoke (2 browsers)', () => {
   test('host creates room; viewer joins read-only', async ({ browser }) => {
-    test.setTimeout(240_000)
+    test.setTimeout(180_000)
 
     const hostUser = uniqueCollabUser('collab-host')
     const viewerUser = uniqueCollabUser('collab-viewer')
@@ -30,15 +30,15 @@ test.describe('Collaboration M1 smoke (2 browsers)', () => {
     try {
       await registerAndLogin(hostPage, hostUser)
       const roomCode = await createCollabRoomAsHost(hostPage)
+      await expectCollabStatusBarSession(hostPage, { role: /主持人|Host/i })
 
       await registerAndLogin(viewerPage, viewerUser)
       await joinCollabRoomAsViewer(viewerPage, roomCode)
 
-      await expect(viewerPage.locator('.collab-readonly-banner')).toBeVisible({ timeout: 15_000 })
+      await expect(viewerPage.locator('.collab-readonly-banner')).toBeVisible({ timeout: 30_000 })
       await expect(hostPage.locator('.collab-readonly-banner')).toHaveCount(0)
 
       await expectCollabStatusBarSession(viewerPage, { role: /只读|Viewer/i })
-      await expectCollabStatusBarSession(hostPage, { role: /主持人|Host/i })
     } finally {
       await hostContext.close()
       await viewerContext.close()

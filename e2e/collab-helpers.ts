@@ -73,7 +73,14 @@ export async function createCollabRoomAsHost(page: Page): Promise<string> {
   await expect(page.locator('.modal--collab .collab-leave-btn')).toBeVisible({ timeout: 30_000 })
   const code = await page.getByTestId('collab-room-code').locator('strong').textContent()
   expect(code?.trim().length).toBeGreaterThanOrEqual(6)
+  await closeCollabModal(page)
   return code!.trim()
+}
+
+export async function closeCollabModal(page: Page): Promise<void> {
+  const modal = page.locator('.modal--collab')
+  await modal.locator('.modal-close').click()
+  await expect(modal).toBeHidden({ timeout: 15_000 })
 }
 
 export function collabStatusBar(page: Page) {
@@ -83,13 +90,15 @@ export function collabStatusBar(page: Page) {
 /** Role + signaling badges on the status bar (stable when collab modal is closed). */
 export async function expectCollabStatusBarSession(
   page: Page,
-  options: { role: RegExp; signaling?: boolean },
+  options: { role: RegExp; signaling?: boolean; roleTimeout?: number; signalingTimeout?: number },
 ): Promise<void> {
   const bar = collabStatusBar(page)
-  await expect(bar.getByTestId('collab-role-badge')).toContainText(options.role, { timeout: 30_000 })
+  const roleTimeout = options.roleTimeout ?? 45_000
+  const signalingTimeout = options.signalingTimeout ?? 45_000
+  await expect(bar.getByTestId('collab-role-badge')).toContainText(options.role, { timeout: roleTimeout })
   if (options.signaling !== false) {
     const badge = bar.getByTestId('collab-signaling-badge')
-    await expect(badge).toBeVisible({ timeout: 90_000 })
+    await expect(badge).toBeVisible({ timeout: signalingTimeout })
     await expect(badge).toHaveText(/Livekit|WebRTC/i)
   }
 }
@@ -105,6 +114,7 @@ export async function joinCollabRoomAsViewer(page: Page, roomCode: string): Prom
   await modal.locator('input[name="collab-join-role"][value="viewer"]').check()
   await modal.getByRole('button', { name: /加入房间|Join room/i }).click()
   await expect(modal.getByRole('button', { name: /离开房间|Leave/i })).toBeVisible({ timeout: 30_000 })
+  await closeCollabModal(page)
 }
 
 export async function prepareFreshPage(page: Page, path = '/'): Promise<void> {

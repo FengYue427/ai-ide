@@ -87,7 +87,9 @@ const StatusBar: React.FC<StatusBarProps> = ({
   const { t } = useI18n()
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
   const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
-  const { signalingMode, connStatus } = useCollabSignalingDisplay(collaborationRoomId)
+  const storeSignalingMode = useIDEStore((s) => s.collaborationSignalingMode)
+  const { signalingMode: liveSignalingMode, connStatus } = useCollabSignalingDisplay(collaborationRoomId)
+  const signalingMode = liveSignalingMode ?? storeSignalingMode
   const uiLocale = normalizeLanguage(language)
   const showPerformanceHint = shouldShowWorkspacePerformanceHint(workspaceFileCount)
   const localeLabel =

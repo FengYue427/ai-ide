@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { collaborationService } from '../services/collaborationService'
+import { useIDEStore } from '../store/ideStore'
 import { useCollabConnection } from './useCollabConnection'
 
 export type CollabSignalingMode = 'livekit' | 'yjs-webrtc'
@@ -7,9 +8,10 @@ export type CollabSignalingMode = 'livekit' | 'yjs-webrtc'
 /** Signaling mode for status bar / chrome (stable once a collab session exists). */
 export function useCollabSignalingDisplay(roomId: string | null) {
   const active = Boolean(roomId)
+  const storeSignalingMode = useIDEStore((s) => s.collaborationSignalingMode)
   const { status: connStatus } = useCollabConnection(active)
   const [signalingMode, setSignalingMode] = useState<CollabSignalingMode | null>(() =>
-    active ? collaborationService.getSignalingMode() : null,
+    active ? collaborationService.getSignalingMode() ?? storeSignalingMode : null,
   )
 
   useEffect(() => {
@@ -17,8 +19,8 @@ export function useCollabSignalingDisplay(roomId: string | null) {
       setSignalingMode(null)
       return
     }
-    setSignalingMode(collaborationService.getSignalingMode())
-  }, [active, connStatus, roomId])
+    setSignalingMode(collaborationService.getSignalingMode() ?? storeSignalingMode)
+  }, [active, connStatus, roomId, storeSignalingMode])
 
   return { signalingMode, connStatus }
 }

@@ -1,6 +1,7 @@
 import * as Y from 'yjs'
 import { WebrtcProvider } from 'y-webrtc'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
+import { useIDEStore } from '../store/ideStore'
 import type { CollabJoinOptions, CollabConnectionStatus, CollabStatusEvent } from './collaborationTypes'
 import type { CollabMemberRole } from '../lib/collabPermissions'
 import type { CollabYjsProvider } from './collab/collabYjsProviderTypes'
@@ -145,6 +146,7 @@ export class CollaborationService {
     }
 
     this.reconnectAttempt = 0
+    useIDEStore.getState().setCollaborationSignalingMode(this.session.signalingMode)
     this.attachProvider()
     return this.currentRoom!
   }
@@ -157,6 +159,7 @@ export class CollaborationService {
     this.teardownProvider(true)
     this.session = null
     this.reconnectAttempt = 0
+    useIDEStore.getState().setCollaborationSignalingMode(null)
   }
 
   /** Resume signaling after browser online / tab visible (M1 F2). */
