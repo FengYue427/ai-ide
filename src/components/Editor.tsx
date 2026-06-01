@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react'
 import MonacoEditor from '@monaco-editor/react'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
-import { configureMonaco, type MonacoEditorInstance, type MonacoMarker } from '../editor/monacoSetup'
+import {
+  configureMonaco,
+  resolveMonacoTheme,
+  type AppEditorTheme,
+  type MonacoEditorInstance,
+  type MonacoMarker,
+} from '../editor/monacoSetup'
 import { registerInlineCompletionProvider } from '../editor/registerInlineCompletion'
 import {
   registerCrossFileDefinitionProvider,
@@ -28,7 +34,7 @@ interface EditorProps {
   value: string
   language: string
   filename?: string
-  theme?: 'vs-dark' | 'light'
+  theme?: AppEditorTheme
   target?: EditorTarget | null
   aiConfig?: AIConfig
   inlineCompletionEnabled?: boolean
@@ -258,7 +264,7 @@ const Editor: React.FC<EditorProps> = ({
         language={language}
         value={value}
         onChange={onChange}
-        theme={theme}
+        theme={resolveMonacoTheme(theme)}
         loading={null}
         onMount={(editor) => {
           editorRef.current = editor

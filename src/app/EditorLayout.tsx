@@ -116,85 +116,48 @@ export function EditorLayout({
         </div>
       )}
 
-      <div className="tabs">
-        {files.map((file, idx) => (
-          <div
-            key={file.name}
-            className={`tab ${activeEditorSurface === 'file' && idx === activeFile ? 'active' : ''}`}
-            onClick={() => setActiveFile(idx)}
-          >
-            <FileText size={13} />
-            <span className="tab-label">{file.name}</span>
-            <span
-              className="tab-close"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDeleteFile(idx)
-              }}
+      <div className="editor-chrome">
+        <div className="tabs">
+          {files.map((file, idx) => (
+            <div
+              key={file.name}
+              className={`tab ${activeEditorSurface === 'file' && idx === activeFile ? 'active' : ''}`}
+              onClick={() => setActiveFile(idx)}
             >
-              <X size={12} />
-            </span>
-          </div>
-        ))}
-        {gitDiffTabs.map((tab, idx) => (
-          <div
-            key={gitDiffTabKey(tab.path, tab.diffSource, tab.commitOid)}
-            className={`tab tab--git-diff ${activeEditorSurface === 'git-diff' && idx === activeGitDiffTab ? 'active' : ''}`}
-            onClick={() => setActiveGitDiffTab(idx)}
-          >
-            <GitCompare size={13} />
-            <span className="tab-label">{tab.name}</span>
-            <span
-              className="tab-close"
-              onClick={(e) => {
-                e.stopPropagation()
-                onCloseGitDiffTab(idx)
-              }}
+              <FileText size={13} />
+              <span className="tab-label">{file.name}</span>
+              <span
+                className="tab-close"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteFile(idx)
+                }}
+              >
+                <X size={12} />
+              </span>
+            </div>
+          ))}
+          {gitDiffTabs.map((tab, idx) => (
+            <div
+              key={gitDiffTabKey(tab.path, tab.diffSource, tab.commitOid)}
+              className={`tab tab--git-diff ${activeEditorSurface === 'git-diff' && idx === activeGitDiffTab ? 'active' : ''}`}
+              onClick={() => setActiveGitDiffTab(idx)}
             >
-              <X size={12} />
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="editor-info-bar">
-        <div className="editor-info-main">
-          <div className="editor-info-title">
-            {showingDiff ? <GitCompare size={14} /> : <FileText size={14} />}
-            <span>{showingDiff ? currentDiffTab.name : currentFile?.name || 'Untitled'}</span>
-          </div>
-          <div className="editor-info-meta">
-            {showingDiff ? (
-              <>
-                <span>{currentDiffTab.language}</span>
-                <span>{t('git.diffTabBadge')}</span>
-                <span>
-                  {t('git.diffStats', {
-                    added: currentDiffTab.truncated
-                      ? (currentDiffTab.originalNewLines ?? currentDiffTab.newContent.split('\n').length)
-                      : currentDiffTab.newContent.split('\n').length,
-                    removed: currentDiffTab.truncated
-                      ? (currentDiffTab.originalOldLines ?? currentDiffTab.oldContent.split('\n').length)
-                      : currentDiffTab.oldContent.split('\n').length,
-                  })}
-                </span>
-                {currentDiffTab.truncated ? <span>{t('git.diffTruncatedBadge')}</span> : null}
-                {currentDiffTab.layout === 'inline' ? (
-                  <span>{t('git.diffLayoutInline')}</span>
-                ) : (
-                  <span>{t('git.diffLayoutSideBySide')}</span>
-                )}
-              </>
-            ) : (
-              <>
-                <span>{currentFile?.language || 'plaintext'}</span>
-                <span>{t('editor.meta.lines', { count: currentFile?.content.split('\n').length || 0 })}</span>
-                <span>{t('editor.meta.chars', { count: currentFile?.content.length || 0 })}</span>
-              </>
-            )}
-          </div>
+              <GitCompare size={13} />
+              <span className="tab-label">{tab.name}</span>
+              <span
+                className="tab-close"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCloseGitDiffTab(idx)
+                }}
+              >
+                <X size={12} />
+              </span>
+            </div>
+          ))}
         </div>
-        <div className="editor-info-actions">
+        <div className="editor-chrome-actions">
           <button type="button" onClick={onOpenSnippetPanel} title={t('editor.action.snippetTitle')}>
             <Sparkles size={14} />
             <span>{t('editor.action.snippet')}</span>
@@ -208,6 +171,31 @@ export function EditorLayout({
             <span>{showTerminal ? t('editor.action.hideTerminal') : t('editor.action.terminal')}</span>
           </button>
         </div>
+      </div>
+
+      <div className="editor-breadcrumb" aria-label={t('editor.breadcrumb')}>
+        {showingDiff ? (
+          <>
+            <span>{currentDiffTab.language}</span>
+            <span>{t('git.diffTabBadge')}</span>
+            <span>
+              {t('git.diffStats', {
+                added: currentDiffTab.truncated
+                  ? (currentDiffTab.originalNewLines ?? currentDiffTab.newContent.split('\n').length)
+                  : currentDiffTab.newContent.split('\n').length,
+                removed: currentDiffTab.truncated
+                  ? (currentDiffTab.originalOldLines ?? currentDiffTab.oldContent.split('\n').length)
+                  : currentDiffTab.oldContent.split('\n').length,
+              })}
+            </span>
+          </>
+        ) : (
+          <>
+            <span>{currentFile?.language || 'plaintext'}</span>
+            <span>{t('editor.meta.lines', { count: currentFile?.content.split('\n').length || 0 })}</span>
+            <span>{t('editor.meta.chars', { count: currentFile?.content.length || 0 })}</span>
+          </>
+        )}
       </div>
 
       {collabReadOnly ? (

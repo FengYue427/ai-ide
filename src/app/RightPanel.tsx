@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { GitBranch, MessageSquare, Server, X } from 'lucide-react'
 import { ChatPanel, GitPanel } from './lazyPanels'
 import BackgroundJobsPanel from '../components/BackgroundJobsPanel'
@@ -19,6 +20,35 @@ interface RightPanelProps {
   onCloseChat: () => void
   onOpenAuth?: () => void
   onOpenSubscription?: () => void
+}
+
+function PanelChrome({
+  icon,
+  title,
+  subtitle,
+  onClose,
+  closeLabel,
+}: {
+  icon: ReactNode
+  title: string
+  subtitle: string
+  onClose: () => void
+  closeLabel: string
+}) {
+  return (
+    <div className="panel-header-compact">
+      <div className="panel-header-compact__main">
+        {icon}
+        <div>
+          <div className="panel-header-compact__title">{title}</div>
+          <div className="panel-header-compact__subtitle">{subtitle}</div>
+        </div>
+      </div>
+      <button type="button" className="panel-close-btn" onClick={onClose} aria-label={closeLabel}>
+        <X size={14} />
+      </button>
+    </div>
+  )
 }
 
 export function RightPanel({
@@ -52,7 +82,11 @@ export function RightPanel({
     return null
   }
 
-  const panelWidth = showGitPanel ? '380px' : backgroundAgentOn ? '400px' : '340px'
+  const panelClass = showGitPanel
+    ? 'right-panel right-panel--git'
+    : backgroundAgentOn
+      ? 'right-panel right-panel--chat-wide'
+      : 'right-panel right-panel--chat'
 
   const renderChatTabs = () => {
     if (!backgroundAgentOn) return null
@@ -84,45 +118,17 @@ export function RightPanel({
   }
 
   return (
-    <div
-      className="right-panel"
-      style={{ width: panelWidth, display: 'flex', flexDirection: 'column' }}
-    >
+    <aside className={panelClass}>
       {showGitPanel ? (
         <>
-          <div
-            className="panel-header panel-header-strong"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <GitBranch size={14} />
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 700 }}>Git</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'none', letterSpacing: 0 }}>
-                  {t('panel.git.subtitle')}
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onCloseGit}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border-color)',
-                borderRadius: 10,
-                width: 32,
-                height: 32,
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <X size={14} />
-            </button>
-          </div>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
+          <PanelChrome
+            icon={<GitBranch size={16} />}
+            title="Git"
+            subtitle={t('panel.git.subtitle')}
+            onClose={onCloseGit}
+            closeLabel={t('panel.close')}
+          />
+          <div className="right-panel__body">
             <GitPanel
               fs={fs}
               files={files}
@@ -156,50 +162,29 @@ export function RightPanel({
         </>
       ) : (
         <>
-          <div
-            className="panel-header panel-header-strong"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {rightPanelView === 'backgroundJobs' && backgroundAgentOn ? (
-                <Server size={14} />
+          <PanelChrome
+            icon={
+              rightPanelView === 'backgroundJobs' && backgroundAgentOn ? (
+                <Server size={16} />
               ) : (
-                <MessageSquare size={14} />
-              )}
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 700 }}>
-                  {rightPanelView === 'backgroundJobs' && backgroundAgentOn
-                    ? t('panel.backgroundJobs.title')
-                    : t('panel.chat.title')}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'none', letterSpacing: 0 }}>
-                  {rightPanelView === 'backgroundJobs' && backgroundAgentOn
-                    ? t('panel.backgroundJobs.subtitle')
-                    : t('panel.chat.subtitle')}
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onCloseChat}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border-color)',
-                borderRadius: 10,
-                width: 32,
-                height: 32,
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <X size={14} />
-            </button>
-          </div>
+                <MessageSquare size={16} />
+              )
+            }
+            title={
+              rightPanelView === 'backgroundJobs' && backgroundAgentOn
+                ? t('panel.backgroundJobs.title')
+                : t('panel.chat.title')
+            }
+            subtitle={
+              rightPanelView === 'backgroundJobs' && backgroundAgentOn
+                ? t('panel.backgroundJobs.subtitle')
+                : t('panel.chat.subtitle')
+            }
+            onClose={onCloseChat}
+            closeLabel={t('panel.close')}
+          />
           {renderChatTabs()}
-          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div className="right-panel__body">
             {backgroundAgentOn && rightPanelView === 'backgroundJobs' ? (
               <BackgroundJobsPanel
                 notify={notify}
@@ -209,6 +194,7 @@ export function RightPanel({
               />
             ) : (
               <ChatPanel
+                embeddedInRightPanel
                 aiConfig={aiConfig}
                 currentCode={currentFile?.content || ''}
                 notify={notify}
@@ -226,6 +212,6 @@ export function RightPanel({
           </div>
         </>
       )}
-    </div>
+    </aside>
   )
 }

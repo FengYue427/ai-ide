@@ -1,17 +1,10 @@
 import {
   Activity,
   BarChart2,
-  Bot,
   Command,
-  Eye,
-  FileText,
   FolderOpen,
-  GitBranch,
   Home,
-  Play,
   Save,
-  Search,
-  Server,
   Settings as SettingsIcon,
   Sparkles,
   User,
@@ -19,24 +12,15 @@ import {
 } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { authService } from '../services/authService'
-import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
 import { useIDEStore } from '../store/ideStore'
 import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
 import type { ConfirmRequest, ToastKind } from '../components/FeedbackCenter'
 
 interface AppToolbarProps {
-  isReady: boolean
   isRunning: boolean
   runtimeError: Error | null
   runStatusText: string
-  onRunCode: () => void
-  onOpenNewFile: () => void
-  onOpenSearch: () => void
-  onOpenChat: () => void
-  onOpenBackgroundJobs?: () => void
   onOpenWorkspace: () => void
-  onToggleGit: () => void
-  onOpenPreview: () => void
   onOpenCommandPalette: () => void
   onOpenSettings: () => void
   onOpenWelcome: () => void
@@ -47,18 +31,10 @@ interface AppToolbarProps {
 }
 
 export function AppToolbar({
-  isReady,
   isRunning,
   runtimeError,
   runStatusText,
-  onRunCode,
-  onOpenNewFile,
-  onOpenSearch,
-  onOpenChat,
-  onOpenBackgroundJobs,
   onOpenWorkspace,
-  onToggleGit,
-  onOpenPreview,
   onOpenCommandPalette,
   onOpenSettings,
   onOpenWelcome,
@@ -72,9 +48,8 @@ export function AppToolbar({
   const fileLimit = getWorkspaceLimitSnapshot(files.length)
   const currentUser = useIDEStore((s) => s.currentUser)
   const currentPlan = useIDEStore((s) => s.currentPlan)
-  const backgroundJobsActiveCount = useIDEStore((s) => s.backgroundJobsActiveCount)
-  const pluginToolbarButtons = useIDEStore((s) => s.pluginToolbarButtons)
   const setCurrentUser = useIDEStore((s) => s.setCurrentUser)
+  const pluginToolbarButtons = useIDEStore((s) => s.pluginToolbarButtons)
 
   const renderPluginIcon = (icon: string) => {
     if (icon === 'bar-chart') return <BarChart2 size={14} />
@@ -83,10 +58,10 @@ export function AppToolbar({
   }
 
   return (
-    <div className="toolbar">
-      <div className="toolbar-brand">
+    <header className="toolbar toolbar--compact">
+      <div className="toolbar-brand toolbar-brand--compact">
         <div className="toolbar-brand-mark">
-          <img src="/logo-ai-ide.png" alt="" width={36} height={36} decoding="async" />
+          <img src="/logo-ai-ide.png" alt="" width={32} height={32} decoding="async" />
         </div>
         <div className="toolbar-brand-text">
           <span className="toolbar-title">{t('app.name')}</span>
@@ -94,50 +69,10 @@ export function AppToolbar({
         </div>
       </div>
 
-      <div className="toolbar-actions">
-        <button onClick={onOpenNewFile}>
-          <FileText size={14} />
-          <span>{t('toolbar.files')}</span>
-        </button>
-        <button onClick={onOpenSearch}>
-          <Search size={14} />
-          <span>{t('toolbar.search')}</span>
-        </button>
-        <button onClick={onOpenChat}>
-          <Bot size={14} />
-          <span>{t('toolbar.ai')}</span>
-        </button>
-        {isBackgroundAgentEnabled() && onOpenBackgroundJobs ? (
-          <button
-            type="button"
-            className="toolbar-btn-with-badge"
-            onClick={onOpenBackgroundJobs}
-            title={t('toolbar.backgroundJobs')}
-          >
-            <Server size={14} />
-            <span>{t('toolbar.backgroundJobs')}</span>
-            {backgroundJobsActiveCount > 0 ? (
-              <span className="toolbar-badge" aria-label={t('backgroundJobs.activeBadge', { count: backgroundJobsActiveCount })}>
-                {backgroundJobsActiveCount > 9 ? '9+' : backgroundJobsActiveCount}
-              </span>
-            ) : null}
-          </button>
-        ) : null}
-        <button onClick={onOpenWorkspace}>
+      <div className="toolbar-actions toolbar-actions--secondary">
+        <button type="button" onClick={onOpenWorkspace} title={t('toolbar.workspace')}>
           <FolderOpen size={14} />
-          <span>{t('toolbar.workspace')}</span>
-        </button>
-        <button onClick={onToggleGit}>
-          <GitBranch size={14} />
-          <span>{t('toolbar.git')}</span>
-        </button>
-        <button onClick={onRunCode} disabled={isRunning || !isReady} className="toolbar-primary-button">
-          <Play size={14} />
-          <span>{isRunning ? t('toolbar.running') : t('toolbar.run')}</span>
-        </button>
-        <button onClick={onOpenPreview}>
-          <Eye size={14} />
-          <span>{t('toolbar.preview')}</span>
+          <span className="toolbar-btn-label">{t('toolbar.workspace')}</span>
         </button>
         {pluginToolbarButtons.map((button) => (
           <button
@@ -147,7 +82,7 @@ export function AppToolbar({
             title={t('toolbar.plugin', { label: button.label })}
           >
             {renderPluginIcon(button.icon)}
-            <span>{button.label}</span>
+            <span className="toolbar-btn-label">{button.label}</span>
           </button>
         ))}
       </div>
@@ -155,17 +90,17 @@ export function AppToolbar({
       <div className="toolbar-spacer" />
 
       <div className="toolbar-meta">
-        <div className={`toolbar-chip ${isRunning || runtimeError ? 'toolbar-chip-running' : ''}`}>
+        <div className={`toolbar-chip ${isRunning || runtimeError ? 'toolbar-chip-running' : ''}`} title={runStatusText}>
           <Activity size={14} />
-          <span>{runStatusText}</span>
+          <span className="toolbar-chip-text">{runStatusText}</span>
         </div>
         <div
           className={`toolbar-chip ${fileLimit.tier === 'warn' ? 'toolbar-chip--warn' : ''} ${fileLimit.tier === 'full' ? 'toolbar-chip--danger' : ''}`}
           title={t('toolbar.fileCountHint', { current: fileLimit.current, max: fileLimit.max })}
         >
           <Save size={14} />
-          <span>
-            {t('toolbar.fileCount')} <strong>{fileLimit.current}</strong>
+          <span className="toolbar-chip-text">
+            <strong>{fileLimit.current}</strong>
             <span className="toolbar-chip-muted"> / {fileLimit.max}</span>
           </span>
         </div>
@@ -174,6 +109,7 @@ export function AppToolbar({
       {currentUser ? (
         <button
           type="button"
+          className="toolbar-user-btn"
           onClick={async () => {
             const confirmed = await requestConfirm({
               title: t('toolbar.logoutTitle'),
@@ -187,45 +123,21 @@ export function AppToolbar({
             }
           }}
           title={currentUser.email}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 12px',
-            background: 'var(--bg-secondary)',
-            borderRadius: '10px',
-            color: 'var(--text-primary)',
-          }}
         >
           <User size={14} />
-          <span>{currentUser.name || currentUser.email.split('@')[0]}</span>
+          <span className="toolbar-btn-label">{currentUser.name || currentUser.email.split('@')[0]}</span>
         </button>
       ) : (
-        <button
-          type="button"
-          onClick={onOpenAuth}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 12px',
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '10px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            color: 'var(--text-primary)',
-          }}
-        >
+        <button type="button" className="toolbar-user-btn" onClick={onOpenAuth}>
           <User size={14} />
-          <span>{t('toolbar.login')}</span>
+          <span className="toolbar-btn-label">{t('toolbar.login')}</span>
         </button>
       )}
 
-      {currentPlan !== 'enterprise' && (
+      {currentPlan !== 'enterprise' ? (
         <button type="button" onClick={onOpenSubscription} className="toolbar-upgrade-btn">
           <Zap size={14} />
-          <span>
+          <span className="toolbar-btn-label">
             {!currentUser
               ? t('toolbar.plans.guest')
               : currentPlan === 'free'
@@ -233,11 +145,10 @@ export function AppToolbar({
                 : t('toolbar.plans.team')}
           </span>
         </button>
-      )}
+      ) : null}
 
-      <button type="button" onClick={onOpenCommandPalette}>
+      <button type="button" onClick={onOpenCommandPalette} className="toolbar-cmd-btn" title={t('toolbar.commandPalette')}>
         <Command size={14} />
-        <span>{t('toolbar.commandPalette')}</span>
         <kbd className="toolbar-kbd">Ctrl+Shift+P</kbd>
       </button>
 
@@ -249,9 +160,9 @@ export function AppToolbar({
         <SettingsIcon size={18} />
       </button>
 
-      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>
+      <span className="toolbar-version">
         {`v${(import.meta.env.VITE_APP_VERSION as string | undefined)?.trim() || 'dev'}`}
       </span>
-    </div>
+    </header>
   )
 }

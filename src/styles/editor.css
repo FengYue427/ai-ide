@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: color-mix(in srgb, var(--bg-primary) 94%, transparent);
+  background: var(--editor-surface);
 }
 
 .runtime-alert {
@@ -85,36 +85,48 @@
   font-weight: 700;
 }
 
+.editor-chrome {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 8px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
 .tabs {
   display: flex;
   align-items: stretch;
-  gap: 6px;
-  padding: 10px 12px 0;
-  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
-  border-bottom: 1px solid var(--border-color);
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
 }
 
 .tab {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  font-size: 13px;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
   min-width: 0;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 12px 12px 0 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   cursor: pointer;
   color: var(--text-secondary);
   background: transparent;
 }
 
 .tab.active {
-  background: var(--bg-primary);
-  border-color: var(--border-color);
   color: var(--text-primary);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+  border-bottom-color: var(--accent-color);
+  background: color-mix(in srgb, var(--editor-surface) 40%, transparent);
+}
+
+.tab--git-diff.active {
+  border-bottom-color: var(--warning-color);
 }
 
 .tab-label {
@@ -137,10 +149,65 @@
   background: var(--bg-tertiary);
 }
 
+.editor-chrome-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-bottom: 4px;
+}
+
+.editor-chrome-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.editor-chrome-actions button:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.editor-chrome-actions button span {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .editor-chrome-actions button span {
+    display: inline;
+  }
+}
+
+.editor-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--editor-surface);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.editor-breadcrumb span:not(:last-child)::after {
+  content: '·';
+  margin-left: 10px;
+  color: var(--border-strong);
+}
+
 .monaco-wrapper {
   flex: 1;
   overflow: hidden;
-  border-top: 1px solid rgba(255, 255, 255, 0.02);
+  background: var(--editor-surface);
 }
 
 .editor-skeleton {
@@ -150,7 +217,7 @@
   display: grid;
   grid-template-columns: 56px 1fr;
   overflow: hidden;
-  background: #1e1e1e;
+  background: var(--editor-surface);
 }
 
 .editor-skeleton-light {
@@ -249,16 +316,6 @@
   to {
     transform: rotate(360deg);
   }
-}
-
-.editor-info-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border-color);
-  background: color-mix(in srgb, var(--bg-secondary) 84%, transparent);
 }
 
 .git-diff-truncated-banner {

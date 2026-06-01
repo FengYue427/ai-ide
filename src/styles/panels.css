@@ -1,12 +1,31 @@
 .right-panel {
-  width: 320px;
   height: 100%;
-  background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+  background: var(--bg-secondary);
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
+}
+
+.right-panel--git {
+  width: var(--right-panel-width-git);
+}
+
+.right-panel--chat {
+  width: var(--right-panel-width-chat);
+}
+
+.right-panel--chat-wide {
+  width: var(--right-panel-width-chat-wide);
+}
+
+.right-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-header {
@@ -23,7 +42,7 @@
 }
 
 .panel-header-strong {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+  background: var(--bg-secondary);
 }
 
 .status-pill {

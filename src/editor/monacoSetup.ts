@@ -15,9 +15,48 @@ import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 
 let configured = false
+let themesRegistered = false
+
+function registerMonacoThemes() {
+  if (themesRegistered) return
+  monaco.editor.defineTheme('ai-ide-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': '#0b1020',
+      'editorGutter.background': '#0b1020',
+      'editor.lineHighlightBackground': '#121a2b',
+      'editorWidget.background': '#121a2b',
+      'editor.selectionBackground': '#33426188',
+      'minimap.background': '#0b1020',
+    },
+  })
+  monaco.editor.defineTheme('ai-ide-light', {
+    base: 'vs',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': '#f5f7fb',
+      'editorGutter.background': '#f5f7fb',
+      'editor.lineHighlightBackground': '#eef2f9',
+      'editorWidget.background': '#ffffff',
+      'minimap.background': '#f5f7fb',
+    },
+  })
+  themesRegistered = true
+}
+
+export type AppEditorTheme = 'vs-dark' | 'light'
+
+export function resolveMonacoTheme(appTheme: AppEditorTheme): string {
+  registerMonacoThemes()
+  return appTheme === 'light' ? 'ai-ide-light' : 'ai-ide-dark'
+}
 
 export function configureMonaco() {
   if (configured) return
+  registerMonacoThemes()
 
   ;(globalThis as typeof globalThis & {
     MonacoEnvironment?: {

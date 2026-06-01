@@ -30,6 +30,15 @@
   --gradient-brand: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #0ea5e9 100%);
   --alipay-blue: #1677ff;
   --wechat-green: #07c160;
+  /* Layout */
+  --editor-surface: #0b1020;
+  --activity-bar-width: 48px;
+  --sidebar-width: 260px;
+  --search-panel-width: 320px;
+  --right-panel-width-chat: 360px;
+  --right-panel-width-chat-wide: 400px;
+  --right-panel-width-git: 380px;
+  --toolbar-height: 48px;
 }
 
 .app.light-theme {
@@ -50,4 +59,5 @@
   --shadow-panel: 0 24px 80px rgba(56, 73, 104, 0.16);
   --alipay-blue: #1677ff;
   --wechat-green: #07c160;
+  --editor-surface: #f5f7fb;
 }

@@ -5,7 +5,7 @@
 }
 
 .sidebar {
-  width: 280px;
+  width: var(--sidebar-width);
   background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
   border-right: 1px solid var(--border-color);
   display: flex;

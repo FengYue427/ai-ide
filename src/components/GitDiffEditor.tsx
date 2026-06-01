@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
-import { configureMonaco } from '../editor/monacoSetup'
+import { configureMonaco, resolveMonacoTheme, type AppEditorTheme } from '../editor/monacoSetup'
 import { SkeletonLoader } from './SkeletonLoader'
 import type { GitDiffRenderLayout } from '../lib/gitDiffLayout'
 
@@ -8,7 +8,7 @@ interface GitDiffEditorProps {
   original: string
   modified: string
   language: string
-  theme?: 'vs-dark' | 'light'
+  theme?: AppEditorTheme
   layout?: GitDiffRenderLayout
 }
 
@@ -36,7 +36,7 @@ export const GitDiffEditor: React.FC<GitDiffEditorProps> = ({
         language={language}
         original={original}
         modified={modified}
-        theme={theme}
+        theme={resolveMonacoTheme(theme)}
         onMount={() => setIsLoading(false)}
         options={{
           readOnly: true,

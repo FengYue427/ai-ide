@@ -149,7 +149,28 @@
   border-bottom: 1px solid var(--border-color);
   display: grid;
   gap: 10px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+  background: var(--bg-secondary);
+}
+
+.chat-panel--embedded .chat-panel-header {
+  padding: 10px 12px;
+  gap: 8px;
+  border-bottom: none;
+}
+
+.chat-panel--embedded .chat-session-card {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.chat-panel--embedded .chat-session-card--compact .chat-chips {
+  margin-top: 0;
+}
+
+.chat-panel--embedded .chat-toolbar-row {
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .chat-session-card {

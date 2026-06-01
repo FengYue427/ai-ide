@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { FeedbackCenter } from '../components/FeedbackCenter'
 import { PluginModal } from '../components/PluginModal'
 import { useBillingReturn } from '../hooks/useBillingReturn'
@@ -33,6 +33,7 @@ import {
   listTaskFileGroups,
 } from '../lib/projectTasksNavigation'
 import { workspaceContextService } from '../services/workspaceContextService'
+import { ActivityBar } from './ActivityBar'
 import { AppToolbar } from './AppToolbar'
 import { EditorLayout } from './EditorLayout'
 import { FileSidebar } from './FileSidebar'
@@ -260,6 +261,8 @@ export function AppShell() {
     onFormat: () => requestFormatDocument(),
   })
 
+  const [showFileSidebar, setShowFileSidebar] = useState(true)
+
   const runStatusText = runtimeError
     ? t('runtime.status.error')
     : debugSessionPhase === 'paused'
@@ -277,18 +280,10 @@ export function AppShell() {
   return (
     <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
       <AppToolbar
-        isReady={isReady}
         isRunning={runtimeBusy}
         runtimeError={runtimeError}
         runStatusText={runStatusText}
-        onRunCode={handleRunCode}
-        onOpenNewFile={ui.openNewFileInput}
-        onOpenSearch={ui.openSearchPanel}
-        onOpenChat={ui.openChatPanel}
-        onOpenBackgroundJobs={ui.openBackgroundJobsPanel}
         onOpenWorkspace={ui.openWorkspaceManagerModal}
-        onToggleGit={ui.toggleGitPanel}
-        onOpenPreview={ui.openPreviewPanel}
         onOpenCommandPalette={ui.openCommandPalette}
         onOpenSettings={ui.openSettingsPanel}
         onOpenWelcome={ui.openWelcomeScreen}
@@ -298,25 +293,42 @@ export function AppShell() {
         notify={notify}
       />
 
-      <div className="workspace">
-        <FileSidebar
-          onCreateFile={handleCreateFile}
-          onDeleteFile={handleDeleteFile}
-          onOpenDropZone={ui.openDropZone}
+      <div className="workspace-body">
+        <ActivityBar
+          showFileSidebar={showFileSidebar}
+          onToggleFileSidebar={() => setShowFileSidebar((v) => !v)}
+          onOpenSearch={ui.openSearchPanel}
+          onOpenChat={ui.openChatPanel}
+          onOpenBackgroundJobs={ui.openBackgroundJobsPanel}
+          onToggleGit={ui.toggleGitPanel}
+          onRunCode={handleRunCode}
+          onOpenPreview={ui.openPreviewPanel}
+          isRunning={runtimeBusy}
+          isReady={isReady}
         />
 
-        {showSearchPanel && (
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '320px', zIndex: 100 }}>
-            <SearchPanel
-              files={files}
-              onNavigate={handleSearchNavigate}
-              onReplace={handleSearchReplace}
-              onClose={() => setShowSearchPanel(false)}
+        <div className={`workspace-main ${showFileSidebar ? '' : 'workspace-main--no-sidebar'}`}>
+          {showFileSidebar ? (
+            <FileSidebar
+              onCreateFile={handleCreateFile}
+              onDeleteFile={handleDeleteFile}
+              onOpenDropZone={ui.openDropZone}
             />
-          </div>
-        )}
+          ) : null}
 
-        <EditorLayout
+          {showSearchPanel ? (
+            <div className="search-overlay">
+              <SearchPanel
+                files={files}
+                onNavigate={handleSearchNavigate}
+                onReplace={handleSearchReplace}
+                onClose={() => setShowSearchPanel(false)}
+              />
+            </div>
+          ) : null}
+
+          <div className="workspace">
+            <EditorLayout
           isReady={isReady}
           isRuntimeLoading={isRuntimeLoading}
           isRunning={runtimeBusy}
@@ -406,14 +418,16 @@ export function AppShell() {
           notify={notify}
         />
 
-        <RightPanel
-          fs={fs}
-          notify={notify}
-          onCloseGit={ui.closeGitPanel}
-          onCloseChat={ui.closeChatPanel}
-          onOpenAuth={ui.openAuthDialog}
-          onOpenSubscription={ui.openSubscriptionDialog}
-        />
+            <RightPanel
+              fs={fs}
+              notify={notify}
+              onCloseGit={ui.closeGitPanel}
+              onCloseChat={ui.closeChatPanel}
+              onOpenAuth={ui.openAuthDialog}
+              onOpenSubscription={ui.openSubscriptionDialog}
+            />
+          </div>
+        </div>
       </div>
 
       <PanelHost

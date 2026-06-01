@@ -151,9 +151,17 @@ interface ChatPanelProps {
   currentCode: string
   onGenerateFiles?: (files: { name: string; content: string; language: string }[]) => void
   notify?: (kind: ToastKind, title: string, detail?: string) => void
+  /** When true, hides duplicate session title (right rail already has a header). */
+  embeddedInRightPanel?: boolean
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ aiConfig, currentCode, onGenerateFiles, notify }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({
+  aiConfig,
+  currentCode,
+  onGenerateFiles,
+  notify,
+  embeddedInRightPanel = false,
+}) => {
   const { t, language } = useI18n()
   const currentPlan = useIDEStore((s) => s.currentPlan)
 
@@ -1528,13 +1536,17 @@ ${t('ai.chat.prompt')}`
   }
 
   return (
-    <div className={`chat-container chat-panel chat-panel--v2 ${mounted ? 'chat-panel--mounted' : ''}`}>
+    <div
+      className={`chat-container chat-panel chat-panel--v2 ${embeddedInRightPanel ? 'chat-panel--embedded' : ''} ${mounted ? 'chat-panel--mounted' : ''}`}
+    >
       <div className="chat-panel-header">
-        <div className="chat-session-card">
-          <div className="chat-session-card__title">
-            <Bot size={16} color="var(--accent-color)" />
-            <strong>{t('chat.sessionTitle')}</strong>
-          </div>
+        <div className={`chat-session-card ${embeddedInRightPanel ? 'chat-session-card--compact' : ''}`}>
+          {!embeddedInRightPanel ? (
+            <div className="chat-session-card__title">
+              <Bot size={16} color="var(--accent-color)" />
+              <strong>{t('chat.sessionTitle')}</strong>
+            </div>
+          ) : null}
           <div className="chat-chips">
             <span className="chat-chip">{aiConfig.provider}</span>
             <span className="chat-chip">{aiConfig.model || t('chat.noModel')}</span>
