@@ -240,6 +240,20 @@ export const translations = {
     'settings.ai.platformReadyBadge': 'Chat / Agent / Tab 补全 / 插件可走平台网关',
     'settings.ai.platformNotConfigured': '部署未配置 PLATFORM_DEEPSEEK_API_KEY，平台模式暂不可用；可切换 BYOK 或联系管理员。',
     'settings.ai.platformUnreachable': '无法连接 /api/health，请检查网络或稍后重试。',
+    'settings.ai.usageDashboardTitle': '平台 AI 用量',
+    'settings.ai.usageDashboardDesc':
+      '只读统计：平台网关请求、每日配额与估算成本（非正式账单）。BYOK 直连不计入「平台」柱。',
+    'settings.ai.usageDashboardLoading': '正在加载用量数据…',
+    'settings.ai.usageDashboardError': '无法加载用量仪表盘，请确认已登录且数据库可用。',
+    'settings.ai.usageDashboardRefresh': '刷新',
+    'settings.ai.usagePlatformToday': '今日平台请求',
+    'settings.ai.usageOtherToday': '今日其他（同步/BYOK）',
+    'settings.ai.usageCostToday': '今日估算成本',
+    'settings.ai.usageCostPeriod': '近 {days} 日估算成本',
+    'settings.ai.usageCostFootnote': '按约 ${rate}/次估算；近 {days} 日平台请求 {total} 次。仅供参考。',
+    'settings.ai.usageChartAria': '近七日 AI 请求柱状图',
+    'settings.ai.usageLegendPlatform': '平台网关',
+    'settings.ai.usageLegendOther': '其他',
     'settings.ai.privacy': '隐私说明',
     'settings.ai.privacyText':
       'API Key 保存在浏览器本地。除你选择的模型服务外，应用不会额外转发到其他第三方服务。',
@@ -2193,6 +2207,21 @@ export const translations = {
     'settings.ai.platformNotConfigured':
       'PLATFORM_DEEPSEEK_API_KEY is not set on the deployment. Platform mode is unavailable—use BYOK or ask your admin.',
     'settings.ai.platformUnreachable': 'Could not reach /api/health. Check your network and try again.',
+    'settings.ai.usageDashboardTitle': 'Platform AI usage',
+    'settings.ai.usageDashboardDesc':
+      'Read-only stats: platform gateway requests, daily quota, and estimated cost (not an invoice). BYOK direct calls are not counted as platform.',
+    'settings.ai.usageDashboardLoading': 'Loading usage data…',
+    'settings.ai.usageDashboardError': 'Could not load the usage dashboard. Sign in and ensure the database is available.',
+    'settings.ai.usageDashboardRefresh': 'Refresh',
+    'settings.ai.usagePlatformToday': 'Platform requests today',
+    'settings.ai.usageOtherToday': 'Other today (sync / BYOK)',
+    'settings.ai.usageCostToday': 'Est. cost today',
+    'settings.ai.usageCostPeriod': 'Est. cost ({days}d)',
+    'settings.ai.usageCostFootnote':
+      'About ${rate}/request estimate; {total} platform requests in the last {days} days. Informational only.',
+    'settings.ai.usageChartAria': 'Seven-day AI request bar chart',
+    'settings.ai.usageLegendPlatform': 'Platform gateway',
+    'settings.ai.usageLegendOther': 'Other',
     'settings.ai.privacy': 'Privacy',
     'settings.ai.privacyText':
       'API keys stay in your browser. We do not forward them to third parties beyond your chosen model provider.',

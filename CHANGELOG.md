@@ -7,6 +7,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **v1.2.3 F4 平台 AI 用量仪表盘**：`GET /api/usage/dashboard` · `ai_platform_request` 分类型统计 · 设置页 7 日柱状图与估算成本
 - **v1.2.3 F3 Tab 补全**：FIM → 平台 AI → 对话回退 · `inlineCompletionMetrics` 缓存/延迟统计 · 设置防抖与路径说明 · `EditorLayout` / suggest 支持平台 AI
 - **v1.2.3 F2 多根 + 虚拟文件树**：`npm run dev` 默认开启多根与虚拟列表（≥500 行）· 删除根清理 IndexedDB autosave · `clampActiveFileIndex` · 根元数据/ autosave 统一走 IndexedDB
 

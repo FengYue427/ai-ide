@@ -7,7 +7,7 @@ import {
   type ChatMessage,
 } from '../../aiGateway/forwardOpenAiChat'
 import { resolvePlatformAiRoute } from '../../aiGateway/platformConfig'
-import { consumeAiUsage } from '../../../billing/usageDb'
+import { AI_USAGE_PLATFORM_TYPE, consumeAiUsage } from '../../../billing/usageDb'
 import { jsonResponse } from '../../http'
 import { localizedErrorResponse } from '../../localizedError'
 import { resolveRateLimitOptions } from '../../rateLimit'
@@ -67,7 +67,9 @@ export async function POST(req: Request) {
       return localizedErrorResponse(req, 'api.ai.messagesRequired', 400)
     }
 
-    const usage = await consumeAiUsage(auth.user.id, 1)
+    const usage = await consumeAiUsage(auth.user.id, 1, {
+      usageType: AI_USAGE_PLATFORM_TYPE,
+    })
     if (!usage.ok) {
       trackServerEvent(req, 'ai.chat.quota_exceeded', {
         userId: auth.user.id,

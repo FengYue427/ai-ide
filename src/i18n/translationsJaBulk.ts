@@ -21,6 +21,21 @@ export const JA_JP_BULK_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'settings.ai.platformNotConfigured':
     'PLATFORM_DEEPSEEK_API_KEY が未設定です。プラットフォームモードは利用できません（BYOK に切替可）。',
   'settings.ai.platformUnreachable': '/api/health に接続できません。ネットワークを確認してください。',
+  'settings.ai.usageDashboardTitle': 'プラットフォーム AI 利用量',
+  'settings.ai.usageDashboardDesc':
+    '読み取り専用：ゲートウェイリクエスト、日次クォータ、概算コスト（請求書ではありません）。BYOK 直結は「プラットフォーム」に含まれません。',
+  'settings.ai.usageDashboardLoading': '利用量を読み込み中…',
+  'settings.ai.usageDashboardError': '利用量ダッシュボードを読み込めません。ログインと DB を確認してください。',
+  'settings.ai.usageDashboardRefresh': '更新',
+  'settings.ai.usagePlatformToday': '本日のプラットフォーム',
+  'settings.ai.usageOtherToday': '本日のその他（同期/BYOK）',
+  'settings.ai.usageCostToday': '本日の概算コスト',
+  'settings.ai.usageCostPeriod': '直近 {days} 日の概算',
+  'settings.ai.usageCostFootnote':
+    '約 ${rate}/回で概算。直近 {days} 日のプラットフォーム {total} 回。参考値です。',
+  'settings.ai.usageChartAria': '直近7日のリクエスト棒グラフ',
+  'settings.ai.usageLegendPlatform': 'プラットフォーム',
+  'settings.ai.usageLegendOther': 'その他',
   'plugin.hero.sdk2':
     'SDK 2.0: AI モードとデバッグ要約を読み取れます。マーケットの「SDK v2 状態」デモを試してください。',
   'plugin.sdkDoc': 'プラグイン SDK 2.0 ドキュメント',

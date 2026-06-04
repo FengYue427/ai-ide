@@ -2560,34 +2560,62 @@ async function resolveUserPlanNameTx(userId, db) {
 async function resolveUserPlanName(userId) {
   return resolveUserPlanNameTx(userId, prisma);
 }
-async function getAiUsageCountTodayTx(userId, db) {
-  const since = startOfUtcDay();
+async function sumUsageAmountTx(userId, db, types, since, until) {
   const aggregate = await db.usageRecord.aggregate({
     where: {
       userId,
-      type: AI_USAGE_TYPE,
-      createdAt: { gte: since }
+      type: { in: [...types] },
+      createdAt: until ? { gte: since, lt: until } : { gte: since }
     },
     _sum: { amount: true }
   });
   return aggregate._sum.amount ?? 0;
 }
+async function getAiUsageCountTodayTx(userId, db) {
+  return sumUsageAmountTx(userId, db, QUOTA_USAGE_TYPES, startOfUtcDay());
+}
+async function getUsageCountForDay(userId, types, dayOffsetFromToday) {
+  const now = /* @__PURE__ */ new Date();
+  const dayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dayOffsetFromToday)
+  );
+  const dayEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dayOffsetFromToday + 1)
+  );
+  return sumUsageAmountTx(userId, prisma, types, dayStart, dayEnd);
+}
+async function getAiUsageDailyBuckets(userId, dayCount = 7) {
+  const safeDays = Math.min(Math.max(1, Math.floor(dayCount)), 31);
+  const buckets2 = [];
+  for (let offset = safeDays - 1; offset >= 0; offset -= 1) {
+    const now = /* @__PURE__ */ new Date();
+    const dayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offset)
+    );
+    const date = dayStart.toISOString().slice(0, 10);
+    const platform = await getUsageCountForDay(userId, [AI_USAGE_PLATFORM_TYPE], offset);
+    const other = await getUsageCountForDay(userId, [AI_USAGE_TYPE], offset);
+    buckets2.push({ date, platform, other, total: platform + other });
+  }
+  return buckets2;
+}
 async function getAiUsageCountToday(userId) {
   return getAiUsageCountTodayTx(userId, prisma);
 }
-async function incrementAiUsage(userId, amount = 1) {
+async function incrementAiUsage(userId, amount = 1, usageType = AI_USAGE_TYPE) {
   await prisma.usageRecord.create({
     data: {
       userId,
-      type: AI_USAGE_TYPE,
+      type: usageType,
       amount
     }
   });
   return getAiUsageCountToday(userId);
 }
-async function consumeAiUsage(userId, amount = 1) {
+async function consumeAiUsage(userId, amount = 1, options) {
+  const usageType = options?.usageType ?? AI_USAGE_TYPE;
   if (!prismaSupportsTransactions()) {
-    return consumeAiUsageSequential(userId, amount);
+    return consumeAiUsageSequential(userId, amount, usageType);
   }
   return prisma.$transaction(async (tx) => {
     const plan = await resolveUserPlanNameTx(userId, tx);
@@ -2599,7 +2627,7 @@ async function consumeAiUsage(userId, amount = 1) {
     await tx.usageRecord.create({
       data: {
         userId,
-        type: AI_USAGE_TYPE,
+        type: usageType,
         amount
       }
     });
@@ -2607,14 +2635,14 @@ async function consumeAiUsage(userId, amount = 1) {
     return { ok: true, quota: buildQuotaSnapshot(plan, newUsed) };
   });
 }
-async function consumeAiUsageSequential(userId, amount) {
+async function consumeAiUsageSequential(userId, amount, usageType) {
   const plan = await resolveUserPlanName(userId);
   const used = await getAiUsageCountToday(userId);
   const limit = getAiDailyLimit(plan);
   if (limit !== -1 && used + amount > limit) {
     return { ok: false, quota: buildQuotaSnapshot(plan, used) };
   }
-  const newUsed = await incrementAiUsage(userId, amount);
+  const newUsed = await incrementAiUsage(userId, amount, usageType);
   return { ok: true, quota: buildQuotaSnapshot(plan, newUsed) };
 }
 function buildQuotaSnapshot(planName, used) {
@@ -2636,7 +2664,7 @@ function buildQuotaSnapshot(planName, used) {
     plan: planName
   };
 }
-var AI_USAGE_TYPE;
+var AI_USAGE_TYPE, AI_USAGE_PLATFORM_TYPE, QUOTA_USAGE_TYPES;
 var init_usageDb = __esm({
   "lib/billing/usageDb.ts"() {
     "use strict";
@@ -2645,6 +2673,8 @@ var init_usageDb = __esm({
     init_plans();
     init_publicWelfare();
     AI_USAGE_TYPE = "ai_request";
+    AI_USAGE_PLATFORM_TYPE = "ai_platform_request";
+    QUOTA_USAGE_TYPES = [AI_USAGE_TYPE, AI_USAGE_PLATFORM_TYPE];
   }
 });
 
@@ -4049,6 +4079,88 @@ var init_ai = __esm({
   }
 });
 
+// lib/billing/platformUsageEstimate.ts
+function getPlatformCostPerRequestUsd() {
+  const raw = process.env.PLATFORM_AI_ESTIMATE_USD_PER_REQUEST;
+  if (!raw) return 2e-3;
+  const n = Number.parseFloat(raw);
+  return Number.isFinite(n) && n >= 0 ? n : 2e-3;
+}
+function estimatePlatformCostUsd(requestCount) {
+  const count = Math.max(0, Math.floor(requestCount));
+  const usd = count * getPlatformCostPerRequestUsd();
+  return Math.round(usd * 1e4) / 1e4;
+}
+var init_platformUsageEstimate = __esm({
+  "lib/billing/platformUsageEstimate.ts"() {
+    "use strict";
+  }
+});
+
+// lib/billing/usageDashboard.ts
+function buildPlatformUsageDashboard(params) {
+  const platformPeriodTotal = params.daily.reduce((sum, row) => sum + row.platform, 0);
+  return {
+    source: "server",
+    quota: params.quota,
+    platformToday: params.platformToday,
+    otherToday: params.otherToday,
+    costEstimateTodayUsd: estimatePlatformCostUsd(params.platformToday),
+    costPerRequestUsd: getPlatformCostPerRequestUsd(),
+    periodDays: params.periodDays,
+    daily: params.daily,
+    platformPeriodTotal,
+    costEstimatePeriodUsd: estimatePlatformCostUsd(platformPeriodTotal)
+  };
+}
+var init_usageDashboard = __esm({
+  "lib/billing/usageDashboard.ts"() {
+    "use strict";
+    init_platformUsageEstimate();
+  }
+});
+
+// lib/api/handlers/usage/dashboard.ts
+var dashboard_exports = {};
+__export(dashboard_exports, {
+  GET: () => GET13
+});
+async function GET13(req) {
+  try {
+    const auth = await requireAuth(req);
+    if (!auth.ok) return auth.response;
+    const plan = await resolveUserPlanName(auth.user.id);
+    const used = await getAiUsageCountToday(auth.user.id);
+    const platformToday = await getUsageCountForDay(auth.user.id, [AI_USAGE_PLATFORM_TYPE], 0);
+    const otherToday = await getUsageCountForDay(auth.user.id, [AI_USAGE_TYPE], 0);
+    const daily = await getAiUsageDailyBuckets(auth.user.id, DASHBOARD_DAYS);
+    return jsonResponse(
+      buildPlatformUsageDashboard({
+        quota: buildQuotaSnapshot(plan, used),
+        platformToday,
+        otherToday,
+        daily,
+        periodDays: DASHBOARD_DAYS
+      })
+    );
+  } catch (error) {
+    console.error("[Usage Dashboard GET] error:", error);
+    return localizedErrorResponse(req, "api.usage.readFailed", 500);
+  }
+}
+var DASHBOARD_DAYS;
+var init_dashboard = __esm({
+  "lib/api/handlers/usage/dashboard.ts"() {
+    "use strict";
+    init_http();
+    init_localizedError();
+    init_requireAuth();
+    init_usageDashboard();
+    init_usageDb();
+    DASHBOARD_DAYS = 7;
+  }
+});
+
 // lib/api/aiGateway/forwardOpenAiChat.ts
 async function forwardOpenAiChat(route, messages, options) {
   const stream = options?.stream !== false;
@@ -4178,7 +4290,9 @@ async function POST19(req) {
     if (!hasValidMessages(messages)) {
       return localizedErrorResponse(req, "api.ai.messagesRequired", 400);
     }
-    const usage = await consumeAiUsage(auth.user.id, 1);
+    const usage = await consumeAiUsage(auth.user.id, 1, {
+      usageType: AI_USAGE_PLATFORM_TYPE
+    });
     if (!usage.ok) {
       trackServerEvent(req, "ai.chat.quota_exceeded", {
         userId: auth.user.id,
@@ -4734,10 +4848,10 @@ var init_backgroundJobEntitlement = __esm({
 // lib/api/handlers/jobs/index.ts
 var jobs_exports = {};
 __export(jobs_exports, {
-  GET: () => GET13,
+  GET: () => GET14,
   POST: () => POST22
 });
-async function GET13(req) {
+async function GET14(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -5223,6 +5337,19 @@ var init_translations = __esm({
         "settings.ai.platformReadyBadge": "Chat / Agent / Tab \u8865\u5168 / \u63D2\u4EF6\u53EF\u8D70\u5E73\u53F0\u7F51\u5173",
         "settings.ai.platformNotConfigured": "\u90E8\u7F72\u672A\u914D\u7F6E PLATFORM_DEEPSEEK_API_KEY\uFF0C\u5E73\u53F0\u6A21\u5F0F\u6682\u4E0D\u53EF\u7528\uFF1B\u53EF\u5207\u6362 BYOK \u6216\u8054\u7CFB\u7BA1\u7406\u5458\u3002",
         "settings.ai.platformUnreachable": "\u65E0\u6CD5\u8FDE\u63A5 /api/health\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u6216\u7A0D\u540E\u91CD\u8BD5\u3002",
+        "settings.ai.usageDashboardTitle": "\u5E73\u53F0 AI \u7528\u91CF",
+        "settings.ai.usageDashboardDesc": "\u53EA\u8BFB\u7EDF\u8BA1\uFF1A\u5E73\u53F0\u7F51\u5173\u8BF7\u6C42\u3001\u6BCF\u65E5\u914D\u989D\u4E0E\u4F30\u7B97\u6210\u672C\uFF08\u975E\u6B63\u5F0F\u8D26\u5355\uFF09\u3002BYOK \u76F4\u8FDE\u4E0D\u8BA1\u5165\u300C\u5E73\u53F0\u300D\u67F1\u3002",
+        "settings.ai.usageDashboardLoading": "\u6B63\u5728\u52A0\u8F7D\u7528\u91CF\u6570\u636E\u2026",
+        "settings.ai.usageDashboardError": "\u65E0\u6CD5\u52A0\u8F7D\u7528\u91CF\u4EEA\u8868\u76D8\uFF0C\u8BF7\u786E\u8BA4\u5DF2\u767B\u5F55\u4E14\u6570\u636E\u5E93\u53EF\u7528\u3002",
+        "settings.ai.usageDashboardRefresh": "\u5237\u65B0",
+        "settings.ai.usagePlatformToday": "\u4ECA\u65E5\u5E73\u53F0\u8BF7\u6C42",
+        "settings.ai.usageOtherToday": "\u4ECA\u65E5\u5176\u4ED6\uFF08\u540C\u6B65/BYOK\uFF09",
+        "settings.ai.usageCostToday": "\u4ECA\u65E5\u4F30\u7B97\u6210\u672C",
+        "settings.ai.usageCostPeriod": "\u8FD1 {days} \u65E5\u4F30\u7B97\u6210\u672C",
+        "settings.ai.usageCostFootnote": "\u6309\u7EA6 ${rate}/\u6B21\u4F30\u7B97\uFF1B\u8FD1 {days} \u65E5\u5E73\u53F0\u8BF7\u6C42 {total} \u6B21\u3002\u4EC5\u4F9B\u53C2\u8003\u3002",
+        "settings.ai.usageChartAria": "\u8FD1\u4E03\u65E5 AI \u8BF7\u6C42\u67F1\u72B6\u56FE",
+        "settings.ai.usageLegendPlatform": "\u5E73\u53F0\u7F51\u5173",
+        "settings.ai.usageLegendOther": "\u5176\u4ED6",
         "settings.ai.privacy": "\u9690\u79C1\u8BF4\u660E",
         "settings.ai.privacyText": "API Key \u4FDD\u5B58\u5728\u6D4F\u89C8\u5668\u672C\u5730\u3002\u9664\u4F60\u9009\u62E9\u7684\u6A21\u578B\u670D\u52A1\u5916\uFF0C\u5E94\u7528\u4E0D\u4F1A\u989D\u5916\u8F6C\u53D1\u5230\u5176\u4ED6\u7B2C\u4E09\u65B9\u670D\u52A1\u3002",
         "settings.ai.privacyGuest": " \u767B\u5F55\u8D26\u53F7\u540E\u53EF\u540C\u6B65\u4E91\u7AEF\u914D\u989D\u7EDF\u8BA1\u3002",
@@ -5242,9 +5369,19 @@ var init_translations = __esm({
         "settings.formatOnSave.desc": "\u81EA\u52A8\u4FDD\u5B58\u524D\u683C\u5F0F\u5316\u5F53\u524D\u6587\u4EF6\uFF08\u534F\u4F5C\u53EA\u8BFB\u623F\u95F4\u4E2D\u8DF3\u8FC7\uFF09\u3002",
         "settings.formatOnSave.aria": "\u4FDD\u5B58\u65F6\u683C\u5F0F\u5316",
         "settings.tabCompletion.title": "Tab AI \u8865\u5168",
-        "settings.tabCompletion.desc": "\u5728\u7F16\u8F91\u5668\u4E2D\u901A\u8FC7 Tab / \u5185\u8054\u8865\u5168\u63D2\u5165 AI \u5EFA\u8BAE\uFF08\u9700 BYOK\uFF09\u3002DeepSeek \u4F18\u5148\u8D70 FIM \u63A5\u53E3\uFF0C\u5176\u4ED6\u6A21\u578B\u8D70\u5BF9\u8BDD\u56DE\u9000\u3002",
+        "settings.tabCompletion.desc": "\u5728\u7F16\u8F91\u5668\u4E2D\u901A\u8FC7 Tab / \u5185\u8054\u8865\u5168\u63D2\u5165 AI \u5EFA\u8BAE\u3002\u652F\u6301 BYOK\u3001\u5E73\u53F0 AI \u4E0E Ollama\uFF1BDeepSeek / Qwen / Ollama \u4F18\u5148 FIM\uFF0C\u5176\u4F59\u8D70\u5E73\u53F0\u6216\u5BF9\u8BDD\u56DE\u9000\u3002",
         "settings.tabCompletion.maxLines": "\u8865\u5168\u6700\u5927\u884C\u6570",
         "settings.tabCompletion.maxLinesDesc": "\u5355\u6B21\u8865\u5168\u6700\u591A\u63D2\u5165\u7684\u884C\u6570\uFF081\uFF5E12\uFF09\u3002",
+        "settings.tabCompletion.debounce": "\u89E6\u53D1\u5EF6\u8FDF\uFF08\u6BEB\u79D2\uFF09",
+        "settings.tabCompletion.debounceDesc": "\u505C\u6B62\u8F93\u5165\u540E\u7B49\u5F85\u591A\u4E45\u518D\u8BF7\u6C42\u8865\u5168\uFF08120\uFF5E800\uFF09\u3002",
+        "settings.tabCompletion.pathTitle": "\u5F53\u524D\u8865\u5168\u8DEF\u5F84",
+        "settings.tabCompletion.path.fim": "FIM \u4E13\u7528\u63A5\u53E3\uFF08\u4F4E\u5EF6\u8FDF\uFF0C\u4F18\u5148\uFF09",
+        "settings.tabCompletion.path.platform": "\u5E73\u53F0 AI\uFF08\u5DF2\u767B\u5F55 + \u5E73\u53F0\u5BC6\u94A5\u6A21\u5F0F\uFF09",
+        "settings.tabCompletion.path.chat": "\u5BF9\u8BDD\u56DE\u9000\uFF08BYOK \u975E FIM \u6A21\u578B\uFF09",
+        "settings.tabCompletion.path.off": "\u672A\u914D\u7F6E AI\uFF0C\u8865\u5168\u4E0D\u53EF\u7528",
+        "settings.tabCompletion.metricsTitle": "\u4F1A\u8BDD\u7EDF\u8BA1",
+        "settings.tabCompletion.metricsDesc": "\u7F13\u5B58\u547D\u4E2D {hits} \xB7 \u672A\u547D\u4E2D {misses} \xB7 FIM {fim} \xB7 \u5E73\u53F0 {platform} \xB7 \u5BF9\u8BDD {chat} \xB7 \u5E73\u5747\u5EF6\u8FDF {avgMs} ms \xB7 \u4E0A\u6B21\u8DEF\u5F84 {last}",
+        "settings.tabCompletion.metricsReset": "\u91CD\u7F6E\u7EDF\u8BA1",
         "settings.editorPrefs": "\u7F16\u8F91\u504F\u597D",
         "settings.editorPrefs.desc": "\u5F53\u524D\u7248\u672C\u5148\u4FDD\u7559\u7B80\u6D01\u8BBE\u7F6E\uFF0C\u628A\u6700\u5E38\u7528\u7684\u81EA\u52A8\u4FDD\u5B58\u3001\u4E3B\u9898\u548C\u8BED\u8A00\u6536\u5728\u4E00\u5904\u3002\u540E\u7EED\u9002\u5408\u7EE7\u7EED\u8865\u5145\u5B57\u4F53\u3001\u7F29\u8FDB\u4E0E\u683C\u5F0F\u5316\u7B56\u7565\u3002",
         "settings.features.noticeTitle": "\u80FD\u529B\u8BF4\u660E",
@@ -7136,6 +7273,19 @@ var init_translations = __esm({
         "settings.ai.platformReadyBadge": "Chat, Agent, tab completion, and plugins can use the platform gateway",
         "settings.ai.platformNotConfigured": "PLATFORM_DEEPSEEK_API_KEY is not set on the deployment. Platform mode is unavailable\u2014use BYOK or ask your admin.",
         "settings.ai.platformUnreachable": "Could not reach /api/health. Check your network and try again.",
+        "settings.ai.usageDashboardTitle": "Platform AI usage",
+        "settings.ai.usageDashboardDesc": "Read-only stats: platform gateway requests, daily quota, and estimated cost (not an invoice). BYOK direct calls are not counted as platform.",
+        "settings.ai.usageDashboardLoading": "Loading usage data\u2026",
+        "settings.ai.usageDashboardError": "Could not load the usage dashboard. Sign in and ensure the database is available.",
+        "settings.ai.usageDashboardRefresh": "Refresh",
+        "settings.ai.usagePlatformToday": "Platform requests today",
+        "settings.ai.usageOtherToday": "Other today (sync / BYOK)",
+        "settings.ai.usageCostToday": "Est. cost today",
+        "settings.ai.usageCostPeriod": "Est. cost ({days}d)",
+        "settings.ai.usageCostFootnote": "About ${rate}/request estimate; {total} platform requests in the last {days} days. Informational only.",
+        "settings.ai.usageChartAria": "Seven-day AI request bar chart",
+        "settings.ai.usageLegendPlatform": "Platform gateway",
+        "settings.ai.usageLegendOther": "Other",
         "settings.ai.privacy": "Privacy",
         "settings.ai.privacyText": "API keys stay in your browser. We do not forward them to third parties beyond your chosen model provider.",
         "settings.ai.privacyGuest": " Sign in to sync cloud quota usage.",
@@ -7155,9 +7305,19 @@ var init_translations = __esm({
         "settings.formatOnSave.desc": "Format the active file before autosave (skipped in read-only collab rooms).",
         "settings.formatOnSave.aria": "Format on save",
         "settings.tabCompletion.title": "Tab AI completion",
-        "settings.tabCompletion.desc": "Inline Tab completions in the editor (BYOK required). DeepSeek uses FIM API when available; others use chat fallback.",
+        "settings.tabCompletion.desc": "Inline Tab completions in the editor. Supports BYOK, platform AI, and Ollama; DeepSeek / Qwen / Ollama prefer FIM, others use platform or chat fallback.",
         "settings.tabCompletion.maxLines": "Max completion lines",
         "settings.tabCompletion.maxLinesDesc": "Maximum lines per suggestion (1\u201312).",
+        "settings.tabCompletion.debounce": "Trigger delay (ms)",
+        "settings.tabCompletion.debounceDesc": "Wait after you stop typing before requesting (120\u2013800).",
+        "settings.tabCompletion.pathTitle": "Active completion path",
+        "settings.tabCompletion.path.fim": "FIM API (low latency, preferred)",
+        "settings.tabCompletion.path.platform": "Platform AI (signed in + platform key mode)",
+        "settings.tabCompletion.path.chat": "Chat fallback (BYOK, non-FIM models)",
+        "settings.tabCompletion.path.off": "AI not configured; completions disabled",
+        "settings.tabCompletion.metricsTitle": "Session stats",
+        "settings.tabCompletion.metricsDesc": "Cache hits {hits} \xB7 misses {misses} \xB7 FIM {fim} \xB7 platform {platform} \xB7 chat {chat} \xB7 avg {avgMs} ms \xB7 last {last}",
+        "settings.tabCompletion.metricsReset": "Reset stats",
         "settings.editorPrefs": "Editor preferences",
         "settings.editorPrefs.desc": "Keeps settings minimal for now. Font, indent, and format options may come later.",
         "settings.features.noticeTitle": "Capability overview",
@@ -8842,6 +9002,19 @@ var init_translationsJaBulk = __esm({
       "settings.ai.platformReadyBadge": "Chat / Agent / Tab \u88DC\u5B8C / \u30D7\u30E9\u30B0\u30A4\u30F3\u304C\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u7D4C\u7531\u3067\u5229\u7528\u53EF\u80FD",
       "settings.ai.platformNotConfigured": "PLATFORM_DEEPSEEK_API_KEY \u304C\u672A\u8A2D\u5B9A\u3067\u3059\u3002\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u30E2\u30FC\u30C9\u306F\u5229\u7528\u3067\u304D\u307E\u305B\u3093\uFF08BYOK \u306B\u5207\u66FF\u53EF\uFF09\u3002",
       "settings.ai.platformUnreachable": "/api/health \u306B\u63A5\u7D9A\u3067\u304D\u307E\u305B\u3093\u3002\u30CD\u30C3\u30C8\u30EF\u30FC\u30AF\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      "settings.ai.usageDashboardTitle": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u5229\u7528\u91CF",
+      "settings.ai.usageDashboardDesc": "\u8AAD\u307F\u53D6\u308A\u5C02\u7528\uFF1A\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u30EA\u30AF\u30A8\u30B9\u30C8\u3001\u65E5\u6B21\u30AF\u30A9\u30FC\u30BF\u3001\u6982\u7B97\u30B3\u30B9\u30C8\uFF08\u8ACB\u6C42\u66F8\u3067\u306F\u3042\u308A\u307E\u305B\u3093\uFF09\u3002BYOK \u76F4\u7D50\u306F\u300C\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u300D\u306B\u542B\u307E\u308C\u307E\u305B\u3093\u3002",
+      "settings.ai.usageDashboardLoading": "\u5229\u7528\u91CF\u3092\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026",
+      "settings.ai.usageDashboardError": "\u5229\u7528\u91CF\u30C0\u30C3\u30B7\u30E5\u30DC\u30FC\u30C9\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3002\u30ED\u30B0\u30A4\u30F3\u3068 DB \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      "settings.ai.usageDashboardRefresh": "\u66F4\u65B0",
+      "settings.ai.usagePlatformToday": "\u672C\u65E5\u306E\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0",
+      "settings.ai.usageOtherToday": "\u672C\u65E5\u306E\u305D\u306E\u4ED6\uFF08\u540C\u671F/BYOK\uFF09",
+      "settings.ai.usageCostToday": "\u672C\u65E5\u306E\u6982\u7B97\u30B3\u30B9\u30C8",
+      "settings.ai.usageCostPeriod": "\u76F4\u8FD1 {days} \u65E5\u306E\u6982\u7B97",
+      "settings.ai.usageCostFootnote": "\u7D04 ${rate}/\u56DE\u3067\u6982\u7B97\u3002\u76F4\u8FD1 {days} \u65E5\u306E\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 {total} \u56DE\u3002\u53C2\u8003\u5024\u3067\u3059\u3002",
+      "settings.ai.usageChartAria": "\u76F4\u8FD17\u65E5\u306E\u30EA\u30AF\u30A8\u30B9\u30C8\u68D2\u30B0\u30E9\u30D5",
+      "settings.ai.usageLegendPlatform": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0",
+      "settings.ai.usageLegendOther": "\u305D\u306E\u4ED6",
       "plugin.hero.sdk2": "SDK 2.0: AI \u30E2\u30FC\u30C9\u3068\u30C7\u30D0\u30C3\u30B0\u8981\u7D04\u3092\u8AAD\u307F\u53D6\u308C\u307E\u3059\u3002\u30DE\u30FC\u30B1\u30C3\u30C8\u306E\u300CSDK v2 \u72B6\u614B\u300D\u30C7\u30E2\u3092\u8A66\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       "plugin.sdkDoc": "\u30D7\u30E9\u30B0\u30A4\u30F3 SDK 2.0 \u30C9\u30AD\u30E5\u30E1\u30F3\u30C8",
       "settings.ai.endpoint": "Local endpoint",
@@ -8884,9 +9057,19 @@ var init_translationsJaBulk = __esm({
       "settings.section.current": "Section",
       "settings.semantic.onboarding.enableHint": "After enabling semantic search, @ and semantic retrieval can inject relevant \u30B3\u30FC\u30C9 snippets. \u30A4\u30F3\u30DD\u30FC\u30C8 your \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 first and wait for indexing to finish.",
       "settings.semantic.onboarding.needKey": "\u30BB\u30DE\u30F3\u30C6\u30A3\u30C3\u30AF search requires an Embedding API key (not Ollama). Fill it in your AI config, then enable the switch.",
-      "settings.tabCompletion.desc": "Inline Tab completions in the editor (BYOK required). DeepSeek uses FIM API when available; others use \u30C1\u30E3\u30C3\u30C8 fallback.",
+      "settings.tabCompletion.desc": "Inline Tab completions in the editor. BYOK, platform AI, and Ollama supported; FIM preferred for DeepSeek / Qwen / Ollama.",
       "settings.tabCompletion.maxLines": "Max completion lines",
       "settings.tabCompletion.maxLinesDesc": "Maximum lines per suggestion (1\u201312).",
+      "settings.tabCompletion.debounce": "Trigger delay (ms)",
+      "settings.tabCompletion.debounceDesc": "Wait after typing stops (120\u2013800).",
+      "settings.tabCompletion.pathTitle": "Active completion path",
+      "settings.tabCompletion.path.fim": "FIM API (preferred)",
+      "settings.tabCompletion.path.platform": "Platform AI",
+      "settings.tabCompletion.path.chat": "Chat fallback",
+      "settings.tabCompletion.path.off": "AI not configured",
+      "settings.tabCompletion.metricsTitle": "Session stats",
+      "settings.tabCompletion.metricsDesc": "Hits {hits} \xB7 misses {misses} \xB7 FIM {fim} \xB7 platform {platform} \xB7 chat {chat} \xB7 avg {avgMs} ms \xB7 last {last}",
+      "settings.tabCompletion.metricsReset": "Reset stats",
       "subscription.betaNote": "Public beta: Pro and Team features are \u7121\u6599. Paid checkout will open here when billing goes live.",
       "subscription.cancelEnd": "\u30AD\u30E3\u30F3\u30BB\u30EB at period end",
       "subscription.cancelFailed": "Could not cancel \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3",
@@ -9912,6 +10095,10 @@ var init_storageService = __esm({
         const db = await getDB();
         return db.get("settings", key);
       },
+      async deleteSetting(key) {
+        const db = await getDB();
+        await db.delete("settings", key);
+      },
       // 导出项目为 ZIP
       async exportToZip(projectId) {
         const project = await this.getProject(projectId);
@@ -10199,7 +10386,7 @@ var init_unifiedStorage = __esm({
           const projectId = key.replace("project:", "");
           await storageService.deleteProject(projectId);
         } else {
-          await storageService.getAllProjects();
+          await storageService.deleteSetting(key);
         }
         return true;
       },
@@ -11897,7 +12084,7 @@ var init_backgroundJobProcessor = __esm({
 // lib/api/handlers/jobs/process.ts
 var process_exports = {};
 __export(process_exports, {
-  GET: () => GET14,
+  GET: () => GET15,
   POST: () => POST24
 });
 async function runProcess(request) {
@@ -11917,7 +12104,7 @@ async function runProcess(request) {
     return localizedErrorResponse(request, "api.job.processFailed", 500);
   }
 }
-async function GET14(request) {
+async function GET15(request) {
   return runProcess(request);
 }
 async function POST24(request) {
@@ -11974,9 +12161,9 @@ var init_cancel2 = __esm({
 // lib/api/handlers/jobs/byId.ts
 var byId_exports2 = {};
 __export(byId_exports2, {
-  GET: () => GET15
+  GET: () => GET16
 });
-async function GET15(req, ctx) {
+async function GET16(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -12004,10 +12191,10 @@ var init_byId2 = __esm({
 var byId_exports3 = {};
 __export(byId_exports3, {
   DELETE: () => DELETE,
-  GET: () => GET16,
+  GET: () => GET17,
   PUT: () => PUT
 });
-async function GET16(req, ctx) {
+async function GET17(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -12370,10 +12557,10 @@ var init_collaborationRoomsService = __esm({
 // lib/api/handlers/collab/rooms/index.ts
 var rooms_exports = {};
 __export(rooms_exports, {
-  GET: () => GET17,
+  GET: () => GET18,
   POST: () => POST26
 });
-async function GET17(req) {
+async function GET18(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -12434,10 +12621,10 @@ var init_rooms = __esm({
 // lib/api/handlers/collab/rooms/byCode.ts
 var byCode_exports = {};
 __export(byCode_exports, {
-  GET: () => GET18,
+  GET: () => GET19,
   POST: () => POST27
 });
-async function GET18(req, ctx) {
+async function GET19(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const code = ctx?.params?.code?.trim().toLowerCase();
@@ -12675,10 +12862,10 @@ var init_kick = __esm({
 // lib/api/handlers/auth/authCatchAll.ts
 var authCatchAll_exports = {};
 __export(authCatchAll_exports, {
-  GET: () => GET19
+  GET: () => GET20
 });
 import { randomBytes as randomBytes3 } from "crypto";
-async function GET19(req) {
+async function GET20(req) {
   const url = new URL(req.url);
   const pathname = url.pathname;
   if (pathname.includes("providers")) {
@@ -12828,6 +13015,12 @@ var routes = [
   },
   { method: "GET", match: (p) => p === "/api/usage/ai" ? {} : null, load: () => Promise.resolve().then(() => (init_ai(), ai_exports)), export: "GET" },
   { method: "POST", match: (p) => p === "/api/usage/ai" ? {} : null, load: () => Promise.resolve().then(() => (init_ai(), ai_exports)), export: "POST" },
+  {
+    method: "GET",
+    match: (p) => p === "/api/usage/dashboard" ? {} : null,
+    load: () => Promise.resolve().then(() => (init_dashboard(), dashboard_exports)),
+    export: "GET"
+  },
   { method: "POST", match: (p) => p === "/api/ai/chat" ? {} : null, load: () => Promise.resolve().then(() => (init_chat(), chat_exports)), export: "POST" },
   { method: "POST", match: (p) => p === "/api/mcp/proxy" ? {} : null, load: () => Promise.resolve().then(() => (init_proxy(), proxy_exports)), export: "POST" },
   {
@@ -13076,7 +13269,7 @@ async function handle(request) {
     );
   }
 }
-var GET20 = handle;
+var GET21 = handle;
 var POST30 = handle;
 var PUT2 = handle;
 var DELETE2 = handle;
@@ -13084,7 +13277,7 @@ var PATCH2 = handle;
 var OPTIONS = handle;
 export {
   DELETE2 as DELETE,
-  GET20 as GET,
+  GET21 as GET,
   OPTIONS,
   PATCH2 as PATCH,
   POST30 as POST,

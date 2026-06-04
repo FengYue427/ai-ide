@@ -8,6 +8,7 @@ import { PlansSection } from './PlansSection'
 import { ReportsSection } from './ReportsSection'
 import { PlanOverviewSection } from './PlanOverviewSection'
 import { McpToolsBrowser } from './McpToolsBrowser'
+import { PlatformAiUsageDashboard } from './PlatformAiUsageDashboard'
 import { QuotaIndicator } from './ui/QuotaIndicator'
 import { Toggle } from './ui/Toggle'
 import {
@@ -55,6 +56,7 @@ import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
 import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
+import { usePlatformUsageDashboard } from '../hooks/usePlatformUsageDashboard'
 import { useIDEStore, type AIConfigState, type AiKeyMode } from '../store/ideStore'
 import type { ProjectTaskItem } from '../services/projectTasksService'
 import type { PlanCatalogItem } from '../services/planCatalogService'
@@ -216,6 +218,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   const [tabMetricsTick, setTabMetricsTick] = useState(0)
   const aiGatewayEnabled = isAiGatewayEnabled()
   const platformAiHealth = usePlatformAiHealth(aiGatewayEnabled && activeTab === 'ai')
+  const showPlatformUsageDashboard = aiGatewayEnabled && Boolean(currentUser) && activeTab === 'ai'
+  const platformUsageDashboard = usePlatformUsageDashboard(showPlatformUsageDashboard)
 
   const tabs = useMemo(
     () =>
@@ -415,6 +419,33 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
             {activeTab === 'ai' && (
               <>
                 <QuotaIndicator quota={quota} showPlan compact={false} />
+
+                {showPlatformUsageDashboard && platformUsageDashboard.state.status === 'ready' ? (
+                  <PlatformAiUsageDashboard
+                    data={platformUsageDashboard.state.data}
+                    onRefresh={platformUsageDashboard.refresh}
+                    refreshing={platformUsageDashboard.refreshing}
+                  />
+                ) : null}
+
+                {showPlatformUsageDashboard && platformUsageDashboard.state.status === 'loading' ? (
+                  <div className="settings-card settings-card--grid" data-testid="platform-usage-dashboard-loading">
+                    <p className="settings-privacy-text">{t('settings.ai.usageDashboardLoading')}</p>
+                  </div>
+                ) : null}
+
+                {showPlatformUsageDashboard && platformUsageDashboard.state.status === 'error' ? (
+                  <div className="settings-card settings-card--row" data-testid="platform-usage-dashboard-error">
+                    <p className="settings-privacy-text">{t('settings.ai.usageDashboardError')}</p>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={platformUsageDashboard.refresh}
+                    >
+                      {t('settings.ai.usageDashboardRefresh')}
+                    </button>
+                  </div>
+                ) : null}
 
                 {aiGatewayEnabled ? (
                   <div className="settings-card" data-testid="settings-platform-ai-health">
