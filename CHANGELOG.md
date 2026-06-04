@@ -5,11 +5,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [1.2.4] — 2026-06-04 · Agent/索引/E2E
+
 ### Added
 
-- **v1.2.4 F3 全栈 E2E**：`fullstack-helpers` · API session 冒烟 · 云端工作区列表断言 · serial/workers:1
-- **v1.2.4 F2 Agent 上下文**：聊天区 payload 预算条 · `@` 预检（未解析/超限/重名）· 大仓索引 capped 提示
 - **v1.2.4 F1 转到引用**：`goToReferences` · 命令面板 Shift+F12 · 引用 Provider 并入 `languageServiceHost` · 大纲作用域前缀与缩进
+- **v1.2.4 F2 Agent 上下文**：聊天区 payload 预算条 · `@` 预检（未解析/超限/重名）· 大仓索引 capped 提示
+- **v1.2.4 F3 全栈 E2E**：`fullstack-helpers` · API session 冒烟 · 云端工作区列表断言 · serial/workers:1
+
+### Docs
+
+- [RELEASE_NOTES_v1.2.4.md](docs/RELEASE_NOTES_v1.2.4.md) · [V1.2.4_KICKOFF.md](docs/V1.2.4_KICKOFF.md) · F1–F3 阶段文档
+
+See [RELEASE_NOTES_v1.2.4.md](docs/RELEASE_NOTES_v1.2.4.md).
 
 ---
 

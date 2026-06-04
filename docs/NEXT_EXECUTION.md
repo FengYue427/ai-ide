@@ -1,6 +1,6 @@
 # 当前执行入口
 
-> **更新**：2026-06-04 — **宣传/上架搁置** · 工程线 **v1.2.4 Agent/索引**
+> **更新**：2026-06-04 — **宣传/上架搁置** · 工程线 **v1.2.5 质量/生态**
 
 ---
 
@@ -19,32 +19,31 @@
 | **v1.2.0** | ✅ GA（功能开关默认关） | [RELEASE_NOTES_v1.2.0.md](./RELEASE_NOTES_v1.2.0.md) |
 | **v1.2.2** | ✅ Workbench Shell | [RELEASE_NOTES_v1.2.2.md](./RELEASE_NOTES_v1.2.2.md) |
 | **v1.2.3** | ✅ 产品深度 | [RELEASE_NOTES_v1.2.3.md](./RELEASE_NOTES_v1.2.3.md) |
-| **v1.2.4** | ✅ Agent/索引/E2E | [V1.2.4_KICKOFF.md](./V1.2.4_KICKOFF.md) |
+| **v1.2.4** | ✅ Agent/索引/E2E | [RELEASE_NOTES_v1.2.4.md](./RELEASE_NOTES_v1.2.4.md) |
+| **v1.2.5** | 🔄 **质量/生态** | [V1.2.5_KICKOFF.md](./V1.2.5_KICKOFF.md) |
 
 ---
 
-## 当前迭代：v1.2.4 收口
+## 当前迭代：v1.2.5 F1 UI E2E 扩展
 
-1. [V1.2.4_KICKOFF.md](./V1.2.4_KICKOFF.md)
-2. **F1** ✅ [转到引用 · 符号大纲](./V1.2.4_F1_REFERENCES.md)
-3. **F2** ✅ [Agent 上下文](./V1.2.4_F2_AGENT_CONTEXT.md)
-4. **F3** ✅ [全栈 E2E](./V1.2.4_F3_FULLSTACK_E2E.md)
+1. [V1.2.5_KICKOFF.md](./V1.2.5_KICKOFF.md)
+2. **F1** 📋 命令面板 · 引用/大纲 smoke
+3. **F2** 📋 插件市场可信 E2E
+4. **F3** 📋 1.2.x patch 热修对齐
 
-**门禁**：`npm run test:local` · `npm run test:e2e:stack` · `npm run test:e2e` 全绿
+**门禁**：`npm run test:local` · `npm run test:e2e` · `npm run test:e2e:stack`
 
 ---
 
-## v1.2.3 交付（已完成）
+## v1.2.4 交付（已完成）
 
-见 [RELEASE_NOTES_v1.2.3.md](./RELEASE_NOTES_v1.2.3.md) · [V1.2.3_KICKOFF.md](./V1.2.3_KICKOFF.md)
+见 [RELEASE_NOTES_v1.2.4.md](./RELEASE_NOTES_v1.2.4.md) · [V1.2.4_KICKOFF.md](./V1.2.4_KICKOFF.md)
 
 | 阶段 | 文档 |
 |------|------|
-| F1 | 转到定义 · LSP host |
-| F2 | [V1.2.3_F2_MULTI_ROOT.md](./V1.2.3_F2_MULTI_ROOT.md) |
-| F3 | [V1.2.3_F3_TAB_COMPLETION.md](./V1.2.3_F3_TAB_COMPLETION.md) |
-| F4 | [V1.2.3_F4_PLATFORM_USAGE.md](./V1.2.3_F4_PLATFORM_USAGE.md) |
-| F5 | [V1.2.3_F5_COLLAB_E2E.md](./V1.2.3_F5_COLLAB_E2E.md) |
+| F1 | [V1.2.4_F1_REFERENCES.md](./V1.2.4_F1_REFERENCES.md) |
+| F2 | [V1.2.4_F2_AGENT_CONTEXT.md](./V1.2.4_F2_AGENT_CONTEXT.md) |
+| F3 | [V1.2.4_F3_FULLSTACK_E2E.md](./V1.2.4_F3_FULLSTACK_E2E.md) |
 
 ---
 

@@ -1,18 +1,18 @@
 # 对外发布素材
 
-> **当前版本基线**：**v1.2.3**（产品深度：LSP/多根/Tab/平台用量/Collab）  
-> **事实来源**：`package.json` + `CHANGELOG.md` + [RELEASE_NOTES_v1.2.3.md](../RELEASE_NOTES_v1.2.3.md)
+> **当前版本基线**：**v1.2.4**（转到引用、Agent 上下文预算、全栈 E2E）  
+> **事实来源**：`package.json` + `CHANGELOG.md` + [RELEASE_NOTES_v1.2.4.md](../RELEASE_NOTES_v1.2.4.md)
 
-## 对外一句话（v1.2.3）
+## 对外一句话（v1.2.4）
 
-**开源、浏览器里的 AI 原生 IDE：免 Key Chat/Agent，Tab 补全与平台用量可见，多根工作区与协作 E2E 加固。**
+**开源、浏览器里的 AI 原生 IDE：免 Key Chat/Agent，转到引用与上下文预算可见，云端工作区全栈 E2E 可回归。**
 
 ## 演示脚本（内部手测用，宣传搁置）
 
 1. `/signup` 注册 → 设置选 **平台 AI**  
 2. Chat Agent 改文件 → Diff 应用  
 3. Workbench docked 辅助列 · 侧栏 resize  
-4. F12 / 命令面板「转到定义」  
+4. F12 / Shift+F12 转到定义/引用 · 聊天区 payload 预算条  
 5. 调试：条件断点 / Watch（可选）
 
 ## 对外素材（搁置，勿直发）
