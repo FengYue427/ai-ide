@@ -1,11 +1,11 @@
 # 对外发布素材
 
-> **当前版本基线**：**v1.2.4**（转到引用、Agent 上下文预算、全栈 E2E）  
-> **事实来源**：`package.json` + `CHANGELOG.md` + [RELEASE_NOTES_v1.2.4.md](../RELEASE_NOTES_v1.2.4.md)
+> **当前版本基线**：**v1.2.6**（语义 F12、发送 @ 阻断、生产多根默认开）  
+> **事实来源**：`package.json` + `CHANGELOG.md` + [RELEASE_NOTES_v1.2.6.md](../RELEASE_NOTES_v1.2.6.md)
 
-## 对外一句话（v1.2.4）
+## 对外一句话（v1.2.6）
 
-**开源、浏览器里的 AI 原生 IDE：免 Key Chat/Agent，转到引用与上下文预算可见，云端工作区全栈 E2E 可回归。**
+**开源、浏览器里的 AI 原生 IDE：TS 语义 F12、未解析 @ 发送阻断、生产多根工作区默认开，Agent 上下文预算可见。**
 
 ## 演示脚本（内部手测用，宣传搁置）
 

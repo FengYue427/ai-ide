@@ -5,14 +5,41 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Planned
+
+- **v1.2.7** — 导航 E2E · payload 对齐 · 插件/平台运维 — [V1.2.7_KICKOFF.md](docs/V1.2.7_KICKOFF.md)
+
+---
+
+## [1.2.6] — 2026-06-04 · 语义导航/预检/生产开关
+
 ### Added
 
 - **v1.2.6 F1 TS 语义导航**：Monaco TS Worker 定义/引用 · `file:///` 模型对齐 · 启发式回退
 - **v1.2.6 F2 Agent 预检闭环**：未解析 `@` 阻断发送 · payload 表计 12KB reserve · 发送 estimate 漂移 telemetry
 - **v1.2.6 F3 生产开关**：多根/虚拟树生产默认开 · 设置页 v1.2 只读状态 · `v12-features` E2E
+
+### Docs
+
+- [RELEASE_NOTES_v1.2.6.md](docs/RELEASE_NOTES_v1.2.6.md) · [V1.2.6_KICKOFF.md](docs/V1.2.6_KICKOFF.md) · F1–F3 阶段文档
+
+See [RELEASE_NOTES_v1.2.6.md](docs/RELEASE_NOTES_v1.2.6.md).
+
+---
+
+## [1.2.5] — 2026-06-04 · 质量/生态 E2E
+
+### Added
+
 - **v1.2.5 F3 补丁/CI**：`ROADMAP_V1.2.x_PATCHES` · 发版门禁表 · `e2e-collab` 注释对齐必过
 - **v1.2.5 F2 插件 E2E**：`plugin-helpers` · `plugin-trust.spec` 停用/启用 · 市场徽章
 - **v1.2.5 F1 UI E2E**：`language-navigation.spec` · `command-helpers` · `E2E_SYMBOL_FILES` 大纲 smoke
+
+### Docs
+
+- [RELEASE_NOTES_v1.2.5.md](docs/RELEASE_NOTES_v1.2.5.md) · [V1.2.5_KICKOFF.md](docs/V1.2.5_KICKOFF.md)
+
+See [RELEASE_NOTES_v1.2.5.md](docs/RELEASE_NOTES_v1.2.5.md).
 
 ---
 

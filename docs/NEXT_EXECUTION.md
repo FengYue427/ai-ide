@@ -1,6 +1,6 @@
 # 当前执行入口
 
-> **更新**：2026-06-04 — **宣传/上架搁置** · **v1.2.6 F1–F3 已落地**
+> **更新**：2026-06-04 — **v1.2.6 GA** · **下一：v1.2.7 规划**
 
 ---
 
@@ -16,13 +16,25 @@
 
 | 线 | 状态 | 文档 |
 |----|------|------|
-| **v1.2.4** | ✅ Agent/索引/E2E | [RELEASE_NOTES_v1.2.4.md](./RELEASE_NOTES_v1.2.4.md) |
-| **v1.2.5** | ✅ 质量/生态 E2E | [V1.2.5_KICKOFF.md](./V1.2.5_KICKOFF.md) |
-| **v1.2.6** | ✅ 语义导航/预检/生产开关 | [V1.2.6_KICKOFF.md](./V1.2.6_KICKOFF.md) |
+| **v1.2.5** | ✅ GA | [RELEASE_NOTES_v1.2.5.md](./RELEASE_NOTES_v1.2.5.md) |
+| **v1.2.6** | ✅ GA · `v1.2.6` | [RELEASE_NOTES_v1.2.6.md](./RELEASE_NOTES_v1.2.6.md) |
+| **v1.2.7** | 📋 规划 | [V1.2.7_KICKOFF.md](./V1.2.7_KICKOFF.md) |
 
 ---
 
-## v1.2.6 交付（已完成）
+## v1.2.7 下一工程线
+
+| 阶段 | 文档 |
+|------|------|
+| F1 | [V1.2.7_F1_NAV_E2E.md](./V1.2.7_F1_NAV_E2E.md) |
+| F2 | [V1.2.7_F2_PAYLOAD_PARITY.md](./V1.2.7_F2_PAYLOAD_PARITY.md) |
+| F3 | [V1.2.7_F3_PLUGIN_PLATFORM.md](./V1.2.7_F3_PLUGIN_PLATFORM.md) |
+
+**门禁**：`npm run test:local` · `npm run test:e2e:local` · `test:e2e:stack`（F1/F3）
+
+---
+
+## v1.2.6 交付（GA）
 
 | 阶段 | 文档 |
 |------|------|
@@ -32,23 +44,9 @@
 
 ---
 
-## v1.2.5 交付（已完成）
+## 热修
 
-| 阶段 | 文档 |
-|------|------|
-| F1 | [V1.2.5_F1_UI_E2E.md](./V1.2.5_F1_UI_E2E.md) |
-| F2 | [V1.2.5_F2_PLUGIN_E2E.md](./V1.2.5_F2_PLUGIN_E2E.md) |
-| F3 | [V1.2.5_F3_PATCH_CI.md](./V1.2.5_F3_PATCH_CI.md) · [ROADMAP_V1.2.x_PATCHES.md](./ROADMAP_V1.2.x_PATCHES.md) |
-
-**门禁**：`npm run test:local` · `npm run test:e2e:local` · `npm run test:e2e:stack`
-
----
-
-## 下一工程线（待定）
-
-- **v1.2.5/v1.2.6 GA**：版本号、`RELEASE_NOTES`、tag（按需）
-- **v1.2.4.x** 热修：见 [ROADMAP_V1.2.x_PATCHES.md](./ROADMAP_V1.2.x_PATCHES.md)
-- **v1.2.7+** 规划：插件生态 2.0 / 平台运维 · 搁置 SSH/SSO/营销
+- **v1.2.4.x** patch：见 [ROADMAP_V1.2.x_PATCHES.md](./ROADMAP_V1.2.x_PATCHES.md)
 
 ---
 
