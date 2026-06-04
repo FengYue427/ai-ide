@@ -297,6 +297,12 @@ const Editor: React.FC<EditorProps> = ({
           setMountedEditor(editor)
           setIsLoading(false)
           setLoadError(null)
+          if (
+            typeof localStorage !== 'undefined' &&
+            localStorage.getItem('ai-ide:e2e-harness') === '1'
+          ) {
+            ;(window as Window & { __AI_IDE_MONACO__?: typeof monaco }).__AI_IDE_MONACO__ = monaco
+          }
         }}
         onValidate={handleDiagnostics}
         options={{

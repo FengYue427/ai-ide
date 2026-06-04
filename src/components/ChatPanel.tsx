@@ -35,7 +35,7 @@ import {
 } from '../services/aiService'
 import { supportsAgentToolCalling } from '../services/agentChatCompletion'
 import { appendAgentContextSections } from '../services/agentContextService'
-import { loadAgentSettings } from '../services/agentSettingsService'
+import { DEFAULT_AGENT_SETTINGS, loadAgentSettings } from '../services/agentSettingsService'
 import {
   buildAgentToolMessages,
   formatActivityForChat,
@@ -79,7 +79,11 @@ import {
   evaluateSendMentionGate,
 } from '../services/chatSendPreflight'
 import { getLargeRepoContextHint, shouldShowLargeRepoHint } from '../services/largeRepoContextHint'
-import { countUnresolvedMentions, runMentionPreflight } from '../services/mentionPreflight'
+import {
+  countAmbiguousMentions,
+  countUnresolvedMentions,
+  runMentionPreflight,
+} from '../services/mentionPreflight'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { isAiConfigured, isAiGatewayEnabled } from '../lib/aiPlatformMode'
 import { useIDEStore } from '../store/ideStore'
@@ -469,6 +473,14 @@ ${t('ai.chat.prompt')}`
     const hasSession = messages.length > 2
     if (!hasDraft && !useWorkspaceContext && !hasSession) return null
 
+    const semanticSearchEnabled =
+      useWorkspaceContext && isSemanticSearchEnabled() && canUseEmbeddings(aiConfig)
+    const agentToolLoopEnabled =
+      agentMode &&
+      !planMode &&
+      DEFAULT_AGENT_SETTINGS.useToolLoop &&
+      supportsAgentToolCalling(aiConfig.provider)
+
     return estimateChatPayload({
       draftText: input,
       messages: chatHistoryMessages,
@@ -483,9 +495,12 @@ ${t('ai.chat.prompt')}`
       activeFilePath,
       applyProjectRules,
       defaultSystemPrompt: t('chat.system.default', { code: currentCode }),
+      semanticSearchEnabled,
+      agentToolLoopEnabled,
     })
   }, [
     agentMode,
+    aiConfig.apiKey,
     aiConfig.provider,
     applyProjectRules,
     chatHistoryMessages,
@@ -500,6 +515,7 @@ ${t('ai.chat.prompt')}`
     useWorkspaceContext,
     workspaceStats.selectedFiles,
     activeFilePath,
+    planMode,
   ])
 
   const payloadMeterEstimate = useMemo(
@@ -1127,13 +1143,24 @@ ${t('ai.chat.prompt')}`
           tokens: mentionCheck.tokens.length,
         })
       }
+      if (mentionGate.ambiguousCount > 0 && !forceSlim) {
+        trackEvent('chat.mention_preflight_ambiguous', {
+          count: mentionGate.ambiguousCount,
+          tokens: mentionCheck.tokens.length,
+        })
+      }
       if (mentionGate.blocked) {
         setMessages((prev) => removeTrailingUserMessage(prev, effectiveTextToSend))
         setLoading(false)
+        const ambiguousBlocked = mentionGate.blockReason === 'ambiguous'
         notify?.(
           'info',
-          t('chat.mention.blockSendTitle'),
-          t('chat.mention.blockSendDetail', { count: mentionGate.unresolvedCount }),
+          ambiguousBlocked
+            ? t('chat.mention.blockSendAmbiguousTitle')
+            : t('chat.mention.blockSendTitle'),
+          ambiguousBlocked
+            ? t('chat.mention.blockSendAmbiguousDetail', { count: mentionGate.ambiguousCount })
+            : t('chat.mention.blockSendDetail', { count: mentionGate.unresolvedCount }),
         )
         return
       }
@@ -2048,6 +2075,12 @@ ${t('ai.chat.prompt')}`
             budgetBytes={payloadMeterEstimate.budgetBytes}
             usagePercent={payloadMeterEstimate.usagePercent}
             level={payloadMeterEstimate.level}
+            footnote={[
+              payloadEstimate?.semanticReserveBytes ? t('chat.payload.meterSemanticNote') : null,
+              payloadEstimate?.toolLoopReserveBytes ? t('chat.payload.meterToolLoopNote') : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           />
         ) : null}
 
@@ -2094,6 +2127,9 @@ ${t('ai.chat.prompt')}`
             </ul>
             {countUnresolvedMentions(mentionPreflight) > 0 ? (
               <span>{t('chat.mention.preflightBlockHint')}</span>
+            ) : null}
+            {countAmbiguousMentions(mentionPreflight) > 0 ? (
+              <span>{t('chat.mention.preflightAmbiguousBlockHint')}</span>
             ) : null}
           </div>
         ) : null}

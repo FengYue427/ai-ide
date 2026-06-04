@@ -580,11 +580,18 @@
 
 .chat-payload-meter {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
   font-size: 10px;
   color: var(--text-secondary);
+}
+
+.chat-payload-meter__footnote {
+  flex: 1 1 100%;
+  line-height: 1.4;
+  opacity: 0.9;
 }
 
 .chat-payload-meter__track {

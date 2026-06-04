@@ -6,6 +6,7 @@ interface ChatPayloadBudgetMeterProps {
   budgetBytes: number
   usagePercent: number
   level: PayloadBudgetLevel
+  footnote?: string
 }
 
 export function ChatPayloadBudgetMeter({
@@ -13,6 +14,7 @@ export function ChatPayloadBudgetMeter({
   budgetBytes,
   usagePercent,
   level,
+  footnote,
 }: ChatPayloadBudgetMeterProps) {
   const { t } = useI18n()
 
@@ -39,6 +41,7 @@ export function ChatPayloadBudgetMeter({
           percent: usagePercent,
         })}
       </span>
+      {footnote ? <span className="chat-payload-meter__footnote">{footnote}</span> : null}
     </div>
   )
 }

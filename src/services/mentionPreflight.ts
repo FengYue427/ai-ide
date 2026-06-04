@@ -63,3 +63,7 @@ export function runMentionPreflight(
 export function countUnresolvedMentions(result: MentionPreflightResult): number {
   return result.issues.filter((issue) => issue.kind === 'unresolved').length
 }
+
+export function countAmbiguousMentions(result: MentionPreflightResult): number {
+  return result.issues.filter((issue) => issue.kind === 'ambiguous').length
+}

@@ -9,6 +9,12 @@ import { getPayloadBudget, getPayloadBudgetLevel, type PayloadBudgetLevel } from
 import type { ProjectIndex } from './projectIndexService'
 import { workspaceContextService } from './workspaceContextService'
 
+/** Conservative allowance when semantic retrieval may run on send (v1.2.7 F2). */
+export const CHAT_PAYLOAD_SEMANTIC_RESERVE_BYTES = 8_000
+
+/** Conservative allowance per agent tool-loop send (v1.2.7 F2). */
+export const CHAT_PAYLOAD_AGENT_TOOL_LOOP_RESERVE_BYTES = 16_000
+
 export interface ChatPayloadEstimateInput {
   draftText: string
   messages: ChatHistoryMessage[]
@@ -24,6 +30,10 @@ export interface ChatPayloadEstimateInput {
   applyProjectRules: (prompt: string) => string
   defaultSystemPrompt: string
   historyLimit?: number
+  /** Sync estimate: semantic search likely on send */
+  semanticSearchEnabled?: boolean
+  /** Sync estimate: agent tool loop likely on send */
+  agentToolLoopEnabled?: boolean
 }
 
 export interface ChatPayloadEstimate {
@@ -31,6 +41,9 @@ export interface ChatPayloadEstimate {
   budgetBytes: number
   level: PayloadBudgetLevel
   usagePercent: number
+  /** Included in estimatedBytes — for meter footnotes */
+  semanticReserveBytes?: number
+  toolLoopReserveBytes?: number
 }
 
 export function measureAiMessagesPayload(
@@ -78,11 +91,30 @@ export function estimateChatPayload(input: ChatPayloadEstimateInput): ChatPayloa
         { role: 'user' as const, content: userText },
       ]
 
-  const estimatedBytes = measureAiMessagesPayload(aiMessages)
+  let estimatedBytes = measureAiMessagesPayload(aiMessages)
+  let semanticReserveBytes = 0
+  let toolLoopReserveBytes = 0
+
+  if (input.semanticSearchEnabled && input.useWorkspaceContext) {
+    semanticReserveBytes = CHAT_PAYLOAD_SEMANTIC_RESERVE_BYTES
+    estimatedBytes += semanticReserveBytes
+  }
+  if (input.agentToolLoopEnabled) {
+    toolLoopReserveBytes = CHAT_PAYLOAD_AGENT_TOOL_LOOP_RESERVE_BYTES
+    estimatedBytes += toolLoopReserveBytes
+  }
+
   const budgetBytes = getPayloadBudget(input.provider)
   const level = getPayloadBudgetLevel(estimatedBytes, budgetBytes)
   const usagePercent =
     budgetBytes > 0 ? Math.min(100, Math.round((estimatedBytes / budgetBytes) * 100)) : 0
 
-  return { estimatedBytes, budgetBytes, level, usagePercent }
+  return {
+    estimatedBytes,
+    budgetBytes,
+    level,
+    usagePercent,
+    semanticReserveBytes: semanticReserveBytes || undefined,
+    toolLoopReserveBytes: toolLoopReserveBytes || undefined,
+  }
 }

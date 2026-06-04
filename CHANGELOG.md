@@ -5,9 +5,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **v1.2.7 F1**：`E2E_NAV_FILES` · `ts-cross-file-navigation.spec` · Monaco E2E harness
+- **v1.2.7 F2**：语义/工具轮次 payload 预留 · `@` 重名发送阻断 · `chatPayloadParity` 单测
+
 ### Planned
 
-- **v1.2.7** — 导航 E2E · payload 对齐 · 插件/平台运维 — [V1.2.7_KICKOFF.md](docs/V1.2.7_KICKOFF.md)
+- **v1.2.7 F3** — 插件 publish 审核 · 平台运维 UI — [V1.2.7_KICKOFF.md](docs/V1.2.7_KICKOFF.md)
 
 ---
 

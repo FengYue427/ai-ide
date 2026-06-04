@@ -9,6 +9,20 @@ export const E2E_DEFAULT_FILES = [
   },
 ]
 
+/** Cross-file TS navigation (v1.2.7 F1): main imports lib/greet. */
+export const E2E_NAV_FILES = [
+  {
+    name: 'main.ts',
+    content: "import { greet } from './lib/greet'\n\nexport function run() {\n  return greet()\n}\n",
+    language: 'typescript',
+  },
+  {
+    name: 'lib/greet.ts',
+    content: 'export function greet(): number {\n  return 42\n}\n',
+    language: 'typescript',
+  },
+]
+
 /** TS sample for symbol outline + language navigation E2E (v1.2.5 F1). */
 export const E2E_SYMBOL_FILES = [
   {
@@ -34,6 +48,7 @@ export async function prepareLoggedInUser(page: Page): Promise<void> {
 
 export async function prepareE2EStorage(page: Page, files: E2ESeedFile[] = E2E_DEFAULT_FILES): Promise<void> {
   await page.addInitScript((seedFiles) => {
+    localStorage.setItem('ai-ide:e2e-harness', '1')
     const openDb = () =>
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.open('ai-ide-db', 1)

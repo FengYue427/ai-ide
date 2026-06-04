@@ -376,6 +376,13 @@ export const JA_JP_BULK_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'chat.mention.preflightBlockHint': '未解決の @ がある間は送信できません。修正または削除してください',
   'chat.mention.blockSendTitle': '送信できません：@ 言及が未解決',
   'chat.mention.blockSendDetail': '未解決の @ が {count} 件あります。修正してから送信してください',
+  'chat.mention.blockSendAmbiguousTitle': '送信できません：@ シンボルが曖昧',
+  'chat.mention.blockSendAmbiguousDetail':
+    '未解決の @ が {count} 件、複数ファイルに一致します。パスまたはより具体的なシンボルを使用してください',
+  'chat.mention.preflightAmbiguousBlockHint':
+    'シンボルが重複している場合は送信できません。@path または @file#symbol を推奨',
+  'chat.payload.meterSemanticNote': 'セマンティック検索の予約を含む',
+  'chat.payload.meterToolLoopNote': 'Agent ツールループの予約を含む',
   'chat.largeRepo.capped': '大規模リポジトリ上限: 索引 {indexed}/{eligible}、@ と意味検索が不完全な場合あり',
   'chat.largeRepo.nearCap': '索引上限に近い（{indexed}/{eligible}、上限約 {max} ファイル）。範囲を絞るかデスクトップ版を利用',
   'chat.payload.slimAndSend': 'Slim and send',

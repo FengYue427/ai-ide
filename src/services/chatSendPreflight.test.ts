@@ -10,8 +10,37 @@ import { runMentionPreflight } from './mentionPreflight'
 describe('chatSendPreflight', () => {
   it('blocks send when mentions are unresolved', () => {
     const check = runMentionPreflight('fix @missing.ts', [], { builtAt: 1, files: [] })
-    expect(evaluateSendMentionGate(check, false).blocked).toBe(true)
+    const gate = evaluateSendMentionGate(check, false)
+    expect(gate.blocked).toBe(true)
+    expect(gate.blockReason).toBe('unresolved')
     expect(evaluateSendMentionGate(check, true).blocked).toBe(false)
+  })
+
+  it('blocks send when symbol is ambiguous', () => {
+    const index = {
+      builtAt: 1,
+      files: [
+        {
+          path: 'a.ts',
+          language: 'typescript',
+          symbols: [{ name: 'foo', path: 'a.ts', line: 1, kind: 'function' as const }],
+        },
+        {
+          path: 'b.ts',
+          language: 'typescript',
+          symbols: [{ name: 'foo', path: 'b.ts', line: 2, kind: 'function' as const }],
+        },
+      ],
+    }
+    const editorFiles = [
+      { name: 'a.ts', content: 'export function foo() {}\n' },
+      { name: 'b.ts', content: 'export function foo() {}\n' },
+    ]
+    const check = runMentionPreflight('fix @foo', editorFiles, index)
+    const gate = evaluateSendMentionGate(check, false)
+    expect(gate.blocked).toBe(true)
+    expect(gate.blockReason).toBe('ambiguous')
+    expect(gate.ambiguousCount).toBe(1)
   })
 
   it('adds reserve bytes to meter estimate', () => {

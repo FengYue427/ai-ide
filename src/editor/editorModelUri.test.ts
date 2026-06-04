@@ -21,6 +21,14 @@ describe('editorModelUri', () => {
     expect(libUriStringToWorkspacePath('inmemory://a/b.ts')).toBe('a/b.ts')
   })
 
+  it('round-trips file lib URI through editor inmemory URI', () => {
+    const lib = workspacePathToLibUriString('lib/greet.ts')
+    const editorUri = libUriStringToEditorUriString(lib)
+    expect(editorUri).toBe('inmemory://lib/greet.ts')
+    expect(libUriStringToWorkspacePath(editorUri)).toBe('lib/greet.ts')
+    expect(libUriStringToWorkspacePath(lib)).toBe('lib/greet.ts')
+  })
+
   it('detects TS-like languages', () => {
     expect(isTypeScriptLikeLanguage('typescript')).toBe(true)
     expect(isTypeScriptLikeLanguage('plaintext')).toBe(false)
