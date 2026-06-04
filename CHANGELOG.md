@@ -5,16 +5,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [1.2.3] — 2026-06-04 · 产品深度
+
 ### Added
 
+- **v1.2.3 F1 语言服务**：`languageServiceHost` · 命令面板「转到定义」/ F12 · Provider 去重
 - **v1.2.3 F5 协作 E2E**：Collab smoke 串行 · helper 关闭登录遮罩 · 重连单测 · CI `e2e-collab` 必过
 - **v1.2.3 F4 平台 AI 用量仪表盘**：`GET /api/usage/dashboard` · `ai_platform_request` 分类型统计 · 设置页 7 日柱状图与估算成本
-- **v1.2.3 F3 Tab 补全**：FIM → 平台 AI → 对话回退 · `inlineCompletionMetrics` 缓存/延迟统计 · 设置防抖与路径说明 · `EditorLayout` / suggest 支持平台 AI
-- **v1.2.3 F2 多根 + 虚拟文件树**：`npm run dev` 默认开启多根与虚拟列表（≥500 行）· 删除根清理 IndexedDB autosave · `clampActiveFileIndex` · 根元数据/ autosave 统一走 IndexedDB
+- **v1.2.3 F3 Tab 补全**：FIM → 平台 AI → 对话回退 · `inlineCompletionMetrics` · 设置防抖与路径说明
+- **v1.2.3 F2 多根 + 虚拟文件树**：dev 默认多根与虚拟列表 · 删根清理 IndexedDB autosave · `clampActiveFileIndex`
 
 ### Fixed
 
-- `unifiedStorage.remove` 正确删除 IndexedDB `settings` 项（删除工作区根时清理 autosave）
+- `unifiedStorage.remove` 正确删除 IndexedDB settings · 集成测试配额 5000/日边界 · UI E2E i18n 选择器与窄屏侧栏收起
+
+### Docs
+
+- [RELEASE_NOTES_v1.2.3.md](docs/RELEASE_NOTES_v1.2.3.md) · [V1.2.3_KICKOFF.md](docs/V1.2.3_KICKOFF.md) · F2–F5 阶段文档
+
+See [RELEASE_NOTES_v1.2.3.md](docs/RELEASE_NOTES_v1.2.3.md).
 
 ---
 

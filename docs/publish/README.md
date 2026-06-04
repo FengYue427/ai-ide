@@ -1,11 +1,11 @@
 # 对外发布素材
 
-> **当前版本基线**：**v1.2.2**（Workbench Shell + 条件断点/Watch）  
-> **事实来源**：`package.json` + `CHANGELOG.md` + [RELEASE_NOTES_v1.2.2.md](../RELEASE_NOTES_v1.2.2.md)
+> **当前版本基线**：**v1.2.3**（产品深度：LSP/多根/Tab/平台用量/Collab）  
+> **事实来源**：`package.json` + `CHANGELOG.md` + [RELEASE_NOTES_v1.2.3.md](../RELEASE_NOTES_v1.2.3.md)
 
-## 对外一句话（v1.2.2）
+## 对外一句话（v1.2.3）
 
-**开源、浏览器里的 AI 原生 IDE：免 Key 即可 Chat/Agent，工作台更少遮挡，带 Plan 驱动改造与轻量调试。**
+**开源、浏览器里的 AI 原生 IDE：免 Key Chat/Agent，Tab 补全与平台用量可见，多根工作区与协作 E2E 加固。**
 
 ## 演示脚本（内部手测用，宣传搁置）
 

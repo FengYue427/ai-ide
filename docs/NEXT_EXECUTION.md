@@ -1,6 +1,6 @@
 # 当前执行入口
 
-> **更新**：2026-06-04 — **宣传/上架搁置** · 工程线 **v1.2.3 产品深度**
+> **更新**：2026-06-04 — **宣传/上架搁置** · 工程线 **v1.2.4 Agent/索引**
 
 ---
 
@@ -18,31 +18,33 @@
 |----|------|------|
 | **v1.2.0** | ✅ GA（功能开关默认关） | [RELEASE_NOTES_v1.2.0.md](./RELEASE_NOTES_v1.2.0.md) |
 | **v1.2.2** | ✅ Workbench Shell | [RELEASE_NOTES_v1.2.2.md](./RELEASE_NOTES_v1.2.2.md) |
-| **v1.2.3** | 🔄 **产品深度** | [V1.2.3_KICKOFF.md](./V1.2.3_KICKOFF.md) |
+| **v1.2.3** | ✅ 产品深度 | [RELEASE_NOTES_v1.2.3.md](./RELEASE_NOTES_v1.2.3.md) |
+| **v1.2.4** | 🔄 **Agent/索引** | [V1.2.4_KICKOFF.md](./V1.2.4_KICKOFF.md) |
 
 ---
 
-## 当前迭代：v1.2.3 收口 / 下一工程线
+## 当前迭代：v1.2.4 F1 转到引用
 
-1. [V1.2.3_KICKOFF.md](./V1.2.3_KICKOFF.md) — **F1–F5 已全部交付**
-2. **F5** ✅ 协作 E2E — [V1.2.3_F5_COLLAB_E2E.md](./V1.2.3_F5_COLLAB_E2E.md)
-3. **可选**：打 `v1.2.3` tag · 继续 v1.2.4（SSH/SSO 仍搁置）
+1. [V1.2.4_KICKOFF.md](./V1.2.4_KICKOFF.md)
+2. **F1** 📋 转到引用 · 符号大纲加固
+3. **F2** 📋 Agent payload 预算 / @mention 预检
+4. **F3** 📋 全栈 E2E 稳定
+
+**门禁**：`npm run test:local` 全绿 · `npm run test:e2e:stack` 绿
+
+---
+
+## v1.2.3 交付（已完成）
+
+见 [RELEASE_NOTES_v1.2.3.md](./RELEASE_NOTES_v1.2.3.md) · [V1.2.3_KICKOFF.md](./V1.2.3_KICKOFF.md)
 
 | 阶段 | 文档 |
 |------|------|
-| F1 | ADR + 转到定义 |
+| F1 | 转到定义 · LSP host |
 | F2 | [V1.2.3_F2_MULTI_ROOT.md](./V1.2.3_F2_MULTI_ROOT.md) |
 | F3 | [V1.2.3_F3_TAB_COMPLETION.md](./V1.2.3_F3_TAB_COMPLETION.md) |
 | F4 | [V1.2.3_F4_PLATFORM_USAGE.md](./V1.2.3_F4_PLATFORM_USAGE.md) |
 | F5 | [V1.2.3_F5_COLLAB_E2E.md](./V1.2.3_F5_COLLAB_E2E.md) |
-
-**门禁**：`npm run test:local` 全绿；改 `lib/api` 后 `npm run build:api`
-
----
-
-## v1.2.2 交付（已完成）
-
-见 [RELEASE_NOTES_v1.2.2.md](./RELEASE_NOTES_v1.2.2.md) · [V1.2.2_KICKOFF.md](./V1.2.2_KICKOFF.md)
 
 ---
 
