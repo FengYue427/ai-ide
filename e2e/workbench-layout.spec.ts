@@ -20,29 +20,23 @@ test.describe('workbench shell layout', () => {
   })
 
   test('F1 — auxiliary column is docked and mutually exclusive', async ({ page }) => {
-    // Open search via activity bar
-    const activitySearchBtn = page.getByRole('button', { name: /搜索|Search/i })
-    await activitySearchBtn.click()
-
-    // Should show docked auxiliary column, not overlay
     const auxiliaryPanel = page.locator('.workbench-auxiliary')
+
+    await page.getByRole('button', { name: /搜索|Search/i }).click()
     await expect(auxiliaryPanel).toBeVisible({ timeout: 8_000 })
+    const searchInput = auxiliaryPanel.getByPlaceholder(
+      /搜索已打开文件|Search open files|搜索整个工作区|Search workspace/i,
+    )
+    await expect(searchInput).toBeVisible({ timeout: 5_000 })
 
-    const searchPanel = auxiliaryPanel.locator('.search-panel, [class*="SearchPanel"]')
-    await expect(searchPanel.first()).toBeVisible({ timeout: 5_000 })
-
-    // Open preview — should replace search (single slot)
-    const activityPreviewBtn = page.getByRole('button', { name: /预览|Preview/i })
-    // If preview opens code review slot (or preview), just verify toggle
-    await activityPreviewBtn.click()
+    // Preview replaces search in the single auxiliary slot
+    await page.getByRole('button', { name: /预览|Preview/i }).click()
     await expect(auxiliaryPanel).toBeVisible()
+    await expect(searchInput).not.toBeVisible({ timeout: 5_000 })
+    await expect(auxiliaryPanel.locator('.preview-shell')).toBeVisible({ timeout: 5_000 })
 
-    // Close auxiliary
-    const closeBtn = auxiliaryPanel.locator('.panel-close-btn, button[aria-label*="close" i]')
-    if ((await closeBtn.count()) > 0) {
-      await closeBtn.first().click()
-      await expect(auxiliaryPanel).not.toBeVisible({ timeout: 5_000 })
-    }
+    await auxiliaryPanel.getByRole('button', { name: /关闭预览|Close preview/i }).click()
+    await expect(auxiliaryPanel).not.toBeVisible({ timeout: 5_000 })
   })
 
   test('F2 — command palette modal layer above all', async ({ page }) => {
