@@ -185,6 +185,8 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'command.formatDocument.sub': 'アクティブファイルをフォーマット',
   'command.goToDefinition': '定義へ移動',
   'command.goToDefinition.sub': 'シンボル定義へジャンプ（TS/JS・ファイル横断）',
+  'command.goToReferences': '参照へ移動',
+  'command.goToReferences.sub': 'シンボル参照を検索（TS/JS・ファイル横断）',
   'command.newFile': '新規ファイル',
   'command.run': 'コード実行',
   'command.terminal': 'ターミナル',

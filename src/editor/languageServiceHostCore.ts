@@ -1,4 +1,8 @@
 import { extractSymbolsFromContent } from '../services/projectIndexService'
+import {
+  findReferencesInFiles,
+  type ReferenceLocation,
+} from '../services/referenceIndexService'
 import { selectFilesForDefinitionSearch } from './selectFilesForDefinitionSearch'
 import type { DefinitionProjectFile } from './registerCrossFileDefinition'
 
@@ -19,4 +23,19 @@ export function goToDefinition(request: GoToDefinitionRequest): { path: string; 
     return { path: file.name, line: match.line }
   }
   return null
+}
+
+export interface GoToReferencesRequest {
+  symbol: string
+  files: DefinitionProjectFile[]
+  maxResults?: number
+}
+
+export function goToReferences(request: GoToReferencesRequest): ReferenceLocation[] {
+  if (!request.symbol.trim()) return []
+  return findReferencesInFiles(
+    request.files.map((file) => ({ name: file.name, content: file.content })),
+    request.symbol,
+    request.maxResults ?? 80,
+  )
 }

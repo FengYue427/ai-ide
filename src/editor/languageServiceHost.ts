@@ -7,15 +7,28 @@ import {
   registerCrossFileDefinitionProvider,
   type DefinitionProjectFile,
 } from './registerCrossFileDefinition'
-import { goToDefinition, type GoToDefinitionRequest } from './languageServiceHostCore'
+import { registerCrossFileReferenceProvider } from './registerCrossFileReferences'
+import {
+  goToDefinition,
+  goToReferences,
+  type GoToDefinitionRequest,
+  type GoToReferencesRequest,
+} from './languageServiceHostCore'
 
-export type { DefinitionProjectFile, GoToDefinitionRequest }
-export { goToDefinition }
+export type { DefinitionProjectFile, GoToDefinitionRequest, GoToReferencesRequest }
+export { goToDefinition, goToReferences }
 
-/** Register Monaco definition providers for in-memory workspace files. */
+/** Register Monaco definition + reference providers for in-memory workspace files. */
 export function registerLanguageServiceProviders(
   files: DefinitionProjectFile[],
   currentFile: string,
 ): monaco.IDisposable {
-  return registerCrossFileDefinitionProvider(files, currentFile)
+  const definitionDisposable = registerCrossFileDefinitionProvider(files, currentFile)
+  const referenceDisposable = registerCrossFileReferenceProvider(files)
+  return {
+    dispose() {
+      definitionDisposable.dispose()
+      referenceDisposable.dispose()
+    },
+  }
 }

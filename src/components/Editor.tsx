@@ -15,7 +15,6 @@ import {
   resolveDefinitionNavigation,
   type DefinitionProjectFile,
 } from '../editor/registerCrossFileDefinition'
-import { registerCrossFileReferenceProvider } from '../editor/registerCrossFileReferences'
 import { syncMonacoTypeScriptProject } from '../editor/syncTypeScriptProject'
 import type { AIConfig } from '../services/aiService'
 import { useI18n } from '../i18n'
@@ -75,6 +74,7 @@ const Editor: React.FC<EditorProps> = ({
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
   const formatDocumentNonce = useIDEStore((s) => s.formatDocumentNonce)
   const goToDefinitionNonce = useIDEStore((s) => s.goToDefinitionNonce)
+  const goToReferencesNonce = useIDEStore((s) => s.goToReferencesNonce)
   aiConfigRef.current = aiConfig
   allFilesRef.current = allFiles
 
@@ -106,12 +106,8 @@ const Editor: React.FC<EditorProps> = ({
 
   useEffect(() => {
     if (!filename || allFiles.length === 0) return
-    const definitionDisposable = registerLanguageServiceProviders(allFiles, filename)
-    const referenceDisposable = registerCrossFileReferenceProvider(allFiles)
-    return () => {
-      definitionDisposable.dispose()
-      referenceDisposable.dispose()
-    }
+    const disposable = registerLanguageServiceProviders(allFiles, filename)
+    return () => disposable.dispose()
   }, [allFiles, filename])
 
   useEffect(() => {
@@ -198,6 +194,14 @@ const Editor: React.FC<EditorProps> = ({
     const action = editor.getAction('editor.action.revealDefinition')
     void action?.run()
   }, [goToDefinitionNonce, readOnly])
+
+  useEffect(() => {
+    if (!goToReferencesNonce || readOnly) return
+    const editor = editorRef.current
+    if (!editor) return
+    const action = editor.getAction('editor.action.goToReferences')
+    void action?.run()
+  }, [goToReferencesNonce, readOnly])
 
   useEffect(() => {
     const editor = editorRef.current

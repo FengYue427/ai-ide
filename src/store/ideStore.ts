@@ -186,6 +186,7 @@ export interface IDEState {
   formatOnSaveEnabled: boolean
   formatDocumentNonce: number
   goToDefinitionNonce: number
+  goToReferencesNonce: number
   aiConfig: AIConfigState
   diffContent: DiffContent | null
   editorTarget: EditorTarget | null
@@ -271,6 +272,7 @@ export interface IDEState {
   setFormatOnSaveEnabled: (enabled: boolean | ((prev: boolean) => boolean)) => void
   requestFormatDocument: () => void
   requestGoToDefinition: () => void
+  requestGoToReferences: () => void
   setAiConfig: (config: AIConfigState | ((prev: AIConfigState) => AIConfigState)) => void
   setDiffContent: (content: DiffContent | null) => void
   setEditorTarget: (target: EditorTarget | null) => void
@@ -386,6 +388,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   formatOnSaveEnabled: false,
   formatDocumentNonce: 0,
   goToDefinitionNonce: 0,
+  goToReferencesNonce: 0,
   aiConfig: defaultAiConfig,
   diffContent: null,
   editorTarget: null,
@@ -580,6 +583,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
     set((state) => ({ formatDocumentNonce: state.formatDocumentNonce + 1 })),
   requestGoToDefinition: () =>
     set((state) => ({ goToDefinitionNonce: state.goToDefinitionNonce + 1 })),
+  requestGoToReferences: () =>
+    set((state) => ({ goToReferencesNonce: state.goToReferencesNonce + 1 })),
   setAiConfig: (config) =>
     set((state) => ({
       aiConfig: typeof config === 'function' ? config(state.aiConfig) : config,

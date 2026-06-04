@@ -5,6 +5,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **v1.2.4 F1 转到引用**：`goToReferences` · 命令面板 Shift+F12 · 引用 Provider 并入 `languageServiceHost` · 大纲作用域前缀与缩进
+
 ---
 
 ## [1.2.3] — 2026-06-04 · 产品深度

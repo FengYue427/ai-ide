@@ -1,8 +1,6 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
-import {
-  findReferencesInFiles,
-  type ReferenceLocation,
-} from '../services/referenceIndexService'
+import { goToReferences } from './languageServiceHostCore'
+import type { ReferenceLocation } from '../services/referenceIndexService'
 
 export interface ReferenceProjectFile {
   name: string
@@ -19,7 +17,7 @@ export function registerCrossFileReferenceProvider(
       const word = model.getWordAtPosition(position)
       if (!word?.word) return []
 
-      const refs = findReferencesInFiles(files, word.word)
+      const refs = goToReferences({ symbol: word.word, files })
       return refs.map((ref: ReferenceLocation) => ({
         uri: monaco.Uri.parse(`inmemory://${ref.path.replace(/\\/g, '/')}`),
         range: {

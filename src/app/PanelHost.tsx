@@ -302,6 +302,7 @@ export function PanelHost({
   const setFormatOnSaveEnabled = useIDEStore((s) => s.setFormatOnSaveEnabled)
   const requestFormatDocument = useIDEStore((s) => s.requestFormatDocument)
   const requestGoToDefinition = useIDEStore((s) => s.requestGoToDefinition)
+  const requestGoToReferences = useIDEStore((s) => s.requestGoToReferences)
   const setCurrentUser = useIDEStore((s) => s.setCurrentUser)
   const setShowAISettings = useIDEStore((s) => s.setShowAISettings)
 
@@ -431,6 +432,7 @@ export function PanelHost({
         onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
         onFormatDocument={() => requestFormatDocument()}
         onGoToDefinition={() => requestGoToDefinition()}
+        onGoToReferences={() => requestGoToReferences()}
         onOpenCollaboration={openCollaborationDialog}
         onExportFile={onExportFile}
         onOpenImport={openImportDialog}

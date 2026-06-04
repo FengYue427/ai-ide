@@ -11,10 +11,12 @@
 
 ```ts
 goToDefinition(request: { file, line, column, files }): Location | null
+goToReferences(request: { symbol, files }): ReferenceLocation[]
 registerMonacoProviders(files, activeFile): IDisposable
 ```
 
 - **v1.2.1 实现**：委托现有 `extractSymbolsFromContent` + `registerCrossFileDefinition`（TS/JS/TSX/JSX）
+- **v1.2.4 F1**：`goToReferences` + `registerCrossFileReferenceProvider` 并入 `registerLanguageServiceProviders`
 - **非目标**：启动 `typescript-language-server` 子进程；Python LSP
 
 ---

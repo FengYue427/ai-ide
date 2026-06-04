@@ -1,6 +1,7 @@
 import { ChevronRight, ListTree } from 'lucide-react'
 import { useMemo } from 'react'
 import { extractSymbolsFromContent, type IndexedSymbol, type SymbolKind } from '../services/projectIndexService'
+import { formatOutlineSymbolLabel, isScopedOutlineSymbol } from '../lib/outlineDisplay'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 
@@ -73,12 +74,20 @@ export function SymbolOutline({ collapsed, onToggleCollapsed }: SymbolOutlinePro
 }
 
 function OutlineRow({ symbol, onGo }: { symbol: IndexedSymbol; onGo: () => void }) {
+  const displayName = formatOutlineSymbolLabel(symbol)
+  const scoped = isScopedOutlineSymbol(symbol)
+
   return (
-    <button type="button" className="sidebar-outline-item" onClick={onGo} title={`${symbol.path}:${symbol.line}`}>
+    <button
+      type="button"
+      className={`sidebar-outline-item${scoped ? ' sidebar-outline-item--scoped' : ''}`}
+      onClick={onGo}
+      title={`${symbol.path}:${symbol.line}`}
+    >
       <span className={`sidebar-outline-kind sidebar-outline-kind--${symbol.kind}`}>
         {KIND_LABEL[symbol.kind]}
       </span>
-      <span className="sidebar-outline-name">{symbol.name}</span>
+      <span className="sidebar-outline-name">{displayName}</span>
       <span className="sidebar-outline-line">:{symbol.line}</span>
     </button>
   )

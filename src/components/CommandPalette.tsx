@@ -23,6 +23,7 @@ import {
   Folder,
   GitBranch,
   Home,
+  Link2,
   Moon,
   Package,
   Palette,
@@ -75,6 +76,7 @@ interface CommandPaletteProps {
   onToggleAutoSave: () => void
   onFormatDocument: () => void
   onGoToDefinition: () => void
+  onGoToReferences: () => void
   onOpenCollaboration: () => void
   onExportFile: () => void
   onOpenImport: () => void
@@ -121,6 +123,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   onToggleAutoSave,
   onFormatDocument,
   onGoToDefinition,
+  onGoToReferences,
   onOpenCollaboration,
   onExportFile,
   onOpenImport,
@@ -300,6 +303,18 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
         category: t('command.cat.editor'),
         action: () => {
           onGoToDefinition()
+          onClose()
+        },
+      },
+      {
+        id: 'go-to-references',
+        title: t('command.goToReferences'),
+        subtitle: t('command.goToReferences.sub'),
+        icon: <Link2 size={18} />,
+        shortcut: 'Shift+F12',
+        category: t('command.cat.editor'),
+        action: () => {
+          onGoToReferences()
           onClose()
         },
       },
@@ -649,6 +664,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       onOpenTerminal,
       onFormatDocument,
       onGoToDefinition,
+      onGoToReferences,
       onRunCode,
       onSelectFile,
       onToggleAutoSave,

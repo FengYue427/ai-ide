@@ -406,6 +406,10 @@
   background: var(--bg-tertiary);
 }
 
+.sidebar-outline-item--scoped {
+  padding-left: 18px;
+}
+
 .sidebar-outline-kind {
   font-size: 9px;
   font-weight: 800;

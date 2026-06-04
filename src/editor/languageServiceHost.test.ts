@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { goToDefinition } from './languageServiceHostCore'
+import { goToDefinition, goToReferences } from './languageServiceHostCore'
 
 describe('languageServiceHost', () => {
   it('resolves symbol in another file', () => {
@@ -24,5 +24,17 @@ describe('languageServiceHost', () => {
       files: [{ name: 'a.ts', content: 'function foo() {}\nfoo();\n', language: 'typescript' }],
     })
     expect(result).toBeNull()
+  })
+
+  it('finds references across workspace files', () => {
+    const refs = goToReferences({
+      symbol: 'login',
+      files: [
+        { name: 'a.ts', content: 'export function login() {}\nlogin()\n', language: 'typescript' },
+        { name: 'b.ts', content: 'import { login } from "./a"\nlogin()\n', language: 'typescript' },
+      ],
+    })
+    expect(refs.length).toBeGreaterThanOrEqual(3)
+    expect(refs.some((ref) => ref.path === 'b.ts')).toBe(true)
   })
 })
