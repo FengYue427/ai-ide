@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '../../src/lib/prisma'
 import { prismaSupportsTransactions } from '../../src/lib/prismaTransactions'
 import { findPlanByName, type PlanDefinition } from './plans'
+import { effectivePlanName } from './publicWelfare'
 
 export const AI_USAGE_TYPE = 'ai_request'
 
@@ -13,7 +14,8 @@ function startOfUtcDay(): Date {
 }
 
 export function getAiDailyLimit(planName: string): number {
-  return findPlanByName(planName)?.limits.aiRequestsPerDay ?? 200
+  const effective = effectivePlanName(planName)
+  return findPlanByName(effective)?.limits.aiRequestsPerDay ?? 200
 }
 
 async function resolveUserPlanNameTx(userId: string, db: DbClient): Promise<string> {
@@ -21,7 +23,8 @@ async function resolveUserPlanNameTx(userId: string, db: DbClient): Promise<stri
     where: { userId },
     include: { plan: true },
   })
-  return subscription?.plan.name ?? 'free'
+  const name = subscription?.plan.name ?? 'free'
+  return effectivePlanName(name)
 }
 
 export async function resolveUserPlanName(userId: string): Promise<string> {

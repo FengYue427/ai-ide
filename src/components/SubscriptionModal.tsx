@@ -55,15 +55,15 @@ function buildFallbackPlans(t: (key: TranslationKey) => string): Plan[] {
         t('subscription.plan.free.f2'),
         t('subscription.plan.free.f3'),
       ],
-      limits: { aiRequestsPerDay: 200, workspaces: 10, storageGB: 3 },
+      limits: { aiRequestsPerDay: 5000, workspaces: -1, storageGB: 30 },
     },
     {
       id: 'pro',
       name: 'pro',
       displayName: t('subscription.plan.pro.name'),
       description: t('subscription.plan.pro.desc'),
-      price: 19,
-      currency: 'CNY',
+      price: 4.99,
+      currency: 'USD',
       features: [
         t('subscription.plan.pro.f1'),
         t('subscription.plan.pro.f2'),
@@ -76,8 +76,8 @@ function buildFallbackPlans(t: (key: TranslationKey) => string): Plan[] {
       name: 'enterprise',
       displayName: t('subscription.plan.enterprise.name'),
       description: t('subscription.plan.enterprise.desc'),
-      price: 49,
-      currency: 'CNY',
+      price: 12.99,
+      currency: 'USD',
       features: [
         t('subscription.plan.enterprise.f1'),
         t('subscription.plan.enterprise.f2'),
@@ -105,15 +105,19 @@ const planVisuals: Record<string, { icon: React.ReactNode; headClass: string }> 
 
 function checkoutButtonLabel(
   plan: Plan,
-  paymentMethods: { alipay: boolean; wechat: boolean },
+  paymentMethods: { alipay: boolean; wechat: boolean; stripe: boolean; publicWelfare: boolean },
   checkoutAvailable: boolean,
   t: (key: TranslationKey) => string,
 ): string {
+  if (paymentMethods.publicWelfare && plan.price > 0) {
+    return t('subscription.checkout.welfareIncluded')
+  }
   if (plan.price === 0) return t('subscription.checkout.free')
   if (!checkoutAvailable) return t('subscription.checkout.beta')
   if (paymentMethods.alipay && !paymentMethods.wechat) return t('subscription.checkout.alipay')
   if (paymentMethods.wechat && !paymentMethods.alipay) return t('subscription.checkout.wechat')
   if (paymentMethods.alipay || paymentMethods.wechat) return t('subscription.checkout.cn')
+  if (paymentMethods.stripe) return t('subscription.checkout.stripe')
   return t('subscription.checkout.upgrade')
 }
 
@@ -135,6 +139,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     wechat: false,
     stripe: false,
     devMock: false,
+    publicWelfare: false,
   })
   const displayPlans = useMemo(
     () => localizePlans(plans.length > 0 ? plans : fallbackPlans, t),
@@ -178,6 +183,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
           wechat?: boolean
           stripe?: boolean
           devMock?: boolean
+          publicWelfare?: boolean
         }>(r),
       )
       .then((data) => {
@@ -187,6 +193,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             wechat: Boolean(data.wechat),
             stripe: Boolean(data.stripe),
             devMock: Boolean(data.devMock),
+            publicWelfare: Boolean(data.publicWelfare),
           })
         }
       })
@@ -244,6 +251,29 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
     if (paymentMethods.alipay || paymentMethods.wechat) {
       setCnPayPlan(plan)
+      return
+    }
+
+    if (paymentMethods.stripe) {
+      setProcessingPlanId(planId)
+      try {
+        const response = await fetch('/api/subscription/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ planId: planName }),
+        })
+        const data = await readJsonResponse<{ mode?: string; url?: string; error?: string }>(response)
+        if (response.ok && data?.mode === 'stripe' && data.url && /^https?:\/\//i.test(data.url)) {
+          window.location.href = data.url
+          return
+        }
+        setError(data?.error || t('subscription.payFailed'))
+      } catch {
+        setError(t('subscription.payFailed'))
+      } finally {
+        setProcessingPlanId(null)
+      }
       return
     }
 
@@ -408,7 +438,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             </p>
           </div>
 
-          {localizedPricingNote && checkoutAvailable && (
+          {localizedPricingNote && (checkoutAvailable || paymentMethods.publicWelfare) && (
             <AlertBanner variant="info">{localizedPricingNote}</AlertBanner>
           )}
 
@@ -422,8 +452,14 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             </a>
           </p>
 
-          {checkoutAvailable && (paymentMethods.alipay || paymentMethods.wechat) && (
+          {checkoutAvailable &&
+            (paymentMethods.alipay || paymentMethods.wechat || paymentMethods.stripe) && (
             <div className="subscription-payment-methods" role="list" aria-label={t('subscription.paymentMethods')}>
+              {paymentMethods.stripe && (
+                <span className="subscription-payment-method subscription-payment-method--stripe" role="listitem">
+                  {t('subscription.payMethod.stripe')}
+                </span>
+              )}
               {paymentMethods.alipay && (
                 <span className="subscription-payment-method subscription-payment-method--alipay" role="listitem">
                   {t('subscription.payMethod.alipay')}
@@ -588,7 +624,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                           type="button"
                           className={`subscription-plan-cta ${isCurrent ? 'btn btn-secondary' : 'btn btn-primary'}`}
                           onClick={() => void handleSubscribe(plan.id, plan.name)}
-                          disabled={!!processingPlanId || isCurrent}
+                          disabled={
+                            !!processingPlanId ||
+                            isCurrent ||
+                            (paymentMethods.publicWelfare && plan.price > 0)
+                          }
                         >
                           {isProcessing ? (
                             <>
@@ -601,11 +641,15 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                             checkoutButtonLabel(plan, paymentMethods, checkoutAvailable, t)
                           )}
                         </button>
+                        {checkoutAvailable && plan.price > 0 && !isCurrent && paymentMethods.stripe && (
+                          <p className="subscription-payment-hint">{t('subscription.checkout.stripeHint')}</p>
+                        )}
                         {checkoutAvailable &&
                           plan.price > 0 &&
                           !isCurrent &&
                           paymentMethods.alipay &&
-                          !paymentMethods.wechat && (
+                          !paymentMethods.wechat &&
+                          !paymentMethods.stripe && (
                             <p className="subscription-payment-hint">{t('subscription.checkout.alipayHint')}</p>
                           )}
                       </div>

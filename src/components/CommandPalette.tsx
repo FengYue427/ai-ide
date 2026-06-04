@@ -74,6 +74,7 @@ interface CommandPaletteProps {
   onToggleTheme: () => void
   onToggleAutoSave: () => void
   onFormatDocument: () => void
+  onGoToDefinition: () => void
   onOpenCollaboration: () => void
   onExportFile: () => void
   onOpenImport: () => void
@@ -92,17 +93,6 @@ interface CommandPaletteProps {
   onDebugStepOut?: () => void
   theme: 'vs-dark' | 'light'
   autoSaveEnabled: boolean
-}
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(0, 0, 0, 0.7)',
-  zIndex: 3000,
-  display: 'flex',
-  alignItems: 'flex-start',
-  justifyContent: 'center',
-  paddingTop: '12vh',
 }
 
 const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -130,6 +120,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   onToggleTheme,
   onToggleAutoSave,
   onFormatDocument,
+  onGoToDefinition,
   onOpenCollaboration,
   onExportFile,
   onOpenImport,
@@ -297,6 +288,18 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
         category: t('command.cat.editor'),
         action: () => {
           onFormatDocument()
+          onClose()
+        },
+      },
+      {
+        id: 'go-to-definition',
+        title: t('command.goToDefinition'),
+        subtitle: t('command.goToDefinition.sub'),
+        icon: <ArrowRightToLine size={18} />,
+        shortcut: 'F12',
+        category: t('command.cat.editor'),
+        action: () => {
+          onGoToDefinition()
           onClose()
         },
       },
@@ -645,6 +648,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       onOpenTasks,
       onOpenTerminal,
       onFormatDocument,
+      onGoToDefinition,
       onRunCode,
       onSelectFile,
       onToggleAutoSave,
@@ -724,7 +728,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   let commandIndex = 0
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
+    <div className="command-palette-overlay" onClick={onClose}>
       <div
         style={{
           width: '100%',

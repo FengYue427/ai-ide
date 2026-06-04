@@ -1,8 +1,12 @@
 import type { DebugRuntimeKind } from './debugAlphaService'
 import type { DebugCdpClient } from './debugCdpClient'
-import { tryOpenDebuggerSession } from './debugCdpClient'
+import { tryOpenDebuggerSession, registerBreakpointsOnDebugger } from './debugCdpClient'
 import { buildDebugPauseInspection } from './debugInspectService'
 import { applyBreakpointInjectionToFile } from '../lib/debugBreakpointInjection'
+import {
+  findBreakpointsAtLocation,
+  recordHitAndShouldPause,
+} from '../lib/debugBreakpointHitCount'
 import type { DebugBreakpoint } from '../lib/debugBreakpoints'
 import type { DebugPauseInspection, DebugStackFrame } from '../types/debugInspect'
 import type { FileItem } from '../types/file'
@@ -18,6 +22,8 @@ export type DebugSyncMode = 'cdp' | 'injected'
 let activeClient: DebugCdpClient | null = null
 let activeKill: (() => void) | null = null
 let cachedCallStack: DebugStackFrame[] = []
+let activeBreakpoints: DebugBreakpoint[] = []
+const breakpointHitCounts = new Map<string, number>()
 
 export function stopActiveDebugSession(): void {
   activeClient?.close()
@@ -25,6 +31,22 @@ export function stopActiveDebugSession(): void {
   activeKill?.()
   activeKill = null
   cachedCallStack = []
+  activeBreakpoints = []
+  breakpointHitCounts.clear()
+}
+
+export function resetDebugBreakpointHitCounts(): void {
+  breakpointHitCounts.clear()
+}
+
+/** Re-apply CDP breakpoints after condition/hitCount edits (v1.2.1 F2). */
+export async function syncActiveDebugBreakpoints(
+  breakpoints: DebugBreakpoint[],
+): Promise<number | null> {
+  if (!activeClient) return null
+  activeBreakpoints = breakpoints.filter((bp) => bp.enabled)
+  resetDebugBreakpointHitCounts()
+  return registerBreakpointsOnDebugger(activeClient, activeBreakpoints)
 }
 
 export function getActiveDebugClient(): DebugCdpClient | null {
@@ -68,6 +90,8 @@ export async function startDebugSessionWithBreakpoints(
   }
 
   const enabledBreakpoints = input.breakpoints.filter((bp) => bp.enabled)
+  activeBreakpoints = enabledBreakpoints
+  resetDebugBreakpointHitCounts()
   let session = await input.spawnInspect(input.entryFile)
 
   if (!session.inspectUrl) {
@@ -94,8 +118,27 @@ export async function startDebugSessionWithBreakpoints(
 
     opened.client.onNotification((method, params) => {
       if (method === 'Debugger.paused') {
-        void buildDebugPauseInspection(opened.client, params).then((inspection) => {
+        void buildDebugPauseInspection(opened.client, params).then(async (inspection) => {
           if (!inspection) return
+
+          const atLocation = findBreakpointsAtLocation(
+            activeBreakpoints,
+            inspection.location.path,
+            inspection.location.line,
+          )
+          const primary = atLocation[0]
+          if (primary && primary.hitCount != null && primary.hitCount >= 2) {
+            const { shouldPause } = recordHitAndShouldPause(breakpointHitCounts, primary)
+            if (!shouldPause) {
+              try {
+                await opened.client.send('Debugger.resume')
+              } catch {
+                /* session may have ended */
+              }
+              return
+            }
+          }
+
           cachedCallStack = inspection.callStack
           input.onPaused(inspection)
         })

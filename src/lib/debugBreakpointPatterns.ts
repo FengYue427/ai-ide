@@ -24,10 +24,13 @@ export function breakpointUrlPatternsForPath(filePath: string): string[] {
 export function buildCdpBreakpointAttempts(breakpoint: DebugBreakpoint): Array<{
   lineNumber: number
   urlRegex: string
+  condition?: string
 }> {
   const patterns = breakpointUrlPatternsForPath(breakpoint.path)
+  const condition = breakpoint.condition?.trim()
   return patterns.map((urlRegex) => ({
     lineNumber: Math.max(0, breakpoint.line - 1),
     urlRegex,
+    ...(condition ? { condition } : {}),
   }))
 }

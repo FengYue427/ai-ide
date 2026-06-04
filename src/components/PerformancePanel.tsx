@@ -16,12 +16,14 @@ interface PerformancePanelProps {
   isRunning: boolean
   output: string[]
   onClose: () => void
+  layout?: 'overlay' | 'docked'
 }
 
 const PerformancePanel: React.FC<PerformancePanelProps> = ({
   isRunning,
   output,
-  onClose
+  onClose,
+  layout = 'overlay',
 }) => {
   const { t } = useI18n()
   const [metrics, setMetrics] = useState<PerformanceMetrics[]>([])
@@ -84,7 +86,7 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
   }
 
   return (
-    <div className={styles.panel}>
+    <div className={layout === 'docked' ? styles.panelDocked : styles.panel}>
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>

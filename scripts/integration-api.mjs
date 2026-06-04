@@ -422,7 +422,10 @@ async function run() {
   try {
     const { res, json } = await api('/api/subscription/payment-methods')
     if (res.ok && typeof json?.devMock === 'boolean') {
-      pass('payment-methods', `devMock=${json.devMock} alipay=${json.alipay}`)
+      pass(
+        'payment-methods',
+        `welfare=${json.publicWelfare} devMock=${json.devMock} alipay=${json.alipay}`,
+      )
     } else {
       fail('payment-methods', `HTTP ${res.status}`)
     }
@@ -476,7 +479,9 @@ async function run() {
       method: 'POST',
       body: JSON.stringify({ planId: 'pro' }),
     })
-    if (res.ok && json?.mode === 'dev_mock' && json?.plan === 'pro') {
+    if (res.status === 403 && json?.errorKey === 'api.checkout.publicWelfare') {
+      pass('checkout', 'public welfare — billing disabled')
+    } else if (res.ok && json?.mode === 'dev_mock' && json?.plan === 'pro') {
       pass('checkout dev_mock', 'pro')
     } else if (json?.mode === 'stripe' && json?.url) {
       pass('checkout stripe', 'url returned')
@@ -491,8 +496,8 @@ async function run() {
   try {
     const { res, json } = await api('/api/subscription')
     const plan = json?.subscription?.plan
-    if (res.ok && (plan === 'pro' || plan === 'enterprise')) {
-      pass('subscription upgraded', plan)
+    if (res.ok && (plan === 'pro' || plan === 'enterprise' || json?.publicWelfare)) {
+      pass('subscription upgraded', json?.publicWelfare ? 'public_welfare' : plan)
     } else {
       fail('subscription upgraded', plan || `HTTP ${res.status}`)
     }

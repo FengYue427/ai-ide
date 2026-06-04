@@ -814,17 +814,10 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
       {contextMenu ? (
         <div
           role="menu"
+          className="shell-dropdown"
           style={{
-            position: 'fixed',
             left: contextMenu.x,
             top: contextMenu.y,
-            zIndex: 10000,
-            minWidth: '168px',
-            padding: '6px',
-            borderRadius: '10px',
-            border: '1px solid var(--border-color)',
-            background: 'var(--bg-primary)',
-            boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
           }}
           onClick={(event) => event.stopPropagation()}
         >

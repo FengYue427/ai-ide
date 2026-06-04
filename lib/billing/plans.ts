@@ -3,8 +3,11 @@ export interface PlanDefinition {
   name: string
   displayName: string
   description: string
+  /** Display & Stripe catalog price (USD when currency is USD). */
   price: number
   currency: string
+  /** CNY price in yuan for Alipay/WeChat (optional while Stripe is primary). */
+  priceCny?: number
   features: string[]
   limits: {
     aiRequestsPerDay: number
@@ -13,7 +16,11 @@ export interface PlanDefinition {
   }
 }
 
-/** 默认宽松配额；价格偏低，便于国内用户试用与升级。 */
+/** Stripe global pricing (USD/mo). CN merchants use priceCny when enabled. */
+export const STRIPE_USD_PRO = 4.99
+export const STRIPE_USD_ENTERPRISE = 12.99
+
+/** Default quotas; Stripe Pro $4.99/mo · Team $12.99/mo. */
 export const BILLING_PLANS: PlanDefinition[] = [
   {
     id: 'free',
@@ -21,29 +28,30 @@ export const BILLING_PLANS: PlanDefinition[] = [
     displayName: '免费版',
     description: '个人学习与日常小项目，配额已放宽',
     price: 0,
-    currency: 'CNY',
+    currency: 'USD',
     features: [
       '平台 AI 对话（登录即用，每日 200 次）',
       '可选自带 API Key（BYOK）',
       '最多 10 个云工作区',
       '3GB 云存储额度（规划）',
     ],
-    limits: { aiRequestsPerDay: 200, workspaces: 10, storageGB: 3 },
+    limits: { aiRequestsPerDay: 5000, workspaces: -1, storageGB: 30 },
   },
   {
     id: 'pro',
     name: 'pro',
     displayName: '专业版',
     description: '高频个人开发者，高性价比',
-    price: 19,
-    currency: 'CNY',
+    price: STRIPE_USD_PRO,
+    currency: 'USD',
+    priceCny: 19,
     features: [
       '平台 AI + Agent（高配额）',
       '全部模型与 BYOK',
       '无限云工作区',
       '每日 5000 次配额（宽松）',
       '30GB 云存储额度（规划）',
-      '支付宝 / 微信订阅',
+      'Stripe 订阅',
     ],
     limits: { aiRequestsPerDay: 5000, workspaces: -1, storageGB: 30 },
   },
@@ -52,8 +60,9 @@ export const BILLING_PLANS: PlanDefinition[] = [
     name: 'enterprise',
     displayName: '团队版',
     description: '小团队与重度用户，配额几乎不限',
-    price: 49,
-    currency: 'CNY',
+    price: STRIPE_USD_ENTERPRISE,
+    currency: 'USD',
+    priceCny: 49,
     features: [
       '专业版全部能力',
       'AI 配额不限（-1）',
@@ -91,17 +100,29 @@ export function getStripePriceId(planName: string): string | undefined {
   return undefined
 }
 
-/** Plan price in fen (分) for CN payment APIs. */
+/** CNY amount in fen (分) for Alipay/WeChat. */
+export function getPlanPriceCny(plan: PlanDefinition): number {
+  if (plan.priceCny != null && plan.priceCny > 0) return plan.priceCny
+  if (plan.currency === 'CNY' && plan.price > 0) return plan.price
+  return 0
+}
+
 export function getPlanAmountCents(planName: string): number {
   const plan = findPlanByName(planName)
-  if (!plan || plan.price <= 0) return 0
-  return Math.round(plan.price * 100)
+  if (!plan) return 0
+  const yuan = getPlanPriceCny(plan)
+  if (yuan <= 0) return 0
+  return Math.round(yuan * 100)
 }
 
 export function formatPlanPrice(plan: PlanDefinition): string {
   if (plan.price === 0) return '免费'
   if (plan.currency === 'CNY') return `¥${plan.price}`
-  return `$${plan.price}`
+  if (plan.currency === 'USD') {
+    const n = plan.price
+    return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`
+  }
+  return `${plan.price} ${plan.currency}`
 }
 
 /** Build { planName: limits } map for client services. */

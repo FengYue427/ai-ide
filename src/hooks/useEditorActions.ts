@@ -211,6 +211,7 @@ export function useEditorActions({
             callStack: inspection.callStack,
             locals: inspection.locals,
             activeStackFrameIndex: 0,
+            watchResults: [],
           })
           const fileIndex = files.findIndex((item) => item.name === inspection.location.path)
           if (fileIndex >= 0) {
@@ -225,6 +226,7 @@ export function useEditorActions({
             callStack: [],
             locals: [],
             activeStackFrameIndex: 0,
+            watchResults: [],
           })
         },
         onEnded: () => {
@@ -280,6 +282,7 @@ export function useEditorActions({
       callStack: [],
       locals: [],
       activeStackFrameIndex: 0,
+      watchResults: [],
     })
   }, [])
 

@@ -1,10 +1,11 @@
 /**
- * Subscription checkout — 支付宝 / 微信（优先），Stripe 可选，开发 mock 兜底
+ * Subscription checkout — 支付宝 / 微信（优先），Stripe（海外主路径），开发 mock 兜底
  */
 import { jsonResponse } from '../../http'
 import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
 import { requireAuth } from '../../requireAuth'
 import { isDevBillingAllowed } from '../../../billing/billingMode'
+import { isPublicWelfareMode } from '../../../billing/publicWelfare'
 import { createCnCheckout, isAlipayConfigured, isCnPaymentConfigured, isWechatPayConfigured } from '../../../billing/cnPayment'
 import type { PaymentChannel } from '../../../billing/paymentOrders'
 import { findPlanByName, getBillablePlanNames, getPlanAmountCents } from '../../../billing/plans'
@@ -14,6 +15,10 @@ import { trackServerEvent } from '../../logger'
 
 export async function POST(request: Request) {
   try {
+    if (isPublicWelfareMode()) {
+      return localizedErrorResponse(request, 'api.checkout.publicWelfare', 403)
+    }
+
     const auth = await requireAuth(request)
     if (!auth.ok) return auth.response
 

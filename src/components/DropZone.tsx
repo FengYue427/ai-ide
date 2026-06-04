@@ -110,22 +110,7 @@ const DropZone: React.FC<DropZoneProps> = ({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.8)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}
-      onClick={onClose}
-    >
+    <div className="modal-overlay" onClick={onClose}>
       <div
         style={{
           background: 'var(--bg-primary)',
@@ -133,7 +118,7 @@ const DropZone: React.FC<DropZoneProps> = ({
           width: '100%',
           maxWidth: '500px',
           padding: '24px',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
         }}
         onClick={(e) => e.stopPropagation()}
       >

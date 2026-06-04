@@ -19,7 +19,7 @@ export async function GET() {
 
   return jsonResponse({
     ...capabilities,
-    cnReady,
+    cnReady: capabilities.publicWelfare ? false : cnReady,
     billingPath,
     pricingNote: pricingNoteForPath(billingPath, capabilities),
     plans,

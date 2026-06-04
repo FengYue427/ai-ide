@@ -8,8 +8,8 @@ test.describe('billing skeleton (no real payment)', () => {
     await page.getByRole('button', { name: '查看套餐' }).click()
     await expect(page.getByText('订阅计划')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText('专业版').first()).toBeVisible()
-    await expect(page.getByText('¥19').first()).toBeVisible()
-    // GA: beta note is replaced by live pricing note once CN billing is enabled.
-    await expect(page.getByText(/(公测期|支持.*¥19\/月)/)).toBeVisible()
+    await expect(page.getByText('$4.99').first()).toBeVisible()
+    // Beta note, or live Stripe/CN pricing once billing Path B is enabled.
+    await expect(page.getByText(/(公测期|支持.*\$4\.99|Stripe)/)).toBeVisible()
   })
 })

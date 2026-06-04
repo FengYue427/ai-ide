@@ -5,7 +5,6 @@ import Editor from '../components/Editor'
 import { GitDiffEditor } from '../components/GitDiffEditor'
 import BottomPanel from '../components/BottomPanel'
 import type { ToastKind } from '../components/FeedbackCenter'
-import { PreviewPanel } from './lazyPanels'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { summarizeMonacoMarkers } from '../editor/summarizeMonacoMarkers'
 import { useIDEStore } from '../store/ideStore'
@@ -80,11 +79,9 @@ export function EditorLayout({
   const theme = useIDEStore((s) => s.theme)
   const editorTarget = useIDEStore((s) => s.editorTarget)
   const showTerminal = useIDEStore((s) => s.showTerminal)
-  const showPreview = useIDEStore((s) => s.showPreview)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const setActiveGitDiffTab = useIDEStore((s) => s.setActiveGitDiffTab)
   const setDiagnosticSummary = useIDEStore((s) => s.setDiagnosticSummary)
-  const setShowPreview = useIDEStore((s) => s.setShowPreview)
   const aiConfig = useIDEStore((s) => s.aiConfig)
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
   const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
@@ -272,14 +269,6 @@ export function EditorLayout({
         />
       )}
 
-      {showPreview && currentFile && (
-        <PreviewPanel
-          content={currentFile.content}
-          fileName={currentFile.name}
-          onClose={() => setShowPreview(false)}
-          onRefresh={() => {}}
-        />
-      )}
     </div>
   )
 }

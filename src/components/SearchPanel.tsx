@@ -18,6 +18,8 @@ interface SearchPanelProps {
   onNavigate: (file: string, line: number, column?: number) => void
   onReplace: (file: string, newContent: string) => void
   onClose: () => void
+  /** v1.2.2: docked auxiliary column (default overlay for legacy) */
+  layout?: 'overlay' | 'docked'
 }
 
 type SearchScope = 'tabs' | 'workspace'
@@ -54,7 +56,13 @@ function ResultSnippet({
   )
 }
 
-const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace, onClose }) => {
+const SearchPanel: React.FC<SearchPanelProps> = ({
+  files,
+  onNavigate,
+  onReplace,
+  onClose,
+  layout = 'overlay',
+}) => {
   const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [replaceQuery, setReplaceQuery] = useState('')
@@ -181,7 +189,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ files, onNavigate, onReplace,
   }, [results, selectedIndex, onNavigate, onClose, replacePreview])
 
   return (
-    <div className={styles.panel}>
+    <div className={layout === 'docked' ? styles.panelDocked : styles.panel}>
       <div className={styles.header}>
         <div className={styles.searchRow}>
           <Search size={16} className={styles.searchIcon} />

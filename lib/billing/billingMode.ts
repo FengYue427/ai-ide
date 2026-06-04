@@ -1,8 +1,10 @@
 import { isAlipayConfigured, isCnPaymentConfigured, isWechatPayConfigured } from './cnPayment'
+import { isPublicWelfareMode } from './publicWelfare'
 import { isStripeConfigured } from './stripe'
 
 /** Dev mock upgrade when no real payment provider is configured. */
 export function isDevBillingAllowed(): boolean {
+  if (isPublicWelfareMode()) return false
   if (process.env.VERCEL_ENV === 'production') return false
   if (process.env.NODE_ENV === 'production') return false
   if (isCnPaymentConfigured() || isStripeConfigured()) return false
@@ -26,14 +28,17 @@ export type BillingCapabilities = {
   stripe: boolean
   devMock: boolean
   devSimulate: boolean
+  publicWelfare: boolean
 }
 
 export function getBillingCapabilities(): BillingCapabilities {
+  const welfare = isPublicWelfareMode()
   return {
-    alipay: isAlipayConfigured(),
-    wechat: isWechatPayConfigured(),
-    stripe: isStripeConfigured(),
-    devMock: isDevBillingAllowed(),
-    devSimulate: isDevPaymentSimulateAllowed(),
+    alipay: welfare ? false : isAlipayConfigured(),
+    wechat: welfare ? false : isWechatPayConfigured(),
+    stripe: welfare ? false : isStripeConfigured(),
+    devMock: welfare ? false : isDevBillingAllowed(),
+    devSimulate: welfare ? false : isDevPaymentSimulateAllowed(),
+    publicWelfare: welfare,
   }
 }

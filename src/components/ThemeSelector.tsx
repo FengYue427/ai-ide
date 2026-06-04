@@ -100,22 +100,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   })
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.8)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}
-      onClick={onClose}
-    >
+    <div className="modal-overlay" onClick={onClose}>
       <div
         style={{
           background: 'var(--bg-primary)',
@@ -125,7 +110,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
           maxHeight: '80vh',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden'
+          overflow: 'hidden',
         }}
         onClick={(e) => e.stopPropagation()}
       >

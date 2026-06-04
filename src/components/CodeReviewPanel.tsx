@@ -18,6 +18,7 @@ interface CodeReviewPanelProps {
   }
   onClose: () => void
   onTestsGenerated?: (fileName: string, content: string) => void
+  layout?: 'overlay' | 'docked'
 }
 
 const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
@@ -27,6 +28,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
   aiConfig,
   onClose,
   onTestsGenerated,
+  layout = 'overlay',
 }) => {
   const { t, language: uiLocale } = useI18n()
   const [result, setResult] = useState<CodeReviewResult | null>(null)
@@ -120,7 +122,7 @@ const CodeReviewPanel: React.FC<CodeReviewPanelProps> = ({
   }
 
   return (
-    <div className={styles.panel}>
+    <div className={layout === 'docked' ? styles.panelDocked : styles.panel}>
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>

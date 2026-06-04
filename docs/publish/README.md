@@ -1,19 +1,31 @@
 # 对外发布素材
 
-> **当前版本基线**：**v1.1.1**（计划系统 GA：Plan → Spec → 队列 → 报告留档与恢复）  
-> **事实来源**：`package.json` + `CHANGELOG.md` + GitHub tag/release
+> **当前版本基线**：**v1.2.2**（Workbench Shell + 条件断点/Watch）  
+> **事实来源**：`package.json` + `CHANGELOG.md` + [RELEASE_NOTES_v1.2.2.md](../RELEASE_NOTES_v1.2.2.md)
 
-## 当前可直发（建议）
+## 对外一句话（v1.2.2）
+
+**开源、浏览器里的 AI 原生 IDE：免 Key 即可 Chat/Agent，工作台更少遮挡，带 Plan 驱动改造与轻量调试。**
+
+## 演示脚本（内部手测用，宣传搁置）
+
+1. `/signup` 注册 → 设置选 **平台 AI**  
+2. Chat Agent 改文件 → Diff 应用  
+3. Workbench docked 辅助列 · 侧栏 resize  
+4. F12 / 命令面板「转到定义」  
+5. 调试：条件断点 / Watch（可选）
+
+## 对外素材（搁置，勿直发）
 
 | 平台 | 文案 | 封面 |
 |------|------|------|
-| **掘金** | [JUEJIN_POST.md](./JUEJIN_POST.md)（请按 v1.1.1 口径更新） | [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png) |
+| **掘金** | [JUEJIN_POST.md](./JUEJIN_POST.md)（请按 **v1.2.2** 口径更新） | [juejin-cover-ai-ide-v1.png](./juejin-cover-ai-ide-v1.png) |
 | **知乎** | [ZHIHU_POST.md](./ZHIHU_POST.md) | 同掘金封面或截图 |
-| **CSDN** | [CSDN_POST.md](./CSDN_POST.md)（请按 v1.1.1 口径更新） | 同掘金封面或截图 |
+| **CSDN** | [CSDN_POST.md](./CSDN_POST.md)（请按 **v1.2.2** 口径更新） | 同掘金封面或截图 |
 | **V2EX** | [V2EX_POST.md](./V2EX_POST.md) | — |
-| **小红书** | [XIAOHONGSHU_POST_2026-05-28_V1.1.1_PLAN_SYSTEM_GA.md](./XIAOHONGSHU_POST_2026-05-28_V1.1.1_PLAN_SYSTEM_GA.md) | [xiaohongshu-cover-ai-ide-v1.png](./xiaohongshu-cover-ai-ide-v1.png) |
-| **B站** | [BILIBILI_POST.md](./BILIBILI_POST.md) | [bilibili-cover-ai-ide-v1.png](./bilibili-cover-ai-ide-v1.png) |
-| **GitHub** | [GA_ANNOUNCEMENT.md](../GA_ANNOUNCEMENT.md) | — |
+| **小红书** | 新建 v1.2.2 稿（可参考 [ANNOUNCEMENT_v1.2.0.md](../ANNOUNCEMENT_v1.2.0.md)） | [xiaohongshu-cover-ai-ide-v1.png](./xiaohongshu-cover-ai-ide-v1.png) |
+| **B站** | [BILIBILI_POST.md](./BILIBILI_POST.md) + 上方演示脚本录屏 | [bilibili-cover-ai-ide-v1.png](./bilibili-cover-ai-ide-v1.png) |
+| **GitHub** | [RELEASE_NOTES_v1.2.2.md](../RELEASE_NOTES_v1.2.2.md) | — |
 
 ## 历史稿（仅留档，勿作为当前 GA 直发）
 
@@ -39,7 +51,7 @@
 
 发帖后勾选 [GA_POST_LAUNCH_72H.md](../GA_POST_LAUNCH_72H.md)。
 
-## 版本升版（1.1.1）
+## 版本升版
 
-- **当前 GA**：**v1.1.1** — 外部文章建议统一写 1.1.1（计划系统 GA）
-- 历史稿：[XIAOHONGSHU_POST_2026-05-28_V1.1.0.11.md](./XIAOHONGSHU_POST_2026-05-28_V1.1.0.11.md)（仅留档）
+- **当前 GA**：**v1.2.2** — 外部文章统一写 1.2.2（Workbench Shell）
+- 历史稿：v1.1.1 Plan 系统 · v1.2.0 多根/插件 — 见 `XIAOHONGSHU_POST_*`（仅留档）

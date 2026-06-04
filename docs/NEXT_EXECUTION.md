@@ -1,6 +1,14 @@
 # 当前执行入口
 
-> **更新**：2026-06-01 — **v1.2.0 GA** ✅
+> **更新**：2026-06-04 — **宣传/上架搁置** · 工程线 **v1.2.3 产品深度**
+
+---
+
+## 策略（已拍板）
+
+- **不做**：短期渠道宣传、发文、上架推广节奏
+- **要做**：代码与体验 — 产品足够好时自然会被发现
+- **Git**：Agent 可直接 `git push`，无需每次确认
 
 ---
 
@@ -8,18 +16,28 @@
 
 | 线 | 状态 | 文档 |
 |----|------|------|
-| **v1.1.9.x** | ✅ 收口 | [ROADMAP_V1.1.9.x_PATCHES.md](./ROADMAP_V1.1.9.x_PATCHES.md) |
-| **v1.2.0** | ✅ **已上架** | [LAUNCH_V1.2.0_FULL.md](./LAUNCH_V1.2.0_FULL.md) · [RELEASE_NOTES_v1.2.0.md](./RELEASE_NOTES_v1.2.0.md) |
-| **v1.2.1 / v1.2.2** | 📋 **下一 B 轨** | [ROADMAP_V1.2.md](./ROADMAP_V1.2.md) |
+| **v1.2.0** | ✅ GA（功能开关默认关） | [RELEASE_NOTES_v1.2.0.md](./RELEASE_NOTES_v1.2.0.md) |
+| **v1.2.2** | ✅ Workbench Shell | [RELEASE_NOTES_v1.2.2.md](./RELEASE_NOTES_v1.2.2.md) |
+| **v1.2.3** | 🔄 **产品深度** | [V1.2.3_KICKOFF.md](./V1.2.3_KICKOFF.md) |
 
 ---
 
-## 当前迭代：v1.2.1 预览（DAP / LSP）
+## 当前迭代：v1.2.3 F1 语言服务
 
-1. 读 [V1.2_MASTER_PLAN.md](./V1.2_MASTER_PLAN.md) §3 v1.2.1
-2. DAP ADR · 条件断点/Watch 升格 · LSP 统一跳定义
+1. [V1.2.3_KICKOFF.md](./V1.2.3_KICKOFF.md)
+2. **F1** 🔄 LSP host 收口 + 命令面板转到定义
+3. **F2** 📋 多根/虚拟树加固
+4. **F3** 📋 Tab 补全 / FIM
+5. **F4** 📋 平台 AI 用量仪表盘
+6. **F5** 📋 协作 E2E 稳定
 
-**v1.2.0 功能开关**（生产逐步开）：[V1.2_ENV.md](./V1.2_ENV.md)
+**门禁**：`npm run test:local` 全绿；改 `lib/api` 后 `npm run build:api`
+
+---
+
+## v1.2.2 交付（已完成）
+
+见 [RELEASE_NOTES_v1.2.2.md](./RELEASE_NOTES_v1.2.2.md) · [V1.2.2_KICKOFF.md](./V1.2.2_KICKOFF.md)
 
 ---
 
@@ -27,21 +45,5 @@
 
 ```bash
 npm run test:local
-npm run build
-npm run test:e2e
+npm run dev:stack
 ```
-
-生产（部署后）：
-
-```bash
-$env:APP_URL="https://ai-ide-flame.vercel.app"
-npm run smoke:production -- $env:APP_URL
-git tag -a v1.2.0 -m "v1.2.0: multi-root workspace and plugin trust market"
-```
-
----
-
-## 勿并行
-
-- SSH / 企业 SSO（→ v1.2.2）
-- 完整 DAP 多目标（→ v1.2.1）

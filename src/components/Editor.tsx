@@ -8,9 +8,10 @@ import {
   type MonacoEditorInstance,
   type MonacoMarker,
 } from '../editor/monacoSetup'
+import { Z } from '../lib/layers'
 import { registerInlineCompletionProvider } from '../editor/registerInlineCompletion'
+import { registerLanguageServiceProviders } from '../editor/languageServiceHost'
 import {
-  registerCrossFileDefinitionProvider,
   resolveDefinitionNavigation,
   type DefinitionProjectFile,
 } from '../editor/registerCrossFileDefinition'
@@ -21,7 +22,7 @@ import { useI18n } from '../i18n'
 import { useCollabEditorPresence } from '../hooks/useCollabEditorPresence'
 import { canFormatFile, formatActiveFileInStore } from '../lib/editorFormat'
 import { useIDEStore } from '../store/ideStore'
-import { breakpointsForFileDecorations } from '../lib/debugBreakpoints'
+import { breakpointHasAdvancedOptions, breakpointsForFileDecorations } from '../lib/debugBreakpoints'
 import { SkeletonLoader } from './SkeletonLoader'
 
 interface EditorTarget {
@@ -73,6 +74,7 @@ const Editor: React.FC<EditorProps> = ({
   const setDebugBreakpointEnabled = useIDEStore((s) => s.setDebugBreakpointEnabled)
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
   const formatDocumentNonce = useIDEStore((s) => s.formatDocumentNonce)
+  const goToDefinitionNonce = useIDEStore((s) => s.goToDefinitionNonce)
   aiConfigRef.current = aiConfig
   allFilesRef.current = allFiles
 
@@ -104,7 +106,7 @@ const Editor: React.FC<EditorProps> = ({
 
   useEffect(() => {
     if (!filename || allFiles.length === 0) return
-    const definitionDisposable = registerCrossFileDefinitionProvider(allFiles, filename)
+    const definitionDisposable = registerLanguageServiceProviders(allFiles, filename)
     const referenceDisposable = registerCrossFileReferenceProvider(allFiles)
     return () => {
       definitionDisposable.dispose()
@@ -190,6 +192,14 @@ const Editor: React.FC<EditorProps> = ({
   }, [formatDocumentNonce, readOnly, filename, language])
 
   useEffect(() => {
+    if (!goToDefinitionNonce || readOnly) return
+    const editor = editorRef.current
+    if (!editor) return
+    const action = editor.getAction('editor.action.revealDefinition')
+    void action?.run()
+  }, [goToDefinitionNonce, readOnly])
+
+  useEffect(() => {
     const editor = editorRef.current
     if (!editor) return
 
@@ -198,12 +208,22 @@ const Editor: React.FC<EditorProps> = ({
       range: new monaco.Range(bp.line, 1, bp.line, 1),
       options: {
         isWholeLine: true,
-        glyphMarginClassName: bp.enabled
-          ? 'debug-breakpoint-glyph'
-          : 'debug-breakpoint-glyph debug-breakpoint-glyph--disabled',
+        glyphMarginClassName: [
+          'debug-breakpoint-glyph',
+          !bp.enabled ? 'debug-breakpoint-glyph--disabled' : '',
+          bp.enabled && breakpointHasAdvancedOptions(bp) ? 'debug-breakpoint-glyph--conditional' : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
         glyphMarginHoverMessage: {
           value: bp.enabled
-            ? t('debug.breakpointHover', { line: bp.line })
+            ? breakpointHasAdvancedOptions(bp)
+              ? t('debug.breakpointConditionalHover', {
+                  line: bp.line,
+                  condition: bp.condition?.trim() || '—',
+                  hitCount: bp.hitCount != null && bp.hitCount >= 2 ? String(bp.hitCount) : '1',
+                })
+              : t('debug.breakpointHover', { line: bp.line })
             : t('debug.breakpointDisabledHover', { line: bp.line }),
         },
       },
@@ -238,7 +258,7 @@ const Editor: React.FC<EditorProps> = ({
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       {isLoading && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: Z.sticky }}>
           <SkeletonLoader theme={theme === 'vs-dark' ? 'dark' : 'light'} />
         </div>
       )}

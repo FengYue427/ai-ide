@@ -7,10 +7,12 @@
 
 1. 注册 [Stripe Dashboard](https://dashboard.stripe.com/)
 2. 切换到 **测试模式**（开发）或 **生产模式**（上线）
-3. **Products** → 创建两个订阅产品：
-   - **Pro**（月付）
-   - **Enterprise**（月付）
-4. 复制每个 Price 的 ID（形如 `price_1ABC...`）
+3. **Products** → 创建两个订阅产品（**USD 月付，须与代码一致**）：
+   - **Pro** — **$4.99 / month**
+   - **Team**（代码名 `enterprise`）— **$12.99 / month**
+4. 复制每个 Price 的 ID（形如 `price_1ABC...`）→ `STRIPE_PRICE_PRO` / `STRIPE_PRICE_ENTERPRISE`
+
+> 决策记录：[PAYMENT_DECISION_GLOBAL_STRIPE.md](./PAYMENT_DECISION_GLOBAL_STRIPE.md)
 
 ## 2. 环境变量
 
@@ -33,7 +35,7 @@
 1. Stripe Dashboard → **Developers → Webhooks → Add endpoint**
 2. URL（生产示例）：
    ```
-   https://ai-ide.vercel.app/api/subscription/webhook
+   https://ai-ide-flame.vercel.app/api/subscription/webhook
    ```
    本地联调可用 [Stripe CLI](https://stripe.com/docs/stripe-cli)：
    ```bash

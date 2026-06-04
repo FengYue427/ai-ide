@@ -10,6 +10,7 @@ export type HealthPayload = {
     wechat: boolean
     stripe: boolean
     devMock: boolean
+    publicWelfare?: boolean
   }
   platformAi?: {
     configured: boolean

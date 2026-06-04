@@ -10,12 +10,10 @@ import type { RunNpmScriptHandler } from '../lib/npmScriptRun'
 import {
   AISettingsModal,
   AuthModal,
-  CodeReviewPanel,
   CollaborationPanel,
   CommandPalette,
   DiffViewer,
   ImportModal,
-  PerformancePanel,
   PluginManager,
   SettingsCenter,
   ShareModal,
@@ -187,9 +185,9 @@ export function PanelHost({
   openWelcomeScreen,
   openRegisterDialog,
   onOpenRecentWorkspace,
-  onTestsGenerated,
-  isRunning,
-  output,
+  onTestsGenerated: _onTestsGenerated,
+  isRunning: _isRunning,
+  output: _output,
   isWebContainerReady,
   gitBranch,
   gitModified = 0,
@@ -233,9 +231,7 @@ export function PanelHost({
   const showDropZone = useIDEStore((s) => s.showDropZone)
   const showDiff = useIDEStore((s) => s.showDiff)
   const showAgentApplyModal = useIDEStore((s) => s.showAgentApplyModal)
-  const showCodeReview = useIDEStore((s) => s.showCodeReview)
   const showSnippetLibrary = useIDEStore((s) => s.showSnippetLibrary)
-  const showPerformance = useIDEStore((s) => s.showPerformance)
   const showSettingsCenter = useIDEStore((s) => s.showSettingsCenter)
   const showCommandPalette = useIDEStore((s) => s.showCommandPalette)
   const showWorkspaceManager = useIDEStore((s) => s.showWorkspaceManager)
@@ -305,6 +301,7 @@ export function PanelHost({
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
   const setFormatOnSaveEnabled = useIDEStore((s) => s.setFormatOnSaveEnabled)
   const requestFormatDocument = useIDEStore((s) => s.requestFormatDocument)
+  const requestGoToDefinition = useIDEStore((s) => s.requestGoToDefinition)
   const setCurrentUser = useIDEStore((s) => s.setCurrentUser)
   const setShowAISettings = useIDEStore((s) => s.setShowAISettings)
 
@@ -317,9 +314,7 @@ export function PanelHost({
   const setShowPluginManager = useIDEStore((s) => s.setShowPluginManager)
   const setShowDropZone = useIDEStore((s) => s.setShowDropZone)
   const setShowDiff = useIDEStore((s) => s.setShowDiff)
-  const setShowCodeReview = useIDEStore((s) => s.setShowCodeReview)
   const setShowSnippetLibrary = useIDEStore((s) => s.setShowSnippetLibrary)
-  const setShowPerformance = useIDEStore((s) => s.setShowPerformance)
   const setShowWorkspaceManager = useIDEStore((s) => s.setShowWorkspaceManager)
   const setShowWorkspacePanel = useIDEStore((s) => s.setShowWorkspacePanel)
   const setShowThemeSelector = useIDEStore((s) => s.setShowThemeSelector)
@@ -393,17 +388,6 @@ export function PanelHost({
 
       {showAgentApplyModal && <AgentApplyModal />}
 
-      {showCodeReview && activeFileTab && (
-        <CodeReviewPanel
-          code={activeFileTab.content}
-          language={activeFileTab.language}
-          filename={activeFileTab.name}
-          aiConfig={aiConfig}
-          onClose={() => setShowCodeReview(false)}
-          onTestsGenerated={onTestsGenerated}
-        />
-      )}
-
       {showSnippetLibrary && (
         <SnippetLibrary
           onInsert={(code) => {
@@ -417,10 +401,6 @@ export function PanelHost({
           requestConfirm={requestConfirm}
           onClose={() => setShowSnippetLibrary(false)}
         />
-      )}
-
-      {showPerformance && (
-        <PerformancePanel isRunning={isRunning} output={output} onClose={() => setShowPerformance(false)} />
       )}
 
       <CommandPalette
@@ -450,6 +430,7 @@ export function PanelHost({
         onToggleTheme={onToggleTheme}
         onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
         onFormatDocument={() => requestFormatDocument()}
+        onGoToDefinition={() => requestGoToDefinition()}
         onOpenCollaboration={openCollaborationDialog}
         onExportFile={onExportFile}
         onOpenImport={openImportDialog}

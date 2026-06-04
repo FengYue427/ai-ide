@@ -35,6 +35,7 @@ export const API_MESSAGES_JA = {
   'api.checkout.missingPlanId': 'Missing プランId',
   'api.checkout.noPaymentNeeded': 'This プラン does not require 支払い',
   'api.checkout.notConfigured': '支払いs are not configured. Contact an administrator.',
+  'api.checkout.publicWelfare': 'Public-welfare IDE — no subscription checkout.',
   'api.checkout.sessionFailed': '失敗 to create checkout session',
   'api.checkout.wechatNotConfigured': 'Weチャット Pay is not configured on the サーバー',
   'api.collab.codeRequired': 'ルーム invite コード is required',

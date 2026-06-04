@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Wand2, X, Check, Loader2 } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { Z } from '../lib/layers'
 import { sendMessage } from '../services/aiService'
 import type { AIModel } from '../services/aiService'
 
@@ -105,7 +106,7 @@ const InlineAIEdit: React.FC<InlineAIEditProps> = ({
       <div
         style={{
           position: 'absolute',
-          zIndex: 1000,
+          zIndex: Z.dropdown,
           background: 'var(--bg-primary)',
           border: '1px solid var(--border-color)',
           borderRadius: '8px',
@@ -170,7 +171,7 @@ const InlineAIEdit: React.FC<InlineAIEditProps> = ({
     <div
       style={{
         position: 'absolute',
-        zIndex: 1000,
+        zIndex: Z.dropdown,
         background: 'var(--bg-primary)',
         border: '1px solid var(--border-color)',
         borderRadius: '8px',

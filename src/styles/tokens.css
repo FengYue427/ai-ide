@@ -35,10 +35,10 @@
   --activity-bar-width: 48px;
   --sidebar-width: 260px;
   --search-panel-width: 320px;
-  --right-panel-width-chat: 380px;
-  --right-panel-width-chat-wide: 420px;
-  --right-panel-width-git: 380px;
-  --toolbar-height: 48px;
+  --right-panel-width-chat: 360px;
+  --right-panel-width-chat-wide: 400px;
+  --right-panel-width-git: 360px;
+  --toolbar-height: 40px;
 }
 
 .app.light-theme {
@@ -61,3 +61,4 @@
   --wechat-green: #07c160;
   --editor-surface: #f5f7fb;
 }
+

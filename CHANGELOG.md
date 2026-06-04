@@ -7,6 +7,32 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.2] — 2026-06-04 · Workbench Shell
+
+### Added
+
+- **v1.2.2 F1 Workbench Shell**：`workbenchLayout` 辅助面单槽互斥 · `WorkbenchAuxiliaryHost` docked 列 · 搜索/预览/审查/性能不再叠在编辑区上
+- **v1.2.2 F2 Layer 刻度**：`layers.css` / `layers.ts` · Modal/Command/Toast/Confirm 统一 z-index · 移除 `10000` 等散落值
+- **v1.2.2 F3 视觉密度**：Chat 消息/输入区间距缩减 ~30% · Toolbar 高度 48→40px · Settings 卡片/内边距缩减 ~20% · 右栏宽度 380→360px · token `--toolbar-height` 同步更新
+- **v1.2.2 F4 面板 Resize**：侧栏/右栏拖拽调宽（Pointer Events）· 宽度 localStorage 持久化 · 窄屏≤900px 自动折叠侧栏 · 双击恢复默认宽度
+- **v1.2.2 F5**：E2E `workbench-layout.spec.ts` · 单测 `workbenchLayout` / `layers` / `panelWidthPrefs`
+
+### Changed (v1.2.1 track, 同仓合入)
+
+- **调试**：`DebugSession` 抽象 · 条件断点 / `hitCount` · Watch 只读（最多 3 条）· `languageServiceHost` 统一跳定义入口
+
+### Fixed
+
+- 免费计划 AI 日配额测试与 **5000/日** 产品策略对齐 · ja 覆盖 `debug.*` / `subscription.*` / `toolbar.welfare.*`
+
+### Docs
+
+- [ADR_V1.2_WORKBENCH_SHELL.md](docs/ADR_V1.2_WORKBENCH_SHELL.md) · [V1.2.2_KICKOFF.md](docs/V1.2.2_KICKOFF.md) · [WORKBENCH_QA.md](docs/WORKBENCH_QA.md) · [RELEASE_NOTES_v1.2.2.md](docs/RELEASE_NOTES_v1.2.2.md)
+
+See [RELEASE_NOTES_v1.2.2.md](docs/RELEASE_NOTES_v1.2.2.md).
+
+---
+
 ## [1.2.0] — 2026-06-01 · 多根工作区 + 插件可信市场
 
 ### Added

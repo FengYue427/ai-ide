@@ -520,6 +520,23 @@ export const JA_JP_BULK_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'debug.inspectRequiresCdp':
     'コールスタックとローカル変数には CDP ブレークポイント同期が必要です（debugger 注入フォールバックでは利用不可）。',
   'debug.breakpointHint': 'ガターで BP を追加；Alt+クリックで有効/無効（灰色=無効）。',
+  'debug.conditionalCdpHint':
+    '条件式は CDP で評価されます（例: x > 1）。ヒット回数が N に達するまで自動で続行します。',
+  'debug.conditionalInjectHint':
+    'debugger; 注入モードです。条件/ヒット回数には CDP ブレークポイント同期が必要です。',
+  'debug.breakpointCondition': '条件',
+  'debug.breakpointConditionPlaceholder': '例: x > 1',
+  'debug.breakpointHitCount': 'ヒット回数',
+  'debug.breakpointConditionalHover':
+    '条件 BP · {line} 行 · 条件 {condition} · {hitCount} 回ヒット後に一時停止',
+  'debug.watchTitle': 'ウォッチ',
+  'debug.watchHint': '最大 3 式；一時停止時に自動評価（読み取り専用）。',
+  'debug.watchPlaceholder': 'ウォッチ {n}',
+  'debug.watchSlotLabel': 'ウォッチ式 {n}',
+  'debug.watchRequiresCdp': 'ウォッチには CDP デバッグセッションが必要です。',
+  'debug.watchResumeHint': '一時停止時に結果を表示',
+  'debug.watchPausedEmpty': '—',
+  'debug.watchEmptyValue': 'undefined',
   'debug.alphaHint':
     'v1.1.7：ブレークポイント、コールスタック、ステップ実行。コマンドパレットで「デバッグ」と入力して開始。',
   'debug.start': '{file} をデバッグ',

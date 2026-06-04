@@ -39,20 +39,7 @@ function ErrorBoundaryFallback({
   const { t } = useI18n()
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '40px',
-        background: 'var(--bg-primary, #0f172a)',
-        color: 'var(--text-primary, #e2e8f0)',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        zIndex: 9999,
-      }}
-    >
+    <div className="shell-fatal-overlay">
       <div style={{ display: 'grid', gap: '20px', maxWidth: '620px', textAlign: 'center' }}>
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
           <AlertTriangle size={32} color="#ef4444" />

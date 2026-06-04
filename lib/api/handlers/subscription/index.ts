@@ -5,6 +5,7 @@ import { jsonResponse } from '../../http'
 import { appendApiMessage } from '../../localizedError'
 import { optionalAuth } from '../../requireAuth'
 import { expireUserSubscriptionIfDue } from '../../../billing/subscriptionExpiry'
+import { isPublicWelfareMode, PUBLIC_WELFARE_PLAN } from '../../../billing/publicWelfare'
 import { prisma } from '../../../../src/lib/prisma'
 
 const freeSubscription = {
@@ -14,8 +15,23 @@ const freeSubscription = {
   cancelAtPeriodEnd: false,
 }
 
+const welfareSubscription = {
+  plan: PUBLIC_WELFARE_PLAN,
+  status: 'active' as const,
+  currentPeriodEnd: null,
+  cancelAtPeriodEnd: false,
+  publicWelfare: true,
+}
+
 export async function GET(req: Request) {
   try {
+    if (isPublicWelfareMode()) {
+      return jsonResponse({
+        subscription: welfareSubscription,
+        publicWelfare: true,
+      })
+    }
+
     const user = await optionalAuth(req)
     if (!user) {
       return jsonResponse({ subscription: freeSubscription })

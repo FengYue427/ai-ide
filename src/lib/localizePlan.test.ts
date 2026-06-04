@@ -15,7 +15,7 @@ describe('localizePlan', () => {
       t,
     )
     expect(plan.displayName).toBe('Pro')
-    expect(plan.description).toContain('¥19')
+    expect(plan.description).toContain('$4.99')
     expect(plan.features[0]).toBe('5000 requests / day')
   })
 })

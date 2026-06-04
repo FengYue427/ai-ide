@@ -2,7 +2,7 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.2.0**（多根工作区 · 插件可信市场）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.2](./docs/ROADMAP_V1.2.md)
+**当前版本：v1.2.2**（Workbench Shell · 布局互斥/密度/Resize）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.2](./docs/ROADMAP_V1.2.md)
 
 | 入口 | 链接 |
 |--|--|

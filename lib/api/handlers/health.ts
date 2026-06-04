@@ -43,6 +43,7 @@ export async function GET(_req: Request) {
       wechat: billing.wechat,
       stripe: billing.stripe,
       devMock: billing.devMock,
+      publicWelfare: billing.publicWelfare,
     },
     plugins: {
       publishEnabled: isPluginPublishEnabled(),

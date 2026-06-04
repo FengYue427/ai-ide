@@ -28,6 +28,7 @@ const idleDebug: DebugSessionState = {
   callStack: [],
   locals: [],
   activeStackFrameIndex: 0,
+  watchResults: [],
 }
 
 function makeContext(overrides?: {

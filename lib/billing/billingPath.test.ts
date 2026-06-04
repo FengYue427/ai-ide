@@ -10,8 +10,22 @@ describe('billingPath', () => {
         stripe: false,
         devMock: false,
         devSimulate: false,
+        publicWelfare: false,
       }),
     ).toBe('B')
+  })
+
+  it('resolves path welfare when public welfare mode', () => {
+    expect(
+      resolveBillingPath({
+        alipay: false,
+        wechat: false,
+        stripe: false,
+        devMock: false,
+        devSimulate: false,
+        publicWelfare: true,
+      }),
+    ).toBe('welfare')
   })
 
   it('resolves path A for public beta without merchants', () => {
@@ -22,6 +36,7 @@ describe('billingPath', () => {
         stripe: false,
         devMock: false,
         devSimulate: false,
+        publicWelfare: false,
       }),
     ).toBe('A')
   })
@@ -33,6 +48,7 @@ describe('billingPath', () => {
       stripe: false,
       devMock: false,
       devSimulate: false,
+      publicWelfare: false,
     })
     expect(note).toContain('公测')
   })

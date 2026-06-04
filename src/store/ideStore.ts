@@ -23,10 +23,16 @@ import {
   saveDebugBreakpoints,
   setBreakpointEnabledInList,
   toggleBreakpointInList,
+  updateBreakpointMetaInList,
   type DebugBreakpoint,
 } from '../lib/debugBreakpoints'
 import type { DebugAttachPhase, DebugRuntimeKind, DebugSyncMode } from '../services/debugAlphaService'
-import type { DebugLocalVariable, DebugStackFrame } from '../types/debugInspect'
+import {
+  loadDebugWatchExpressions,
+  saveDebugWatchExpressions,
+  setDebugWatchSlot as setWatchSlotInList,
+} from '../lib/debugWatch'
+import type { DebugLocalVariable, DebugStackFrame, DebugWatchResult } from '../types/debugInspect'
 import {
   loadGitStatusRefreshPrefs,
   saveGitStatusRefreshPrefs,
@@ -46,6 +52,7 @@ export interface DebugSessionState {
   callStack: DebugStackFrame[]
   locals: DebugLocalVariable[]
   activeStackFrameIndex: number
+  watchResults: DebugWatchResult[]
 }
 
 const defaultDebugSession: DebugSessionState = {
@@ -60,6 +67,7 @@ const defaultDebugSession: DebugSessionState = {
   callStack: [],
   locals: [],
   activeStackFrameIndex: 0,
+  watchResults: [],
 }
 
 export type EditorTheme = 'vs-dark' | 'light'
@@ -174,6 +182,7 @@ export interface IDEState {
   autoSaveEnabled: boolean
   formatOnSaveEnabled: boolean
   formatDocumentNonce: number
+  goToDefinitionNonce: number
   aiConfig: AIConfigState
   diffContent: DiffContent | null
   editorTarget: EditorTarget | null
@@ -207,6 +216,7 @@ export interface IDEState {
   bottomPanelTab: BottomPanelTab
   bottomPanelHeight: number
   debugBreakpoints: DebugBreakpoint[]
+  debugWatchExpressions: string[]
   debugSession: DebugSessionState
   gitManualRefreshOnly: boolean
   gitStatusRefreshNonce: number
@@ -257,6 +267,7 @@ export interface IDEState {
   setAutoSaveEnabled: (enabled: boolean | ((prev: boolean) => boolean)) => void
   setFormatOnSaveEnabled: (enabled: boolean | ((prev: boolean) => boolean)) => void
   requestFormatDocument: () => void
+  requestGoToDefinition: () => void
   setAiConfig: (config: AIConfigState | ((prev: AIConfigState) => AIConfigState)) => void
   setDiffContent: (content: DiffContent | null) => void
   setEditorTarget: (target: EditorTarget | null) => void
@@ -292,6 +303,12 @@ export interface IDEState {
   setBottomPanelHeight: (height: number) => void
   toggleDebugBreakpoint: (path: string, line: number) => void
   setDebugBreakpointEnabled: (path: string, line: number, enabled: boolean) => void
+  updateDebugBreakpointMeta: (
+    path: string,
+    line: number,
+    patch: { condition?: string; hitCount?: number | undefined },
+  ) => void
+  setDebugWatchSlot: (index: number, expression: string) => void
   setDebugSession: (patch: Partial<DebugSessionState>) => void
   resetDebugSession: () => void
   setGitManualRefreshOnly: (enabled: boolean) => void
@@ -365,6 +382,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   autoSaveEnabled: true,
   formatOnSaveEnabled: false,
   formatDocumentNonce: 0,
+  goToDefinitionNonce: 0,
   aiConfig: defaultAiConfig,
   diffContent: null,
   editorTarget: null,
@@ -391,6 +409,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   bottomPanelTab: 'terminal',
   bottomPanelHeight: BOTTOM_PANEL_DEFAULT_HEIGHT,
   debugBreakpoints: loadDebugBreakpoints(),
+  debugWatchExpressions: loadDebugWatchExpressions(),
   debugSession: { ...defaultDebugSession },
   gitManualRefreshOnly: loadGitStatusRefreshPrefs().manualRefreshOnly,
   gitStatusRefreshNonce: 0,
@@ -550,6 +569,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
     set((state) => ({ formatOnSaveEnabled: resolveBoolean(enabled, state.formatOnSaveEnabled) })),
   requestFormatDocument: () =>
     set((state) => ({ formatDocumentNonce: state.formatDocumentNonce + 1 })),
+  requestGoToDefinition: () =>
+    set((state) => ({ goToDefinitionNonce: state.goToDefinitionNonce + 1 })),
   setAiConfig: (config) =>
     set((state) => ({
       aiConfig: typeof config === 'function' ? config(state.aiConfig) : config,
@@ -625,6 +646,18 @@ export const useIDEStore = create<IDEState>()((set) => ({
       const debugBreakpoints = setBreakpointEnabledInList(state.debugBreakpoints, path, line, enabled)
       saveDebugBreakpoints(debugBreakpoints)
       return { debugBreakpoints }
+    }),
+  updateDebugBreakpointMeta: (path, line, patch) =>
+    set((state) => {
+      const debugBreakpoints = updateBreakpointMetaInList(state.debugBreakpoints, path, line, patch)
+      saveDebugBreakpoints(debugBreakpoints)
+      return { debugBreakpoints }
+    }),
+  setDebugWatchSlot: (index, expression) =>
+    set((state) => {
+      const debugWatchExpressions = setWatchSlotInList(state.debugWatchExpressions, index, expression)
+      saveDebugWatchExpressions(debugWatchExpressions)
+      return { debugWatchExpressions }
     }),
   setDebugSession: (patch) =>
     set((state) => ({

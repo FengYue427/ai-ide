@@ -7,6 +7,9 @@ import {
   recordAIUsageEvent,
 } from './usageService'
 
+const USAGE_KEY = 'ai-usage-today'
+const USAGE_DATE_KEY = 'ai-usage-date'
+
 function createStorageMock(): Storage {
   const store = new Map<string, string>()
   return {
@@ -28,9 +31,9 @@ describe('usageService', () => {
   })
 
   it('throws QuotaExceededError when guest limit reached', async () => {
-    for (let i = 0; i < 200; i++) {
-      await recordAIUsageEvent(false, 'free')
-    }
+    const today = new Date().toISOString().split('T')[0]
+    localStorage.setItem(USAGE_KEY, JSON.stringify({ count: 5000, date: today }))
+    localStorage.setItem(USAGE_DATE_KEY, today)
     await expect(ensureAIQuotaAllowed('free', false)).rejects.toBeInstanceOf(QuotaExceededError)
   })
 

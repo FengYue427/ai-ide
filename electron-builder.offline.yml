@@ -1,0 +1,28 @@
+appId: app.aiide.desktop
+productName: AI IDE
+copyright: Copyright © 2026 AI IDE
+directories:
+  output: release
+  buildResources: electron/build
+files:
+  - electron/**/*
+  - package.json
+  - dist/**/*
+asar: true
+publish:
+  provider: github
+  owner: FengYue427
+  repo: ai-ide
+  releaseType: release
+win:
+  target:
+    - portable
+  artifactName: AI-IDE-${env.PRODUCT_VERSION}-win-portable.${ext}
+mac:
+  target:
+    - dmg
+    - zip
+  artifactName: AI-IDE-${env.PRODUCT_VERSION}-mac-${arch}.${ext}
+  category: public.app-category.developer-tools
+  hardenedRuntime: false
+  gatekeeperAssess: false

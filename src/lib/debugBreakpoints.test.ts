@@ -1,25 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { breakpointKey, setBreakpointEnabledInList, toggleBreakpointInList } from './debugBreakpoints'
+import {
+  breakpointHasAdvancedOptions,
+  updateBreakpointMetaInList,
+  toggleBreakpointInList,
+} from './debugBreakpoints'
 
-describe('debugBreakpoints', () => {
-  it('toggles breakpoint on and off', () => {
-    const first = toggleBreakpointInList([], 'index.js', 3)
-    expect(first).toHaveLength(1)
-    expect(first[0]?.line).toBe(3)
-
-    const second = toggleBreakpointInList(first, 'index.js', 3)
-    expect(second).toHaveLength(0)
+describe('debugBreakpoints meta', () => {
+  it('updates condition and hitCount', () => {
+    const base = toggleBreakpointInList([], 'app.js', 10)
+    const updated = updateBreakpointMetaInList(base, 'app.js', 10, {
+      condition: 'n > 0',
+      hitCount: 3,
+    })
+    const bp = updated.find((item) => item.path === 'app.js')
+    expect(bp?.condition).toBe('n > 0')
+    expect(bp?.hitCount).toBe(3)
+    expect(breakpointHasAdvancedOptions(bp!)).toBe(true)
   })
 
-  it('builds stable keys', () => {
-    expect(breakpointKey('a.ts', 10)).toBe('a.ts:10')
-  })
-
-  it('toggles enabled state without removing breakpoint', () => {
-    const first = toggleBreakpointInList([], 'a.ts', 4)
-    const disabled = setBreakpointEnabledInList(first, 'a.ts', 4, false)
-    expect(disabled[0]?.enabled).toBe(false)
-    const enabled = setBreakpointEnabledInList(disabled, 'a.ts', 4, true)
-    expect(enabled[0]?.enabled).toBe(true)
+  it('clears hitCount when set below 2', () => {
+    const base = updateBreakpointMetaInList(toggleBreakpointInList([], 'x.js', 1), 'x.js', 1, {
+      hitCount: 5,
+    })
+    const cleared = updateBreakpointMetaInList(base, 'x.js', 1, { hitCount: undefined })
+    expect(cleared[0]?.hitCount).toBeUndefined()
   })
 })

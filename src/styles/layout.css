@@ -93,19 +93,6 @@
   display: none;
 }
 
-.search-overlay {
-  position: absolute;
-  left: var(--sidebar-width);
-  top: 0;
-  bottom: 0;
-  width: var(--search-panel-width);
-  z-index: 100;
-}
-
-.workspace-main--no-sidebar .search-overlay {
-  left: 0;
-}
-
 .panel-header-compact {
   display: flex;
   align-items: center;

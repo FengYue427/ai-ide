@@ -50,8 +50,10 @@ function localDistIndexUrl() {
 function resolveShellMode() {
   if (process.env.ELECTRON_VITE_DEV_SERVER_URL) return 'local-dev'
   if (process.env.AI_IDE_DESKTOP_OFFLINE === '1') return 'local-dist'
+  if (process.env.AI_IDE_DESKTOP_REMOTE === '1') return 'remote'
   if (!app.isPackaged) return process.env.ELECTRON_USE_DIST === '1' ? 'local-dist' : 'local-dev'
-  return 'remote'
+  // Packaged default: local UI (avoids loading vercel.app in China); API via VITE_API_BASE_URL / AI_IDE_APP_URL
+  return 'local-dist'
 }
 
 function resolveLoadTarget(mode) {

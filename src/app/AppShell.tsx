@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { FeedbackCenter } from '../components/FeedbackCenter'
 import { PluginModal } from '../components/PluginModal'
+import { PanelResizeHandle } from '../components/PanelResizeHandle'
 import { useBillingReturn } from '../hooks/useBillingReturn'
 import { useBillingSync } from '../hooks/useBillingSync'
 import { usePluginHost } from '../hooks/usePluginHost'
@@ -10,6 +11,8 @@ import { useAppShortcuts } from '../hooks/useAppShortcuts'
 import { useEditorActions } from '../hooks/useEditorActions'
 import { useFileActions } from '../hooks/useFileActions'
 import { useFileEditor } from '../hooks/useFileEditor'
+import { usePanelWidth } from '../hooks/usePanelWidth'
+import { usePanelResize } from '../hooks/usePanelResize'
 import { useUIActions } from '../hooks/useUIActions'
 import { useWebContainer } from '../hooks/useWebContainer'
 import { useCollaborationSync } from '../hooks/useCollaborationSync'
@@ -39,9 +42,9 @@ import { AppToolbar } from './AppToolbar'
 import { EditorLayout } from './EditorLayout'
 import { FileSidebar } from './FileSidebar'
 import { getLanguageFromExt } from './getLanguageFromExt'
-import { SearchPanel } from './lazyPanels'
 import { PanelHost } from './PanelHost'
 import { RightPanel } from './RightPanel'
+import { WorkbenchAuxiliaryHost } from './WorkbenchAuxiliaryHost'
 import { useAppFeedback } from './useAppFeedback'
 import { OPEN_BACKGROUND_JOBS_PANEL_EVENT } from '../lib/backgroundJobsPanelEvents'
 import { loadWorkspaceByRef } from '../services/workspaceLoader'
@@ -62,8 +65,6 @@ export function AppShell() {
   const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
   const requestFormatDocument = useIDEStore((s) => s.requestFormatDocument)
   const currentUser = useIDEStore((s) => s.currentUser)
-  const showSearchPanel = useIDEStore((s) => s.showSearchPanel)
-  const setShowSearchPanel = useIDEStore((s) => s.setShowSearchPanel)
   const setFiles = useIDEStore((s) => s.setFiles)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const closeGitDiffTab = useIDEStore((s) => s.closeGitDiffTab)
@@ -264,6 +265,29 @@ export function AppShell() {
   })
 
   const [showFileSidebar, setShowFileSidebar] = useState(true)
+  const { sidebarWidth, rightPanelWidth, setSidebarWidth, setRightPanelWidth, resetSidebarWidth, resetRightPanelWidth } = usePanelWidth()
+  const sidebarResize = usePanelResize(sidebarWidth, setSidebarWidth, 'right')
+  const rightPanelResize = usePanelResize(rightPanelWidth, setRightPanelWidth, 'left')
+
+  // Narrow screen: auto-hide sidebar when right panel or auxiliary is open
+  const showSearchPanel = useIDEStore((s) => s.showSearchPanel)
+  const showPreview = useIDEStore((s) => s.showPreview)
+  const showChatPanel = useIDEStore((s) => s.showChatPanel)
+  const showGitPanel = useIDEStore((s) => s.showGitPanel)
+  const auxiliaryActive = showSearchPanel || showPreview
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mql = window.matchMedia('(max-width: 900px)')
+    const handler = () => {
+      if (mql.matches && (showChatPanel || showGitPanel || auxiliaryActive)) {
+        setShowFileSidebar(false)
+      }
+    }
+    handler()
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [showChatPanel, showGitPanel, auxiliaryActive])
 
   const runStatusText = runtimeError
     ? t('runtime.status.error')
@@ -311,26 +335,37 @@ export function AppShell() {
 
         <div className={`workspace-main ${showFileSidebar ? '' : 'workspace-main--no-sidebar'}`}>
           {showFileSidebar ? (
-            <FileSidebar
-              onCreateFile={handleCreateFile}
-              onDeleteFile={handleDeleteFile}
-              onOpenDropZone={ui.openDropZone}
-            />
-          ) : null}
-
-          {showSearchPanel ? (
-            <div className="search-overlay">
-              <SearchPanel
-                files={files}
-                onNavigate={handleSearchNavigate}
-                onReplace={handleSearchReplace}
-                onClose={() => setShowSearchPanel(false)}
+            <>
+              <FileSidebar
+                onCreateFile={handleCreateFile}
+                onDeleteFile={handleDeleteFile}
+                onOpenDropZone={ui.openDropZone}
               />
-            </div>
+              <PanelResizeHandle
+                edge="right"
+                onPointerDown={sidebarResize.onResizePointerDown}
+                onPointerMove={sidebarResize.onResizePointerMove}
+                onPointerUp={sidebarResize.onResizePointerUp}
+                onDoubleClick={resetSidebarWidth}
+                ariaLabel="Resize sidebar"
+              />
+            </>
           ) : null}
 
-          <div className="workspace">
-            <EditorLayout
+          <div className="workbench-center">
+            <WorkbenchAuxiliaryHost
+              files={files}
+              onSearchNavigate={handleSearchNavigate}
+              onSearchReplace={handleSearchReplace}
+              onCloseAuxiliary={ui.closeAuxiliaryPanel}
+              onTestsGenerated={handleTestsGenerated}
+              isRunning={runtimeBusy}
+              output={output}
+            />
+
+            <div className="workbench-editor-column">
+              <div className="workspace">
+                <EditorLayout
           isReady={isReady}
           isRuntimeLoading={isRuntimeLoading}
           isRunning={runtimeBusy}
@@ -419,15 +454,25 @@ export function AppShell() {
           onToggleTerminal={ui.toggleTerminalPanel}
           notify={notify}
         />
+              </div>
 
-            <RightPanel
-              fs={fs}
-              notify={notify}
-              onCloseGit={ui.closeGitPanel}
-              onCloseChat={ui.closeChatPanel}
-              onOpenAuth={ui.openAuthDialog}
-              onOpenSubscription={ui.openSubscriptionDialog}
-            />
+              <PanelResizeHandle
+                edge="left"
+                onPointerDown={rightPanelResize.onResizePointerDown}
+                onPointerMove={rightPanelResize.onResizePointerMove}
+                onPointerUp={rightPanelResize.onResizePointerUp}
+                onDoubleClick={resetRightPanelWidth}
+                ariaLabel="Resize right panel"
+              />
+              <RightPanel
+                fs={fs}
+                notify={notify}
+                onCloseGit={ui.closeGitPanel}
+                onCloseChat={ui.closeChatPanel}
+                onOpenAuth={ui.openAuthDialog}
+                onOpenSubscription={ui.openSubscriptionDialog}
+              />
+            </div>
           </div>
         </div>
       </div>

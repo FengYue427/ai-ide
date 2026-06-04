@@ -11,6 +11,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { usePublicWelfare } from '../hooks/usePublicWelfare'
 import { authService } from '../services/authService'
 import { useIDEStore } from '../store/ideStore'
 import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
@@ -44,6 +45,7 @@ export function AppToolbar({
   notify,
 }: AppToolbarProps) {
   const { t } = useI18n()
+  const publicWelfare = usePublicWelfare()
   const files = useIDEStore((s) => s.files)
   const fileLimit = getWorkspaceLimitSnapshot(files.length)
   const currentUser = useIDEStore((s) => s.currentUser)
@@ -134,7 +136,7 @@ export function AppToolbar({
         </button>
       )}
 
-      {currentPlan !== 'enterprise' ? (
+      {!publicWelfare && currentPlan !== 'enterprise' ? (
         <button type="button" onClick={onOpenSubscription} className="toolbar-upgrade-btn">
           <Zap size={14} />
           <span className="toolbar-btn-label">
@@ -145,6 +147,11 @@ export function AppToolbar({
                 : t('toolbar.plans.team')}
           </span>
         </button>
+      ) : null}
+      {publicWelfare ? (
+        <span className="toolbar-welfare-badge" title={t('toolbar.welfare.title')}>
+          {t('toolbar.welfare.badge')}
+        </span>
       ) : null}
 
       <button

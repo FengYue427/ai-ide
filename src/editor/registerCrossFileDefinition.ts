@@ -1,27 +1,10 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
-import { extractSymbolsFromContent } from '../services/projectIndexService'
-import { selectFilesForDefinitionSearch } from './selectFilesForDefinitionSearch'
+import { goToDefinition } from './languageServiceHostCore'
 
 export interface DefinitionProjectFile {
   name: string
   content: string
   language?: string
-}
-
-function findDefinition(
-  files: DefinitionProjectFile[],
-  symbolName: string,
-  currentFile: string,
-  currentLine: number,
-): { path: string; line: number } | null {
-  for (const file of files) {
-    const symbols = extractSymbolsFromContent(file.name, file.content)
-    const match = symbols.find((symbol) => symbol.name === symbolName)
-    if (!match) continue
-    if (file.name === currentFile && match.line === currentLine) continue
-    return { path: file.name, line: match.line }
-  }
-  return null
 }
 
 function toUri(path: string): monaco.Uri {
@@ -33,14 +16,18 @@ export function registerCrossFileDefinitionProvider(
   currentFile: string,
 ): monaco.IDisposable {
   const languages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
-  const searchFiles = selectFilesForDefinitionSearch(files, currentFile)
 
   return monaco.languages.registerDefinitionProvider(languages, {
     provideDefinition(model, position) {
       const word = model.getWordAtPosition(position)
       if (!word?.word) return null
 
-      const location = findDefinition(searchFiles, word.word, currentFile, position.lineNumber)
+      const location = goToDefinition({
+        file: currentFile,
+        line: position.lineNumber,
+        symbol: word.word,
+        files,
+      })
       if (!location) return null
 
       return {

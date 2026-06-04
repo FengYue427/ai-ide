@@ -283,20 +283,33 @@ function getStripePriceId(planName) {
   if (planName === "enterprise") return process.env.STRIPE_PRICE_ENTERPRISE;
   return void 0;
 }
+function getPlanPriceCny(plan) {
+  if (plan.priceCny != null && plan.priceCny > 0) return plan.priceCny;
+  if (plan.currency === "CNY" && plan.price > 0) return plan.price;
+  return 0;
+}
 function getPlanAmountCents(planName) {
   const plan = findPlanByName(planName);
-  if (!plan || plan.price <= 0) return 0;
-  return Math.round(plan.price * 100);
+  if (!plan) return 0;
+  const yuan = getPlanPriceCny(plan);
+  if (yuan <= 0) return 0;
+  return Math.round(yuan * 100);
 }
 function formatPlanPrice(plan) {
   if (plan.price === 0) return "\u514D\u8D39";
   if (plan.currency === "CNY") return `\xA5${plan.price}`;
-  return `$${plan.price}`;
+  if (plan.currency === "USD") {
+    const n = plan.price;
+    return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
+  }
+  return `${plan.price} ${plan.currency}`;
 }
-var BILLING_PLANS;
+var STRIPE_USD_PRO, STRIPE_USD_ENTERPRISE, BILLING_PLANS;
 var init_plans = __esm({
   "lib/billing/plans.ts"() {
     "use strict";
+    STRIPE_USD_PRO = 4.99;
+    STRIPE_USD_ENTERPRISE = 12.99;
     BILLING_PLANS = [
       {
         id: "free",
@@ -304,29 +317,30 @@ var init_plans = __esm({
         displayName: "\u514D\u8D39\u7248",
         description: "\u4E2A\u4EBA\u5B66\u4E60\u4E0E\u65E5\u5E38\u5C0F\u9879\u76EE\uFF0C\u914D\u989D\u5DF2\u653E\u5BBD",
         price: 0,
-        currency: "CNY",
+        currency: "USD",
         features: [
           "\u5E73\u53F0 AI \u5BF9\u8BDD\uFF08\u767B\u5F55\u5373\u7528\uFF0C\u6BCF\u65E5 200 \u6B21\uFF09",
           "\u53EF\u9009\u81EA\u5E26 API Key\uFF08BYOK\uFF09",
           "\u6700\u591A 10 \u4E2A\u4E91\u5DE5\u4F5C\u533A",
           "3GB \u4E91\u5B58\u50A8\u989D\u5EA6\uFF08\u89C4\u5212\uFF09"
         ],
-        limits: { aiRequestsPerDay: 200, workspaces: 10, storageGB: 3 }
+        limits: { aiRequestsPerDay: 5e3, workspaces: -1, storageGB: 30 }
       },
       {
         id: "pro",
         name: "pro",
         displayName: "\u4E13\u4E1A\u7248",
         description: "\u9AD8\u9891\u4E2A\u4EBA\u5F00\u53D1\u8005\uFF0C\u9AD8\u6027\u4EF7\u6BD4",
-        price: 19,
-        currency: "CNY",
+        price: STRIPE_USD_PRO,
+        currency: "USD",
+        priceCny: 19,
         features: [
           "\u5E73\u53F0 AI + Agent\uFF08\u9AD8\u914D\u989D\uFF09",
           "\u5168\u90E8\u6A21\u578B\u4E0E BYOK",
           "\u65E0\u9650\u4E91\u5DE5\u4F5C\u533A",
           "\u6BCF\u65E5 5000 \u6B21\u914D\u989D\uFF08\u5BBD\u677E\uFF09",
           "30GB \u4E91\u5B58\u50A8\u989D\u5EA6\uFF08\u89C4\u5212\uFF09",
-          "\u652F\u4ED8\u5B9D / \u5FAE\u4FE1\u8BA2\u9605"
+          "Stripe \u8BA2\u9605"
         ],
         limits: { aiRequestsPerDay: 5e3, workspaces: -1, storageGB: 30 }
       },
@@ -335,8 +349,9 @@ var init_plans = __esm({
         name: "enterprise",
         displayName: "\u56E2\u961F\u7248",
         description: "\u5C0F\u56E2\u961F\u4E0E\u91CD\u5EA6\u7528\u6237\uFF0C\u914D\u989D\u51E0\u4E4E\u4E0D\u9650",
-        price: 49,
-        currency: "CNY",
+        price: STRIPE_USD_ENTERPRISE,
+        currency: "USD",
+        priceCny: 49,
         features: [
           "\u4E13\u4E1A\u7248\u5168\u90E8\u80FD\u529B",
           "AI \u914D\u989D\u4E0D\u9650\uFF08-1\uFF09",
@@ -831,8 +846,29 @@ var init_cnPayment = __esm({
   }
 });
 
+// lib/billing/publicWelfare.ts
+function isPublicWelfareMode() {
+  const raw = process.env.PUBLIC_WELFARE_MODE?.trim().toLowerCase();
+  if (raw === "true" || raw === "1" || raw === "yes") return true;
+  if (raw === "false" || raw === "0" || raw === "no") return false;
+  return false;
+}
+function effectivePlanName(actualPlan) {
+  if (!isPublicWelfareMode()) return actualPlan;
+  return PUBLIC_WELFARE_PLAN;
+}
+var PUBLIC_WELFARE_PLAN, PUBLIC_WELFARE_NOTE_ZH;
+var init_publicWelfare = __esm({
+  "lib/billing/publicWelfare.ts"() {
+    "use strict";
+    PUBLIC_WELFARE_PLAN = "pro";
+    PUBLIC_WELFARE_NOTE_ZH = "\u516C\u76CA\u514D\u8D39 IDE\uFF1A\u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\uFF0C\u5E73\u53F0 AI \u914D\u989D\u5DF2\u653E\u5BBD\u3002\u6B22\u8FCE BYOK \u4F7F\u7528\u81EA\u6709\u6A21\u578B Key\u3002";
+  }
+});
+
 // lib/billing/billingMode.ts
 function isDevBillingAllowed() {
+  if (isPublicWelfareMode()) return false;
   if (process.env.VERCEL_ENV === "production") return false;
   if (process.env.NODE_ENV === "production") return false;
   if (isCnPaymentConfigured() || isStripeConfigured()) return false;
@@ -848,18 +884,21 @@ function isDevPaymentSimulateAllowed() {
   return false;
 }
 function getBillingCapabilities() {
+  const welfare = isPublicWelfareMode();
   return {
-    alipay: isAlipayConfigured(),
-    wechat: isWechatPayConfigured(),
-    stripe: isStripeConfigured(),
-    devMock: isDevBillingAllowed(),
-    devSimulate: isDevPaymentSimulateAllowed()
+    alipay: welfare ? false : isAlipayConfigured(),
+    wechat: welfare ? false : isWechatPayConfigured(),
+    stripe: welfare ? false : isStripeConfigured(),
+    devMock: welfare ? false : isDevBillingAllowed(),
+    devSimulate: welfare ? false : isDevPaymentSimulateAllowed(),
+    publicWelfare: welfare
   };
 }
 var init_billingMode = __esm({
   "lib/billing/billingMode.ts"() {
     "use strict";
     init_cnPayment();
+    init_publicWelfare();
     init_stripe();
   }
 });
@@ -913,7 +952,8 @@ async function GET(_req) {
       alipay: billing.alipay,
       wechat: billing.wechat,
       stripe: billing.stripe,
-      devMock: billing.devMock
+      devMock: billing.devMock,
+      publicWelfare: billing.publicWelfare
     },
     plugins: {
       publishEnabled: isPluginPublishEnabled(),
@@ -1234,6 +1274,7 @@ var init_apiMessagesJa_generated = __esm({
       "api.checkout.missingPlanId": "Missing \u30D7\u30E9\u30F3Id",
       "api.checkout.noPaymentNeeded": "This \u30D7\u30E9\u30F3 does not require \u652F\u6255\u3044",
       "api.checkout.notConfigured": "\u652F\u6255\u3044s are not configured. Contact an administrator.",
+      "api.checkout.publicWelfare": "Public-welfare IDE \u2014 no subscription checkout.",
       "api.checkout.sessionFailed": "\u5931\u6557 to create checkout session",
       "api.checkout.wechatNotConfigured": "We\u30C1\u30E3\u30C3\u30C8 Pay is not configured on the \u30B5\u30FC\u30D0\u30FC",
       "api.collab.codeRequired": "\u30EB\u30FC\u30E0 invite \u30B3\u30FC\u30C9 is required",
@@ -1429,6 +1470,7 @@ var init_apiMessages = __esm({
         "api.checkout.noPaymentNeeded": "\u8BE5\u8BA1\u5212\u65E0\u9700\u652F\u4ED8",
         "api.checkout.channelRequired": "\u8BF7\u9009\u62E9\u652F\u4ED8\u65B9\u5F0F\uFF1Aalipay \u6216 wechat",
         "api.checkout.notConfigured": "\u652F\u4ED8\u529F\u80FD\u5C1A\u672A\u914D\u7F6E\uFF0C\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458",
+        "api.checkout.publicWelfare": "\u516C\u76CA\u514D\u8D39 IDE \u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\uFF0C\u65E0\u9700\u7ED3\u8D26",
         "api.checkout.sessionFailed": "\u521B\u5EFA\u652F\u4ED8\u4F1A\u8BDD\u5931\u8D25",
         "api.checkout.devUpgraded": "\u5F00\u53D1\u6A21\u5F0F\uFF1A\u5DF2\u5347\u7EA7\u4E3A {plan}",
         "api.subscription.stripeNotConfigured": "Stripe \u672A\u914D\u7F6E",
@@ -1572,6 +1614,7 @@ var init_apiMessages = __esm({
         "api.checkout.noPaymentNeeded": "This plan does not require payment",
         "api.checkout.channelRequired": "Choose a payment channel: alipay or wechat",
         "api.checkout.notConfigured": "Payments are not configured. Contact an administrator.",
+        "api.checkout.publicWelfare": "This is a free public-welfare IDE \u2014 no subscription checkout.",
         "api.checkout.sessionFailed": "Failed to create checkout session",
         "api.checkout.devUpgraded": "Dev mode: upgraded to {plan}",
         "api.subscription.stripeNotConfigured": "Stripe is not configured",
@@ -2503,14 +2546,16 @@ function startOfUtcDay() {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 function getAiDailyLimit(planName) {
-  return findPlanByName(planName)?.limits.aiRequestsPerDay ?? 200;
+  const effective = effectivePlanName(planName);
+  return findPlanByName(effective)?.limits.aiRequestsPerDay ?? 200;
 }
 async function resolveUserPlanNameTx(userId, db) {
   const subscription = await db.subscription.findUnique({
     where: { userId },
     include: { plan: true }
   });
-  return subscription?.plan.name ?? "free";
+  const name = subscription?.plan.name ?? "free";
+  return effectivePlanName(name);
 }
 async function resolveUserPlanName(userId) {
   return resolveUserPlanNameTx(userId, prisma);
@@ -2598,6 +2643,7 @@ var init_usageDb = __esm({
     init_prisma();
     init_prismaTransactions();
     init_plans();
+    init_publicWelfare();
     AI_USAGE_TYPE = "ai_request";
   }
 });
@@ -2932,6 +2978,12 @@ __export(subscription_exports, {
 });
 async function GET7(req) {
   try {
+    if (isPublicWelfareMode()) {
+      return jsonResponse({
+        subscription: welfareSubscription,
+        publicWelfare: true
+      });
+    }
     const user = await optionalAuth(req);
     if (!user) {
       return jsonResponse({ subscription: freeSubscription });
@@ -2965,7 +3017,7 @@ async function GET7(req) {
     return jsonResponse({ subscription: freeSubscription });
   }
 }
-var freeSubscription;
+var freeSubscription, welfareSubscription;
 var init_subscription = __esm({
   "lib/api/handlers/subscription/index.ts"() {
     "use strict";
@@ -2973,12 +3025,20 @@ var init_subscription = __esm({
     init_localizedError();
     init_requireAuth();
     init_subscriptionExpiry();
+    init_publicWelfare();
     init_prisma();
     freeSubscription = {
       plan: "free",
       status: "active",
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false
+    };
+    welfareSubscription = {
+      plan: PUBLIC_WELFARE_PLAN,
+      status: "active",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      publicWelfare: true
     };
   }
 });
@@ -3031,27 +3091,38 @@ var init_plans2 = __esm({
 });
 
 // lib/billing/checkout.ts
-var BETA_BILLING_NOTE;
+var BETA_BILLING_NOTE, PUBLIC_WELFARE_BILLING_NOTE;
 var init_checkout = __esm({
   "lib/billing/checkout.ts"() {
     "use strict";
     BETA_BILLING_NOTE = "\u5F53\u524D\u4E3A\u516C\u6D4B\u671F\uFF0C\u4E13\u4E1A\u7248\u4E0E\u56E2\u961F\u7248\u529F\u80FD\u514D\u8D39\u5F00\u653E\uFF1B\u6B63\u5F0F\u6536\u6B3E\u63A5\u5165\u540E\u5C06\u5728\u6B64\u5F00\u542F\u5347\u7EA7\u3002";
+    PUBLIC_WELFARE_BILLING_NOTE = "\u516C\u76CA\u514D\u8D39 IDE\uFF1A\u6C38\u4E45\u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\uFF0C\u611F\u8C22\u4F7F\u7528\u4E0E\u4F20\u64AD\u3002";
   }
 });
 
 // lib/billing/billingPath.ts
 function resolveBillingPath(capabilities) {
+  if (capabilities.publicWelfare) return "welfare";
   if (capabilities.alipay || capabilities.wechat || capabilities.stripe) return "B";
   if (capabilities.devMock) return "dev";
   return "A";
 }
+function isStripeOnly(capabilities) {
+  return capabilities.stripe && !capabilities.alipay && !capabilities.wechat;
+}
 function pricingNoteForPath(path, capabilities) {
+  if (path === "welfare") {
+    return capabilities.publicWelfare ? PUBLIC_WELFARE_NOTE_ZH : PUBLIC_WELFARE_BILLING_NOTE;
+  }
   if (path === "B") {
     const parts = [];
     if (capabilities.alipay) parts.push("\u652F\u4ED8\u5B9D");
     if (capabilities.wechat) parts.push("\u5FAE\u4FE1");
     if (capabilities.stripe) parts.push("Stripe");
-    return `\u652F\u6301${parts.join("\u3001")}\uFF1B\u4E13\u4E1A\u7248 \xA519/\u6708\uFF0C\u56E2\u961F\u7248 \xA549/\u6708`;
+    if (isStripeOnly(capabilities)) {
+      return `Stripe checkout; Pro $${STRIPE_USD_PRO}/mo, Team $${STRIPE_USD_ENTERPRISE}/mo`;
+    }
+    return `\u652F\u6301${parts.join("\u3001")}\uFF1B\u4E13\u4E1A\u7248 \xA519/\u6708\uFF0C\u56E2\u961F\u7248 \xA549/\u6708\uFF08Stripe\uFF1A$${STRIPE_USD_PRO} / $${STRIPE_USD_ENTERPRISE}\uFF09`;
   }
   if (path === "dev") {
     return "\u5F00\u53D1/\u96C6\u6210\u73AF\u5883\uFF1A\u53EF\u4E00\u952E\u6A21\u62DF\u5347\u7EA7\uFF08\u672A\u914D\u7F6E\u5546\u6237\u65F6\uFF09";
@@ -3062,6 +3133,8 @@ var init_billingPath = __esm({
   "lib/billing/billingPath.ts"() {
     "use strict";
     init_checkout();
+    init_publicWelfare();
+    init_plans();
   }
 });
 
@@ -3084,7 +3157,7 @@ async function GET9() {
   const cnReady = capabilities.alipay || capabilities.wechat;
   return jsonResponse({
     ...capabilities,
-    cnReady,
+    cnReady: capabilities.publicWelfare ? false : cnReady,
     billingPath,
     pricingNote: pricingNoteForPath(billingPath, capabilities),
     plans
@@ -3487,6 +3560,9 @@ __export(checkout_exports, {
 });
 async function POST12(request) {
   try {
+    if (isPublicWelfareMode()) {
+      return localizedErrorResponse(request, "api.checkout.publicWelfare", 403);
+    }
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
     const body = await request.json();
@@ -3583,6 +3659,7 @@ var init_checkout2 = __esm({
     init_localizedError();
     init_requireAuth();
     init_billingMode();
+    init_publicWelfare();
     init_cnPayment();
     init_plans();
     init_subscriptionDb();
@@ -4990,7 +5067,9 @@ var init_translations = __esm({
         "chat.error.genericHint": "\u53EF\u70B9\u51FB\u6D88\u606F\u4E0B\u65B9\u300C\u91CD\u8BD5\u300D\uFF0C\u6216\u7F29\u77ED\u4E0A\u4E0B\u6587\u540E\u518D\u53D1\u3002",
         "toolbar.plugin": "\u63D2\u4EF6\uFF1A{label}",
         "toolbar.plans.guest": "\u67E5\u770B\u5957\u9910",
-        "toolbar.plans.upgrade": "\u5347\u7EA7\u5957\u9910 \xA519\u8D77",
+        "toolbar.plans.upgrade": "\u5347\u7EA7\u5957\u9910 $4.99 \u8D77",
+        "toolbar.welfare.badge": "\u516C\u76CA\u514D\u8D39",
+        "toolbar.welfare.title": "\u516C\u76CA IDE\uFF1A\u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\uFF0C\u5E73\u53F0\u914D\u989D\u5DF2\u653E\u5BBD",
         "toolbar.plans.team": "\u5347\u7EA7\u56E2\u961F\u7248",
         "toolbar.collaboration": "\u534F\u4F5C",
         "sidebar.files": "\u6587\u4EF6",
@@ -5255,6 +5334,9 @@ var init_translations = __esm({
         "subscription.checkout.alipay": "\u652F\u4ED8\u5B9D\u5347\u7EA7",
         "subscription.checkout.wechat": "\u5FAE\u4FE1\u5347\u7EA7",
         "subscription.checkout.alipayHint": "\u5B89\u5168\u8DF3\u8F6C\u81F3\u652F\u4ED8\u5B9D\u6536\u94F6\u53F0\u5B8C\u6210\u4ED8\u6B3E",
+        "subscription.checkout.stripe": "Stripe \u5347\u7EA7",
+        "subscription.checkout.stripeHint": "\u5C06\u8DF3\u8F6C\u81F3 Stripe \u5B89\u5168\u6536\u94F6\u53F0\u5B8C\u6210\u8BA2\u9605",
+        "subscription.checkout.welfareIncluded": "\u516C\u76CA\u514D\u8D39\u5DF2\u5305\u542B",
         "subscription.checkout.upgrade": "\u7ACB\u5373\u5347\u7EA7",
         "subscription.checkout.beta": "\u516C\u6D4B\u514D\u8D39",
         "subscription.cancelFailed": "\u53D6\u6D88\u8BA2\u9605\u5931\u8D25",
@@ -5271,12 +5353,12 @@ var init_translations = __esm({
         "subscription.plan.free.f2": "10 \u4E2A\u4E91\u5DE5\u4F5C\u533A",
         "subscription.plan.free.f3": "\u6BCF\u65E5 200 \u6B21\u914D\u989D",
         "subscription.plan.pro.name": "\u4E13\u4E1A\u7248",
-        "subscription.plan.pro.desc": "\u9AD8\u9891\u4E2A\u4EBA\u5F00\u53D1\u8005\uFF0C\xA519/\u6708\u3002",
+        "subscription.plan.pro.desc": "\u9AD8\u9891\u4E2A\u4EBA\u5F00\u53D1\u8005\uFF0C$4.99/\u6708\u3002",
         "subscription.plan.pro.f1": "\u6BCF\u65E5 5000 \u6B21\u914D\u989D",
         "subscription.plan.pro.f2": "\u65E0\u9650\u5DE5\u4F5C\u533A",
-        "subscription.plan.pro.f3": "\u652F\u4ED8\u5B9D\u5B89\u5168\u4ED8\u6B3E",
+        "subscription.plan.pro.f3": "Stripe \u5B89\u5168\u8BA2\u9605",
         "subscription.plan.enterprise.name": "\u56E2\u961F\u7248",
-        "subscription.plan.enterprise.desc": "\u5C0F\u56E2\u961F\u4E0E\u91CD\u5EA6\u7528\u6237\uFF0C\xA549/\u6708\u3002",
+        "subscription.plan.enterprise.desc": "\u5C0F\u56E2\u961F\u4E0E\u91CD\u5EA6\u7528\u6237\uFF0C$12.99/\u6708\u3002",
         "subscription.plan.enterprise.f1": "\u914D\u989D\u4E0D\u9650",
         "subscription.plan.enterprise.f2": "\u65E0\u9650\u5DE5\u4F5C\u533A",
         "subscription.plan.enterprise.f3": "\u56E2\u961F\u80FD\u529B\uFF08\u89C4\u5212\uFF09",
@@ -5299,6 +5381,8 @@ var init_translations = __esm({
         "command.cat.editor": "\u7F16\u8F91\u5668",
         "command.formatDocument": "\u683C\u5F0F\u5316\u6587\u6863",
         "command.formatDocument.sub": "\u683C\u5F0F\u5316\u5F53\u524D\u6253\u5F00\u7684\u6587\u4EF6",
+        "command.goToDefinition": "\u8F6C\u5230\u5B9A\u4E49",
+        "command.goToDefinition.sub": "\u8DF3\u8F6C\u5230\u7B26\u53F7\u5B9A\u4E49\uFF08TS/JS\uFF0C\u8DE8\u6587\u4EF6\uFF09",
         "command.openFile": "\u6253\u5F00\u6587\u4EF6",
         "command.newFile": "\u65B0\u5EFA\u6587\u4EF6",
         "command.newFile.sub": "\u521B\u5EFA\u4E00\u4E2A\u7A7A\u767D\u6587\u4EF6",
@@ -6137,6 +6221,20 @@ var init_translations = __esm({
         "debug.inspectRequiresCdp": "\u8C03\u7528\u6808\u4E0E\u5C40\u90E8\u53D8\u91CF\u9700 CDP \u65AD\u70B9\u540C\u6B65\uFF08debugger \u6CE8\u5165\u56DE\u9000\u4E0D\u53EF\u7528\uFF09\u3002",
         "debug.alphaHint": "v1.1.7\uFF1A\u65AD\u70B9\u3001\u8C03\u7528\u6808\u3001\u5355\u6B65\u8C03\u8BD5\uFF1B\u547D\u4EE4\u9762\u677F\u8F93\u5165\u300C\u8C03\u8BD5\u300D\u5FEB\u901F\u5F00\u59CB\u3002",
         "debug.breakpointHint": "\u70B9\u51FB\u884C\u53F7\u5DE6\u4FA7\u8BBE\u65AD\u70B9\uFF1BAlt+\u70B9\u51FB\u5207\u6362\u542F\u7528/\u7981\u7528\uFF08\u7070\u8272\u4E3A\u7981\u7528\uFF09\u3002",
+        "debug.conditionalCdpHint": "\u6761\u4EF6\u8868\u8FBE\u5F0F\u7531 CDP \u6C42\u503C\uFF08\u5982 x > 1\uFF09\uFF1B\u547D\u4E2D\u6B21\u6570\u5728\u672A\u8FBE N \u6B21\u524D\u4F1A\u81EA\u52A8\u7EE7\u7EED\u3002",
+        "debug.conditionalInjectHint": "\u5F53\u524D\u4E3A debugger; \u6CE8\u5165\u6A21\u5F0F\uFF0C\u6761\u4EF6/\u547D\u4E2D\u6B21\u6570\u9700\u4F7F\u7528 CDP \u65AD\u70B9\u540C\u6B65\uFF08\u8BF7\u6B63\u5E38\u547D\u4E2D CDP \u65AD\u70B9\uFF09\u3002",
+        "debug.breakpointCondition": "\u6761\u4EF6",
+        "debug.breakpointConditionPlaceholder": "\u4F8B\u5982 x > 1",
+        "debug.breakpointHitCount": "\u547D\u4E2D\u6B21\u6570",
+        "debug.breakpointConditionalHover": "\u6761\u4EF6\u65AD\u70B9 \xB7 \u7B2C {line} \u884C \xB7 \u6761\u4EF6 {condition} \xB7 \u547D\u4E2D {hitCount} \u6B21\u540E\u6682\u505C",
+        "debug.watchTitle": "\u76D1\u89C6",
+        "debug.watchHint": "\u6700\u591A 3 \u4E2A\u8868\u8FBE\u5F0F\uFF1B\u6682\u505C\u65F6\u81EA\u52A8\u6C42\u503C\uFF08\u53EA\u8BFB\uFF09\u3002",
+        "debug.watchPlaceholder": "\u76D1\u89C6 {n}",
+        "debug.watchSlotLabel": "\u76D1\u89C6\u8868\u8FBE\u5F0F {n}",
+        "debug.watchRequiresCdp": "Watch \u9700\u8981 CDP \u8C03\u8BD5\u4F1A\u8BDD\u3002",
+        "debug.watchResumeHint": "\u6682\u505C\u65F6\u663E\u793A\u7ED3\u679C",
+        "debug.watchPausedEmpty": "\u2014",
+        "debug.watchEmptyValue": "undefined",
         "debug.breakpointDisabledHover": "\u5DF2\u7981\u7528\u65AD\u70B9 \xB7 \u7B2C {line} \u884C",
         "debug.breakpointsRegistered": "\u5DF2\u540C\u6B65 {count} \u4E2A\u65AD\u70B9",
         "debug.syncModeCdp": "CDP \u65AD\u70B9\u540C\u6B65",
@@ -6542,6 +6640,8 @@ var init_translations = __esm({
         "subscription.upgraded": "\u5DF2\u5347\u7EA7\u4E3A {plan}",
         "subscription.betaNote": "\u5F53\u524D\u4E3A\u516C\u6D4B\u671F\uFF0C\u4E13\u4E1A\u7248\u4E0E\u56E2\u961F\u7248\u529F\u80FD\u514D\u8D39\u5F00\u653E\uFF1B\u6B63\u5F0F\u6536\u6B3E\u63A5\u5165\u540E\u5C06\u5728\u6B64\u5F00\u542F\u5347\u7EA7\u3002",
         "subscription.pricing.live": "\u652F\u6301{methods}\uFF1B\u4E13\u4E1A\u7248 \xA519/\u6708\uFF0C\u56E2\u961F\u7248 \xA549/\u6708",
+        "subscription.pricing.liveStripe": "\u652F\u6301{methods}\uFF1B\u4E13\u4E1A\u7248 $4.99/\u6708\uFF0C\u56E2\u961F\u7248 $12.99/\u6708",
+        "subscription.pricing.publicWelfare": "\u516C\u76CA\u514D\u8D39 IDE\uFF1A\u6C38\u4E45\u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\u3002\u5E73\u53F0 AI \u6BCF\u65E5\u914D\u989D\u5DF2\u653E\u5BBD\uFF0C\u63A8\u8350\u4F7F\u7528 BYOK \u81EA\u5E26 API Key\u3002",
         "subscription.pricing.dev": "\u5F00\u53D1/\u96C6\u6210\u73AF\u5883\uFF1A\u53EF\u4E00\u952E\u6A21\u62DF\u5347\u7EA7\uFF08\u672A\u914D\u7F6E\u5546\u6237\u65F6\uFF09",
         "subscription.payMethod.alipay": "\u652F\u4ED8\u5B9D",
         "subscription.payMethod.wechat": "\u5FAE\u4FE1",
@@ -6880,7 +6980,9 @@ var init_translations = __esm({
         "chat.error.genericHint": "Use Retry below or shorten context before sending again.",
         "toolbar.plugin": "Plugin: {label}",
         "toolbar.plans.guest": "View plans",
-        "toolbar.plans.upgrade": "Upgrade from \xA519",
+        "toolbar.plans.upgrade": "Upgrade from $4.99",
+        "toolbar.welfare.badge": "Free & open",
+        "toolbar.welfare.title": "Public-welfare IDE: no subscription fees; generous platform quotas",
         "toolbar.plans.team": "Upgrade to Team",
         "toolbar.collaboration": "Collab",
         "sidebar.files": "Files",
@@ -7145,6 +7247,9 @@ var init_translations = __esm({
         "subscription.checkout.alipay": "Upgrade with Alipay",
         "subscription.checkout.wechat": "Upgrade with WeChat",
         "subscription.checkout.alipayHint": "You will be redirected to Alipay to complete payment",
+        "subscription.checkout.stripe": "Upgrade with Stripe",
+        "subscription.checkout.stripeHint": "You will be redirected to Stripe Checkout to complete your subscription",
+        "subscription.checkout.welfareIncluded": "Included (free)",
         "subscription.checkout.upgrade": "Upgrade now",
         "subscription.checkout.beta": "Free during beta",
         "subscription.cancelFailed": "Could not cancel subscription",
@@ -7161,12 +7266,12 @@ var init_translations = __esm({
         "subscription.plan.free.f2": "10 cloud workspaces",
         "subscription.plan.free.f3": "200 requests / day",
         "subscription.plan.pro.name": "Pro",
-        "subscription.plan.pro.desc": "Power users, \xA519/mo.",
+        "subscription.plan.pro.desc": "Power users, $4.99/mo.",
         "subscription.plan.pro.f1": "5000 requests / day",
         "subscription.plan.pro.f2": "Unlimited workspaces",
-        "subscription.plan.pro.f3": "Secure Alipay checkout",
+        "subscription.plan.pro.f3": "Secure Stripe subscription",
         "subscription.plan.enterprise.name": "Team",
-        "subscription.plan.enterprise.desc": "Teams and heavy usage, \xA549/mo.",
+        "subscription.plan.enterprise.desc": "Teams and heavy usage, $12.99/mo.",
         "subscription.plan.enterprise.f1": "Unlimited quota",
         "subscription.plan.enterprise.f2": "Unlimited workspaces",
         "subscription.plan.enterprise.f3": "Team features (planned)",
@@ -7189,6 +7294,8 @@ var init_translations = __esm({
         "command.cat.editor": "Editor",
         "command.formatDocument": "Format document",
         "command.formatDocument.sub": "Format the active file",
+        "command.goToDefinition": "Go to definition",
+        "command.goToDefinition.sub": "Jump to symbol definition (TS/JS, cross-file)",
         "command.openFile": "Open file",
         "command.newFile": "New file",
         "command.newFile.sub": "Create a blank file",
@@ -8027,6 +8134,20 @@ var init_translations = __esm({
         "debug.inspectRequiresCdp": "Call stack and locals require CDP breakpoint sync (debugger injection fallback cannot provide them).",
         "debug.alphaHint": 'v1.1.7: breakpoints, call stack, and stepping \u2014 type "debug" in the command palette to start.',
         "debug.breakpointHint": "Click the gutter to add breakpoints; Alt+click toggles enabled (gray = disabled).",
+        "debug.conditionalCdpHint": "Conditions are evaluated by CDP (e.g. x > 1). Hit count auto-continues until N hits.",
+        "debug.conditionalInjectHint": "Injected debugger; mode \u2014 advanced breakpoints need CDP sync (use CDP breakpoints).",
+        "debug.breakpointCondition": "Condition",
+        "debug.breakpointConditionPlaceholder": "e.g. x > 1",
+        "debug.breakpointHitCount": "Hit count",
+        "debug.breakpointConditionalHover": "Conditional \xB7 line {line} \xB7 {condition} \xB7 pause after {hitCount} hit(s)",
+        "debug.watchTitle": "Watch",
+        "debug.watchHint": "Up to 3 expressions; evaluated when paused (read-only).",
+        "debug.watchPlaceholder": "Watch {n}",
+        "debug.watchSlotLabel": "Watch expression {n}",
+        "debug.watchRequiresCdp": "Watch requires a CDP debug session.",
+        "debug.watchResumeHint": "Values shown when paused",
+        "debug.watchPausedEmpty": "\u2014",
+        "debug.watchEmptyValue": "undefined",
         "debug.breakpointDisabledHover": "Disabled breakpoint \xB7 line {line}",
         "debug.breakpointsRegistered": "{count} breakpoints synced",
         "debug.syncModeCdp": "CDP breakpoint sync",
@@ -8432,6 +8553,8 @@ var init_translations = __esm({
         "subscription.upgraded": "Upgraded to {plan}",
         "subscription.betaNote": "Public beta: Pro and Team features are free. Paid checkout will open here when billing goes live.",
         "subscription.pricing.live": "Pay with {methods}; Pro \xA519/mo, Team \xA549/mo",
+        "subscription.pricing.liveStripe": "Pay with {methods}; Pro $4.99/mo, Team $12.99/mo",
+        "subscription.pricing.publicWelfare": "Public-welfare IDE: no subscription fees. Platform AI quotas are generous; BYOK is recommended.",
         "subscription.pricing.dev": "Dev/integration: one-click mock upgrade when merchants are not configured",
         "subscription.payMethod.alipay": "Alipay",
         "subscription.payMethod.wechat": "WeChat Pay",
@@ -9215,6 +9338,20 @@ var init_translationsJaBulk = __esm({
       "debug.localsEmpty": "\u3053\u306E\u30D5\u30EC\u30FC\u30E0\u306B\u30ED\u30FC\u30AB\u30EB\u5909\u6570\u306F\u3042\u308A\u307E\u305B\u3093\u3002",
       "debug.inspectRequiresCdp": "\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF\u3068\u30ED\u30FC\u30AB\u30EB\u5909\u6570\u306B\u306F CDP \u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u540C\u671F\u304C\u5FC5\u8981\u3067\u3059\uFF08debugger \u6CE8\u5165\u30D5\u30A9\u30FC\u30EB\u30D0\u30C3\u30AF\u3067\u306F\u5229\u7528\u4E0D\u53EF\uFF09\u3002",
       "debug.breakpointHint": "\u30AC\u30BF\u30FC\u3067 BP \u3092\u8FFD\u52A0\uFF1BAlt+\u30AF\u30EA\u30C3\u30AF\u3067\u6709\u52B9/\u7121\u52B9\uFF08\u7070\u8272=\u7121\u52B9\uFF09\u3002",
+      "debug.conditionalCdpHint": "\u6761\u4EF6\u5F0F\u306F CDP \u3067\u8A55\u4FA1\u3055\u308C\u307E\u3059\uFF08\u4F8B: x > 1\uFF09\u3002\u30D2\u30C3\u30C8\u56DE\u6570\u304C N \u306B\u9054\u3059\u308B\u307E\u3067\u81EA\u52D5\u3067\u7D9A\u884C\u3057\u307E\u3059\u3002",
+      "debug.conditionalInjectHint": "debugger; \u6CE8\u5165\u30E2\u30FC\u30C9\u3067\u3059\u3002\u6761\u4EF6/\u30D2\u30C3\u30C8\u56DE\u6570\u306B\u306F CDP \u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u540C\u671F\u304C\u5FC5\u8981\u3067\u3059\u3002",
+      "debug.breakpointCondition": "\u6761\u4EF6",
+      "debug.breakpointConditionPlaceholder": "\u4F8B: x > 1",
+      "debug.breakpointHitCount": "\u30D2\u30C3\u30C8\u56DE\u6570",
+      "debug.breakpointConditionalHover": "\u6761\u4EF6 BP \xB7 {line} \u884C \xB7 \u6761\u4EF6 {condition} \xB7 {hitCount} \u56DE\u30D2\u30C3\u30C8\u5F8C\u306B\u4E00\u6642\u505C\u6B62",
+      "debug.watchTitle": "\u30A6\u30A9\u30C3\u30C1",
+      "debug.watchHint": "\u6700\u5927 3 \u5F0F\uFF1B\u4E00\u6642\u505C\u6B62\u6642\u306B\u81EA\u52D5\u8A55\u4FA1\uFF08\u8AAD\u307F\u53D6\u308A\u5C02\u7528\uFF09\u3002",
+      "debug.watchPlaceholder": "\u30A6\u30A9\u30C3\u30C1 {n}",
+      "debug.watchSlotLabel": "\u30A6\u30A9\u30C3\u30C1\u5F0F {n}",
+      "debug.watchRequiresCdp": "\u30A6\u30A9\u30C3\u30C1\u306B\u306F CDP \u30C7\u30D0\u30C3\u30B0\u30BB\u30C3\u30B7\u30E7\u30F3\u304C\u5FC5\u8981\u3067\u3059\u3002",
+      "debug.watchResumeHint": "\u4E00\u6642\u505C\u6B62\u6642\u306B\u7D50\u679C\u3092\u8868\u793A",
+      "debug.watchPausedEmpty": "\u2014",
+      "debug.watchEmptyValue": "undefined",
       "debug.alphaHint": "v1.1.7\uFF1A\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u3001\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF\u3001\u30B9\u30C6\u30C3\u30D7\u5B9F\u884C\u3002\u30B3\u30DE\u30F3\u30C9\u30D1\u30EC\u30C3\u30C8\u3067\u300C\u30C7\u30D0\u30C3\u30B0\u300D\u3068\u5165\u529B\u3057\u3066\u958B\u59CB\u3002",
       "debug.start": "{file} \u3092\u30C7\u30D0\u30C3\u30B0",
       "debug.stop": "\u30C7\u30D0\u30C3\u30B0\u505C\u6B62",
@@ -9388,6 +9525,8 @@ var init_translationsJa = __esm({
       "toolbar.welcome": "\u3088\u3046\u3053\u305D",
       "toolbar.login": "\u30ED\u30B0\u30A4\u30F3",
       "toolbar.logout": "\u30ED\u30B0\u30A2\u30A6\u30C8",
+      "toolbar.welfare.badge": "\u516C\u76CA\u7121\u6599",
+      "toolbar.welfare.title": "\u516C\u76CA IDE\uFF1A\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3\u6599\u306A\u3057\u3001\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u30AF\u30A9\u30FC\u30BF\u7DE9\u548C\u6E08\u307F",
       "toolbar.collaboration": "\u30B3\u30E9\u30DC",
       "welcome.badge": "AI \u30CD\u30A4\u30C6\u30A3\u30D6\u30D6\u30E9\u30A6\u30B6 IDE",
       "welcome.title": "\u74B0\u5883\u69CB\u7BC9\u3088\u308A\u3001\u601D\u8003\u306B\u96C6\u4E2D",
@@ -9492,6 +9631,11 @@ var init_translationsJa = __esm({
       "subscription.perMonth": "/\u6708",
       "subscription.unlimited": "\u7121\u5236\u9650",
       "subscription.paySuccess": "\u652F\u6255\u3044\u6210\u529F\u3001\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3\u66F4\u65B0\u6E08\u307F",
+      "subscription.checkout.stripe": "Stripe \u3067\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9",
+      "subscription.checkout.stripeHint": "Stripe \u306E\u5B89\u5168\u306A\u30C1\u30A7\u30C3\u30AF\u30A2\u30A6\u30C8\u306B\u30EA\u30C0\u30A4\u30EC\u30AF\u30C8\u3057\u3066\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3\u3092\u5B8C\u4E86\u3057\u307E\u3059",
+      "subscription.checkout.welfareIncluded": "\u516C\u76CA\u7121\u6599\u306B\u542B\u307E\u308C\u307E\u3059",
+      "subscription.pricing.liveStripe": "{methods} \u5BFE\u5FDC\uFF1BPro $4.99/\u6708\u3001Team $12.99/\u6708",
+      "subscription.pricing.publicWelfare": "\u516C\u76CA\u7121\u6599 IDE\uFF1A\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3\u6599\u306F\u6C38\u4E45\u7121\u6599\u3002\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u306E\u65E5\u6B21\u30AF\u30A9\u30FC\u30BF\u306F\u7DE9\u548C\u6E08\u307F\u3002BYOK \u306E\u5229\u7528\u3092\u63A8\u5968\u3057\u307E\u3059\u3002",
       "collab.title": "\u30E9\u30A4\u30D6\u30B3\u30E9\u30DC",
       "collab.hero.title": "\u540C\u3058\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9\u3067\u4E00\u7DD2\u306B\u4F5C\u696D",
       "collab.hero.desc": "\u30EB\u30FC\u30E0\u3092\u4F5C\u6210\u307E\u305F\u306F\u53C2\u52A0\u3002\u30B5\u30A4\u30F3\u30A4\u30F3\u5F8C\u306F\u30B5\u30FC\u30D0\u30FC\u540C\u671F\u30EB\u30FC\u30E0\uFF1BLivekit \u307E\u305F\u306F WebRTC \u3067\u30AB\u30FC\u30BD\u30EB/\u9078\u629E\u7BC4\u56F2\u3092\u30EA\u30A2\u30EB\u30BF\u30A4\u30E0\u8868\u793A\u3002",
@@ -9526,6 +9670,8 @@ var init_translationsJa = __esm({
       "command.cat.editor": "\u30A8\u30C7\u30A3\u30BF",
       "command.formatDocument": "\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\u3092\u30D5\u30A9\u30FC\u30DE\u30C3\u30C8",
       "command.formatDocument.sub": "\u30A2\u30AF\u30C6\u30A3\u30D6\u30D5\u30A1\u30A4\u30EB\u3092\u30D5\u30A9\u30FC\u30DE\u30C3\u30C8",
+      "command.goToDefinition": "\u5B9A\u7FA9\u3078\u79FB\u52D5",
+      "command.goToDefinition.sub": "\u30B7\u30F3\u30DC\u30EB\u5B9A\u7FA9\u3078\u30B8\u30E3\u30F3\u30D7\uFF08TS/JS\u30FB\u30D5\u30A1\u30A4\u30EB\u6A2A\u65AD\uFF09",
       "command.newFile": "\u65B0\u898F\u30D5\u30A1\u30A4\u30EB",
       "command.run": "\u30B3\u30FC\u30C9\u5B9F\u884C",
       "command.terminal": "\u30BF\u30FC\u30DF\u30CA\u30EB",

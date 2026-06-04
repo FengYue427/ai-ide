@@ -25,6 +25,8 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'toolbar.welcome': 'ようこそ',
   'toolbar.login': 'ログイン',
   'toolbar.logout': 'ログアウト',
+  'toolbar.welfare.badge': '公益無料',
+  'toolbar.welfare.title': '公益 IDE：サブスクリプション料なし、プラットフォームクォータ緩和済み',
   'toolbar.collaboration': 'コラボ',
 
   'welcome.badge': 'AI ネイティブブラウザ IDE',
@@ -138,6 +140,12 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'subscription.perMonth': '/月',
   'subscription.unlimited': '無制限',
   'subscription.paySuccess': '支払い成功、サブスクリプション更新済み',
+  'subscription.checkout.stripe': 'Stripe でアップグレード',
+  'subscription.checkout.stripeHint': 'Stripe の安全なチェックアウトにリダイレクトしてサブスクリプションを完了します',
+  'subscription.checkout.welfareIncluded': '公益無料に含まれます',
+  'subscription.pricing.liveStripe': '{methods} 対応；Pro $4.99/月、Team $12.99/月',
+  'subscription.pricing.publicWelfare':
+    '公益無料 IDE：サブスクリプション料は永久無料。プラットフォーム AI の日次クォータは緩和済み。BYOK の利用を推奨します。',
 
   'collab.title': 'ライブコラボ',
   'collab.hero.title': '同じワークスペースで一緒に作業',
@@ -175,6 +183,8 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'command.cat.editor': 'エディタ',
   'command.formatDocument': 'ドキュメントをフォーマット',
   'command.formatDocument.sub': 'アクティブファイルをフォーマット',
+  'command.goToDefinition': '定義へ移動',
+  'command.goToDefinition.sub': 'シンボル定義へジャンプ（TS/JS・ファイル横断）',
   'command.newFile': '新規ファイル',
   'command.run': 'コード実行',
   'command.terminal': 'ターミナル',

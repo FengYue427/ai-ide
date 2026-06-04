@@ -1,7 +1,7 @@
 .welcome-screen {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--z-modal);
   overflow: auto;
   background:
     radial-gradient(circle at top left, rgba(124, 156, 255, 0.18), transparent 30%),

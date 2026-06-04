@@ -13,6 +13,12 @@ export interface DebugLocalVariable {
   type: string
 }
 
+export interface DebugWatchResult {
+  expression: string
+  valuePreview: string
+  error?: string
+}
+
 export interface DebugPauseInspection {
   location: { path: string; line: number }
   callStack: DebugStackFrame[]

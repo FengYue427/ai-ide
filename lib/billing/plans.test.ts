@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { findPlanByName, getBillablePlanNames, getPlanAmountCents } from './plans'
+import {
+  STRIPE_USD_ENTERPRISE,
+  STRIPE_USD_PRO,
+  findPlanByName,
+  formatPlanPrice,
+  getBillablePlanNames,
+  getPlanAmountCents,
+} from './plans'
 
 describe('billing plans', () => {
   it('lists billable plan names', () => {
@@ -10,9 +17,14 @@ describe('billing plans', () => {
     expect(findPlanByName('pro')?.displayName).toBe('专业版')
   })
 
-  it('returns CNY amount in fen', () => {
+  it('uses USD for Stripe display and CNY fen for CN APIs', () => {
+    const pro = findPlanByName('pro')
+    expect(pro?.price).toBe(STRIPE_USD_PRO)
+    expect(pro?.currency).toBe('USD')
+    expect(formatPlanPrice(pro!)).toBe('$4.99')
     expect(getPlanAmountCents('pro')).toBe(1900)
     expect(getPlanAmountCents('enterprise')).toBe(4900)
-    expect(findPlanByName('pro')?.currency).toBe('CNY')
+    expect(findPlanByName('enterprise')?.price).toBe(STRIPE_USD_ENTERPRISE)
+    expect(formatPlanPrice(findPlanByName('enterprise')!)).toBe('$12.99')
   })
 })
