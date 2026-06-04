@@ -2,7 +2,7 @@
  * E2E: Plugin ops status card in settings (v1.2.7 F3)
  */
 import { expect, test } from '@playwright/test'
-import { prepareE2EStorage, prepareLoggedInUser, waitForShellReady } from './helpers'
+import { prepareE2EStorage, prepareLoggedInUser, openSettingsFromToolbar, waitForShellReady } from './helpers'
 
 test.describe('Plugin ops settings', () => {
   test.beforeEach(async ({ page }) => {
@@ -13,7 +13,7 @@ test.describe('Plugin ops settings', () => {
   })
 
   test('features tab shows plugin ops card with health fields', async ({ page }) => {
-    await page.getByRole('button', { name: /设置|Settings/i }).click()
+    await openSettingsFromToolbar(page)
     await page.getByRole('button', { name: /^功能$|^Features$/i }).click()
     const card = page.getByTestId('settings-plugin-ops')
     await expect(card).toBeVisible({ timeout: 10_000 })

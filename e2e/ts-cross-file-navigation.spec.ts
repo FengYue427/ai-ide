@@ -10,6 +10,7 @@ import {
   monacoGoToDefinitionAt,
   monacoGoToReferencesAt,
   monacoSetCursorAt,
+  waitForTsProjectSync,
 } from './monaco-helpers'
 
 test.describe('Cross-file TypeScript navigation', () => {
@@ -18,16 +19,18 @@ test.describe('Cross-file TypeScript navigation', () => {
     await page.goto('/')
     await waitForShellReady(page)
     await expectActiveTabLabel(page, 'main.ts')
+    await waitForTsProjectSync(page)
   })
 
   test('F12 path: go to definition on import opens lib/greet.ts', async ({ page }) => {
-    await monacoGoToDefinitionAt(page, { lineNumber: 4, column: 11 })
+    await monacoGoToDefinitionAt(page, { lineNumber: 1, column: 10 })
     await expectActiveTabLabel(page, 'lib/greet.ts')
     await expect(page.locator('.monaco-editor')).toBeVisible()
   })
 
   test('command palette go to definition switches to definition file', async ({ page }) => {
-    await monacoSetCursorAt(page, { lineNumber: 4, column: 11 })
+    await monacoSetCursorAt(page, { lineNumber: 1, column: 10 })
+    await page.waitForTimeout(200)
     await filterCommandPalette(page, '定义')
     await page.getByRole('button', { name: /转到定义|Go to definition/i }).click()
     await expect(page.locator('.command-palette-overlay')).toHaveCount(0, { timeout: 5_000 })

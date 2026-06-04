@@ -146,7 +146,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
       })
       useIDEStore.getState().setRecentProjects(await recentFilesService.getRecentProjects())
     }
-    void loadWorkspaces()
+    await loadWorkspaces()
   }
 
   const handleLoad = async (workspace: WorkspaceEntry) => {

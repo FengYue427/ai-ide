@@ -45,11 +45,13 @@ export async function expectWorkspaceSavedFlash(page: Page): Promise<void> {
 
 export async function expectCloudWorkspaceListed(page: Page, workspaceName: string): Promise<void> {
   const workspaceModal = page.locator('.wm-modal')
-  const cardPanel = workspaceModal.locator('.wm-panel').filter({
-    has: workspaceModal.locator('.wm-card-title', { hasText: workspaceName }),
+  await expect(workspaceModal.locator('.wm-state-panel--loading')).toHaveCount(0, { timeout: 30_000 })
+  const cardTitle = workspaceModal.locator('.wm-list .wm-card-title').filter({ hasText: workspaceName })
+  await expect(cardTitle).toBeVisible({ timeout: 30_000 })
+  const cardPanel = workspaceModal.locator('.wm-list > .wm-panel').filter({ has: cardTitle })
+  await expect(cardPanel.locator('.wm-badge--cloud').filter({ hasText: /云端|Cloud/i })).toBeVisible({
+    timeout: 15_000,
   })
-  await expect(cardPanel).toBeVisible({ timeout: 20_000 })
-  await expect(cardPanel.locator('.wm-badge--cloud').filter({ hasText: /云端|Cloud/i })).toBeVisible()
 }
 
 export async function registerLoginAndOpenWorkspace(page: Page, user: RegisteredUser): Promise<void> {

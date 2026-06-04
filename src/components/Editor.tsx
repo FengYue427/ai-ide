@@ -194,7 +194,9 @@ const Editor: React.FC<EditorProps> = ({
     if (!goToDefinitionNonce || readOnly) return
     const editor = editorRef.current
     if (!editor) return
-    const action = editor.getAction('editor.action.revealDefinition')
+    const action =
+      editor.getAction('editor.action.goToDefinition') ??
+      editor.getAction('editor.action.revealDefinition')
     void action?.run()
   }, [goToDefinitionNonce, readOnly])
 
@@ -323,7 +325,12 @@ const Editor: React.FC<EditorProps> = ({
             typeof localStorage !== 'undefined' &&
             localStorage.getItem('ai-ide:e2e-harness') === '1'
           ) {
-            ;(window as Window & { __AI_IDE_MONACO__?: typeof monaco }).__AI_IDE_MONACO__ = monaco
+            const harnessWindow = window as Window & {
+              __AI_IDE_MONACO__?: typeof monaco
+              __AI_IDE_STORE__?: typeof useIDEStore
+            }
+            harnessWindow.__AI_IDE_MONACO__ = monaco
+            harnessWindow.__AI_IDE_STORE__ = useIDEStore
           }
         }}
         onValidate={handleDiagnostics}

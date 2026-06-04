@@ -100,3 +100,8 @@ export async function gotoApp(page: Page, path = '/'): Promise<void> {
   await page.goto(path)
   await waitForShellReady(page)
 }
+
+/** Toolbar settings — avoids status bar duplicate「设置」button. */
+export async function openSettingsFromToolbar(page: Page): Promise<void> {
+  await page.locator('header.toolbar').getByRole('button', { name: /^(Settings|设置)$/ }).click()
+}
