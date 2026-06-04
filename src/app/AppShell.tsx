@@ -286,7 +286,11 @@ export function AppShell() {
     }
     handler()
     mql.addEventListener('change', handler)
-    return () => mql.removeEventListener('change', handler)
+    window.addEventListener('resize', handler)
+    return () => {
+      mql.removeEventListener('change', handler)
+      window.removeEventListener('resize', handler)
+    }
   }, [showChatPanel, showGitPanel, auxiliaryActive])
 
   const runStatusText = runtimeError

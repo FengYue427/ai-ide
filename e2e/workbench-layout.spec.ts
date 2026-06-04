@@ -21,7 +21,7 @@ test.describe('workbench shell layout', () => {
 
   test('F1 — auxiliary column is docked and mutually exclusive', async ({ page }) => {
     // Open search via activity bar
-    const activitySearchBtn = page.locator('.activity-bar__btn[title*="Search"]')
+    const activitySearchBtn = page.getByRole('button', { name: /搜索|Search/i })
     await activitySearchBtn.click()
 
     // Should show docked auxiliary column, not overlay
@@ -32,7 +32,7 @@ test.describe('workbench shell layout', () => {
     await expect(searchPanel.first()).toBeVisible({ timeout: 5_000 })
 
     // Open preview — should replace search (single slot)
-    const activityPreviewBtn = page.locator('.activity-bar__btn[title*="Preview" i]')
+    const activityPreviewBtn = page.getByRole('button', { name: /预览|Preview/i })
     // If preview opens code review slot (or preview), just verify toggle
     await activityPreviewBtn.click()
     await expect(auxiliaryPanel).toBeVisible()
@@ -97,20 +97,14 @@ test.describe('workbench shell layout', () => {
   })
 
   test('F4 — narrow viewport hides sidebar when right panel is open', async ({ page }) => {
-    // Open chat panel (right panel)
-    const chatBtn = page.locator('.activity-bar__btn[title*="Chat" i]').first()
-    if (await chatBtn.isVisible()) {
-      await chatBtn.click()
-    }
+    await page.getByRole('button', { name: /AI 助手|AI assistant/i }).click()
+    await expect(page.locator('.right-panel')).toBeVisible({ timeout: 8_000 })
 
-    // Resize viewport to ≤ 900px
     await page.setViewportSize({ width: 800, height: 700 })
-    await page.waitForTimeout(600) // allow matchMedia handler to fire
+    await expect(page.locator('.workspace-main')).toHaveClass(/workspace-main--no-sidebar/, {
+      timeout: 8_000,
+    })
 
-    // Sidebar should be hidden when narrow + right panel open
-    await expect(page.locator('.sidebar')).not.toBeVisible({ timeout: 5_000 })
-
-    // Restore viewport
     await page.setViewportSize({ width: 1280, height: 800 })
   })
 })

@@ -23,11 +23,11 @@ test.describe('Multi-root workspace (v1.2.3 F2)', () => {
     const root1Label = await select.locator('option').nth(1).textContent()
     await select.selectOption({ index: 1 })
 
-    await page.getByRole('button', { name: /新建|Create/i }).first().click()
+    await page.locator('.sidebar').getByRole('button', { name: /创建|Create/i }).click()
     const filenameInput = page.locator('.sidebar-input')
     await expect(filenameInput).toBeVisible({ timeout: 5_000 })
     await filenameInput.fill('root-only.ts')
-    await page.getByRole('button', { name: /创建|Create/i }).click()
+    await page.locator('.sidebar-input-row').getByRole('button', { name: /创建|Create/i }).click()
 
     await expect(page.locator('.sidebar-file-name', { hasText: 'root-only.ts' })).toBeVisible({
       timeout: 8_000,
