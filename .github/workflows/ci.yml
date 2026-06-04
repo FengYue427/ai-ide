@@ -263,7 +263,7 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
 
-      - name: E2E tests (collaboration M1, optional)
+      - name: E2E tests (collaboration M1)
         run: npm run test:e2e:collab
 
       - name: Upload Playwright report on failure

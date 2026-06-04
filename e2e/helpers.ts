@@ -9,6 +9,17 @@ export const E2E_DEFAULT_FILES = [
   },
 ]
 
+/** TS sample for symbol outline + language navigation E2E (v1.2.5 F1). */
+export const E2E_SYMBOL_FILES = [
+  {
+    name: 'sample.ts',
+    content: 'export function greet() {\n  return 1\n}\n\nexport class App {\n  run() {\n    return greet()\n  }\n}\n',
+    language: 'typescript',
+  },
+]
+
+export type E2ESeedFile = { name: string; content: string; language: string }
+
 /** Seed IndexedDB before navigation so first-time welcome does not cover the toolbar. */
 /** Pretend a logged-in user so toolbar billing CTA is visible in static preview. */
 export async function prepareLoggedInUser(page: Page): Promise<void> {
@@ -21,8 +32,8 @@ export async function prepareLoggedInUser(page: Page): Promise<void> {
   })
 }
 
-export async function prepareE2EStorage(page: Page): Promise<void> {
-  await page.addInitScript((files) => {
+export async function prepareE2EStorage(page: Page, files: E2ESeedFile[] = E2E_DEFAULT_FILES): Promise<void> {
+  await page.addInitScript((seedFiles) => {
     const openDb = () =>
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.open('ai-ide-db', 1)
@@ -38,7 +49,7 @@ export async function prepareE2EStorage(page: Page): Promise<void> {
         request.onsuccess = () => {
           const db = request.result
           const tx = db.transaction('settings', 'readwrite')
-          tx.objectStore('settings').put(files, 'autosave-default')
+          tx.objectStore('settings').put(seedFiles, 'autosave-default')
           tx.oncomplete = () => {
             db.close()
             resolve()
@@ -49,7 +60,7 @@ export async function prepareE2EStorage(page: Page): Promise<void> {
       })
 
     void openDb()
-  }, E2E_DEFAULT_FILES)
+  }, files)
 }
 
 export async function dismissAuthModalIfOpen(page: Page): Promise<void> {

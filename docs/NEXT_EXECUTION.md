@@ -1,6 +1,6 @@
 # 当前执行入口
 
-> **更新**：2026-06-04 — **宣传/上架搁置** · 工程线 **v1.2.5 质量/生态**
+> **更新**：2026-06-04 — **宣传/上架搁置** · **v1.2.5 质量线已收口**
 
 ---
 
@@ -16,34 +16,27 @@
 
 | 线 | 状态 | 文档 |
 |----|------|------|
-| **v1.2.0** | ✅ GA（功能开关默认关） | [RELEASE_NOTES_v1.2.0.md](./RELEASE_NOTES_v1.2.0.md) |
-| **v1.2.2** | ✅ Workbench Shell | [RELEASE_NOTES_v1.2.2.md](./RELEASE_NOTES_v1.2.2.md) |
-| **v1.2.3** | ✅ 产品深度 | [RELEASE_NOTES_v1.2.3.md](./RELEASE_NOTES_v1.2.3.md) |
 | **v1.2.4** | ✅ Agent/索引/E2E | [RELEASE_NOTES_v1.2.4.md](./RELEASE_NOTES_v1.2.4.md) |
-| **v1.2.5** | 🔄 **质量/生态** | [V1.2.5_KICKOFF.md](./V1.2.5_KICKOFF.md) |
+| **v1.2.5** | ✅ 质量/生态 E2E | [V1.2.5_KICKOFF.md](./V1.2.5_KICKOFF.md) |
 
 ---
 
-## 当前迭代：v1.2.5 F1 UI E2E 扩展
-
-1. [V1.2.5_KICKOFF.md](./V1.2.5_KICKOFF.md)
-2. **F1** 📋 命令面板 · 引用/大纲 smoke
-3. **F2** 📋 插件市场可信 E2E
-4. **F3** 📋 1.2.x patch 热修对齐
-
-**门禁**：`npm run test:local` · `npm run test:e2e` · `npm run test:e2e:stack`
-
----
-
-## v1.2.4 交付（已完成）
-
-见 [RELEASE_NOTES_v1.2.4.md](./RELEASE_NOTES_v1.2.4.md) · [V1.2.4_KICKOFF.md](./V1.2.4_KICKOFF.md)
+## v1.2.5 交付（已完成）
 
 | 阶段 | 文档 |
 |------|------|
-| F1 | [V1.2.4_F1_REFERENCES.md](./V1.2.4_F1_REFERENCES.md) |
-| F2 | [V1.2.4_F2_AGENT_CONTEXT.md](./V1.2.4_F2_AGENT_CONTEXT.md) |
-| F3 | [V1.2.4_F3_FULLSTACK_E2E.md](./V1.2.4_F3_FULLSTACK_E2E.md) |
+| F1 | [V1.2.5_F1_UI_E2E.md](./V1.2.5_F1_UI_E2E.md) |
+| F2 | [V1.2.5_F2_PLUGIN_E2E.md](./V1.2.5_F2_PLUGIN_E2E.md) |
+| F3 | [V1.2.5_F3_PATCH_CI.md](./V1.2.5_F3_PATCH_CI.md) · [ROADMAP_V1.2.x_PATCHES.md](./ROADMAP_V1.2.x_PATCHES.md) |
+
+**门禁**：`npm run test:local` · `npm run test:e2e:local` · `npm run test:e2e:stack`
+
+---
+
+## 下一工程线（待定）
+
+- **v1.2.4.x** 热修：见 [ROADMAP_V1.2.x_PATCHES.md](./ROADMAP_V1.2.x_PATCHES.md)
+- **v1.2.6+** 规划：插件生态 2.0 / 平台运维 · 搁置 SSH/SSO/营销
 
 ---
 
@@ -51,5 +44,6 @@
 
 ```bash
 npm run test:local
+npm run test:e2e:local
 npm run dev:stack
 ```

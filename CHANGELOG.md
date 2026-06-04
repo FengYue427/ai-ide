@@ -5,6 +5,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **v1.2.5 F3 补丁/CI**：`ROADMAP_V1.2.x_PATCHES` · 发版门禁表 · `e2e-collab` 注释对齐必过
+- **v1.2.5 F2 插件 E2E**：`plugin-helpers` · `plugin-trust.spec` 停用/启用 · 市场徽章
+- **v1.2.5 F1 UI E2E**：`language-navigation.spec` · `command-helpers` · `E2E_SYMBOL_FILES` 大纲 smoke
+
 ---
 
 ## [1.2.4] — 2026-06-04 · Agent/索引/E2E
