@@ -55,6 +55,8 @@ export default defineConfig({
     {
       name: 'fullstack',
       testMatch: '**/fullstack.spec.ts',
+      timeout: 120_000,
+      workers: 1,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: `http://127.0.0.1:${stackPort}`,

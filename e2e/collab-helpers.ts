@@ -6,7 +6,7 @@ export type RegisteredUser = {
   password: string
 }
 
-async function waitForApiReady(page: Page): Promise<void> {
+export async function waitForApiReady(page: Page): Promise<void> {
   const origin = new URL(page.url()).origin
   let lastStatus: number | null = null
   for (let i = 0; i < 40; i++) {
