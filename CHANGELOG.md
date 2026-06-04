@@ -7,7 +7,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Planned
 
-- (none — v1.2.8 F1–F3 landed below; GA tag pending)
+- **v1.2.9** — 引用行号 · 动态 MCP 表计 · 插件审核运维 — [V1.2.9_KICKOFF.md](docs/V1.2.9_KICKOFF.md)
+
+---
+
+## [1.2.8] — 2026-06-04 · 引用 Peek/MCP/插件发布 DB
 
 ### Added
 
@@ -17,7 +21,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Docs
 
-- [V1.2.8_F1_REFERENCES_UI.md](docs/V1.2.8_F1_REFERENCES_UI.md) · [V1.2.8_F2_AGENT_MCP.md](docs/V1.2.8_F2_AGENT_MCP.md) · [V1.2.8_F3_PLUGIN_PUBLISH.md](docs/V1.2.8_F3_PLUGIN_PUBLISH.md)
+- [RELEASE_NOTES_v1.2.8.md](docs/RELEASE_NOTES_v1.2.8.md) · [V1.2.8_KICKOFF.md](docs/V1.2.8_KICKOFF.md) · F1–F3 阶段文档
+
+See [RELEASE_NOTES_v1.2.8.md](docs/RELEASE_NOTES_v1.2.8.md).
 
 ---
 

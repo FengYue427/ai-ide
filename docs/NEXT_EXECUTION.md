@@ -1,6 +1,6 @@
 # 当前执行入口
 
-> **更新**：2026-06-04 — **v1.2.8 F1–F3 已落地** · **下一：v1.2.8 GA**
+> **更新**：2026-06-04 — **v1.2.8 GA** · **下一：v1.2.9**
 
 ---
 
@@ -18,29 +18,30 @@
 |----|------|------|
 | **v1.2.6** | ✅ GA · `v1.2.6` | [RELEASE_NOTES_v1.2.6.md](./RELEASE_NOTES_v1.2.6.md) |
 | **v1.2.7** | ✅ GA · `v1.2.7` | [RELEASE_NOTES_v1.2.7.md](./RELEASE_NOTES_v1.2.7.md) |
-| **v1.2.8** | 🔧 F1–F3 ✅ · GA 待办 | [V1.2.8_KICKOFF.md](./V1.2.8_KICKOFF.md) |
+| **v1.2.8** | ✅ GA · `v1.2.8` | [RELEASE_NOTES_v1.2.8.md](./RELEASE_NOTES_v1.2.8.md) |
+| **v1.2.9** | 📋 规划 | [V1.2.9_KICKOFF.md](./V1.2.9_KICKOFF.md) |
 
 ---
 
-## v1.2.8 下一工程线
+## v1.2.9 下一工程线
+
+| 阶段 | 文档 |
+|------|------|
+| F1 | `V1.2.9_F1_REFERENCES_PRECISION.md`（待建） |
+| F2 | `V1.2.9_F2_MCP_METER.md`（待建） |
+| F3 | `V1.2.9_F3_PLUGIN_OPS.md`（待建） |
+
+**门禁**：`npm run test:local` · `npm run test:e2e:local` · `test:integration:local`（F3）
+
+---
+
+## v1.2.8 交付（GA）
 
 | 阶段 | 文档 |
 |------|------|
 | F1 | [V1.2.8_F1_REFERENCES_UI.md](./V1.2.8_F1_REFERENCES_UI.md) |
 | F2 | [V1.2.8_F2_AGENT_MCP.md](./V1.2.8_F2_AGENT_MCP.md) |
 | F3 | [V1.2.8_F3_PLUGIN_PUBLISH.md](./V1.2.8_F3_PLUGIN_PUBLISH.md) |
-
-**门禁**：`npm run test:local` · `npm run test:e2e:local` · `test:integration:local`（F3）
-
----
-
-## v1.2.7 交付（GA）
-
-| 阶段 | 文档 |
-|------|------|
-| F1 | [V1.2.7_F1_NAV_E2E.md](./V1.2.7_F1_NAV_E2E.md) |
-| F2 | [V1.2.7_F2_PAYLOAD_PARITY.md](./V1.2.7_F2_PAYLOAD_PARITY.md) |
-| F3 | [V1.2.7_F3_PLUGIN_PLATFORM.md](./V1.2.7_F3_PLUGIN_PLATFORM.md) |
 
 ---
 
