@@ -12,11 +12,15 @@ const mockAwareness = {
   getStates: vi.fn(() => new Map()),
 }
 
+let webrtcStatusHandler: ((event: { connected: boolean }) => void) | null = null
+
 vi.mock('y-webrtc', () => ({
   WebrtcProvider: vi.fn(() => ({
     connected: true,
     awareness: mockAwareness,
-    on: vi.fn(),
+    on: vi.fn((event: string, handler: (payload: { connected: boolean }) => void) => {
+      if (event === 'status') webrtcStatusHandler = handler
+    }),
     off: vi.fn(),
     destroy: vi.fn(),
   })),
@@ -43,6 +47,7 @@ import { LivekitYjsProvider } from './collab/livekitYjsProvider'
 describe('CollaborationService workspace map', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    webrtcStatusHandler = null
     for (const key of Object.keys(localAwarenessState)) {
       delete localAwarenessState[key]
     }
@@ -143,6 +148,36 @@ describe('CollaborationService workspace map', () => {
 
     expect(WebrtcProvider).toHaveBeenCalled()
     expect(LivekitYjsProvider).not.toHaveBeenCalled()
+    service.leaveRoom()
+  })
+
+  it('schedules reconnect after signaling disconnect (M1 F2)', () => {
+    vi.useFakeTimers()
+    const service = new CollaborationService()
+    service.joinRoom('reconnect-room', 'Alice', '#58a6ff')
+    expect(service.getConnectionStatus()).toBe('connected')
+
+    webrtcStatusHandler?.({ connected: false })
+    expect(service.getConnectionStatus()).toBe('reconnecting')
+    expect(service.getReconnectAttempt()).toBe(0)
+
+    vi.advanceTimersByTime(1000)
+    expect(service.getReconnectAttempt()).toBe(1)
+
+    vi.useRealTimers()
+    service.leaveRoom()
+  })
+
+  it('tryReconnect resets backoff and re-attaches provider', () => {
+    const service = new CollaborationService()
+    service.joinRoom('manual-reconnect', 'Bob', '#58a6ff')
+    webrtcStatusHandler?.({ connected: false })
+    expect(service.getConnectionStatus()).toBe('reconnecting')
+
+    service.tryReconnect()
+    expect(service.getReconnectAttempt()).toBe(0)
+    expect(['connecting', 'connected']).toContain(service.getConnectionStatus())
+
     service.leaveRoom()
   })
 

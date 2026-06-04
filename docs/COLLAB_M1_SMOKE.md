@@ -23,7 +23,7 @@ npm run dev:stack:collab    # VITE_COLLAB_M1_SIGNAL=true
 | `node scripts/integration-api-collab.mjs`（经 `integration-api.mjs`） | 创建房间、viewer 加入、403 越权、host 改角色、踢人 |
 | `npm run test:e2e:collab` | **双浏览器**：Host 创建 → Viewer 只读 → 信令徽章可见 |
 
-**CI**：`e2e-collab` job（`continue-on-error: true`，不阻塞主 CI）。
+**CI**：`e2e-collab` job（v1.2.3 F5 起阻塞主 CI，需 Postgres + `VITE_COLLAB_M1_SIGNAL`）。
 
 ---
 

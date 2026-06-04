@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test'
-import { gotoApp, prepareE2EStorage, waitForShellReady } from './helpers'
+import { dismissAuthModalIfOpen, gotoApp, prepareE2EStorage, waitForShellReady } from './helpers'
 
 export type RegisteredUser = {
   email: string
@@ -54,9 +54,11 @@ export async function registerAndLogin(page: Page, user: RegisteredUser): Promis
     const text = (await errorAlert.textContent())?.trim() || 'register failed'
     throw new Error(text)
   }
+  await dismissAuthModalIfOpen(page)
 }
 
 export async function openCollabPanel(page: Page): Promise<void> {
+  await dismissAuthModalIfOpen(page)
   await page.getByRole('button', { name: /命令面板|Command palette/i }).click()
   await page.getByPlaceholder(/命令 \/ 文件名|Command, file name/i).fill('协作')
   await page.getByRole('button', { name: /实时协作|Live collaboration/i }).click()
@@ -99,7 +101,7 @@ export async function expectCollabStatusBarSession(
   if (options.signaling !== false) {
     const badge = bar.getByTestId('collab-signaling-badge')
     await expect(badge).toBeVisible({ timeout: signalingTimeout })
-    await expect(badge).toHaveText(/Livekit|WebRTC/i)
+    await expect(badge).toHaveText(/Livekit|WebRTC|y-webrtc/i)
   }
 }
 

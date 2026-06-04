@@ -22,14 +22,19 @@
 
 ---
 
-## 当前迭代：v1.2.3 F5 协作 E2E
+## 当前迭代：v1.2.3 收口 / 下一工程线
 
-1. [V1.2.3_KICKOFF.md](./V1.2.3_KICKOFF.md)
-2. **F1** ✅ LSP host + 命令面板转到定义
-3. **F2** ✅ 多根/虚拟树 — [V1.2.3_F2_MULTI_ROOT.md](./V1.2.3_F2_MULTI_ROOT.md)
-4. **F3** ✅ Tab 补全 / FIM / 平台 — [V1.2.3_F3_TAB_COMPLETION.md](./V1.2.3_F3_TAB_COMPLETION.md)
-5. **F4** ✅ 平台 AI 用量仪表盘 — [V1.2.3_F4_PLATFORM_USAGE.md](./V1.2.3_F4_PLATFORM_USAGE.md)
-6. **F5** 📋 协作 E2E 稳定
+1. [V1.2.3_KICKOFF.md](./V1.2.3_KICKOFF.md) — **F1–F5 已全部交付**
+2. **F5** ✅ 协作 E2E — [V1.2.3_F5_COLLAB_E2E.md](./V1.2.3_F5_COLLAB_E2E.md)
+3. **可选**：打 `v1.2.3` tag · 继续 v1.2.4（SSH/SSO 仍搁置）
+
+| 阶段 | 文档 |
+|------|------|
+| F1 | ADR + 转到定义 |
+| F2 | [V1.2.3_F2_MULTI_ROOT.md](./V1.2.3_F2_MULTI_ROOT.md) |
+| F3 | [V1.2.3_F3_TAB_COMPLETION.md](./V1.2.3_F3_TAB_COMPLETION.md) |
+| F4 | [V1.2.3_F4_PLATFORM_USAGE.md](./V1.2.3_F4_PLATFORM_USAGE.md) |
+| F5 | [V1.2.3_F5_COLLAB_E2E.md](./V1.2.3_F5_COLLAB_E2E.md) |
 
 **门禁**：`npm run test:local` 全绿；改 `lib/api` 后 `npm run build:api`
 

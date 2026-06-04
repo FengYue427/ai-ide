@@ -64,6 +64,7 @@ export default defineConfig({
       name: 'collab',
       testMatch: '**/collab-smoke.spec.ts',
       timeout: 180_000,
+      workers: 1,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: `http://127.0.0.1:${stackPort}`,

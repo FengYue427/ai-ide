@@ -16,6 +16,8 @@ import {
  * Run: npm run test:e2e:collab
  */
 test.describe('Collaboration M1 smoke (2 browsers)', () => {
+  test.describe.configure({ mode: 'serial' })
+
   test('host creates room; viewer joins read-only', async ({ browser }) => {
     test.setTimeout(180_000)
 
