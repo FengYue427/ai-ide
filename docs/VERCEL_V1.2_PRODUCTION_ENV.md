@@ -1,6 +1,7 @@
 # Vercel Production — v1.2.0 环境变量清单
 
 > **基线**：[DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) · **开关说明**：[V1.2_ENV.md](./V1.2_ENV.md)  
+> **客户端生产默认（v1.2.6）**：[V1.2.6_F3_PROD_FLAGS.md](./V1.2.6_F3_PROD_FLAGS.md) · **设置页运维卡（v1.2.7）**：功能 → 插件运维  
 > **原则**：v1.2.0 **默认行为与 v1.1.9 相同**；新能力通过 env **渐进开启**。
 
 ---
@@ -35,9 +36,9 @@
 
 | 变量 | 推荐初值 | 效果 |
 |------|----------|------|
-| `VITE_MULTI_ROOT` | （不设） | 多根工作区 UI |
+| `VITE_MULTI_ROOT` | v1.2.6 起生产默认 **开**（不设则开） | 多根工作区 UI |
 | `VITE_PLUGIN_TRUST_MARKET` | （不设） | 市场签名校验门控 |
-| `VITE_VIRTUAL_FILE_TREE` | （不设） | 大仓虚拟滚动 |
+| `VITE_VIRTUAL_FILE_TREE` | 随 multi-root 默认开 | 大仓虚拟滚动 |
 | `VITE_PLUGIN_OFFICIAL_PUBLIC_KEY` | （可选） | 覆盖内置官方公钥 |
 
 **开启后必须 Redeploy Production。**

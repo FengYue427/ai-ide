@@ -56,6 +56,7 @@ import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
 import { getV12FeatureStatus } from '../lib/v12Features'
+import { SettingsPluginOpsCard } from './SettingsPluginOpsCard'
 import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
 import { usePlatformUsageDashboard } from '../hooks/usePlatformUsageDashboard'
 import { useIDEStore, type AIConfigState, type AiKeyMode } from '../store/ideStore'
@@ -218,7 +219,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   const [tabDebounceMs, setTabDebounceMs] = useState(getTabCompletionDebounceMs)
   const [tabMetricsTick, setTabMetricsTick] = useState(0)
   const aiGatewayEnabled = isAiGatewayEnabled()
-  const platformAiHealth = usePlatformAiHealth(aiGatewayEnabled && activeTab === 'ai')
+  const platformAiHealth = usePlatformAiHealth(aiGatewayEnabled)
   const showPlatformUsageDashboard = aiGatewayEnabled && Boolean(currentUser) && activeTab === 'ai'
   const platformUsageDashboard = usePlatformUsageDashboard(showPlatformUsageDashboard)
 
@@ -812,6 +813,17 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     </li>
                   </ul>
                 </div>
+                {aiGatewayEnabled ? (
+                  <SettingsPluginOpsCard
+                    plugins={
+                      platformAiHealth.status === 'ready'
+                        ? platformAiHealth.plugins
+                        : { publishEnabled: false, officialKeyConfigured: false }
+                    }
+                    healthStatus={platformAiHealth.status}
+                    showReviews={Boolean(currentUser)}
+                  />
+                ) : null}
                 <div className="settings-card settings-card--row">
                   <div>
                     <div className="settings-row-title">{t('settings.feature.semantic.title')}</div>

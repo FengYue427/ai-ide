@@ -10,9 +10,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **v1.2.7 F1**：`E2E_NAV_FILES` · `ts-cross-file-navigation.spec` · Monaco E2E harness
 - **v1.2.7 F2**：语义/工具轮次 payload 预留 · `@` 重名发送阻断 · `chatPayloadParity` 单测
 
+- **v1.2.7 F3 插件/平台运维**：设置页 plugin ops · `GET /api/plugins/publish/reviews` · 用量 80% 黄条 · provider 分桶
+
 ### Planned
 
-- **v1.2.7 F3** — 插件 publish 审核 · 平台运维 UI — [V1.2.7_KICKOFF.md](docs/V1.2.7_KICKOFF.md)
+- **v1.2.7 GA** / **v1.2.8** — 见 [V1.2.7_KICKOFF.md](docs/V1.2.7_KICKOFF.md)
 
 ---
 

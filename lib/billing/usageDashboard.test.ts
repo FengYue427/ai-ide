@@ -19,5 +19,20 @@ describe('buildPlatformUsageDashboard', () => {
     expect(payload.costEstimatePeriodUsd).toBe(0.01)
     expect(payload.platformToday).toBe(5)
     expect(payload.source).toBe('server')
+    expect(payload.quotaNearLimit).toBe(false)
+  })
+
+  it('marks quota near limit and includes provider', () => {
+    const payload = buildPlatformUsageDashboard({
+      quota: { used: 85, limit: 100, remaining: 15, plan: 'test', allowed: true },
+      platformToday: 1,
+      otherToday: 0,
+      periodDays: 7,
+      daily: [],
+      platformProvider: 'deepseek',
+    })
+    expect(payload.quotaNearLimit).toBe(true)
+    expect(payload.quotaUsagePercent).toBeGreaterThanOrEqual(80)
+    expect(payload.platformProvider).toBe('deepseek')
   })
 })

@@ -130,6 +130,9 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'settings.v12.pluginTrust': 'プラグイン信頼マーケット',
   'settings.v12.statusOn': '有効',
   'settings.v12.statusOff': '無効',
+  'settings.pluginOps.title': 'プラグイン運用（読み取り専用）',
+  'settings.pluginOps.publishApi': 'POST /api/plugins/publish',
+  'settings.pluginOps.officialKey': '公式署名公開鍵',
 
   'subscription.title': 'サブスクリプション',
   'subscription.hero.title': '作業リズムに合ったプランを選択',

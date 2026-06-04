@@ -493,6 +493,17 @@
   margin-top: var(--space-2);
 }
 
+.platform-usage-dashboard__quota-warn {
+  margin-top: var(--space-2);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--warning-color) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning-color) 35%, transparent);
+}
+
 .platform-usage-dashboard__stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

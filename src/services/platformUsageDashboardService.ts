@@ -19,6 +19,9 @@ export type PlatformUsageDashboard = {
   daily: UsageDayBucket[]
   platformPeriodTotal: number
   costEstimatePeriodUsd: number
+  quotaUsagePercent: number
+  quotaNearLimit: boolean
+  platformProvider?: string
 }
 
 export async function fetchPlatformUsageDashboard(

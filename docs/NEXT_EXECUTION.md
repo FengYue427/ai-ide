@@ -1,6 +1,6 @@
 # 当前执行入口
 
-> **更新**：2026-06-04 — **v1.2.7 F1–F2 完成** · **下一：F3**
+> **更新**：2026-06-04 — **v1.2.7 F1–F3 完成** · **下一：v1.2.7 GA / v1.2.8**
 
 ---
 
@@ -18,7 +18,7 @@
 |----|------|------|
 | **v1.2.5** | ✅ GA | [RELEASE_NOTES_v1.2.5.md](./RELEASE_NOTES_v1.2.5.md) |
 | **v1.2.6** | ✅ GA · `v1.2.6` | [RELEASE_NOTES_v1.2.6.md](./RELEASE_NOTES_v1.2.6.md) |
-| **v1.2.7** | 🚧 F1–F2 ✅ · F3 待做 | [V1.2.7_KICKOFF.md](./V1.2.7_KICKOFF.md) |
+| **v1.2.7** | ✅ F1–F3 | [V1.2.7_KICKOFF.md](./V1.2.7_KICKOFF.md) |
 
 ---
 
@@ -28,7 +28,7 @@
 |------|:----:|------|
 | F1 | ✅ | [V1.2.7_F1_NAV_E2E.md](./V1.2.7_F1_NAV_E2E.md) |
 | F2 | ✅ | [V1.2.7_F2_PAYLOAD_PARITY.md](./V1.2.7_F2_PAYLOAD_PARITY.md) |
-| F3 | 📋 | [V1.2.7_F3_PLUGIN_PLATFORM.md](./V1.2.7_F3_PLUGIN_PLATFORM.md) |
+| F3 | ✅ | [V1.2.7_F3_PLUGIN_PLATFORM.md](./V1.2.7_F3_PLUGIN_PLATFORM.md) |
 
 **门禁**：`npm run test:local` · `npm run test:e2e:local` · `test:e2e:stack`（F1/F3）
 

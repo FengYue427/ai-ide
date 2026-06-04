@@ -55,7 +55,29 @@ export function PlatformAiUsageDashboard({
 
       <QuotaIndicator quota={data.quota} showPlan compact={false} className="platform-usage-dashboard__quota" />
 
+      {data.quotaNearLimit && !data.quota.allowed ? null : data.quotaNearLimit ? (
+        <div
+          className="platform-usage-dashboard__quota-warn"
+          role="status"
+          data-testid="platform-usage-quota-warn"
+        >
+          {t('settings.ai.usageQuotaNearLimit', {
+            percent: data.quotaUsagePercent,
+            used: data.quota.used,
+            limit: data.quota.limit,
+          })}
+        </div>
+      ) : null}
+
       <div className="platform-usage-dashboard__stats">
+        {data.platformProvider ? (
+          <div className="platform-usage-dashboard__stat">
+            <span className="platform-usage-dashboard__stat-label">
+              {t('settings.ai.usagePlatformProvider')}
+            </span>
+            <span className="platform-usage-dashboard__stat-value">{data.platformProvider}</span>
+          </div>
+        ) : null}
         <div className="platform-usage-dashboard__stat">
           <span className="platform-usage-dashboard__stat-label">
             {t('settings.ai.usagePlatformToday')}

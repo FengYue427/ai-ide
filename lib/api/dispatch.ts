@@ -149,6 +149,12 @@ const routes: RouteEntry[] = [
   { method: 'POST', match: (p) => (p === '/api/ai/chat' ? {} : null), load: () => import('./handlers/ai/chat'), export: 'POST' },
   { method: 'POST', match: (p) => (p === '/api/mcp/proxy' ? {} : null), load: () => import('./handlers/mcp/proxy'), export: 'POST' },
   {
+    method: 'GET',
+    match: (p) => (p === '/api/plugins/publish/reviews' ? {} : null),
+    load: () => import('./handlers/plugins/publishReviews'),
+    export: 'GET',
+  },
+  {
     method: 'POST',
     match: (p) => (p === '/api/plugins/publish' ? {} : null),
     load: () => import('./handlers/plugins/publish'),

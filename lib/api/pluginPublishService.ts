@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { ApiMessageKey } from '../i18n/apiMessages'
+import { enqueuePluginPublishReview, type PluginPublishReviewRecord } from './pluginPublishQueue'
 
 const MAX_SOURCE_BYTES = 32 * 1024
 const MAX_MANIFEST_ID_LEN = 64
@@ -122,6 +123,18 @@ export function createPluginPublishReview(pkg: PluginPublishPackage, submitterUs
     .digest('hex')
     .slice(0, 16)
 
+  const record: PluginPublishReviewRecord = {
+    reviewId,
+    status: 'pending',
+    pluginId: pkg.manifest.id,
+    version: pkg.manifest.version,
+    manifestHash,
+    submitterUserId,
+    submittedAt: new Date().toISOString(),
+  }
+
+  enqueuePluginPublishReview(record)
+
   console.info('[PluginPublish] queued for manual review', {
     reviewId,
     pluginId: pkg.manifest.id,
@@ -132,11 +145,11 @@ export function createPluginPublishReview(pkg: PluginPublishPackage, submitterUs
   })
 
   return {
-    reviewId,
-    status: 'pending' as const,
-    pluginId: pkg.manifest.id,
-    version: pkg.manifest.version,
-    manifestHash,
-    submittedAt: new Date().toISOString(),
+    reviewId: record.reviewId,
+    status: record.status,
+    pluginId: record.pluginId,
+    version: record.version,
+    manifestHash: record.manifestHash,
+    submittedAt: record.submittedAt,
   }
 }

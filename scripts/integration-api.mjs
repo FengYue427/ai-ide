@@ -161,6 +161,16 @@ async function run() {
       })
       if (res.status === 202 && json?.reviewId?.startsWith('rev_') && json?.status === 'pending') {
         pass('plugin publish accepted', json.reviewId)
+        const list = await api('/api/plugins/publish/reviews')
+        if (
+          list.res.ok &&
+          Array.isArray(list.json?.reviews) &&
+          list.json.reviews.some((row) => row.reviewId === json.reviewId)
+        ) {
+          pass('plugin publish reviews list', String(list.json.reviews.length))
+        } else {
+          fail('plugin publish reviews list', list.json?.error || `HTTP ${list.res.status}`)
+        }
       } else {
         fail('plugin publish accepted', json?.errorKey || json?.error || `HTTP ${res.status}`)
       }

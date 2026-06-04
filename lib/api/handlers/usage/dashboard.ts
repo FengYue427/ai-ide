@@ -4,6 +4,7 @@
 import { jsonResponse } from '../../http'
 import { localizedErrorResponse } from '../../localizedError'
 import { requireAuth } from '../../requireAuth'
+import { isPlatformAiConfigured, resolvePlatformAiRoute } from '../../aiGateway/platformConfig'
 import { buildPlatformUsageDashboard } from '../../../billing/usageDashboard'
 import {
   AI_USAGE_PLATFORM_TYPE,
@@ -28,6 +29,10 @@ export async function GET(req: Request) {
     const otherToday = await getUsageCountForDay(auth.user.id, [AI_USAGE_TYPE], 0)
     const daily = await getAiUsageDailyBuckets(auth.user.id, DASHBOARD_DAYS)
 
+    const platformRoute = resolvePlatformAiRoute()
+    const platformProvider =
+      isPlatformAiConfigured() && platformRoute.ok ? platformRoute.route.provider : undefined
+
     return jsonResponse(
       buildPlatformUsageDashboard({
         quota: buildQuotaSnapshot(plan, used),
@@ -35,6 +40,7 @@ export async function GET(req: Request) {
         otherToday,
         daily,
         periodDays: DASHBOARD_DAYS,
+        platformProvider,
       }),
     )
   } catch (error) {
