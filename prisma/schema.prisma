@@ -56,6 +56,23 @@ model User {
   backgroundJobs  BackgroundJob[]
   collabRoomsHosted CollaborationRoom[] @relation("CollabRoomHost")
   collabMemberships CollaborationMember[]
+  pluginPublishReviews PluginPublishReview[]
+}
+
+// Plugin publish manual review queue (v1.2.8 F3)
+model PluginPublishReview {
+  id           String   @id @default(cuid())
+  reviewId     String   @unique
+  userId       String
+  pluginId     String
+  version      String
+  manifestHash String
+  status       String   @default("pending")
+  submittedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, submittedAt])
 }
 
 // 支付宝 / 微信 一次性订阅订单

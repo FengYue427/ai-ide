@@ -90,6 +90,11 @@ export interface EditorTarget {
   nonce: number
 }
 
+export interface ReferencesPeekState {
+  symbol: string
+  locations: Array<{ path: string; line: number; column: number }>
+}
+
 export interface DiffContent {
   old: string
   new: string
@@ -187,6 +192,7 @@ export interface IDEState {
   formatDocumentNonce: number
   goToDefinitionNonce: number
   goToReferencesNonce: number
+  referencesPeek: ReferencesPeekState | null
   aiConfig: AIConfigState
   diffContent: DiffContent | null
   editorTarget: EditorTarget | null
@@ -273,6 +279,7 @@ export interface IDEState {
   requestFormatDocument: () => void
   requestGoToDefinition: () => void
   requestGoToReferences: () => void
+  setReferencesPeek: (peek: ReferencesPeekState | null) => void
   setAiConfig: (config: AIConfigState | ((prev: AIConfigState) => AIConfigState)) => void
   setDiffContent: (content: DiffContent | null) => void
   setEditorTarget: (target: EditorTarget | null) => void
@@ -389,6 +396,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   formatDocumentNonce: 0,
   goToDefinitionNonce: 0,
   goToReferencesNonce: 0,
+  referencesPeek: null,
   aiConfig: defaultAiConfig,
   diffContent: null,
   editorTarget: null,
@@ -585,6 +593,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
     set((state) => ({ goToDefinitionNonce: state.goToDefinitionNonce + 1 })),
   requestGoToReferences: () =>
     set((state) => ({ goToReferencesNonce: state.goToReferencesNonce + 1 })),
+  setReferencesPeek: (referencesPeek) => set({ referencesPeek }),
   setAiConfig: (config) =>
     set((state) => ({
       aiConfig: typeof config === 'function' ? config(state.aiConfig) : config,

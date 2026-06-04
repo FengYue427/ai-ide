@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { ApiMessageKey } from '../i18n/apiMessages'
+import { persistPluginPublishReview } from './pluginPublishDb'
 import { enqueuePluginPublishReview, type PluginPublishReviewRecord } from './pluginPublishQueue'
 
 const MAX_SOURCE_BYTES = 32 * 1024
@@ -134,6 +135,7 @@ export function createPluginPublishReview(pkg: PluginPublishPackage, submitterUs
   }
 
   enqueuePluginPublishReview(record)
+  void persistPluginPublishReview(record)
 
   console.info('[PluginPublish] queued for manual review', {
     reviewId,

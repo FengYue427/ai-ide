@@ -39,11 +39,13 @@ export function registerCrossFileReferenceProvider(
 export function resolveReferenceNavigation(
   files: ReferenceProjectFile[],
   targetPath: string,
+  line = 1,
+  column = 1,
 ): { fileIndex: number; line: number; column: number } | null {
   const normalized = targetPath.replace(/^inmemory:\/\//, '').replace(/^\//, '')
   const index = files.findIndex(
     (file) => file.name === normalized || file.name.endsWith(`/${normalized}`),
   )
   if (index < 0) return null
-  return { fileIndex: index, line: 1, column: 1 }
+  return { fileIndex: index, line: Math.max(1, line), column: Math.max(1, column) }
 }

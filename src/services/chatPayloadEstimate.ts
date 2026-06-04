@@ -15,6 +15,9 @@ export const CHAT_PAYLOAD_SEMANTIC_RESERVE_BYTES = 8_000
 /** Conservative allowance per agent tool-loop send (v1.2.7 F2). */
 export const CHAT_PAYLOAD_AGENT_TOOL_LOOP_RESERVE_BYTES = 16_000
 
+/** Conservative allowance when MCP tool catalog is injected (v1.2.8 F2). */
+export const CHAT_PAYLOAD_MCP_RESERVE_BYTES = 6_000
+
 export interface ChatPayloadEstimateInput {
   draftText: string
   messages: ChatHistoryMessage[]
@@ -34,6 +37,8 @@ export interface ChatPayloadEstimateInput {
   semanticSearchEnabled?: boolean
   /** Sync estimate: agent tool loop likely on send */
   agentToolLoopEnabled?: boolean
+  /** Sync estimate: enabled MCP servers may append tools section */
+  mcpToolsEnabled?: boolean
 }
 
 export interface ChatPayloadEstimate {
@@ -44,6 +49,7 @@ export interface ChatPayloadEstimate {
   /** Included in estimatedBytes — for meter footnotes */
   semanticReserveBytes?: number
   toolLoopReserveBytes?: number
+  mcpReserveBytes?: number
 }
 
 export function measureAiMessagesPayload(
@@ -94,6 +100,7 @@ export function estimateChatPayload(input: ChatPayloadEstimateInput): ChatPayloa
   let estimatedBytes = measureAiMessagesPayload(aiMessages)
   let semanticReserveBytes = 0
   let toolLoopReserveBytes = 0
+  let mcpReserveBytes = 0
 
   if (input.semanticSearchEnabled && input.useWorkspaceContext) {
     semanticReserveBytes = CHAT_PAYLOAD_SEMANTIC_RESERVE_BYTES
@@ -102,6 +109,10 @@ export function estimateChatPayload(input: ChatPayloadEstimateInput): ChatPayloa
   if (input.agentToolLoopEnabled) {
     toolLoopReserveBytes = CHAT_PAYLOAD_AGENT_TOOL_LOOP_RESERVE_BYTES
     estimatedBytes += toolLoopReserveBytes
+  }
+  if (input.mcpToolsEnabled) {
+    mcpReserveBytes = CHAT_PAYLOAD_MCP_RESERVE_BYTES
+    estimatedBytes += mcpReserveBytes
   }
 
   const budgetBytes = getPayloadBudget(input.provider)
@@ -116,5 +127,6 @@ export function estimateChatPayload(input: ChatPayloadEstimateInput): ChatPayloa
     usagePercent,
     semanticReserveBytes: semanticReserveBytes || undefined,
     toolLoopReserveBytes: toolLoopReserveBytes || undefined,
+    mcpReserveBytes: mcpReserveBytes || undefined,
   }
 }

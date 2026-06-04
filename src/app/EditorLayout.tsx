@@ -3,6 +3,7 @@ import { isAiConfigured } from '../lib/aiPlatformMode'
 import { isTabCompletionEnabled } from '../lib/inlineCompletionPrefs'
 import { useI18n } from '../i18n'
 import Editor from '../components/Editor'
+import { ReferencesPeekBar } from '../components/ReferencesPeekBar'
 import { GitDiffEditor } from '../components/GitDiffEditor'
 import BottomPanel from '../components/BottomPanel'
 import type { ToastKind } from '../components/FeedbackCenter'
@@ -79,6 +80,7 @@ export function EditorLayout({
   const activeGitDiffTab = useIDEStore((s) => s.activeGitDiffTab)
   const theme = useIDEStore((s) => s.theme)
   const editorTarget = useIDEStore((s) => s.editorTarget)
+  const referencesPeek = useIDEStore((s) => s.referencesPeek)
   const showTerminal = useIDEStore((s) => s.showTerminal)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const setActiveGitDiffTab = useIDEStore((s) => s.setActiveGitDiffTab)
@@ -212,6 +214,13 @@ export function EditorLayout({
             newTotal: currentDiffTab.originalNewLines ?? currentDiffTab.newContent.split('\n').length,
           })}
         </div>
+      ) : null}
+
+      {!showingDiff && referencesPeek ? (
+        <ReferencesPeekBar
+          peek={referencesPeek}
+          files={files.map((file) => ({ name: file.name, content: file.content }))}
+        />
       ) : null}
 
       <div className="monaco-wrapper">

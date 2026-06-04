@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { estimateChatPayload, measureAiMessagesPayload } from './chatPayloadEstimate'
+import {
+  CHAT_PAYLOAD_MCP_RESERVE_BYTES,
+  estimateChatPayload,
+  measureAiMessagesPayload,
+} from './chatPayloadEstimate'
 import {
   applyPayloadMeterReserve,
   CHAT_PAYLOAD_METER_RESERVE_BYTES,
@@ -58,6 +62,21 @@ describe('chatPayloadParity', () => {
     if (sendBytes > meter.estimatedBytes) {
       expect(parity.withinTolerance).toBe(true)
     }
+  })
+
+  it('mcp reserve increases sync estimate when agent MCP is enabled', () => {
+    const base = estimateChatPayload({ ...shared, draftText: 'hi', agentMode: true })
+    const withMcp = estimateChatPayload({
+      ...shared,
+      draftText: 'hi',
+      agentMode: true,
+      mcpToolsEnabled: true,
+    })
+    expect(withMcp.estimatedBytes - base.estimatedBytes).toBe(CHAT_PAYLOAD_MCP_RESERVE_BYTES)
+    const meter = applyPayloadMeterReserve(withMcp)
+    expect(meter.estimatedBytes).toBeGreaterThanOrEqual(
+      withMcp.estimatedBytes + CHAT_PAYLOAD_METER_RESERVE_BYTES,
+    )
   })
 
   it('semantic reserve increases meter above bare sync send', () => {

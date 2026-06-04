@@ -7,7 +7,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Planned
 
-- **v1.2.8** — 引用 Peek · MCP payload · 插件发布持久化 — [V1.2.8_KICKOFF.md](docs/V1.2.8_KICKOFF.md)
+- (none — v1.2.8 F1–F3 landed below; GA tag pending)
+
+### Added
+
+- **v1.2.8 F1**：`monacoGoToReferencesAt` · 跨文件引用 E2E · `ReferencesPeekBar`（`references-peek`）
+- **v1.2.8 F2**：`CHAT_PAYLOAD_MCP_RESERVE_BYTES` · Agent MCP 表计脚注 · 重名 `@`「精简发送」
+- **v1.2.8 F3**：`PluginPublishReview` Prisma · DB 持久化 publish/reviews · 插件 Manual 提交审核 · [PLUGIN_TRUST_PRODUCTION.md](docs/PLUGIN_TRUST_PRODUCTION.md)
+
+### Docs
+
+- [V1.2.8_F1_REFERENCES_UI.md](docs/V1.2.8_F1_REFERENCES_UI.md) · [V1.2.8_F2_AGENT_MCP.md](docs/V1.2.8_F2_AGENT_MCP.md) · [V1.2.8_F3_PLUGIN_PUBLISH.md](docs/V1.2.8_F3_PLUGIN_PUBLISH.md)
 
 ---
 

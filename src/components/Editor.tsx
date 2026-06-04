@@ -10,6 +10,7 @@ import {
 } from '../editor/monacoSetup'
 import { Z } from '../lib/layers'
 import { registerInlineCompletionProvider } from '../editor/registerInlineCompletion'
+import { goToReferences } from '../editor/languageServiceHostCore'
 import { registerLanguageServiceProviders } from '../editor/languageServiceHost'
 import {
   resolveDefinitionNavigation,
@@ -76,6 +77,7 @@ const Editor: React.FC<EditorProps> = ({
   const formatDocumentNonce = useIDEStore((s) => s.formatDocumentNonce)
   const goToDefinitionNonce = useIDEStore((s) => s.goToDefinitionNonce)
   const goToReferencesNonce = useIDEStore((s) => s.goToReferencesNonce)
+  const setReferencesPeek = useIDEStore((s) => s.setReferencesPeek)
   aiConfigRef.current = aiConfig
   allFilesRef.current = allFiles
 
@@ -200,9 +202,29 @@ const Editor: React.FC<EditorProps> = ({
     if (!goToReferencesNonce || readOnly) return
     const editor = editorRef.current
     if (!editor) return
+    const model = editor.getModel()
+    const position = editor.getPosition()
+    if (model && position) {
+      const word = model.getWordAtPosition(position)
+      if (word?.word) {
+        const refs = goToReferences({ symbol: word.word, files: allFilesRef.current })
+        if (refs.length > 0) {
+          setReferencesPeek({
+            symbol: word.word,
+            locations: refs.map((ref) => ({
+              path: ref.path,
+              line: ref.line,
+              column: ref.column,
+            })),
+          })
+        } else {
+          setReferencesPeek(null)
+        }
+      }
+    }
     const action = editor.getAction('editor.action.goToReferences')
     void action?.run()
-  }, [goToReferencesNonce, readOnly])
+  }, [goToReferencesNonce, readOnly, setReferencesPeek])
 
   useEffect(() => {
     const editor = editorRef.current

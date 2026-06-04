@@ -318,6 +318,64 @@
   }
 }
 
+.references-peek-bar {
+  padding: 8px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.references-peek-bar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.references-peek-bar__close {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.references-peek-bar__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.references-peek-bar__item {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+}
+
+.references-peek-bar__item:hover {
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+}
+
+.references-peek-bar__path {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.references-peek-bar__pos {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
 .git-diff-truncated-banner {
   padding: 8px 14px;
   font-size: 12px;

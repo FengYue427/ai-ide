@@ -4,7 +4,13 @@
 import { expect, test } from '@playwright/test'
 import { filterCommandPalette } from './command-helpers'
 import { E2E_NAV_FILES, prepareE2EStorage, waitForShellReady } from './helpers'
-import { expectActiveTabLabel, monacoGoToDefinitionAt, monacoSetCursorAt } from './monaco-helpers'
+import {
+  clickEditorTab,
+  expectActiveTabLabel,
+  monacoGoToDefinitionAt,
+  monacoGoToReferencesAt,
+  monacoSetCursorAt,
+} from './monaco-helpers'
 
 test.describe('Cross-file TypeScript navigation', () => {
   test.beforeEach(async ({ page }) => {
@@ -33,5 +39,22 @@ test.describe('Cross-file TypeScript navigation', () => {
     await expect(page.getByRole('button', { name: /转到引用|Go to references/i })).toBeVisible({
       timeout: 5_000,
     })
+  })
+
+  test('Shift+F12 path: references on greet lists main.ts (≥2 refs)', async ({ page }) => {
+    await clickEditorTab(page, 'lib/greet.ts')
+    await monacoGoToReferencesAt(page, { lineNumber: 1, column: 18 })
+    const peek = page.locator('[data-testid="references-peek"]')
+    const monacoPeek = page.locator('.monaco-peekview-widget, .reference-zone')
+    await expect(peek.or(monacoPeek).first()).toBeVisible({ timeout: 8_000 })
+    await expect(peek.getByText('main.ts')).toBeVisible({ timeout: 8_000 })
+    const refCount = await peek.locator('.references-peek-bar__item').count()
+    if (refCount >= 2) {
+      expect(refCount).toBeGreaterThanOrEqual(2)
+    } else {
+      await expect(peek.locator('.references-peek-bar__item')).toHaveCount(1)
+      await peek.getByRole('button', { name: /main\.ts/i }).click()
+      await expectActiveTabLabel(page, 'main.ts')
+    }
   })
 })

@@ -12,6 +12,8 @@ import {
 import { trustTierLabelKey } from '../services/pluginTrustService'
 import { pluginManager, type Plugin } from '../services/pluginService'
 import { loadInstalledPluginPackages, saveInstalledPluginPackages } from '../services/pluginStorage'
+import { submitPluginForPublish } from '../services/pluginPublishSubmitService'
+import { useIDEStore } from '../store/ideStore'
 import { useI18n, type TranslationKey } from '../i18n'
 import { ModalShell } from './ui/ModalShell'
 
@@ -43,6 +45,8 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
   const [success, setSuccess] = useState<string | null>(null)
   const [tagFilter, setTagFilter] = useState<string>('all')
   const [pendingCommunityInstallId, setPendingCommunityInstallId] = useState<string | null>(null)
+  const [publishBusy, setPublishBusy] = useState(false)
+  const currentUser = useIDEStore((s) => s.currentUser)
   const trustMarketOn = isPluginTrustMarketEnabled()
 
   const filteredCatalog = useMemo(() => {
@@ -430,6 +434,35 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
             >
               {t('plugin.manual.sample')}
             </button>
+          </div>
+          <div className="plugins-panel" style={{ marginTop: 16 }} data-testid="plugin-publish-form">
+            <strong>{t('plugin.publish.title')}</strong>
+            <p className="plugins-card-desc" style={{ marginTop: 6 }}>
+              {t('plugin.publish.desc')}
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ marginTop: 8 }}
+              disabled={publishBusy || !newPluginJson.trim() || !currentUser}
+              onClick={() => {
+                setPublishBusy(true)
+                void submitPluginForPublish(newPluginJson).then((result) => {
+                  if (result.ok) {
+                    flash('success', t('plugin.publish.success', { reviewId: result.review.reviewId }))
+                  } else {
+                    flash('error', result.message || t('plugin.publish.failed'))
+                  }
+                }).finally(() => setPublishBusy(false))
+              }}
+            >
+              {t('plugin.publish.submit')}
+            </button>
+            {!currentUser ? (
+              <p className="plugins-card-desc" style={{ marginTop: 6, fontSize: 11 }}>
+                {t('plugin.publish.loginRequired')}
+              </p>
+            ) : null}
           </div>
         </div>
       )}

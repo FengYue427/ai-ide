@@ -4,6 +4,7 @@
 import { jsonResponse } from '../../http'
 import { localizedErrorResponse } from '../../localizedError'
 import { isPluginPublishEnabled } from '../../pluginPublishConfig'
+import { listPluginPublishReviewsFromDb } from '../../pluginPublishDb'
 import { listPluginPublishReviewsForUser } from '../../pluginPublishQueue'
 import { requireAuth } from '../../requireAuth'
 
@@ -16,7 +17,11 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response
 
   try {
-    const reviews = listPluginPublishReviewsForUser(auth.user.id, 10)
+    const dbReviews = await listPluginPublishReviewsFromDb(auth.user.id, 10)
+    const reviews =
+      dbReviews && dbReviews.length > 0
+        ? dbReviews
+        : listPluginPublishReviewsForUser(auth.user.id, 10)
     return jsonResponse({ reviews, publishEnabled: true })
   } catch (error) {
     console.error('[PluginPublishReviews] error:', error)

@@ -171,6 +171,20 @@ async function run() {
         } else {
           fail('plugin publish reviews list', list.json?.error || `HTTP ${list.res.status}`)
         }
+        if (process.env.DATABASE_URL?.trim() && !process.env.DATABASE_URL.includes('placeholder')) {
+          try {
+            const { PrismaClient } = await import('@prisma/client')
+            const prisma = new PrismaClient()
+            const row = await prisma.pluginPublishReview.findUnique({
+              where: { reviewId: json.reviewId },
+            })
+            await prisma.$disconnect()
+            if (row?.reviewId === json.reviewId) pass('plugin publish db persisted', row.reviewId)
+            else fail('plugin publish db persisted', 'row not found')
+          } catch (dbErr) {
+            fail('plugin publish db persisted', dbErr.message)
+          }
+        }
       } else {
         fail('plugin publish accepted', json?.errorKey || json?.error || `HTTP ${res.status}`)
       }

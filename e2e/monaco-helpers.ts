@@ -34,6 +34,27 @@ export async function monacoSetCursorAt(
   }, position)
 }
 
+export async function clickEditorTab(page: Page, label: string): Promise<void> {
+  await page.locator('.tab').filter({ hasText: label }).click()
+  await expectActiveTabLabel(page, label)
+}
+
+export async function monacoGoToReferencesAt(
+  page: Page,
+  position: { lineNumber: number; column: number },
+): Promise<void> {
+  await waitForMonacoHarness(page)
+  await page.evaluate(({ lineNumber, column }) => {
+    const monaco = (window as MonacoHarnessWindow).__AI_IDE_MONACO__
+    const editor = monaco?.editor.getEditors()[0]
+    if (!editor) throw new Error('monaco editor not mounted')
+    editor.setPosition({ lineNumber, column })
+    editor.focus()
+    void editor.getAction('editor.action.goToReferences')?.run()
+  }, position)
+  await page.waitForTimeout(600)
+}
+
 export async function monacoGoToDefinitionAt(
   page: Page,
   position: { lineNumber: number; column: number },

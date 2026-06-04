@@ -23,7 +23,7 @@ import {
   buildMcpToolsPromptSection,
   processAgentMcpTurn,
 } from '../services/mcpAgentBridge'
-import { loadMcpSettings } from '../services/mcpConfigService'
+import { getEnabledMcpServers, getMcpServersSync, loadMcpServers, loadMcpSettings } from '../services/mcpConfigService'
 import { parseAgentFileChanges, type AgentFileChange } from '../services/agentApplyService'
 import { getOldContentForPath } from '../services/fileApplyService'
 import {
@@ -467,6 +467,22 @@ ${t('ai.chat.prompt')}`
     [messages],
   )
 
+  const [mcpToolsEnabled, setMcpToolsEnabled] = useState(
+    () => getMcpServersSync().filter((s) => s.enabled && s.url.trim()).length > 0,
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    void loadMcpServers().then(() =>
+      getEnabledMcpServers().then((servers) => {
+        if (!cancelled) setMcpToolsEnabled(servers.length > 0)
+      }),
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const payloadEstimate = useMemo(() => {
     if (!isConfigured) return null
     const hasDraft = Boolean(input.trim())
@@ -480,6 +496,7 @@ ${t('ai.chat.prompt')}`
       !planMode &&
       DEFAULT_AGENT_SETTINGS.useToolLoop &&
       supportsAgentToolCalling(aiConfig.provider)
+    const mcpReserveOn = agentMode && mcpToolsEnabled
 
     return estimateChatPayload({
       draftText: input,
@@ -497,9 +514,11 @@ ${t('ai.chat.prompt')}`
       defaultSystemPrompt: t('chat.system.default', { code: currentCode }),
       semanticSearchEnabled,
       agentToolLoopEnabled,
+      mcpToolsEnabled: mcpReserveOn,
     })
   }, [
     agentMode,
+    mcpToolsEnabled,
     aiConfig.apiKey,
     aiConfig.provider,
     applyProjectRules,
@@ -2078,6 +2097,7 @@ ${t('ai.chat.prompt')}`
             footnote={[
               payloadEstimate?.semanticReserveBytes ? t('chat.payload.meterSemanticNote') : null,
               payloadEstimate?.toolLoopReserveBytes ? t('chat.payload.meterToolLoopNote') : null,
+              payloadEstimate?.mcpReserveBytes ? t('chat.payload.meterMcpNote') : null,
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -2130,6 +2150,22 @@ ${t('ai.chat.prompt')}`
             ) : null}
             {countAmbiguousMentions(mentionPreflight) > 0 ? (
               <span>{t('chat.mention.preflightAmbiguousBlockHint')}</span>
+            ) : null}
+            {countAmbiguousMentions(mentionPreflight) > 0 &&
+            countUnresolvedMentions(mentionPreflight) === 0 ? (
+              <button
+                type="button"
+                className="chat-btn-primary-sm"
+                style={{ marginTop: 8 }}
+                onClick={() => {
+                  trackEvent('chat.mention_slim_retry', {
+                    ambiguousCount: countAmbiguousMentions(mentionPreflight),
+                  })
+                  handleSend(input, undefined, { forceSlim: true })
+                }}
+              >
+                {t('chat.mention.slimPastAmbiguous')}
+              </button>
             ) : null}
           </div>
         ) : null}
