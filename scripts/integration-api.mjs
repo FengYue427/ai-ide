@@ -370,7 +370,7 @@ async function run() {
     }
   }
 
-  // 6b. Usage quota — free plan hard limit (50/day)
+  // 6b. Usage quota — enforce daily limit at boundary (free/pro: 5000/day; POST caps batch at 500)
   try {
     const getUsage = await api('/api/usage/ai')
     if (!getUsage.res.ok || !getUsage.json?.quota) {
@@ -379,31 +379,46 @@ async function run() {
       pass('usage quota GET before limit', `${getUsage.json.quota.used}/${getUsage.json.quota.limit}`)
     }
 
-    const freeLimit = getUsage.json?.quota?.limit ?? 50
-    const used = getUsage.json?.quota?.used ?? 0
-    const remaining =
-      typeof freeLimit === 'number' && freeLimit > 0 ? Math.max(0, freeLimit - used) : 50
-
-    if (remaining > 0) {
-      const fill = await api('/api/usage/ai', {
-        method: 'POST',
-        body: JSON.stringify({ amount: remaining }),
-      })
-      if (!fill.res.ok && fill.res.status !== 429) {
-        fail('usage quota fill to limit', fill.json?.error || `HTTP ${fill.res.status}`)
-      }
-    }
-
-    const over = await api('/api/usage/ai', {
-      method: 'POST',
-      body: JSON.stringify({ amount: 1 }),
-    })
-    if (over.res.status === 429) {
-      pass('usage POST 429 at limit', 'server enforced')
-    } else if (results.some((r) => r.name === 'usage quota fill to limit' && !r.ok)) {
-      // already failed fill step
+    const freeLimit = getUsage.json?.quota?.limit ?? 5000
+    if (freeLimit === -1) {
+      pass('usage POST 429 at limit', 'skipped (unlimited plan)')
     } else {
-      fail('usage POST 429 at limit', `expected 429, got ${over.res.status}`)
+      const USAGE_BATCH_MAX = 500 // matches lib/api/handlers/usage/ai.ts non-production cap
+      const targetUsed = Math.max(0, freeLimit - 1)
+
+      for (let guard = 0; guard < 20; guard += 1) {
+        const snap = await api('/api/usage/ai')
+        const used = snap.json?.quota?.used ?? 0
+        const limit = snap.json?.quota?.limit ?? freeLimit
+        if (used >= targetUsed || limit === -1) break
+
+        const remaining = Math.max(0, targetUsed - used)
+        const batch = Math.min(remaining, USAGE_BATCH_MAX)
+        const fill = await api('/api/usage/ai', {
+          method: 'POST',
+          body: JSON.stringify({ amount: batch }),
+        })
+        if (fill.res.status === 429) {
+          fail('usage quota fill to limit', fill.json?.error || 'unexpected 429 while filling')
+          break
+        }
+        if (!fill.res.ok) {
+          fail('usage quota fill to limit', fill.json?.error || `HTTP ${fill.res.status}`)
+          break
+        }
+      }
+
+      const over = await api('/api/usage/ai', {
+        method: 'POST',
+        body: JSON.stringify({ amount: 2 }),
+      })
+      if (over.res.status === 429) {
+        pass('usage POST 429 at limit', 'server enforced')
+      } else if (results.some((r) => r.name === 'usage quota fill to limit' && !r.ok)) {
+        // already failed fill step
+      } else {
+        fail('usage POST 429 at limit', `expected 429, got ${over.res.status}`)
+      }
     }
   } catch (e) {
     fail('usage quota enforcement', e.message)
