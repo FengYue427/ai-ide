@@ -150,6 +150,15 @@ const routes: RouteEntry[] = [
   { method: 'POST', match: (p) => (p === '/api/mcp/proxy' ? {} : null), load: () => import('./handlers/mcp/proxy'), export: 'POST' },
   {
     method: 'GET',
+    match: (p) => {
+      const match = p.match(/^\/api\/plugins\/publish\/reviews\/([^/]+)$/)
+      return match ? { reviewId: decodeURIComponent(match[1]) } : null
+    },
+    load: () => import('./handlers/plugins/publishReviewById'),
+    export: 'GET',
+  },
+  {
+    method: 'GET',
     match: (p) => (p === '/api/plugins/publish/reviews' ? {} : null),
     load: () => import('./handlers/plugins/publishReviews'),
     export: 'GET',

@@ -2,7 +2,15 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.2.2**（Workbench Shell · 布局互斥/密度/Resize）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.2](./docs/ROADMAP_V1.2.md)
+**当前版本：v1.2.9**（引用精度 · 动态 MCP 预留 · 插件审核运维）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.3](./docs/ROADMAP_V1.3.md)
+
+## v1.2.9 引用与运维（GA）
+
+- **引用**：`ReferencesPeekBar` 与 TS Worker 行号对齐 · opener 保留列号
+- **Chat**：MCP 表计按已连接工具数动态预留（上限 12KB）
+- **插件**：`GET /api/plugins/publish/reviews?status=pending` · 单条只读查询 · 设置页审核筛选
+
+详见 [RELEASE_NOTES_v1.2.9.md](./docs/RELEASE_NOTES_v1.2.9.md) · 下一迭代 [V1.3_KICKOFF.md](./docs/V1.3_KICKOFF.md)
 
 | 入口 | 链接 |
 |--|--|

@@ -23,7 +23,7 @@ import {
   buildMcpToolsPromptSection,
   processAgentMcpTurn,
 } from '../services/mcpAgentBridge'
-import { getEnabledMcpServers, getMcpServersSync, loadMcpServers, loadMcpSettings } from '../services/mcpConfigService'
+import { getEnabledMcpServers, getMcpServersSync, getMcpToolCountEstimateSync, loadMcpServers, loadMcpSettings, refreshMcpToolCountEstimate } from '../services/mcpConfigService'
 import { parseAgentFileChanges, type AgentFileChange } from '../services/agentApplyService'
 import { getOldContentForPath } from '../services/fileApplyService'
 import {
@@ -470,6 +470,9 @@ ${t('ai.chat.prompt')}`
   const [mcpToolsEnabled, setMcpToolsEnabled] = useState(
     () => getMcpServersSync().filter((s) => s.enabled && s.url.trim()).length > 0,
   )
+  const [mcpToolCount, setMcpToolCount] = useState<number | undefined>(() =>
+    getMcpToolCountEstimateSync(),
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -478,6 +481,9 @@ ${t('ai.chat.prompt')}`
         if (!cancelled) setMcpToolsEnabled(servers.length > 0)
       }),
     )
+    void refreshMcpToolCountEstimate().then((count) => {
+      if (!cancelled) setMcpToolCount(count > 0 ? count : undefined)
+    })
     return () => {
       cancelled = true
     }
@@ -515,10 +521,12 @@ ${t('ai.chat.prompt')}`
       semanticSearchEnabled,
       agentToolLoopEnabled,
       mcpToolsEnabled: mcpReserveOn,
+      mcpToolCount: mcpReserveOn ? mcpToolCount : undefined,
     })
   }, [
     agentMode,
     mcpToolsEnabled,
+    mcpToolCount,
     aiConfig.apiKey,
     aiConfig.provider,
     applyProjectRules,

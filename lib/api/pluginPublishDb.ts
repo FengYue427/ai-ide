@@ -51,16 +51,32 @@ export async function persistPluginPublishReview(record: PluginPublishReviewReco
 export async function listPluginPublishReviewsFromDb(
   userId: string,
   limit = 10,
+  status?: 'pending',
 ): Promise<PluginPublishReviewRow[] | null> {
   try {
     const rows = await prisma.pluginPublishReview.findMany({
-      where: { userId },
+      where: { userId, ...(status ? { status } : {}) },
       orderBy: { submittedAt: 'desc' },
       take: limit,
     })
     return rows.map(toRow)
   } catch (error) {
     console.warn('[PluginPublishDb] list failed', error)
+    return null
+  }
+}
+
+export async function findPluginPublishReviewForUser(
+  userId: string,
+  reviewId: string,
+): Promise<PluginPublishReviewRow | null> {
+  try {
+    const row = await prisma.pluginPublishReview.findFirst({
+      where: { userId, reviewId },
+    })
+    return row ? toRow(row) : null
+  } catch (error) {
+    console.warn('[PluginPublishDb] find failed', error)
     return null
   }
 }

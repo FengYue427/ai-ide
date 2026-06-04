@@ -154,6 +154,7 @@ export const API_MESSAGES = {
     'api.plugin.publishEntryRequired': '缺少 manifest.entry',
     'api.plugin.publishPermissionsRequired': '至少声明一项权限',
     'api.plugin.publishPermissionsInvalid': 'permissions 须为非空字符串数组',
+    'api.plugin.reviewNotFound': '未找到该审核记录',
   },
   'en-US': {
     'api.auth.required': 'Email and password are required',
@@ -304,6 +305,7 @@ export const API_MESSAGES = {
     'api.plugin.publishEntryRequired': 'manifest.entry is required',
     'api.plugin.publishPermissionsRequired': 'Declare at least one permission',
     'api.plugin.publishPermissionsInvalid': 'permissions must be a non-empty string array',
+    'api.plugin.reviewNotFound': 'Review record not found',
   },
   'ja-JP': API_MESSAGES_JA,
 } as const

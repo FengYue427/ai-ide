@@ -5,9 +5,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Planned
+---
 
-- **v1.2.9** — 引用行号 · 动态 MCP 表计 · 插件审核运维 — [V1.2.9_KICKOFF.md](docs/V1.2.9_KICKOFF.md)
+## [1.2.9] — 2026-06-05 · 引用精度/MCP 动态预留/插件审核运维
+
+### Added
+
+- **v1.2.9 F1**：`monacoLocationToReference` · Peek 优先 TS Worker · opener 列号 · 引用 E2E 行号断言
+- **v1.2.9 F2**：`mcpPayloadReserve` 动态表计 · `refreshMcpToolCountEstimate` · forceSlim/mention 单测
+- **v1.2.9 F3**：`GET /api/plugins/publish/reviews/:reviewId` · `?status=pending` · 设置页审核筛选 · plugin-ops E2E
+
+### Docs
+
+- [RELEASE_NOTES_v1.2.9.md](docs/RELEASE_NOTES_v1.2.9.md) · F1–F3 阶段文档
+
+See [RELEASE_NOTES_v1.2.9.md](docs/RELEASE_NOTES_v1.2.9.md).
 
 ---
 

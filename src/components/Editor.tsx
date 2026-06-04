@@ -12,10 +12,10 @@ import { Z } from '../lib/layers'
 import { registerInlineCompletionProvider } from '../editor/registerInlineCompletion'
 import { goToReferences } from '../editor/languageServiceHostCore'
 import { registerLanguageServiceProviders } from '../editor/languageServiceHost'
-import {
-  resolveDefinitionNavigation,
-  type DefinitionProjectFile,
-} from '../editor/registerCrossFileDefinition'
+import { getMonacoTypeScriptReferences } from '../editor/monacoTypeScriptNavigation'
+import { monacoLocationToReference } from '../editor/referenceLocationMapping'
+import { resolveReferenceNavigation } from '../editor/registerCrossFileReferences'
+import type { DefinitionProjectFile } from '../editor/registerCrossFileDefinition'
 import { libUriStringToWorkspacePath, workspacePathToLibUriString } from '../editor/editorModelUri'
 import { syncMonacoTypeScriptProject } from '../editor/syncTypeScriptProject'
 import type { AIConfig } from '../services/aiService'
@@ -117,15 +117,19 @@ const Editor: React.FC<EditorProps> = ({
     const disposable = monaco.editor.registerEditorOpener({
       openCodeEditor(_source, resource, selectionOrPosition) {
         const rawPath = libUriStringToWorkspacePath(resource.toString())
-        const nav = resolveDefinitionNavigation(allFilesRef.current, rawPath)
-        if (!nav) return false
-
-        setActiveFile(nav.fileIndex)
         const line =
           selectionOrPosition && 'startLineNumber' in selectionOrPosition
             ? selectionOrPosition.startLineNumber
-            : nav.line
-        setEditorTarget({ line, column: 1, nonce: Date.now() })
+            : 1
+        const column =
+          selectionOrPosition && 'startColumn' in selectionOrPosition
+            ? selectionOrPosition.startColumn
+            : 1
+        const nav = resolveReferenceNavigation(allFilesRef.current, rawPath, line, column)
+        if (!nav) return false
+
+        setActiveFile(nav.fileIndex)
+        setEditorTarget({ line: nav.line, column: nav.column, nonce: Date.now() })
         return true
       },
     })
@@ -206,27 +210,33 @@ const Editor: React.FC<EditorProps> = ({
     if (!editor) return
     const model = editor.getModel()
     const position = editor.getPosition()
-    if (model && position) {
-      const word = model.getWordAtPosition(position)
-      if (word?.word) {
-        const refs = goToReferences({ symbol: word.word, files: allFilesRef.current })
-        if (refs.length > 0) {
-          setReferencesPeek({
-            symbol: word.word,
-            locations: refs.map((ref) => ({
-              path: ref.path,
-              line: ref.line,
-              column: ref.column,
-            })),
-          })
-        } else {
-          setReferencesPeek(null)
+
+    void (async () => {
+      if (model && position) {
+        const word = model.getWordAtPosition(position)
+        if (word?.word) {
+          const tsRefs = await getMonacoTypeScriptReferences(model, position, filename)
+          const refs = tsRefs?.length
+            ? tsRefs.map(monacoLocationToReference)
+            : goToReferences({ symbol: word.word, files: allFilesRef.current })
+          if (refs.length > 0) {
+            setReferencesPeek({
+              symbol: word.word,
+              locations: refs.map((ref) => ({
+                path: ref.path,
+                line: ref.line,
+                column: ref.column,
+              })),
+            })
+          } else {
+            setReferencesPeek(null)
+          }
         }
       }
-    }
-    const action = editor.getAction('editor.action.goToReferences')
-    void action?.run()
-  }, [goToReferencesNonce, readOnly, setReferencesPeek])
+      const action = editor.getAction('editor.action.goToReferences')
+      void action?.run()
+    })()
+  }, [goToReferencesNonce, readOnly, setReferencesPeek, filename])
 
   useEffect(() => {
     const editor = editorRef.current

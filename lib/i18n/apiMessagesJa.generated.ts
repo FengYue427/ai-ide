@@ -143,4 +143,5 @@ export const API_MESSAGES_JA = {
   'api.plugin.publishEntryRequired': 'manifest.entry is required',
   'api.plugin.publishPermissionsRequired': 'Declare at least one permission',
   'api.plugin.publishPermissionsInvalid': 'Invalid permissions array',
+  'api.plugin.reviewNotFound': 'Review record not found',
 } as const

@@ -60,4 +60,19 @@ test.describe('Cross-file TypeScript navigation', () => {
       await expectActiveTabLabel(page, 'main.ts')
     }
   })
+
+  test('peek reference click navigates to TS-accurate line in target file', async ({ page }) => {
+    await clickEditorTab(page, 'lib/greet.ts')
+    await monacoGoToReferencesAt(page, { lineNumber: 1, column: 18 })
+    const peek = page.locator('[data-testid="references-peek"]')
+    await expect(peek).toBeVisible({ timeout: 8_000 })
+    const mainRef = peek
+      .locator('.references-peek-bar__item')
+      .filter({ hasText: 'main.ts' })
+      .first()
+    await expect(mainRef).toBeVisible()
+    await expect(mainRef).toContainText(/4/)
+    await mainRef.click()
+    await expectActiveTabLabel(page, 'main.ts')
+  })
 })

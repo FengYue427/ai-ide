@@ -54,6 +54,23 @@ describe('chatSendPreflight', () => {
     expect(adjusted.usagePercent).toBeGreaterThan(2)
   })
 
+  it('forceSlim skips ambiguous mention gate and mention block in prompt pipeline', async () => {
+    const check = runMentionPreflight('fix @foo', [], { builtAt: 1, files: [] })
+    expect(evaluateSendMentionGate(check, true).blocked).toBe(false)
+
+    const { buildPromptWithSharedContext } = await import('./chatPromptPipeline')
+    const slimPrompt = await buildPromptWithSharedContext({
+      basePrompt: 'BASE',
+      query: '@foo',
+      forceSlim: true,
+      applyProjectRules: (value) => value,
+      augmentWithSemanticContext: async (value) => value,
+      applyAgentContext: (value) => value,
+      buildMentionSection: () => 'MENTION_BLOCK',
+    })
+    expect(slimPrompt).not.toContain('MENTION_BLOCK')
+  })
+
   it('flags large estimate vs send drift', () => {
     const parity = comparePayloadEstimateToSend(10_000, 20_000)
     expect(parity.withinTolerance).toBe(false)

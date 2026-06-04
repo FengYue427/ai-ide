@@ -5,6 +5,7 @@ import { aiAgentService } from './aiAgentService'
 import type { AIModel } from './aiService'
 import { buildChatHistory, type ChatHistoryMessage } from './chatHistory'
 import { buildMentionContextSection } from './mentionContextService'
+import { estimateMcpPayloadReserveBytes } from './mcpPayloadReserve'
 import { getPayloadBudget, getPayloadBudgetLevel, type PayloadBudgetLevel } from './payloadBudget'
 import type { ProjectIndex } from './projectIndexService'
 import { workspaceContextService } from './workspaceContextService'
@@ -15,8 +16,10 @@ export const CHAT_PAYLOAD_SEMANTIC_RESERVE_BYTES = 8_000
 /** Conservative allowance per agent tool-loop send (v1.2.7 F2). */
 export const CHAT_PAYLOAD_AGENT_TOOL_LOOP_RESERVE_BYTES = 16_000
 
-/** Conservative allowance when MCP tool catalog is injected (v1.2.8 F2). */
-export const CHAT_PAYLOAD_MCP_RESERVE_BYTES = 6_000
+export {
+  CHAT_PAYLOAD_MCP_RESERVE_BYTES,
+  CHAT_PAYLOAD_MCP_RESERVE_FALLBACK_BYTES,
+} from './mcpPayloadReserve'
 
 export interface ChatPayloadEstimateInput {
   draftText: string
@@ -39,6 +42,8 @@ export interface ChatPayloadEstimateInput {
   agentToolLoopEnabled?: boolean
   /** Sync estimate: enabled MCP servers may append tools section */
   mcpToolsEnabled?: boolean
+  /** Cached MCP tool count for dynamic reserve (v1.2.9 F2) */
+  mcpToolCount?: number
 }
 
 export interface ChatPayloadEstimate {
@@ -111,7 +116,7 @@ export function estimateChatPayload(input: ChatPayloadEstimateInput): ChatPayloa
     estimatedBytes += toolLoopReserveBytes
   }
   if (input.mcpToolsEnabled) {
-    mcpReserveBytes = CHAT_PAYLOAD_MCP_RESERVE_BYTES
+    mcpReserveBytes = estimateMcpPayloadReserveBytes(input.mcpToolCount)
     estimatedBytes += mcpReserveBytes
   }
 

@@ -5,6 +5,7 @@ import type { PluginOpsHealth } from '../hooks/usePlatformAiHealth'
 import {
   fetchPluginPublishReviews,
   loadLocalPluginPublishReviews,
+  type PluginPublishReviewFilter,
   type PluginPublishReviewItem,
 } from '../services/pluginPublishReviewService'
 
@@ -20,6 +21,7 @@ export function SettingsPluginOpsCard({
   showReviews,
 }: SettingsPluginOpsCardProps) {
   const { t } = useI18n()
+  const [reviewFilter, setReviewFilter] = useState<PluginPublishReviewFilter>('all')
   const [reviews, setReviews] = useState<PluginPublishReviewItem[]>(() =>
     loadLocalPluginPublishReviews(),
   )
@@ -28,17 +30,17 @@ export function SettingsPluginOpsCard({
   useEffect(() => {
     if (!showReviews) return
     let cancelled = false
-    void fetchPluginPublishReviews().then((rows) => {
+    void fetchPluginPublishReviews({ filter: reviewFilter }).then((rows) => {
       if (!cancelled) setReviews(rows)
     })
     return () => {
       cancelled = true
     }
-  }, [showReviews])
+  }, [showReviews, reviewFilter])
 
   const refreshReviews = () => {
     setRefreshing(true)
-    void fetchPluginPublishReviews()
+    void fetchPluginPublishReviews({ filter: reviewFilter })
       .then(setReviews)
       .finally(() => setRefreshing(false))
   }
@@ -103,12 +105,29 @@ export function SettingsPluginOpsCard({
               <RefreshCw size={12} className={refreshing ? 'platform-usage-dashboard__spin' : ''} />
             </button>
           </div>
+          <label className="settings-privacy-text" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+            <span style={{ fontSize: 12 }}>{t('settings.pluginOps.reviewsFilter')}</span>
+            <select
+              data-testid="settings-plugin-ops-status-filter"
+              value={reviewFilter}
+              onChange={(event) =>
+                setReviewFilter(event.target.value as PluginPublishReviewFilter)
+              }
+              style={{ fontSize: 12, padding: '2px 6px' }}
+            >
+              <option value="all">{t('settings.pluginOps.reviewsFilterAll')}</option>
+              <option value="pending">{t('settings.pluginOps.reviewsFilterPending')}</option>
+            </select>
+          </label>
           {reviews.length === 0 ? (
             <p className="settings-privacy-text" style={{ marginTop: 6 }}>
               {t('settings.pluginOps.reviewsEmpty')}
             </p>
           ) : (
-            <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12, lineHeight: 1.6 }}>
+            <ul
+              data-testid="settings-plugin-ops-review-list"
+              style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12, lineHeight: 1.6 }}
+            >
               {reviews.map((row) => (
                 <li key={row.reviewId}>
                   <code>{row.reviewId}</code> · {row.pluginId}@{row.version} · {row.status}

@@ -2,6 +2,7 @@
  * E2E: Plugin ops status card in settings (v1.2.7 F3)
  */
 import { expect, test } from '@playwright/test'
+import { openPluginManager } from './plugin-helpers'
 import { prepareE2EStorage, prepareLoggedInUser, openSettingsFromToolbar, waitForShellReady } from './helpers'
 
 test.describe('Plugin ops settings', () => {
@@ -20,5 +21,24 @@ test.describe('Plugin ops settings', () => {
     await expect(card).toContainText(/publish|发布/i)
     await expect(card).toContainText(/official|官方|署名/i)
     await expect(card.getByRole('link', { name: /Vercel|生产|production/i }).first()).toBeVisible()
+  })
+
+  test('plugin ops reviews filter defaults to all and can select pending', async ({ page }) => {
+    await openSettingsFromToolbar(page)
+    await page.getByRole('button', { name: /^功能$|^Features$/i }).click()
+    const filter = page.getByTestId('settings-plugin-ops-status-filter')
+    await expect(filter).toBeVisible({ timeout: 10_000 })
+    await expect(filter).toHaveValue('all')
+    await filter.selectOption('pending')
+    await expect(filter).toHaveValue('pending')
+    await expect(page.getByTestId('settings-plugin-ops-review-list')).toHaveCount(0, {
+      timeout: 5_000,
+    })
+  })
+
+  test('plugin manager shows manual publish form for logged-in user', async ({ page }) => {
+    await openPluginManager(page)
+    await expect(page.getByTestId('plugin-publish-form')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: /提交审核|Submit for review/i })).toBeVisible()
   })
 })

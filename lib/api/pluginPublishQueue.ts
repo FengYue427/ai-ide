@@ -21,8 +21,20 @@ export function enqueuePluginPublishReview(record: PluginPublishReviewRecord): v
 export function listPluginPublishReviewsForUser(
   userId: string,
   limit = 10,
+  status?: 'pending',
 ): PluginPublishReviewRecord[] {
-  return queue.filter((row) => row.submitterUserId === userId).slice(0, limit)
+  return queue
+    .filter((row) => row.submitterUserId === userId && (!status || row.status === status))
+    .slice(0, limit)
+}
+
+export function findPluginPublishReviewInQueue(
+  userId: string,
+  reviewId: string,
+): PluginPublishReviewRecord | null {
+  return (
+    queue.find((row) => row.submitterUserId === userId && row.reviewId === reviewId) ?? null
+  )
 }
 
 /** Test-only */

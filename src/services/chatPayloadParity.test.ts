@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CHAT_PAYLOAD_MCP_RESERVE_BYTES,
+  CHAT_PAYLOAD_MCP_RESERVE_FALLBACK_BYTES,
   estimateChatPayload,
   measureAiMessagesPayload,
 } from './chatPayloadEstimate'
+import { estimateMcpPayloadReserveBytes } from './mcpPayloadReserve'
 import {
   applyPayloadMeterReserve,
   CHAT_PAYLOAD_METER_RESERVE_BYTES,
@@ -72,11 +73,23 @@ describe('chatPayloadParity', () => {
       agentMode: true,
       mcpToolsEnabled: true,
     })
-    expect(withMcp.estimatedBytes - base.estimatedBytes).toBe(CHAT_PAYLOAD_MCP_RESERVE_BYTES)
+    expect(withMcp.estimatedBytes - base.estimatedBytes).toBe(CHAT_PAYLOAD_MCP_RESERVE_FALLBACK_BYTES)
     const meter = applyPayloadMeterReserve(withMcp)
     expect(meter.estimatedBytes).toBeGreaterThanOrEqual(
       withMcp.estimatedBytes + CHAT_PAYLOAD_METER_RESERVE_BYTES,
     )
+  })
+
+  it('mcp reserve scales with cached tool count', () => {
+    const toolCount = 8
+    const withTools = estimateChatPayload({
+      ...shared,
+      draftText: 'hi',
+      agentMode: true,
+      mcpToolsEnabled: true,
+      mcpToolCount: toolCount,
+    })
+    expect(withTools.mcpReserveBytes).toBe(estimateMcpPayloadReserveBytes(toolCount))
   })
 
   it('semantic reserve increases meter above bare sync send', () => {
