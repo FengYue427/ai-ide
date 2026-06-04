@@ -43,6 +43,19 @@ describe('v12Features', () => {
     vi.unstubAllEnvs()
   })
 
+  it('enables multi-root in production runtime by default', () => {
+    vi.stubEnv('MODE', 'production')
+    vi.stubEnv('PROD', true)
+    vi.stubEnv('DEV', false)
+    vi.stubEnv('VITE_MULTI_ROOT', '')
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('ai-ide:feature:multiRoot')
+    }
+    expect(isMultiRootWorkspaceEnabled()).toBe(true)
+    expect(isVirtualFileTreeEnabled()).toBe(true)
+    vi.unstubAllEnvs()
+  })
+
   it('enables when env is true', () => {
     vi.stubEnv('VITE_MULTI_ROOT', 'true')
     vi.stubEnv('VITE_PLUGIN_TRUST_MARKET', 'true')

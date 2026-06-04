@@ -24,7 +24,7 @@ export function registerLanguageServiceProviders(
   currentFile: string,
 ): monaco.IDisposable {
   const definitionDisposable = registerCrossFileDefinitionProvider(files, currentFile)
-  const referenceDisposable = registerCrossFileReferenceProvider(files)
+  const referenceDisposable = registerCrossFileReferenceProvider(files, currentFile)
   return {
     dispose() {
       definitionDisposable.dispose()

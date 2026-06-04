@@ -15,6 +15,7 @@ import {
   resolveDefinitionNavigation,
   type DefinitionProjectFile,
 } from '../editor/registerCrossFileDefinition'
+import { libUriStringToWorkspacePath, workspacePathToLibUriString } from '../editor/editorModelUri'
 import { syncMonacoTypeScriptProject } from '../editor/syncTypeScriptProject'
 import type { AIConfig } from '../services/aiService'
 import { useI18n } from '../i18n'
@@ -113,7 +114,7 @@ const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     const disposable = monaco.editor.registerEditorOpener({
       openCodeEditor(_source, resource, selectionOrPosition) {
-        const rawPath = resource.path.replace(/^inmemory:\/\//, '').replace(/^\//, '')
+        const rawPath = libUriStringToWorkspacePath(resource.toString())
         const nav = resolveDefinitionNavigation(allFilesRef.current, rawPath)
         if (!nav) return false
 
@@ -286,6 +287,7 @@ const Editor: React.FC<EditorProps> = ({
       <MonacoEditor
         height="100%"
         language={language}
+        path={workspacePathToLibUriString(filename)}
         value={value}
         onChange={onChange}
         theme={resolveMonacoTheme(theme)}

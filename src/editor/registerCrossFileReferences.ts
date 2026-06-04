@@ -1,5 +1,6 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import { goToReferences } from './languageServiceHostCore'
+import { getMonacoTypeScriptReferences } from './monacoTypeScriptNavigation'
 import type { ReferenceLocation } from '../services/referenceIndexService'
 
 export interface ReferenceProjectFile {
@@ -9,11 +10,15 @@ export interface ReferenceProjectFile {
 
 export function registerCrossFileReferenceProvider(
   files: ReferenceProjectFile[],
+  currentFile: string,
 ): monaco.IDisposable {
   const languages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact', 'plaintext']
 
   return monaco.languages.registerReferenceProvider(languages, {
-    provideReferences(model, position) {
+    async provideReferences(model, position) {
+      const tsRefs = await getMonacoTypeScriptReferences(model, position, currentFile)
+      if (tsRefs?.length) return tsRefs
+
       const word = model.getWordAtPosition(position)
       if (!word?.word) return []
 

@@ -55,6 +55,7 @@ import { projectIndexManager } from '../services/projectIndexManager'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
+import { getV12FeatureStatus } from '../lib/v12Features'
 import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
 import { usePlatformUsageDashboard } from '../hooks/usePlatformUsageDashboard'
 import { useIDEStore, type AIConfigState, type AiKeyMode } from '../store/ideStore'
@@ -308,6 +309,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   )
 
   const payloadBudgetKb = useMemo(() => toKb(getPayloadBudget(localAIConfig.provider)), [localAIConfig.provider])
+
+  const v12FeatureStatus = useMemo(() => getV12FeatureStatus(), [])
 
   const indexStatusText = useMemo(() => {
     if (indexBuildState.status === 'building') {
@@ -787,6 +790,27 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 <div className="settings-card settings-card--grid">
                   <div className="settings-row-title">{t('settings.features.noticeTitle')}</div>
                   <div className="settings-row-desc">{t('settings.features.noticeDesc')}</div>
+                </div>
+                <div
+                  className="settings-card settings-card--grid"
+                  data-testid="settings-v12-features"
+                >
+                  <div className="settings-row-title">{t('settings.v12.card.title')}</div>
+                  <div className="settings-row-desc">{t('settings.v12.card.desc')}</div>
+                  <ul className="settings-v12-status-list" style={{ margin: '10px 0 0', paddingLeft: '18px', fontSize: '12px', lineHeight: 1.7 }}>
+                    <li>
+                      {t('settings.v12.multiRoot')}:{' '}
+                      {v12FeatureStatus.multiRoot ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+                    </li>
+                    <li>
+                      {t('settings.v12.virtualTree')}:{' '}
+                      {v12FeatureStatus.virtualFileTree ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+                    </li>
+                    <li>
+                      {t('settings.v12.pluginTrust')}:{' '}
+                      {v12FeatureStatus.pluginTrustMarket ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+                    </li>
+                  </ul>
                 </div>
                 <div className="settings-card settings-card--row">
                   <div>

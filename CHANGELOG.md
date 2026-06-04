@@ -7,6 +7,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **v1.2.6 F1 TS 语义导航**：Monaco TS Worker 定义/引用 · `file:///` 模型对齐 · 启发式回退
+- **v1.2.6 F2 Agent 预检闭环**：未解析 `@` 阻断发送 · payload 表计 12KB reserve · 发送 estimate 漂移 telemetry
+- **v1.2.6 F3 生产开关**：多根/虚拟树生产默认开 · 设置页 v1.2 只读状态 · `v12-features` E2E
 - **v1.2.5 F3 补丁/CI**：`ROADMAP_V1.2.x_PATCHES` · 发版门禁表 · `e2e-collab` 注释对齐必过
 - **v1.2.5 F2 插件 E2E**：`plugin-helpers` · `plugin-trust.spec` 停用/启用 · 市场徽章
 - **v1.2.5 F1 UI E2E**：`language-navigation.spec` · `command-helpers` · `E2E_SYMBOL_FILES` 大纲 smoke

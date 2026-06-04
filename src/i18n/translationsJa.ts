@@ -122,6 +122,14 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'settings.cloudSave.card.title': 'クラウドワークスペース同期',
   'settings.cloudSave.card.desc':
     '大きなワークスペースはアップロード前にプレビューし、413 を回避するため一部ファイルを省略します。',
+  'settings.v12.card.title': 'v1.2 プラットフォーム（読み取り専用）',
+  'settings.v12.card.desc':
+    '本番ではマルチルートと仮想ファイルツリーが既定で有効。プラグイン信頼マーケットは環境変数またはセッション設定が必要です。',
+  'settings.v12.multiRoot': 'マルチルートワークスペース',
+  'settings.v12.virtualTree': '仮想ファイルツリー（500 行以上）',
+  'settings.v12.pluginTrust': 'プラグイン信頼マーケット',
+  'settings.v12.statusOn': '有効',
+  'settings.v12.statusOff': '無効',
 
   'subscription.title': 'サブスクリプション',
   'subscription.hero.title': '作業リズムに合ったプランを選択',

@@ -1,5 +1,6 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import { goToDefinition } from './languageServiceHostCore'
+import { getMonacoTypeScriptDefinitions } from './monacoTypeScriptNavigation'
 
 export interface DefinitionProjectFile {
   name: string
@@ -18,7 +19,10 @@ export function registerCrossFileDefinitionProvider(
   const languages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
 
   return monaco.languages.registerDefinitionProvider(languages, {
-    provideDefinition(model, position) {
+    async provideDefinition(model, position) {
+      const tsLocations = await getMonacoTypeScriptDefinitions(model, position, currentFile)
+      if (tsLocations?.length) return tsLocations
+
       const word = model.getWordAtPosition(position)
       if (!word?.word) return null
 

@@ -73,6 +73,11 @@ import { useI18n } from '../i18n'
 import { trackEvent } from '../lib/observability'
 import { ChatPayloadBudgetMeter } from './ChatPayloadBudgetMeter'
 import { estimateChatPayload, measureAiMessagesPayload } from '../services/chatPayloadEstimate'
+import {
+  applyPayloadMeterReserve,
+  comparePayloadEstimateToSend,
+  evaluateSendMentionGate,
+} from '../services/chatSendPreflight'
 import { getLargeRepoContextHint, shouldShowLargeRepoHint } from '../services/largeRepoContextHint'
 import { countUnresolvedMentions, runMentionPreflight } from '../services/mentionPreflight'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
@@ -496,6 +501,11 @@ ${t('ai.chat.prompt')}`
     workspaceStats.selectedFiles,
     activeFilePath,
   ])
+
+  const payloadMeterEstimate = useMemo(
+    () => (payloadEstimate ? applyPayloadMeterReserve(payloadEstimate) : null),
+    [payloadEstimate],
+  )
 
   const mentionPreflight = useMemo(() => {
     if (!input.includes('@')) return null
@@ -1110,12 +1120,22 @@ ${t('ai.chat.prompt')}`
         editorFiles,
         projectIndexManager.getIndex(),
       )
-      const unresolvedMentions = countUnresolvedMentions(mentionCheck)
-      if (unresolvedMentions > 0 && !forceSlim) {
+      const mentionGate = evaluateSendMentionGate(mentionCheck, forceSlim)
+      if (mentionGate.unresolvedCount > 0 && !forceSlim) {
         trackEvent('chat.mention_preflight_unresolved', {
-          count: unresolvedMentions,
+          count: mentionGate.unresolvedCount,
           tokens: mentionCheck.tokens.length,
         })
+      }
+      if (mentionGate.blocked) {
+        setMessages((prev) => removeTrailingUserMessage(prev, effectiveTextToSend))
+        setLoading(false)
+        notify?.(
+          'info',
+          t('chat.mention.blockSendTitle'),
+          t('chat.mention.blockSendDetail', { count: mentionGate.unresolvedCount }),
+        )
+        return
       }
 
       const agentSettings = await loadAgentSettings()
@@ -1283,6 +1303,17 @@ ${t('ai.chat.prompt')}`
       }
 
       const estimatedBytes = measureAiMessagesPayload(aiMessages)
+      if (payloadMeterEstimate) {
+        const parity = comparePayloadEstimateToSend(payloadMeterEstimate.estimatedBytes, estimatedBytes)
+        if (!parity.withinTolerance) {
+          trackEvent('chat.payload_estimate_drift', {
+            meterBytes: payloadMeterEstimate.estimatedBytes,
+            sendBytes: estimatedBytes,
+            deltaBytes: parity.deltaBytes,
+            deltaRatio: Math.round(parity.deltaRatio * 1000) / 1000,
+          })
+        }
+      }
       const budgetBytes = getPayloadBudget(aiConfig.provider)
       const warning = getPayloadWarningData(estimatedBytes, budgetBytes, textToSend, [
         t('chat.payload.planHistory', { count: historyLimit }),
@@ -2011,12 +2042,12 @@ ${t('ai.chat.prompt')}`
       ) : null}
 
       <div className="chat-input-area chat-input-area--stacked">
-        {payloadEstimate ? (
+        {payloadMeterEstimate ? (
           <ChatPayloadBudgetMeter
-            estimatedBytes={payloadEstimate.estimatedBytes}
-            budgetBytes={payloadEstimate.budgetBytes}
-            usagePercent={payloadEstimate.usagePercent}
-            level={payloadEstimate.level}
+            estimatedBytes={payloadMeterEstimate.estimatedBytes}
+            budgetBytes={payloadMeterEstimate.budgetBytes}
+            usagePercent={payloadMeterEstimate.usagePercent}
+            level={payloadMeterEstimate.level}
           />
         ) : null}
 
@@ -2062,7 +2093,7 @@ ${t('ai.chat.prompt')}`
               })}
             </ul>
             {countUnresolvedMentions(mentionPreflight) > 0 ? (
-              <span>{t('chat.mention.preflightSendHint')}</span>
+              <span>{t('chat.mention.preflightBlockHint')}</span>
             ) : null}
           </div>
         ) : null}

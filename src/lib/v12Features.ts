@@ -1,4 +1,4 @@
-/** v1.2 — feature flags (default off until GA). See docs/V1.2_ENV.md */
+/** v1.2 — feature flags. See docs/V1.2_ENV.md · v1.2.6 production safe-defaults */
 
 const MULTI_ROOT_LS_KEY = 'ai-ide:feature:multiRoot'
 const PLUGIN_TRUST_LS_KEY = 'ai-ide:feature:pluginTrustMarket'
@@ -16,10 +16,29 @@ function isDevRuntime(): boolean {
   return import.meta.env.DEV && import.meta.env.MODE !== 'test'
 }
 
+function isProductionRuntime(): boolean {
+  return import.meta.env.PROD && import.meta.env.MODE !== 'test'
+}
+
+export interface V12FeatureStatus {
+  multiRoot: boolean
+  virtualFileTree: boolean
+  pluginTrustMarket: boolean
+}
+
+export function getV12FeatureStatus(): V12FeatureStatus {
+  return {
+    multiRoot: isMultiRootWorkspaceEnabled(),
+    virtualFileTree: isVirtualFileTreeEnabled(),
+    pluginTrustMarket: isPluginTrustMarketEnabled(),
+  }
+}
+
 export function isMultiRootWorkspaceEnabled(): boolean {
   if (import.meta.env.VITE_MULTI_ROOT === 'true') return true
   if (import.meta.env.VITE_MULTI_ROOT === 'false') return false
   if (isDevRuntime()) return true
+  if (isProductionRuntime()) return true
   return readLocalFeatureFlag(MULTI_ROOT_LS_KEY)
 }
 
