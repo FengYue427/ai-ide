@@ -23,11 +23,11 @@
 
 ---
 
-## 当前迭代：v1.2.4 F2 Agent 上下文
+## 当前迭代：v1.2.4 F3 全栈 E2E
 
 1. [V1.2.4_KICKOFF.md](./V1.2.4_KICKOFF.md)
 2. **F1** ✅ [转到引用 · 符号大纲](./V1.2.4_F1_REFERENCES.md)
-3. **F2** 📋 Agent payload 预算 / @mention 预检
+3. **F2** ✅ [Agent 上下文](./V1.2.4_F2_AGENT_CONTEXT.md)
 4. **F3** 📋 全栈 E2E 稳定
 
 **门禁**：`npm run test:local` 全绿 · `npm run test:e2e:stack` 绿

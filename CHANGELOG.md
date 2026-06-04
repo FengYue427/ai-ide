@@ -7,6 +7,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **v1.2.4 F2 Agent 上下文**：聊天区 payload 预算条 · `@` 预检（未解析/超限/重名）· 大仓索引 capped 提示
 - **v1.2.4 F1 转到引用**：`goToReferences` · 命令面板 Shift+F12 · 引用 Provider 并入 `languageServiceHost` · 大纲作用域前缀与缩进
 
 ---

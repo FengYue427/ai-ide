@@ -71,6 +71,10 @@ import { McpToolLogPanel } from './McpToolLogPanel'
 import { formatChatErrorMessage } from '../services/chatErrorMessages'
 import { useI18n } from '../i18n'
 import { trackEvent } from '../lib/observability'
+import { ChatPayloadBudgetMeter } from './ChatPayloadBudgetMeter'
+import { estimateChatPayload, measureAiMessagesPayload } from '../services/chatPayloadEstimate'
+import { getLargeRepoContextHint, shouldShowLargeRepoHint } from '../services/largeRepoContextHint'
+import { countUnresolvedMentions, runMentionPreflight } from '../services/mentionPreflight'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { isAiConfigured, isAiGatewayEnabled } from '../lib/aiPlatformMode'
 import { useIDEStore } from '../store/ideStore'
@@ -447,6 +451,66 @@ ${t('ai.chat.prompt')}`
         agentSettings,
       }),
     [activeFilePath, language],
+  )
+
+  const chatHistoryMessages = useMemo(
+    () => messages.map((message) => ({ role: message.role, content: message.content })),
+    [messages],
+  )
+
+  const payloadEstimate = useMemo(() => {
+    if (!isConfigured) return null
+    const hasDraft = Boolean(input.trim())
+    const hasSession = messages.length > 2
+    if (!hasDraft && !useWorkspaceContext && !hasSession) return null
+
+    return estimateChatPayload({
+      draftText: input,
+      messages: chatHistoryMessages,
+      provider: aiConfig.provider,
+      language,
+      agentMode,
+      useWorkspaceContext,
+      workspaceSelectedFiles: workspaceStats.selectedFiles,
+      currentCode,
+      editorFiles,
+      index: projectIndexManager.getIndex(),
+      activeFilePath,
+      applyProjectRules,
+      defaultSystemPrompt: t('chat.system.default', { code: currentCode }),
+    })
+  }, [
+    agentMode,
+    aiConfig.provider,
+    applyProjectRules,
+    chatHistoryMessages,
+    currentCode,
+    editorFiles,
+    indexVersion,
+    input,
+    isConfigured,
+    language,
+    messages.length,
+    t,
+    useWorkspaceContext,
+    workspaceStats.selectedFiles,
+    activeFilePath,
+  ])
+
+  const mentionPreflight = useMemo(() => {
+    if (!input.includes('@')) return null
+    return runMentionPreflight(input, editorFiles, projectIndexManager.getIndex())
+  }, [editorFiles, indexVersion, input])
+
+  const largeRepoHint = useMemo(() => getLargeRepoContextHint(indexStats), [indexStats])
+
+  const showLargeRepoHint = useMemo(
+    () =>
+      shouldShowLargeRepoHint(largeRepoHint, {
+        useWorkspaceContext,
+        mentionTokenCount: mentionPreflight?.tokens.length ?? 0,
+      }),
+    [largeRepoHint, mentionPreflight?.tokens.length, useWorkspaceContext],
   )
 
   const augmentWithSemanticContext = useCallback(
@@ -1041,6 +1105,19 @@ ${t('ai.chat.prompt')}`
     setMcpToolEntries([])
 
     try {
+      const mentionCheck = runMentionPreflight(
+        effectiveTextToSend,
+        editorFiles,
+        projectIndexManager.getIndex(),
+      )
+      const unresolvedMentions = countUnresolvedMentions(mentionCheck)
+      if (unresolvedMentions > 0 && !forceSlim) {
+        trackEvent('chat.mention_preflight_unresolved', {
+          count: unresolvedMentions,
+          tokens: mentionCheck.tokens.length,
+        })
+      }
+
       const agentSettings = await loadAgentSettings()
       const history = buildChatHistory(
         messages.map((message) => ({ role: message.role, content: message.content })),
@@ -1205,7 +1282,7 @@ ${t('ai.chat.prompt')}`
         ]
       }
 
-      const estimatedBytes = new Blob([JSON.stringify(aiMessages)]).size
+      const estimatedBytes = measureAiMessagesPayload(aiMessages)
       const budgetBytes = getPayloadBudget(aiConfig.provider)
       const warning = getPayloadWarningData(estimatedBytes, budgetBytes, textToSend, [
         t('chat.payload.planHistory', { count: historyLimit }),
@@ -1934,6 +2011,62 @@ ${t('ai.chat.prompt')}`
       ) : null}
 
       <div className="chat-input-area chat-input-area--stacked">
+        {payloadEstimate ? (
+          <ChatPayloadBudgetMeter
+            estimatedBytes={payloadEstimate.estimatedBytes}
+            budgetBytes={payloadEstimate.budgetBytes}
+            usagePercent={payloadEstimate.usagePercent}
+            level={payloadEstimate.level}
+          />
+        ) : null}
+
+        {showLargeRepoHint && largeRepoHint ? (
+          <div className="chat-large-repo-hint" role="status">
+            <strong>{t('chat.indexHintTitle')}</strong>
+            {largeRepoHint.kind === 'capped'
+              ? t('chat.largeRepo.capped', {
+                  indexed: largeRepoHint.indexedFiles,
+                  eligible: largeRepoHint.eligibleFiles,
+                })
+              : t('chat.largeRepo.nearCap', {
+                  indexed: largeRepoHint.indexedFiles,
+                  eligible: largeRepoHint.eligibleFiles,
+                  max: largeRepoHint.maxFiles,
+                })}
+          </div>
+        ) : null}
+
+        {mentionPreflight && mentionPreflight.issues.length > 0 ? (
+          <div className="chat-mention-preflight" role="status">
+            <strong>{t('chat.mention.preflightBannerTitle')}</strong>
+            <ul>
+              {mentionPreflight.issues.map((issue) => {
+                if (issue.kind === 'too_many') {
+                  return (
+                    <li key="too-many">
+                      {t('chat.mention.preflightTooMany', { count: issue.count, max: issue.max })}
+                    </li>
+                  )
+                }
+                if (issue.kind === 'unresolved') {
+                  return <li key={`unresolved-${issue.token}`}>{t('chat.mention.preflightUnresolved', { tokens: issue.token })}</li>
+                }
+                return (
+                  <li key={`ambiguous-${issue.token}`}>
+                    {t('chat.mention.preflightAmbiguous', {
+                      token: issue.token,
+                      paths: issue.paths.join(', '),
+                    })}
+                  </li>
+                )
+              })}
+            </ul>
+            {countUnresolvedMentions(mentionPreflight) > 0 ? (
+              <span>{t('chat.mention.preflightSendHint')}</span>
+            ) : null}
+          </div>
+        ) : null}
+
         {payloadWarning ? (
           <div className="chat-payload-warning" role="status">
             <div className="chat-payload-warning__text">
