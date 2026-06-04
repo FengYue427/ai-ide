@@ -1,9 +1,13 @@
 const ENABLED_KEY = 'ai-ide:tab-completion-enabled'
 const MAX_LINES_KEY = 'ai-ide:tab-completion-max-lines'
+const DEBOUNCE_MS_KEY = 'ai-ide:tab-completion-debounce-ms'
 
 export const DEFAULT_TAB_MAX_LINES = 5
 export const MIN_TAB_MAX_LINES = 1
 export const MAX_TAB_MAX_LINES = 12
+export const DEFAULT_TAB_DEBOUNCE_MS = 220
+export const MIN_TAB_DEBOUNCE_MS = 120
+export const MAX_TAB_DEBOUNCE_MS = 800
 
 export function isTabCompletionEnabled(): boolean {
   if (typeof localStorage === 'undefined') return true // vitest / SSR
@@ -29,4 +33,18 @@ export function setTabCompletionMaxLines(lines: number): void {
   if (typeof localStorage === 'undefined') return
   const clamped = Math.min(MAX_TAB_MAX_LINES, Math.max(MIN_TAB_MAX_LINES, lines))
   localStorage.setItem(MAX_LINES_KEY, String(clamped))
+}
+
+export function getTabCompletionDebounceMs(): number {
+  if (typeof localStorage === 'undefined') return DEFAULT_TAB_DEBOUNCE_MS
+  const raw = localStorage.getItem(DEBOUNCE_MS_KEY)
+  const n = raw ? Number.parseInt(raw, 10) : DEFAULT_TAB_DEBOUNCE_MS
+  if (!Number.isFinite(n)) return DEFAULT_TAB_DEBOUNCE_MS
+  return Math.min(MAX_TAB_DEBOUNCE_MS, Math.max(MIN_TAB_DEBOUNCE_MS, n))
+}
+
+export function setTabCompletionDebounceMs(ms: number): void {
+  if (typeof localStorage === 'undefined') return
+  const clamped = Math.min(MAX_TAB_DEBOUNCE_MS, Math.max(MIN_TAB_DEBOUNCE_MS, ms))
+  localStorage.setItem(DEBOUNCE_MS_KEY, String(clamped))
 }

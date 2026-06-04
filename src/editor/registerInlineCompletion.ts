@@ -11,8 +11,6 @@ export interface InlineCompletionOptions {
   enabled?: () => boolean
 }
 
-const DEBOUNCE_MS = inlineCompletionService.debounceMs
-
 function readContext(model: monaco.editor.ITextModel, position: monaco.Position) {
   const prefix = model.getValueInRange({
     startLineNumber: 1,
@@ -91,7 +89,7 @@ export function registerInlineCompletionProvider(options: InlineCompletionOption
               })
             })
             .catch(() => resolve({ items: [] }))
-        }, DEBOUNCE_MS)
+        }, inlineCompletionService.debounceMs)
       })
     },
     freeInlineCompletions: () => {},
@@ -106,7 +104,8 @@ export function registerInlineCompletionProvider(options: InlineCompletionOption
       if (enabled && !enabled()) return { suggestions: [] }
 
       const config = getConfig()
-      if (!config.apiKey?.trim() && config.provider !== 'ollama') {
+      const loggedIn = Boolean(useIDEStore.getState().currentUser)
+      if (!isAiConfigured(config, loggedIn)) {
         return { suggestions: [] }
       }
 
@@ -117,6 +116,7 @@ export function registerInlineCompletionProvider(options: InlineCompletionOption
         language,
         filename,
         config,
+        loggedIn,
       })
 
       if (token.isCancellationRequested || !completion) {

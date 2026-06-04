@@ -22,12 +22,12 @@
 
 ---
 
-## 当前迭代：v1.2.3 F3 Tab 补全
+## 当前迭代：v1.2.3 F4 平台 AI 仪表盘
 
 1. [V1.2.3_KICKOFF.md](./V1.2.3_KICKOFF.md)
 2. **F1** ✅ LSP host + 命令面板转到定义
 3. **F2** ✅ 多根/虚拟树 — [V1.2.3_F2_MULTI_ROOT.md](./V1.2.3_F2_MULTI_ROOT.md)
-4. **F3** 📋 Tab 补全 / FIM
+4. **F3** ✅ Tab 补全 / FIM / 平台 — [V1.2.3_F3_TAB_COMPLETION.md](./V1.2.3_F3_TAB_COMPLETION.md)
 5. **F4** 📋 平台 AI 用量仪表盘
 6. **F5** 📋 协作 E2E 稳定
 

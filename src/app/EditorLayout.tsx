@@ -1,4 +1,5 @@
 import { FileText, GitCompare, Shield, Sparkles, TerminalSquare, X } from 'lucide-react'
+import { isAiConfigured } from '../lib/aiPlatformMode'
 import { isTabCompletionEnabled } from '../lib/inlineCompletionPrefs'
 import { useI18n } from '../i18n'
 import Editor from '../components/Editor'
@@ -83,6 +84,7 @@ export function EditorLayout({
   const setActiveGitDiffTab = useIDEStore((s) => s.setActiveGitDiffTab)
   const setDiagnosticSummary = useIDEStore((s) => s.setDiagnosticSummary)
   const aiConfig = useIDEStore((s) => s.aiConfig)
+  const currentUser = useIDEStore((s) => s.currentUser)
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
   const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
   const collabReadOnly = Boolean(
@@ -236,7 +238,7 @@ export function EditorLayout({
               language: file.language,
             }))}
             inlineCompletionEnabled={
-              isTabCompletionEnabled() && (!!aiConfig.apiKey || aiConfig.provider === 'ollama')
+              isTabCompletionEnabled() && isAiConfigured(aiConfig, Boolean(currentUser))
             }
             onChange={onFileChange}
             onDiagnosticsChange={(markers) => setDiagnosticSummary(summarizeMonacoMarkers(markers))}

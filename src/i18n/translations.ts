@@ -261,9 +261,20 @@ export const translations = {
     'settings.formatOnSave.aria': '保存时格式化',
     'settings.tabCompletion.title': 'Tab AI 补全',
     'settings.tabCompletion.desc':
-      '在编辑器中通过 Tab / 内联补全插入 AI 建议（需 BYOK）。DeepSeek 优先走 FIM 接口，其他模型走对话回退。',
+      '在编辑器中通过 Tab / 内联补全插入 AI 建议。支持 BYOK、平台 AI 与 Ollama；DeepSeek / Qwen / Ollama 优先 FIM，其余走平台或对话回退。',
     'settings.tabCompletion.maxLines': '补全最大行数',
     'settings.tabCompletion.maxLinesDesc': '单次补全最多插入的行数（1～12）。',
+    'settings.tabCompletion.debounce': '触发延迟（毫秒）',
+    'settings.tabCompletion.debounceDesc': '停止输入后等待多久再请求补全（120～800）。',
+    'settings.tabCompletion.pathTitle': '当前补全路径',
+    'settings.tabCompletion.path.fim': 'FIM 专用接口（低延迟，优先）',
+    'settings.tabCompletion.path.platform': '平台 AI（已登录 + 平台密钥模式）',
+    'settings.tabCompletion.path.chat': '对话回退（BYOK 非 FIM 模型）',
+    'settings.tabCompletion.path.off': '未配置 AI，补全不可用',
+    'settings.tabCompletion.metricsTitle': '会话统计',
+    'settings.tabCompletion.metricsDesc':
+      '缓存命中 {hits} · 未命中 {misses} · FIM {fim} · 平台 {platform} · 对话 {chat} · 平均延迟 {avgMs} ms · 上次路径 {last}',
+    'settings.tabCompletion.metricsReset': '重置统计',
     'settings.editorPrefs': '编辑偏好',
     'settings.editorPrefs.desc':
       '当前版本先保留简洁设置，把最常用的自动保存、主题和语言收在一处。后续适合继续补充字体、缩进与格式化策略。',
@@ -2203,9 +2214,20 @@ export const translations = {
     'settings.formatOnSave.aria': 'Format on save',
     'settings.tabCompletion.title': 'Tab AI completion',
     'settings.tabCompletion.desc':
-      'Inline Tab completions in the editor (BYOK required). DeepSeek uses FIM API when available; others use chat fallback.',
+      'Inline Tab completions in the editor. Supports BYOK, platform AI, and Ollama; DeepSeek / Qwen / Ollama prefer FIM, others use platform or chat fallback.',
     'settings.tabCompletion.maxLines': 'Max completion lines',
     'settings.tabCompletion.maxLinesDesc': 'Maximum lines per suggestion (1–12).',
+    'settings.tabCompletion.debounce': 'Trigger delay (ms)',
+    'settings.tabCompletion.debounceDesc': 'Wait after you stop typing before requesting (120–800).',
+    'settings.tabCompletion.pathTitle': 'Active completion path',
+    'settings.tabCompletion.path.fim': 'FIM API (low latency, preferred)',
+    'settings.tabCompletion.path.platform': 'Platform AI (signed in + platform key mode)',
+    'settings.tabCompletion.path.chat': 'Chat fallback (BYOK, non-FIM models)',
+    'settings.tabCompletion.path.off': 'AI not configured; completions disabled',
+    'settings.tabCompletion.metricsTitle': 'Session stats',
+    'settings.tabCompletion.metricsDesc':
+      'Cache hits {hits} · misses {misses} · FIM {fim} · platform {platform} · chat {chat} · avg {avgMs} ms · last {last}',
+    'settings.tabCompletion.metricsReset': 'Reset stats',
     'settings.editorPrefs': 'Editor preferences',
     'settings.editorPrefs.desc':
       'Keeps settings minimal for now. Font, indent, and format options may come later.',

@@ -102,3 +102,53 @@ export async function sendPlatformMessage(
   return fullContent
 }
 
+function buildPlatformTabPrompt(
+  language: string,
+  filename: string,
+  prefix: string,
+  suffix: string,
+  maxLines: number,
+): string {
+  return `Continue the ${language} code in file "${filename}".
+Return ONLY the next ${maxLines} line(s) to insert at the cursor.
+No markdown fences, no explanation.
+
+Before cursor:
+${prefix}
+
+After cursor:
+${suffix}`
+}
+
+/** Platform-held key tab completion (chat-shaped FIM fallback). */
+export async function fetchPlatformTabCompletion(
+  config: AIConfig,
+  prefix: string,
+  suffix: string,
+  maxLines: number,
+  language: string,
+  filename: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const { trimCompletionToMaxLines } = await import('./fimCompletionService')
+  const content = buildPlatformTabPrompt(language, filename, prefix, suffix, maxLines)
+  const raw = await sendPlatformMessage(
+    config,
+    [
+      {
+        role: 'system',
+        content: 'You are a code completion engine. Output only code to insert at the cursor.',
+      },
+      { role: 'user', content },
+    ],
+    undefined,
+    signal,
+  )
+  const cleaned = raw
+    .replace(/^```[\w]*\n?/m, '')
+    .replace(/\n?```$/m, '')
+    .trim()
+  if (!cleaned) return null
+  return trimCompletionToMaxLines(cleaned, maxLines)
+}
+

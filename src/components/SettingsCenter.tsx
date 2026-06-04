@@ -35,13 +35,19 @@ import {
   MAX_WORKSPACE_FILES,
 } from '../../lib/api/workspacePayload'
 import {
+  getTabCompletionDebounceMs,
   getTabCompletionMaxLines,
   isTabCompletionEnabled,
+  MAX_TAB_DEBOUNCE_MS,
   MAX_TAB_MAX_LINES,
+  MIN_TAB_DEBOUNCE_MS,
   MIN_TAB_MAX_LINES,
+  setTabCompletionDebounceMs,
   setTabCompletionEnabled,
   setTabCompletionMaxLines,
 } from '../lib/inlineCompletionPrefs'
+import { getTabCompletionMetrics, resetTabCompletionMetrics } from '../lib/inlineCompletionMetrics'
+import { describeTabCompletionStrategy } from '../lib/tabCompletionStrategy'
 import { isSemanticSearchEnabled, setSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { canUseEmbeddings } from '../services/embeddingService'
 import { projectIndexManager } from '../services/projectIndexManager'
@@ -206,6 +212,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   const [semanticSearchEnabled, setSemanticSearchEnabledState] = useState(isSemanticSearchEnabled)
   const [tabCompletionEnabled, setTabCompletionEnabledState] = useState(isTabCompletionEnabled)
   const [tabMaxLines, setTabMaxLines] = useState(getTabCompletionMaxLines)
+  const [tabDebounceMs, setTabDebounceMs] = useState(getTabCompletionDebounceMs)
+  const [tabMetricsTick, setTabMetricsTick] = useState(0)
   const aiGatewayEnabled = isAiGatewayEnabled()
   const platformAiHealth = usePlatformAiHealth(aiGatewayEnabled && activeTab === 'ai')
 
@@ -355,6 +363,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
       setSemanticSearchEnabled(semanticSearchEnabled)
       setTabCompletionEnabled(tabCompletionEnabled)
       setTabCompletionMaxLines(tabMaxLines)
+      setTabCompletionDebounceMs(tabDebounceMs)
       onClose()
     })()
   }
@@ -661,6 +670,78 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                       color: 'var(--text-primary)',
                     }}
                   />
+                </div>
+
+                <div className="settings-card settings-card--row">
+                  <div>
+                    <div className="settings-row-title">{t('settings.tabCompletion.debounce')}</div>
+                    <div className="settings-row-desc">{t('settings.tabCompletion.debounceDesc')}</div>
+                  </div>
+                  <input
+                    type="number"
+                    min={MIN_TAB_DEBOUNCE_MS}
+                    max={MAX_TAB_DEBOUNCE_MS}
+                    step={20}
+                    value={tabDebounceMs}
+                    disabled={!tabCompletionEnabled}
+                    onChange={(e) =>
+                      setTabDebounceMs(
+                        Math.min(
+                          MAX_TAB_DEBOUNCE_MS,
+                          Math.max(
+                            MIN_TAB_DEBOUNCE_MS,
+                            Number(e.target.value) || MIN_TAB_DEBOUNCE_MS,
+                          ),
+                        ),
+                      )
+                    }
+                    style={{
+                      width: '72px',
+                      padding: '6px 8px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      background: 'var(--bg-primary)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                </div>
+
+                <div className="settings-card settings-card--grid">
+                  <div className="settings-row-title">{t('settings.tabCompletion.pathTitle')}</div>
+                  <div className="settings-row-desc">
+                    {t(`settings.tabCompletion.path.${describeTabCompletionStrategy(localAIConfig, Boolean(currentUser))}`)}
+                  </div>
+                </div>
+
+                <div className="settings-card settings-card--row">
+                  <div>
+                    <div className="settings-row-title">{t('settings.tabCompletion.metricsTitle')}</div>
+                    <div className="settings-row-desc">
+                      {(() => {
+                        void tabMetricsTick
+                        const m = getTabCompletionMetrics()
+                        return t('settings.tabCompletion.metricsDesc', {
+                          hits: String(m.cacheHits),
+                          misses: String(m.cacheMisses),
+                          fim: String(m.fimSuccess),
+                          platform: String(m.platformSuccess),
+                          chat: String(m.chatSuccess),
+                          avgMs: m.avgLatencyMs != null ? String(m.avgLatencyMs) : '—',
+                          last: m.lastPath ?? '—',
+                        })
+                      })()}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      resetTabCompletionMetrics()
+                      setTabMetricsTick((n) => n + 1)
+                    }}
+                  >
+                    {t('settings.tabCompletion.metricsReset')}
+                  </button>
                 </div>
 
                 <div className="settings-card settings-card--grid">
