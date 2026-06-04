@@ -64,6 +64,12 @@ export function toWorkspaceRootsMeta(roots: WorkspaceRoot[], activeRootId: strin
   }
 }
 
+/** Keep active tab index valid after file list shrinks (delete file / switch root). */
+export function clampActiveFileIndex(activeFile: number, fileCount: number): number {
+  if (fileCount <= 0) return 0
+  return Math.min(Math.max(0, activeFile), fileCount - 1)
+}
+
 export function hydrateRootsFromMeta(
   meta: WorkspaceRootsMeta,
   filesByRootId: Map<string, FileItem[]>,
@@ -77,6 +83,8 @@ export function hydrateRootsFromMeta(
     id: entry.id,
     name: entry.name,
     autosaveKey: entry.autosaveKey,
-    files: filesByRootId.get(entry.id) ?? (entry.id === meta.activeRootId ? fallbackFiles : []),
+    files:
+      filesByRootId.get(entry.id) ??
+      (entry.id === meta.activeRootId && fallbackFiles.length > 0 ? fallbackFiles : []),
   }))
 }

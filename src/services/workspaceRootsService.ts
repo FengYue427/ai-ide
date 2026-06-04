@@ -8,7 +8,9 @@ import {
 import { isMultiRootWorkspaceEnabled } from '../lib/v12Features'
 import type { FileItem } from '../types/file'
 import type { WorkspaceRoot, WorkspaceRootsMeta } from '../types/workspaceRoot'
-import { unifiedStorage } from './unifiedStorage'
+import { StorageLayer, unifiedStorage } from './unifiedStorage'
+
+const ROOT_PERSIST_LAYER = StorageLayer.INDEXED
 import { loadLocalAutosaveFiles } from './workspaceAutosave'
 
 type StoredFile = { name: string; content: string; language?: string }
@@ -23,16 +25,26 @@ function toFileItems(raw: StoredFile[] | null | undefined): FileItem[] | null {
 }
 
 async function loadAutosaveByKey(key: string): Promise<FileItem[] | null> {
-  const raw = await unifiedStorage.get<StoredFile[] | null>(key, null)
+  const raw = await unifiedStorage.get<StoredFile[] | null>(key, null, {
+    preferredLayer: ROOT_PERSIST_LAYER,
+  })
   return toFileItems(raw)
 }
 
 export async function loadWorkspaceRootsMeta(): Promise<WorkspaceRootsMeta | null> {
-  return unifiedStorage.get<WorkspaceRootsMeta | null>(WORKSPACE_ROOTS_META_KEY, null)
+  return unifiedStorage.get<WorkspaceRootsMeta | null>(WORKSPACE_ROOTS_META_KEY, null, {
+    preferredLayer: ROOT_PERSIST_LAYER,
+  })
 }
 
 export async function saveWorkspaceRootsMeta(meta: WorkspaceRootsMeta): Promise<void> {
-  await unifiedStorage.set(WORKSPACE_ROOTS_META_KEY, meta)
+  await unifiedStorage.set(WORKSPACE_ROOTS_META_KEY, meta, { layer: ROOT_PERSIST_LAYER })
+}
+
+/** Remove per-root IndexedDB autosave after the root is deleted from the UI. */
+export async function deleteWorkspaceRootAutosave(autosaveKey: string): Promise<void> {
+  if (!autosaveKey) return
+  await unifiedStorage.remove(autosaveKey)
 }
 
 /** Bootstrap multi-root state from IndexedDB (or migrate legacy autosave-default). */

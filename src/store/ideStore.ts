@@ -16,8 +16,10 @@ import {
   getActiveWorkspaceRoot,
   MAX_WORKSPACE_ROOTS,
   nextWorkspaceRootName,
+  clampActiveFileIndex,
   syncFilesToActiveRoot,
 } from '../lib/workspaceRoots'
+import { deleteWorkspaceRootAutosave } from '../services/workspaceRootsService'
 import {
   loadDebugBreakpoints,
   saveDebugBreakpoints,
@@ -132,13 +134,14 @@ const defaultFiles: FileItem[] = buildDefaultFiles()
 const initialWorkspaceRoot = defaultWorkspaceRoot(defaultFiles)
 
 function applyFilesUpdate(
-  state: { files: FileItem[]; workspaceRoots: WorkspaceRoot[]; activeRootId: string },
+  state: { files: FileItem[]; workspaceRoots: WorkspaceRoot[]; activeRootId: string; activeFile: number },
   files: FilesUpdater,
 ) {
   const nextFiles = resolveFiles(files, state.files)
   return {
     files: nextFiles,
     workspaceRoots: syncFilesToActiveRoot(state.workspaceRoots, state.activeRootId, nextFiles),
+    activeFile: clampActiveFileIndex(state.activeFile, nextFiles.length),
   }
 }
 
@@ -501,15 +504,21 @@ export const useIDEStore = create<IDEState>()((set) => ({
       if (!isMultiRootWorkspaceEnabled() || state.workspaceRoots.length <= 1) return state
       if (state.collaborationRoomId) return state
       const syncedRoots = syncFilesToActiveRoot(state.workspaceRoots, state.activeRootId, state.files)
+      const removed = syncedRoots.find((root) => root.id === rootId)
       const nextRoots = syncedRoots.filter((root) => root.id !== rootId)
       if (nextRoots.length === syncedRoots.length) return state
+      if (removed?.autosaveKey) {
+        void deleteWorkspaceRootAutosave(removed.autosaveKey)
+      }
       const fallback = nextRoots[0]
       const switchingAway = state.activeRootId === rootId
       return {
         workspaceRoots: nextRoots,
         activeRootId: switchingAway ? fallback.id : state.activeRootId,
         files: switchingAway ? fallback.files : state.files,
-        activeFile: switchingAway ? 0 : state.activeFile,
+        activeFile: switchingAway
+          ? 0
+          : clampActiveFileIndex(state.activeFile, state.files.length),
         ...(switchingAway
           ? { gitDiffTabs: [], activeEditorSurface: 'file' as const, activeGitDiffTab: 0 }
           : {}),

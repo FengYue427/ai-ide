@@ -12,9 +12,14 @@ function readLocalFeatureFlag(key: string): boolean {
   }
 }
 
+function isDevRuntime(): boolean {
+  return import.meta.env.DEV && import.meta.env.MODE !== 'test'
+}
+
 export function isMultiRootWorkspaceEnabled(): boolean {
   if (import.meta.env.VITE_MULTI_ROOT === 'true') return true
   if (import.meta.env.VITE_MULTI_ROOT === 'false') return false
+  if (isDevRuntime()) return true
   return readLocalFeatureFlag(MULTI_ROOT_LS_KEY)
 }
 
@@ -41,6 +46,7 @@ export function enablePluginTrustMarketForSession(): void {
 export function isVirtualFileTreeEnabled(): boolean {
   if (import.meta.env.VITE_VIRTUAL_FILE_TREE === 'true') return true
   if (import.meta.env.VITE_VIRTUAL_FILE_TREE === 'false') return false
+  if (isDevRuntime()) return true
   return isMultiRootWorkspaceEnabled()
 }
 

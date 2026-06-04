@@ -7,7 +7,8 @@ import {
 } from './v12Features'
 
 describe('v12Features', () => {
-  it('defaults off when env unset', () => {
+  it('defaults off when env unset (test runtime)', () => {
+    vi.stubEnv('MODE', 'test')
     vi.stubEnv('VITE_MULTI_ROOT', '')
     vi.stubEnv('VITE_PLUGIN_TRUST_MARKET', '')
     vi.stubEnv('VITE_VIRTUAL_FILE_TREE', '')
@@ -21,10 +22,24 @@ describe('v12Features', () => {
   })
 
   it('virtual tree when multi-root and row count high', () => {
+    vi.stubEnv('MODE', 'test')
     vi.stubEnv('VITE_MULTI_ROOT', 'true')
     vi.stubEnv('VITE_VIRTUAL_FILE_TREE', '')
     expect(shouldUseVirtualFileTree(500)).toBe(true)
     expect(shouldUseVirtualFileTree(100)).toBe(false)
+    vi.unstubAllEnvs()
+  })
+
+  it('enables multi-root and virtual tree in dev runtime by default', () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_MULTI_ROOT', '')
+    vi.stubEnv('VITE_VIRTUAL_FILE_TREE', '')
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('ai-ide:feature:multiRoot')
+    }
+    expect(isMultiRootWorkspaceEnabled()).toBe(true)
+    expect(isVirtualFileTreeEnabled()).toBe(true)
+    expect(shouldUseVirtualFileTree(500)).toBe(true)
     vi.unstubAllEnvs()
   })
 

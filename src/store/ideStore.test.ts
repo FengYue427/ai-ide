@@ -66,6 +66,18 @@ describe('ideStore', () => {
     expect(useIDEStore.getState().queuedSpecExecutions).toHaveLength(0)
   })
 
+  it('clamps active file when files are deleted', () => {
+    const { setFiles } = useIDEStore.getState()
+    setFiles([
+      { name: 'a.ts', content: 'a', language: 'typescript' },
+      { name: 'b.ts', content: 'b', language: 'typescript' },
+      { name: 'c.ts', content: 'c', language: 'typescript' },
+    ])
+    useIDEStore.getState().setActiveFile(2)
+    setFiles([{ name: 'only.ts', content: 'x', language: 'typescript' }])
+    expect(useIDEStore.getState().activeFile).toBe(0)
+  })
+
   it('switches workspace roots when multi-root enabled', () => {
     vi.stubEnv('VITE_MULTI_ROOT', 'true')
     const { addWorkspaceRoot, setActiveWorkspaceRoot, setFiles } = useIDEStore.getState()

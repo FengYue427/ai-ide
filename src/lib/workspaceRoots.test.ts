@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  clampActiveFileIndex,
   createWorkspaceRoot,
   defaultWorkspaceRoot,
   hydrateRootsFromMeta,
@@ -33,5 +34,20 @@ describe('workspaceRoots', () => {
   it('picks unused root name', () => {
     const roots = [createWorkspaceRoot('default', [], '1'), createWorkspaceRoot('root-2', [], '2')]
     expect(nextWorkspaceRootName(roots)).toBe('root-3')
+  })
+
+  it('clamps active file index when file count shrinks', () => {
+    expect(clampActiveFileIndex(5, 3)).toBe(2)
+    expect(clampActiveFileIndex(0, 0)).toBe(0)
+    expect(clampActiveFileIndex(-1, 2)).toBe(0)
+  })
+
+  it('hydrates non-active roots with empty files when missing from map', () => {
+    const files = [{ name: 'index.js', content: 'x', language: 'javascript' }]
+    const a = createWorkspaceRoot('a', files, 'a')
+    const b = createWorkspaceRoot('b', [], 'b')
+    const meta = toWorkspaceRootsMeta([a, b], 'a')
+    const hydrated = hydrateRootsFromMeta(meta, new Map([['a', files]]), files)
+    expect(hydrated.find((r) => r.id === 'b')?.files).toEqual([])
   })
 })

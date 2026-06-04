@@ -107,6 +107,11 @@ export const storageService = {
     return db.get('settings', key)
   },
 
+  async deleteSetting(key: string): Promise<void> {
+    const db = await getDB()
+    await db.delete('settings', key)
+  },
+
   // 导出项目为 ZIP
   async exportToZip(projectId: string): Promise<Blob | null> {
     const project = await this.getProject(projectId)
