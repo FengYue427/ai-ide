@@ -5,16 +5,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Planned
+
+- **v1.2.8** — 引用 Peek · MCP payload · 插件发布持久化 — [V1.2.8_KICKOFF.md](docs/V1.2.8_KICKOFF.md)
+
+---
+
+## [1.2.7] — 2026-06-04 · 导航 E2E/Payload/运维
+
 ### Added
 
 - **v1.2.7 F1**：`E2E_NAV_FILES` · `ts-cross-file-navigation.spec` · Monaco E2E harness
 - **v1.2.7 F2**：语义/工具轮次 payload 预留 · `@` 重名发送阻断 · `chatPayloadParity` 单测
+- **v1.2.7 F3**：设置页 plugin ops · `GET /api/plugins/publish/reviews` · 用量 80% 黄条 · provider 分桶
 
-- **v1.2.7 F3 插件/平台运维**：设置页 plugin ops · `GET /api/plugins/publish/reviews` · 用量 80% 黄条 · provider 分桶
+### Docs
 
-### Planned
+- [RELEASE_NOTES_v1.2.7.md](docs/RELEASE_NOTES_v1.2.7.md) · [V1.2.7_KICKOFF.md](docs/V1.2.7_KICKOFF.md) · F1–F3 阶段文档
 
-- **v1.2.7 GA** / **v1.2.8** — 见 [V1.2.7_KICKOFF.md](docs/V1.2.7_KICKOFF.md)
+See [RELEASE_NOTES_v1.2.7.md](docs/RELEASE_NOTES_v1.2.7.md).
 
 ---
 
