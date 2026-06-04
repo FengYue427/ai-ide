@@ -52,12 +52,20 @@ export async function prepareE2EStorage(page: Page): Promise<void> {
   }, E2E_DEFAULT_FILES)
 }
 
+export async function dismissAuthModalIfOpen(page: Page): Promise<void> {
+  const overlay = page.locator('.auth-modal-overlay')
+  if ((await overlay.count()) === 0) return
+  await page.locator('.auth-close-btn').click({ timeout: 5_000 })
+  await expect(overlay).toHaveCount(0, { timeout: 5_000 })
+}
+
 export async function waitForShellReady(page: Page): Promise<void> {
   const loading = page.locator('#loading-screen')
   if (await loading.count()) {
     await loading.waitFor({ state: 'detached', timeout: 30_000 })
   }
   await expect(page.locator('.toolbar-title')).toHaveText('AI IDE', { timeout: 30_000 })
+  await dismissAuthModalIfOpen(page)
   await expect(page.locator('.welcome-screen')).toHaveCount(0, { timeout: 15_000 })
 }
 

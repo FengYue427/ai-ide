@@ -1,12 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { prepareE2EStorage, prepareLoggedInUser, waitForShellReady } from './helpers'
+import { prepareE2EStorage, waitForShellReady } from './helpers'
 
 test.describe('Multi-root workspace (v1.2.3 F2)', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('ai-ide:feature:multiRoot', '1')
     })
-    await prepareLoggedInUser(page)
     await prepareE2EStorage(page)
     await page.goto('/')
     await waitForShellReady(page)

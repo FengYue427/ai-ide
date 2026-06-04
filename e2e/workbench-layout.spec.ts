@@ -7,14 +7,14 @@
  *  - F3: visual density (compact toolbar, settings, chat)
  *  - F4: panel resize handles + narrow-screen sidebar collapse
  *
- * Prerequisite: logged-in user (so toolbar billing CTA is visible).
+ * Prerequisite: seeded autosave so bootstrap skips the welcome overlay.
  */
 import { expect, test } from '@playwright/test'
-import { prepareLoggedInUser, waitForShellReady } from './helpers'
+import { prepareE2EStorage, waitForShellReady } from './helpers'
 
 test.describe('workbench shell layout', () => {
   test.beforeEach(async ({ page }) => {
-    await prepareLoggedInUser(page)
+    await prepareE2EStorage(page)
     await page.goto('/')
     await waitForShellReady(page)
   })
