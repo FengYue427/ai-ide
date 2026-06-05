@@ -1,4 +1,5 @@
 import { isTabFimProductionEnabled } from './v14Features'
+import { isTabPlusPlusPocEnabled, TAB_PLUS_PLUS_POC_DEBOUNCE_MS } from './tabPlusPlusPoc'
 
 const ENABLED_KEY = 'ai-ide:tab-completion-enabled'
 const MAX_LINES_KEY = 'ai-ide:tab-completion-max-lines'
@@ -42,6 +43,7 @@ export function setTabCompletionMaxLines(lines: number): void {
 }
 
 function defaultTabDebounceMs(): number {
+  if (isTabPlusPlusPocEnabled()) return TAB_PLUS_PLUS_POC_DEBOUNCE_MS
   return isTabFimProductionEnabled() ? PRODUCTION_TAB_DEBOUNCE_MS : DEFAULT_TAB_DEBOUNCE_MS
 }
 

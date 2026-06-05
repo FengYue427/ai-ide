@@ -7,6 +7,87 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.4.7] — 2026-06-05 · Runtime 深化 I
+
+### Added
+
+- **runtime-state**：`runtimeState.ts` · ADR D5 只读解析 · 设置页 Spec 运行态摘要
+- **Spec 目录**：执行状态徽章（活跃/已完成/进行中/未执行）
+- E2E `runtime-state.spec.ts`
+
+See [RELEASE_NOTES_v1.4.7.md](docs/RELEASE_NOTES_v1.4.7.md).
+
+---
+
+## [1.4.6] — 2026-06-05 · Tab++ 深化 I
+
+### Added
+
+- **FIM middle**：`fimMiddleSegment` · 选区 prefix/middle/suffix · 指标 `fimMiddleContexts`
+- **POC UX**：P95 目标 400ms · debounce 280ms（Tab++ POC 开启时设置卡可见）
+
+See [RELEASE_NOTES_v1.4.6.md](docs/RELEASE_NOTES_v1.4.6.md).
+
+---
+
+## [1.4.5] — 2026-06-05 · hooks.yaml schema · 设置预览
+
+### Added
+
+- **hooksSchema**：无外部依赖 YAML 子集解析/校验
+- **Spec 目录**：hooks.yaml 只读预览（`spec-hooks-preview-{specName}`）
+- E2E `runtime-hooks.spec.ts`
+
+See [RELEASE_NOTES_v1.4.5.md](docs/RELEASE_NOTES_v1.4.5.md).
+
+---
+
+## [1.4.4] — 2026-06-05 · AIDE Runtime RFC · ADR
+
+### Added
+
+- **ADR** `ADR_V1.5_AIDE_RUNTIME` — orchestrator · hooks · acceptance · runtime-state
+- **RFC** `AIDE_RUNTIME.md` v0.2
+
+See [RELEASE_NOTES_v1.4.4.md](docs/RELEASE_NOTES_v1.4.4.md).
+
+---
+
+## [1.4.3] — 2026-06-05 · Tab++ spike
+
+### Added
+
+- **Tab++ POC**：`tabPlusPlusPoc` · `ghostLayoutEngine` · 多行 inline ghost（`VITE_TAB_PLUS_PLUS_POC`，默认关）
+- 设置 Tab 指标卡 POC 徽章 · E2E 用例
+
+See [RELEASE_NOTES_v1.4.3.md](docs/RELEASE_NOTES_v1.4.3.md).
+
+---
+
+## [1.4.2] — 2026-06-05 · Tab++ RFC（文档）
+
+See [RELEASE_NOTES_v1.4.2.md](docs/RELEASE_NOTES_v1.4.2.md).
+
+---
+
+## [1.4.1] — 2026-06-05 · v1.4.x 门禁
+
+See [RELEASE_NOTES_v1.4.1.md](docs/RELEASE_NOTES_v1.4.1.md).
+
+---
+
+## [1.4.2] — 2026-06-05 · Tab++ RFC（文档）
+
+See [RELEASE_NOTES_v1.4.2.md](docs/RELEASE_NOTES_v1.4.2.md).
+
+---
+
+## [1.4.1] — 2026-06-05 · v1.4.x 门禁
+
+See [RELEASE_NOTES_v1.4.1.md](docs/RELEASE_NOTES_v1.4.1.md).
+
+---
+
 ## [1.4.0] — 2026-06-05 · 基础填坑 · 冲 3.4
 
 ### Added

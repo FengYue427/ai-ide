@@ -1,6 +1,7 @@
 # IDE-5 与竞品路线图 — 对标 Cursor / Kiro / Windsurf
 
 > **日期**：2026-05-26  
+> **状态**：⚠️ 部分条目已被 [V1.5_STRATEGY_PIVOT.md](./V1.5_STRATEGY_PIVOT.md) 取代 — v1.5 主动冲击 Tab++/Spec，见 [ROADMAP_V1.5.md](./ROADMAP_V1.5.md)  
 > **前置**：D3 GA ✅ · IDE-4b 代码 ✅ · 4b-5 自动更新 ✅  
 > **矩阵**：[COMPETITOR_MATRIX_2026-05.md](./COMPETITOR_MATRIX_2026-05.md)
 

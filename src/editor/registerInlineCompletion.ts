@@ -1,34 +1,70 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import type { AIConfig } from '../services/aiService'
+import { buildFimContextFromSelection, type FimEditorSelection } from '../lib/fimMiddleSegment'
+import { buildGhostInlineRange } from '../lib/ghostLayoutEngine'
 import { isAiConfigured } from '../lib/aiPlatformMode'
 import { inlineCompletionService } from '../services/inlineCompletionService'
+import { isTabPlusPlusPocEnabled } from '../lib/tabPlusPlusPoc'
 import { useIDEStore } from '../store/ideStore'
+
+function toInlineCompletionItem(
+  text: string,
+  model: monaco.editor.ITextModel,
+  position: monaco.Position,
+): { insertText: string; range: monaco.Range } {
+  if (!isTabPlusPlusPocEnabled()) {
+    return {
+      insertText: text,
+      range: new monaco.Range(
+        position.lineNumber,
+        position.column,
+        position.lineNumber,
+        position.column,
+      ),
+    }
+  }
+
+  const layout = buildGhostInlineRange({
+    insertText: text,
+    lineNumber: position.lineNumber,
+    column: position.column,
+    lineContent: model.getLineContent(position.lineNumber),
+  })
+
+  return {
+    insertText: layout.insertText,
+    range: new monaco.Range(
+      layout.startLineNumber,
+      layout.startColumn,
+      layout.endLineNumber,
+      layout.endColumn,
+    ),
+  }
+}
 
 export interface InlineCompletionOptions {
   language: string
   filename: string
   getConfig: () => AIConfig
   enabled?: () => boolean
+  getSelection?: () => FimEditorSelection | null
 }
 
-function readContext(model: monaco.editor.ITextModel, position: monaco.Position) {
-  const prefix = model.getValueInRange({
-    startLineNumber: 1,
-    startColumn: 1,
-    endLineNumber: position.lineNumber,
-    endColumn: position.column,
-  })
-  const suffix = model.getValueInRange({
-    startLineNumber: position.lineNumber,
-    startColumn: position.column,
-    endLineNumber: model.getLineCount(),
-    endColumn: model.getLineMaxColumn(model.getLineCount()),
-  })
-  return { prefix, suffix }
+function readContext(
+  model: monaco.editor.ITextModel,
+  position: monaco.Position,
+  getSelection?: () => FimEditorSelection | null,
+) {
+  const parts = buildFimContextFromSelection(
+    model.getValue(),
+    getSelection?.() ?? null,
+    { lineNumber: position.lineNumber, column: position.column },
+  )
+  return parts
 }
 
 export function registerInlineCompletionProvider(options: InlineCompletionOptions): monaco.IDisposable {
-  const { language, filename, getConfig, enabled } = options
+  const { language, filename, getConfig, enabled, getSelection } = options
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   let requestSeq = 0
@@ -57,12 +93,13 @@ export function registerInlineCompletionProvider(options: InlineCompletionOption
             return
           }
 
-          const { prefix, suffix } = readContext(model, position)
+          const { prefix, suffix, middle } = readContext(model, position, getSelection)
 
           void inlineCompletionService
             .fetchCompletion({
               prefix,
               suffix,
+              middle,
               language,
               filename,
               config,
@@ -74,18 +111,9 @@ export function registerInlineCompletionProvider(options: InlineCompletionOption
                 return
               }
 
+              const item = toInlineCompletionItem(text, model, position)
               resolve({
-                items: [
-                  {
-                    insertText: text,
-                    range: new monaco.Range(
-                      position.lineNumber,
-                      position.column,
-                      position.lineNumber,
-                      position.column,
-                    ),
-                  },
-                ],
+                items: [item],
               })
             })
             .catch(() => resolve({ items: [] }))
@@ -109,10 +137,11 @@ export function registerInlineCompletionProvider(options: InlineCompletionOption
         return { suggestions: [] }
       }
 
-      const { prefix, suffix } = readContext(model, position)
+      const { prefix, suffix, middle } = readContext(model, position, getSelection)
       const completion = await inlineCompletionService.fetchCompletion({
         prefix,
         suffix,
+        middle,
         language,
         filename,
         config,

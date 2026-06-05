@@ -2,7 +2,18 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.4.0**（基础填坑 · 冲 3.4）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.4](./docs/ROADMAP_V1.4.md)
+**当前版本：v1.4.0**（基础填坑 ✅）· **patch：v1.4.1→1.4.9** · **下一世代：v1.5.0**（1.4.9 门）· [CHANGELOG](./CHANGELOG.md) · [V1.4.x 规划](./docs/V1.4.x_MASTER_PLAN.md)
+
+## v1.4.x（做到 1.4.9 再开 v1.5）
+
+- **1.4.1～1.4.5**：Tab++/Runtime RFC · spike · hooks schema
+- **1.4.6～1.4.8**：深化抛光 · Activity RFC
+- **1.4.9**：v1.4 收官 · v1.5 启动门
+- 详表：[ROADMAP_V1.4.x_PATCHES.md](./docs/ROADMAP_V1.4.x_PATCHES.md) · 执行：[NEXT_EXECUTION.md](./docs/NEXT_EXECUTION.md)
+
+## v1.5.0 规划（1.4.9 门后 · 零宣传）
+
+- **Tab++** · **AIDE Runtime** · **Activity Line** — [ROADMAP_V1.5.md](./docs/ROADMAP_V1.5.md) · [AIDE_RUNTIME.md](./docs/AIDE_RUNTIME.md)
 
 ## v1.4.0 生产级填坑（GA）
 

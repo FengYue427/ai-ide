@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import DropZone from '../components/DropZone'
 import StatusBar from '../components/StatusBar'
 import WorkspacePanel from '../components/WorkspacePanel'
@@ -59,6 +59,8 @@ import {
   removeReportsFromFiles,
 } from '../services/reportArchiveService'
 import { buildSpecCatalog } from '../services/specCatalogService'
+import { buildSpecHooksPreview } from '../services/runtime/specHooksPreview'
+import { buildRuntimeStatePreview } from '../services/runtime/runtimeStatePreview'
 import {
   buildPlanLinkCountMap,
   findSpecTasksPathForPlanStep,
@@ -283,6 +285,14 @@ export function PanelHost({
     acc[item.tasksPath] = listPlanLinksForSpec(planSpecLinks, item.tasksPath)
     return acc
   }, {})
+  const specHooksPreviews = useMemo(() => {
+    const map: Record<string, ReturnType<typeof buildSpecHooksPreview>> = {}
+    for (const spec of specCatalogItems) {
+      map[spec.tasksPath] = buildSpecHooksPreview(files, spec.tasksPath)
+    }
+    return map
+  }, [files, specCatalogItems])
+  const runtimeStatePreview = useMemo(() => buildRuntimeStatePreview(files), [files])
   const latestReportAt = reportItems
     .map((item) => item.generatedAt)
     .filter((item): item is string => !!item)
@@ -594,6 +604,8 @@ export function PanelHost({
             }
           }}
           specCatalogItems={specCatalogItems}
+          specHooksPreviews={specHooksPreviews}
+          runtimeStatePreview={runtimeStatePreview}
           specSourceSummaries={specSourceSummaries}
           specPlanLinks={specPlanLinks}
           specLinkCounts={specLinkCounts}

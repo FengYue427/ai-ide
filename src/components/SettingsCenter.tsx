@@ -80,6 +80,8 @@ import type { PlanSpecLink } from '../services/planSpecLinkService'
 import type { QueueRestorePreview } from '../services/queueReportRestorePreviewService'
 import type { ReportCatalogItem } from '../services/reportCatalogService'
 import type { SpecCatalogItem } from '../services/specCatalogService'
+import type { SpecHooksPreview } from '../services/runtime/specHooksPreview'
+import type { RuntimeStatePreview } from '../services/runtime/runtimeStatePreview'
 
 interface SettingsCenterProps {
   aiConfig: AIConfigState
@@ -105,6 +107,8 @@ interface SettingsCenterProps {
   onMarkSpecTaskDone?: (path: string, line: number) => void
   onRunSpecTask?: (path: string, text: string) => void
   specCatalogItems?: SpecCatalogItem[]
+  specHooksPreviews?: Record<string, SpecHooksPreview>
+  runtimeStatePreview?: RuntimeStatePreview | null
   specSourceSummaries?: Record<string, string[]>
   specPlanLinks?: Record<string, PlanSpecLink[]>
   specLinkCounts?: Record<string, number>
@@ -171,6 +175,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onCreateSpec,
   onOpenSpecsRoot,
   specCatalogItems = [],
+  specHooksPreviews = {},
+  runtimeStatePreview = null,
   specSourceSummaries = {},
   specPlanLinks = {},
   specLinkCounts = {},
@@ -1011,6 +1017,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   <SpecCatalogSection
                     language={localLanguage}
                     specs={specCatalogItems}
+                    specHooksPreviews={specHooksPreviews}
+                    runtimeStatePreview={runtimeStatePreview}
                     specSources={specSourceSummaries}
                     specPlanLinks={specPlanLinks}
                     specLinkCounts={specLinkCounts}

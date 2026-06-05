@@ -6,6 +6,7 @@ import {
   recordTabCompletionFailure,
   recordTabCompletionFimAttempt,
   recordTabCompletionFimFallbackToChat,
+  recordTabCompletionFimMiddleContext,
   recordTabCompletionRequestStart,
   recordTabCompletionSkipped,
   recordTabCompletionSuccess,
@@ -16,6 +17,7 @@ import { shouldSkipTabCompletionRequest } from '../lib/tabCompletionRequestGate'
 import { resolveTabCompletionStrategy } from '../lib/tabCompletionStrategy'
 import { isAiConfigured } from '../lib/aiPlatformMode'
 import { sendMessageWithDebounce, type AIConfig } from './aiService'
+import { buildChatFimPromptWithMiddle } from '../lib/fimMiddleSegment'
 import { fetchFimCompletion, trimCompletionToMaxLines } from './fimCompletionService'
 import { fetchPlatformTabCompletion } from './platformAiService'
 
@@ -26,6 +28,7 @@ const CACHE_MAX = 128
 export interface InlineCompletionRequest {
   prefix: string
   suffix: string
+  middle?: string
   language: string
   filename: string
   config: AIConfig
@@ -68,19 +71,14 @@ function buildChatFimPrompt(
   suffix: string,
   maxLines: number,
 ): string {
-  return `Continue the ${request.language} code in file "${request.filename}".
-Return ONLY the next ${maxLines} line(s) to insert at the cursor (fewer is OK).
-No markdown fences, no explanation, no repetition of lines already in the prefix.
-
-Code before cursor:
-\`\`\`
-${prefix}
-\`\`\`
-
-Code after cursor:
-\`\`\`
-${suffix}
-\`\`\``
+  return buildChatFimPromptWithMiddle(
+    request.language,
+    request.filename,
+    prefix,
+    suffix,
+    request.middle,
+    maxLines,
+  )
 }
 
 async function fetchChatTabCompletion(
@@ -143,6 +141,9 @@ export const inlineCompletionService = {
 
     const prefix = trimContext(request.prefix, MAX_PREFIX_CHARS, true)
     const suffix = trimContext(request.suffix, MAX_SUFFIX_CHARS, false)
+    if (request.middle?.trim()) {
+      recordTabCompletionFimMiddleContext()
+    }
     const started = performance.now()
 
     try {

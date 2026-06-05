@@ -28,4 +28,29 @@ test.describe('v1.4 feature settings', () => {
     await expect(metrics).toBeVisible()
     await expect(metrics.getByText(/P95|P50|延迟分位|Latency percentiles/i)).toBeVisible()
   })
+
+  test('tab completion card shows Tab++ POC badge when session flag is on', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ai-ide:feature:tabPlusPlusPoc', '1')
+    })
+    await page.goto('/')
+    await waitForShellReady(page)
+    await openSettingsTab(page, 'features')
+    const badge = page.getByTestId('settings-tab-plus-plus-poc')
+    await expect(badge).toBeVisible()
+    await expect(badge).toHaveText(/Tab\+\+ POC|multiline ghost/i)
+  })
+
+  test('tab completion card shows Tab++ POC P95 and debounce targets when flag is on', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ai-ide:feature:tabPlusPlusPoc', '1')
+    })
+    await page.goto('/')
+    await waitForShellReady(page)
+    await openSettingsTab(page, 'features')
+    const metrics = page.getByTestId('settings-tab-completion')
+    await expect(
+      metrics.getByText(/Tab\+\+ POC 目标：P95 < 400 ms · debounce 280 ms|Tab\+\+ POC targets: P95 < 400 ms · debounce 280 ms/i),
+    ).toBeVisible()
+  })
 })

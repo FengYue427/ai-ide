@@ -1,44 +1,47 @@
 # 当前执行入口
 
-> **更新**：2026-06-05 — **v1.4.0 GA** ✅
+> **更新**：2026-06-05 — **v1.4.7 ✅** · 下一 **v1.4.8 Activity Line RFC · orchestrator stub**
 
 ---
 
 ## 策略
 
-- **v1.4.0** F1–F7 已交付
-- **不做**宣传 / 上架（除非单独决策）
-- 生产 smoke 周更：[V1.3.9_SMOKE_WEEKLY.md](./V1.3.9_SMOKE_WEEKLY.md)
+- **零宣传 / 不上架**
+- **v1.4.x**：1.4.1～1.4.7 ✅ → **1.4.8** · **1.4.9**
+- **v1.5.0**：1.4.9 门后
 
-**主规划**：[ROADMAP_V1.4.md](./ROADMAP_V1.4.md) · [RELEASE_NOTES_v1.4.0.md](./RELEASE_NOTES_v1.4.0.md)
-
----
-
-## v1.4.0 进度
-
-| 阶段 | 状态 |
-|------|:----:|
-| F1 Tab/FIM | ✅ |
-| F2 索引 2k/Worker | ✅ |
-| F3 Git 面板 | ✅ |
-| F4 桌面壳 | ✅ |
-| F5 后台 Agent | ✅ |
-| F6 MCP/插件 | ✅ |
-| F7 GA | ✅ |
+**Runtime ADR**：[ADR_V1.5_AIDE_RUNTIME.md](./ADR_V1.5_AIDE_RUNTIME.md) · [AIDE_RUNTIME.md](./AIDE_RUNTIME.md)
 
 ---
 
-## 发版
+## 当前：v1.4.8（待启动）
+
+| 任务 | 说明 |
+|------|------|
+| Activity Line RFC | 线框 · 事件总线草案 |
+| `runtimeOrchestrator` | 接口 stub（无真实排水） |
+
+---
+
+## v1.4.x 进度
+
+| 版本 | 主题 | 状态 |
+|------|------|:----:|
+| **1.4.1** | GA 收口 · 竞品复评 | ✅ |
+| **1.4.2** | Tab++ RFC | ✅ |
+| **1.4.3** | Tab++ spike | ✅ |
+| **1.4.4** | Runtime RFC · ADR | ✅ |
+| **1.4.5** | hooks.yaml schema | ✅ |
+| **1.4.6** | Tab++ 深化 I | ✅ |
+| **1.4.7** | Runtime 深化 I | ✅ |
+| **1.4.8** | Activity Line RFC · stub | ⬜ |
+| **1.4.9** | 收官 · v1.5 门 | ⬜ |
+
+---
+
+## 门禁
 
 ```bash
 npm run test:local
-git tag v1.4.0
-git push origin main
-git push origin v1.4.0
+npm run test:e2e:local
 ```
-
----
-
-## 下一世代
-
-v1.4.x patch 或 v1.5 规划（待评审）

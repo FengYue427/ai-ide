@@ -1,6 +1,12 @@
 /** v1.4 F1 — percentile helpers for Tab/FIM latency samples. */
 
+import { isTabPlusPlusPocEnabled, TAB_PLUS_PLUS_POC_P95_TARGET_MS } from './tabPlusPlusPoc'
+
 export const TAB_COMPLETION_P95_TARGET_MS = 800
+
+export function getTabCompletionP95TargetMs(): number {
+  return isTabPlusPlusPocEnabled() ? TAB_PLUS_PLUS_POC_P95_TARGET_MS : TAB_COMPLETION_P95_TARGET_MS
+}
 
 const MAX_LATENCY_SAMPLES = 200
 

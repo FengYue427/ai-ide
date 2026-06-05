@@ -4,7 +4,7 @@ import {
   getTabCompletionLatencySamples,
   isTabCompletionP95UnderTarget,
   pushTabCompletionLatencySample,
-  TAB_COMPLETION_P95_TARGET_MS,
+  getTabCompletionP95TargetMs,
 } from './tabCompletionLatencyPercentile'
 
 export type TabCompletionPath = 'cache' | 'fim' | 'platform' | 'chat'
@@ -18,6 +18,7 @@ export interface TabCompletionMetricsSnapshot {
   fimSuccess: number
   fimAttempts: number
   fimFallbackToChat: number
+  fimMiddleContexts: number
   platformSuccess: number
   chatSuccess: number
   failures: number
@@ -39,6 +40,7 @@ const state = {
   fimSuccess: 0,
   fimAttempts: 0,
   fimFallbackToChat: 0,
+  fimMiddleContexts: 0,
   platformSuccess: 0,
   chatSuccess: 0,
   failures: 0,
@@ -87,6 +89,10 @@ export function recordTabCompletionFimFallbackToChat(): void {
   state.fimFallbackToChat += 1
 }
 
+export function recordTabCompletionFimMiddleContext(): void {
+  state.fimMiddleContexts += 1
+}
+
 export function recordTabCompletionSuccess(path: TabCompletionPath, latencyMs: number): void {
   state.lastPath = path
   recordLatencySample(latencyMs)
@@ -119,6 +125,7 @@ export function getTabCompletionMetrics(): TabCompletionMetricsSnapshot {
     fimSuccess: state.fimSuccess,
     fimAttempts: state.fimAttempts,
     fimFallbackToChat: state.fimFallbackToChat,
+    fimMiddleContexts: state.fimMiddleContexts,
     platformSuccess: state.platformSuccess,
     chatSuccess: state.chatSuccess,
     failures: state.failures,
@@ -129,8 +136,8 @@ export function getTabCompletionMetrics(): TabCompletionMetricsSnapshot {
     p50LatencyMs,
     p95LatencyMs,
     latencySampleCount: rawSamples.length,
-    p95TargetMs: TAB_COMPLETION_P95_TARGET_MS,
-    p95UnderTarget: isTabCompletionP95UnderTarget(p95LatencyMs),
+    p95TargetMs: getTabCompletionP95TargetMs(),
+    p95UnderTarget: isTabCompletionP95UnderTarget(p95LatencyMs, getTabCompletionP95TargetMs()),
   }
 }
 
@@ -141,6 +148,7 @@ export function resetTabCompletionMetrics(): void {
   state.fimSuccess = 0
   state.fimAttempts = 0
   state.fimFallbackToChat = 0
+  state.fimMiddleContexts = 0
   state.platformSuccess = 0
   state.chatSuccess = 0
   state.failures = 0

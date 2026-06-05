@@ -156,6 +156,18 @@ const Editor: React.FC<EditorProps> = ({
       filename,
       getConfig: () => aiConfigRef.current ?? aiConfig,
       enabled: () => inlineCompletionEnabled && !!aiConfigRef.current,
+      getSelection: () => {
+        const editor = editorRef.current
+        if (!editor) return null
+        const selection = editor.getSelection()
+        if (!selection) return null
+        return {
+          startLineNumber: selection.startLineNumber,
+          startColumn: selection.startColumn,
+          endLineNumber: selection.endLineNumber,
+          endColumn: selection.endColumn,
+        }
+      },
     })
 
     return () => disposable.dispose()

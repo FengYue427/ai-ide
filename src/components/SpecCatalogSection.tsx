@@ -7,6 +7,9 @@ import {
   type SpecCatalogSort,
 } from '../services/specCatalogService'
 import type { PlanSpecLink } from '../services/planSpecLinkService'
+import type { SpecHooksPreview } from '../services/runtime/specHooksPreview'
+import { deriveSpecExecutionStatus, type SpecExecutionStatus } from '../services/runtime/runtimeState'
+import type { RuntimeStatePreview } from '../services/runtime/runtimeStatePreview'
 
 interface SpecCatalogSectionProps {
   language: Language
@@ -14,6 +17,8 @@ interface SpecCatalogSectionProps {
   specLinkCounts?: Record<string, number>
   specSources?: Record<string, string[]>
   specPlanLinks?: Record<string, PlanSpecLink[]>
+  specHooksPreviews?: Record<string, SpecHooksPreview>
+  runtimeStatePreview?: RuntimeStatePreview | null
   onCreateSpec: (name: string, language: Language) => void
   onOpenLinkedPlan?: (planPath: string, stepLine?: number) => void
   onOpenSpecsRoot: () => void
@@ -28,6 +33,8 @@ export function SpecCatalogSection({
   specLinkCounts = {},
   specSources = {},
   specPlanLinks = {},
+  specHooksPreviews = {},
+  runtimeStatePreview = null,
   onCreateSpec,
   onOpenLinkedPlan,
   onOpenSpecsRoot,
@@ -42,6 +49,20 @@ export function SpecCatalogSection({
   const [visibleCount, setVisibleCount] = useState(8)
   const filtered = useMemo(() => sortSpecCatalog(filterSpecCatalog(specs, query), sortBy), [specs, query, sortBy])
   const items = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  const activeSpecPath = runtimeStatePreview?.activeSpecPath ?? null
+
+  const statusLabel = (status: SpecExecutionStatus): string => {
+    switch (status) {
+      case 'active':
+        return t('spec.catalog.status.active')
+      case 'completed':
+        return t('spec.catalog.status.completed')
+      case 'in-progress':
+        return t('spec.catalog.status.inProgress')
+      default:
+        return t('spec.catalog.status.idle')
+    }
+  }
 
   return (
     <div className="settings-card settings-card--grid">
@@ -91,20 +112,65 @@ export function SpecCatalogSection({
         </select>
       </div>
 
+      {runtimeStatePreview?.exists ? (
+        <div
+          data-testid="spec-runtime-state-summary"
+          style={{
+            marginTop: 10,
+            padding: 10,
+            borderRadius: 8,
+            border: '1px solid var(--border-color)',
+            fontSize: 11,
+            lineHeight: 1.5,
+            color: runtimeStatePreview.parse.ok ? 'var(--text-secondary)' : 'var(--danger-color, #c44)',
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>
+            {t('spec.catalog.runtimeStateSummary')}
+          </div>
+          {runtimeStatePreview.parse.ok ? (
+            runtimeStatePreview.summaryLines.map((line) => <div key={line}>{line}</div>)
+          ) : (
+            runtimeStatePreview.parse.errors.map((err) => <div key={err}>{err}</div>)
+          )}
+        </div>
+      ) : null}
+
       {items.length > 0 ? (
         <div style={{ marginTop: 10, border: '1px solid var(--border-color)', borderRadius: 10, padding: 10 }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
-            已显示 {items.length} / {filtered.length} 个 Spec
+            {t('spec.catalog.visibleCount', { shown: String(items.length), total: String(filtered.length) })}
           </div>
           <div style={{ display: 'grid', gap: 6, maxHeight: 220, overflow: 'auto' }}>
-            {items.map((spec) => (
+            {items.map((spec) => {
+              const execStatus = deriveSpecExecutionStatus(
+                spec.tasksPath,
+                spec.uncheckedTasks,
+                spec.totalTasks,
+                spec.lastExecutedAt,
+                activeSpecPath,
+              )
+              return (
               <div
                 key={spec.tasksPath}
+                data-testid={`spec-catalog-item-${spec.specName}`}
                 style={{ display: 'grid', gap: 6, border: '1px solid var(--border-color)', borderRadius: 8, padding: 8 }}
               >
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{spec.title}</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{spec.title}</div>
+                  <span
+                    data-testid={`spec-status-badge-${spec.specName}`}
+                    className={`settings-badge ${execStatus === 'active' ? 'settings-badge--experimental' : 'settings-badge--enabled'}`}
+                    style={{ fontSize: 10, padding: '2px 6px' }}
+                  >
+                    {statusLabel(execStatus)}
+                  </span>
+                </div>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                  {spec.specName} · 未完成 {spec.uncheckedTasks}/{spec.totalTasks}
+                  {spec.specName} · {t('spec.catalog.openTasksCount', {
+                    open: String(spec.uncheckedTasks),
+                    total: String(spec.totalTasks),
+                  })}
                   {spec.lastExecutedAt ? ` · 最近执行 ${spec.lastExecutedAt}` : ''}
                   {(specLinkCounts[spec.tasksPath] ?? 0) > 0 ? ` · 来源 ${specLinkCounts[spec.tasksPath]}` : ''}
                 </div>
@@ -142,8 +208,31 @@ export function SpecCatalogSection({
                     </button>
                   ) : null}
                 </div>
+                {(() => {
+                  const hooks = specHooksPreviews[spec.tasksPath]
+                  if (!hooks?.exists) return null
+                  return (
+                    <div
+                      data-testid={`spec-hooks-preview-${spec.specName}`}
+                      style={{
+                        fontSize: 11,
+                        color: hooks.parse.ok ? 'var(--text-secondary)' : 'var(--danger-color, #c44)',
+                        lineHeight: 1.5,
+                        borderTop: '1px dashed var(--border-color)',
+                        paddingTop: 6,
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('spec.catalog.hooksPreview')}</div>
+                      {hooks.parse.ok ? (
+                        hooks.previewLines.map((line) => <div key={line}>{line}</div>)
+                      ) : (
+                        hooks.parse.errors.map((err) => <div key={err}>{err}</div>)
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
-            ))}
+            )})}
           </div>
           {items.length < filtered.length ? (
             <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>

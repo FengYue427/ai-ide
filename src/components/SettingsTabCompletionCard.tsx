@@ -3,6 +3,12 @@ import { Gauge, RotateCcw } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { formatTabCompletionMetricsLine } from '../lib/formatTabCompletionMetrics'
 import { getTabCompletionMetrics, resetTabCompletionMetrics } from '../lib/inlineCompletionMetrics'
+import {
+  isTabPlusPlusPocEnabled,
+  TAB_PLUS_PLUS_POC_DEBOUNCE_MS,
+  TAB_PLUS_PLUS_POC_P95_TARGET_MS,
+} from '../lib/tabPlusPlusPoc'
+import { getTabCompletionDebounceMs } from '../lib/inlineCompletionPrefs'
 
 export function SettingsTabCompletionCard() {
   const { t } = useI18n()
@@ -43,6 +49,23 @@ export function SettingsTabCompletionCard() {
       >
         {metricsLine}
       </p>
+      {isTabPlusPlusPocEnabled() ? (
+        <>
+          <p
+            className="settings-privacy-text"
+            data-testid="settings-tab-plus-plus-poc"
+            style={{ marginTop: 6, fontSize: 12, color: 'var(--accent-color)' }}
+          >
+            {t('settings.tabCompletion.tabPlusPlusPocOn')}
+          </p>
+          <p className="settings-privacy-text" style={{ marginTop: 4, fontSize: 11 }}>
+            {t('settings.tabCompletion.tabPlusPlusPocTargets', {
+              p95: String(TAB_PLUS_PLUS_POC_P95_TARGET_MS),
+              debounce: String(getTabCompletionDebounceMs() || TAB_PLUS_PLUS_POC_DEBOUNCE_MS),
+            })}
+          </p>
+        </>
+      ) : null}
     </div>
   )
 }
