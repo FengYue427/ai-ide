@@ -7,6 +7,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.9] — 2026-06-05 · v1.3 世代收官
+
+### Added
+
+- **Z1**：`V1.3.9_GA_EXECUTION` · smoke 周更 playbook 定稿
+- **Z2**：E2E 基线 **42 UI + 2 stack + 1 collab** 写入主规划
+- **Z3**：`COMPETITOR_SCORE_V1.3.9` · `IDE_GAP_CHECKLIST` 复评（~3.28～3.32，仍 &lt; 3.4）
+- **Z4**：`V1.4_KICKOFF` · `ROADMAP_V1.4` 骨架（仅文档）
+- **Z5**：v1.3.0～1.3.9 ROADMAP 全绿 · 世代收官声明
+
+See [RELEASE_NOTES_v1.3.9.md](docs/RELEASE_NOTES_v1.3.9.md).
+
+---
+
 ## [1.3.8] — 2026-06-05 · Agent 可靠 + Git/插件抛光
 
 ### Added

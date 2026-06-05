@@ -129,3 +129,14 @@
 1. 每发 **桌面 tag** `v*.*.*` → 跑 [PHASE_IDE4B.md](./PHASE_IDE4B.md) 验收  
 2. 每完成 IDE-5 子项 → 更新本表「AI IDE」列  
 3. 竞品大版本（Kiro GA、Windsurf 定价变）→ 修订 Kiro/Windsurf 列，**Cursor 参照分可微调 ±0.1**
+
+---
+
+## 9. v1.3.9 收官附记（2026-06-05）
+
+| 项 | 值 |
+|----|-----|
+| AI IDE 综合分 | **~3.28～3.32** |
+| 与 Cursor 差距 | **~−0.28～−0.32**（较 GA ~2.35 大幅收窄） |
+| 宣传线 3.4 | **未达到** — 设计留给 [V1.4_KICKOFF.md](./V1.4_KICKOFF.md) |
+| 详细维度 | [COMPETITOR_SCORE_V1.3.9.md](./COMPETITOR_SCORE_V1.3.9.md) |
