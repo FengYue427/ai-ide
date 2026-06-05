@@ -7,6 +7,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.1] — 2026-06-05 · GA 收口 · 生产 smoke 1.3.x
+
+### Fixed
+
+- **E2E**：`plugin-ops` 登录 fetch shim · 审核筛选 · 移除 flaky toolbar 等待
+- **Stack E2E**：云工作区乐观 cloud 列表 · 徽章断言稳定
+- **生产 smoke**：`smoke-production` 接受 health `1.3.x`（`smoke-health-version.mjs`）
+
+### Changed
+
+- `getReleaseVersion()` fallback → `1.3.1`
+
+### Docs
+
+- [RELEASE_NOTES_v1.3.1.md](docs/RELEASE_NOTES_v1.3.1.md) · [V1.3.1_KICKOFF.md](docs/V1.3.1_KICKOFF.md) · [V1.3_ENV.md](docs/V1.3_ENV.md) 生产推荐
+
+See [RELEASE_NOTES_v1.3.1.md](docs/RELEASE_NOTES_v1.3.1.md).
+
+---
+
 ## [1.3.0] — 2026-06-05 · Python/索引2.0/Agent平台 F1–F7
 
 ### Added

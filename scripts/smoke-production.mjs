@@ -5,6 +5,8 @@
  *   node scripts/smoke-production.mjs https://ai-ide-flame.vercel.app
  *   APP_URL=https://ai-ide-flame.vercel.app npm run smoke:production
  */
+import { isAcceptableSmokeHealthVersion, smokeHealthVersionHint } from './smoke-health-version.mjs'
+
 const base = (process.argv[2] || process.env.APP_URL || '').replace(/\/$/, '')
 
 if (!base) {
@@ -57,10 +59,10 @@ for (const check of checks) {
     if (check.name === 'health' && json) {
       const dbOk = json.database === 'connected'
       const statusOk = json.status === 'ok'
-      const versionOk = !json.version || json.version === '1.2.0' || json.version.startsWith('1.2.')
+      const versionOk = isAcceptableSmokeHealthVersion(json.version)
       ok = res.ok && dbOk && statusOk && versionOk
       if (!versionOk) {
-        detail += ` — expected v1.2.x, got ${json.version}`
+        detail += ` — ${smokeHealthVersionHint(json.version)}`
       }
       if (!dbOk) {
         detail += ' — set DATABASE_URL on Vercel (Neon pooler, sslmode=require)'
