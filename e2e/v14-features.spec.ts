@@ -16,9 +16,10 @@ test.describe('v1.4 feature settings', () => {
     await openSettingsTab(page, 'features')
     const card = page.getByTestId('settings-v14-features')
     await expect(card).toBeVisible({ timeout: 10_000 })
-    await expect(card.getByText(/Tab\/FIM|Tab\/FIM production/i)).toBeVisible()
-    await expect(card.getByText(/索引 2k|Index 2k/i)).toBeVisible()
-    await expect(card.getByText(/Git|hunk/i)).toBeVisible()
+    const rows = card.getByRole('listitem')
+    await expect(rows.filter({ hasText: /Tab\/FIM.*生产|Tab\/FIM production/i })).toBeVisible()
+    await expect(rows.filter({ hasText: /索引 2k|Index 2k/i })).toBeVisible()
+    await expect(rows.filter({ hasText: /Git.*stage|Git 块级/i })).toBeVisible()
   })
 
   test('tab completion metrics card shows P95 line', async ({ page }) => {
