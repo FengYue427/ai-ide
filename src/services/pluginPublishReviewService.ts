@@ -47,6 +47,7 @@ export async function fetchPluginPublishReviews(options?: {
   signal?: AbortSignal
 }): Promise<PluginPublishReviewItem[]> {
   const filter = options?.filter ?? 'all'
+  const local = loadLocalPluginPublishReviews(filter)
   try {
     const response = await apiFetch(buildReviewsUrl(filter), {
       credentials: 'include',
@@ -54,11 +55,17 @@ export async function fetchPluginPublishReviews(options?: {
     })
     const data = await readJsonResponse<{ reviews?: PluginPublishReviewItem[] }>(response)
     if (!response.ok || !Array.isArray(data?.reviews)) {
-      return loadLocalPluginPublishReviews(filter)
+      return local
     }
-    return data.reviews
+    const apiReviews = data.reviews
+    if (apiReviews.length === 0 && local.length > 0) {
+      return local
+    }
+    const apiIds = new Set(apiReviews.map((row) => row.reviewId))
+    const merged = [...apiReviews, ...local.filter((row) => !apiIds.has(row.reviewId))]
+    return filter === 'pending' ? merged.filter((row) => row.status === 'pending') : merged.slice(0, 10)
   } catch {
-    return loadLocalPluginPublishReviews(filter)
+    return local
   }
 }
 
