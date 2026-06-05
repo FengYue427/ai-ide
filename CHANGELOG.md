@@ -7,6 +7,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.4.9] — 2026-06-05 · v1.4 世代收官
+
+### Added
+
+- **收官文档**：`V1.4.9_GA_EXECUTION` · `V1.4.9_SMOKE_WEEKLY` · `COMPETITOR_SCORE_V1.4.9`
+- **v1.5 门**：`V1.5_KICKOFF` 拍板 · E2E 基线 **53**
+- `v149Closeout.test.ts` 预研验收
+
+See [RELEASE_NOTES_v1.4.9.md](docs/RELEASE_NOTES_v1.4.9.md).
+
+---
+
 ## [1.4.8] — 2026-06-05 · Activity Line RFC · orchestrator stub
 
 ### Added

@@ -1,7 +1,7 @@
 # v1.5 规划（C 轨 · 高体验 · AIDE Runtime + Tab++）
 
 > **更新**：2026-06-05  
-> **状态**：📋 规划（待 **v1.4.9** 门）  
+> **状态**：✅ 定稿（**v1.4.9 门已开** · smoke 2 周后编码）  
 > **战略**：[V1.5_STRATEGY_PIVOT.md](./V1.5_STRATEGY_PIVOT.md)  
 > **运行体系**：[AIDE_RUNTIME.md](./AIDE_RUNTIME.md)  
 > **前置**：[ROADMAP_V1.4.md](./ROADMAP_V1.4.md)（v1.4.0 ✅）· [ROADMAP_V1.4.x_PATCHES.md](./ROADMAP_V1.4.x_PATCHES.md)

@@ -1,7 +1,7 @@
 # 与 Cursor / Kiro 级 IDE 的差距清单
 
 > 对照对象：**Cursor**（VS Code + 全仓 AI）、**Kiro**（规格驱动 Agent IDE）。  
-> **复评版本**：**v1.4.0** — [COMPETITOR_SCORE_V1.4.md](./COMPETITOR_SCORE_V1.4.md)  
+> **复评版本**：**v1.4.9 收官** — [COMPETITOR_SCORE_V1.4.9.md](./COMPETITOR_SCORE_V1.4.9.md)  
 > **战略转向**：[V1.5_STRATEGY_PIVOT.md](./V1.5_STRATEGY_PIVOT.md) — 冲击 Tab++ / Spec 工程 / AIDE Runtime  
 > 执行跟踪与 [OPTIMIZATION_PLAN.md](./OPTIMIZATION_PLAN.md) 并行。
 
@@ -10,20 +10,20 @@
 
 ---
 
-## 总览（v1.4.0 → v1.5 目标）
+## 总览（v1.4.9 → v1.5 目标）
 
-| 维度 | v1.4.0（估） | **v1.5 目标** | 差距 | v1.5 承接 |
+| 维度 | v1.4.9（估） | **v1.5 目标** | 差距 | v1.5 承接 |
 |------|:------------:|:-------------:|------|-----------|
 | 编辑器核心 | 3.3 | 3.5 | 小 | 抛光 |
 | 语言服务 / 导航 | 3.3 | 3.5 | 小 | 维持 TS/Python |
-| 代码库理解 / 检索 | 3.4 | 3.6 | 小 | Runtime 索引注入 |
-| AI 与编辑融合 | **3.2** | **3.8** | **大** | **F1–F2 Tab++** |
-| Agent / 自动化 | **3.4** | **3.6** | 中 | **F4–F6 AIDE Runtime** |
-| 运行 / 调试 / Git | 2.8 | 3.0 | 中 | 维持 v1.4 F3/F4 |
-| 扩展 / MCP | 2.8 | 3.0 | 小 | 维持 v1.4 F6 |
+| 代码库理解 / 检索 | 3.5 | 3.6 | 小 | Runtime 索引注入 |
+| AI 与编辑融合 | **3.3** | **3.8** | **大** | **F1–F2 Tab++** |
+| Agent / 自动化 | **3.5** | **3.6** | 中 | **F4–F6 AIDE Runtime** |
+| 运行 / 调试 / Git | 3.4 | 3.5 | 小 | 维持 v1.4 F3/F4 |
+| 扩展 / MCP | 2.9 | 3.0 | 小 | 维持 v1.4 F6 |
 | 协作 / 团队 | 1.8 | 2.0 | 大 | Beta 维持 |
 | 商业化 / 部署 | 3.2 | 3.2 | — | 非 v1.5 主线 |
-| **综合（主力 IDE）** | **~3.35～3.40** | **≥3.50** | Tab++/Runtime | [ROADMAP_V1.5.md](./ROADMAP_V1.5.md) |
+| **综合（主力 IDE）** | **~3.40～3.44** | **≥3.50** | Tab++/Runtime | [ROADMAP_V1.5.md](./ROADMAP_V1.5.md) |
 
 ---
 
@@ -58,15 +58,15 @@
 
 | ID | 能力 | Cursor/Kiro | 我们现状 | 目标 | 状态 |
 |----|------|-------------|----------|------|------|
-| C1 | Tab 级补全 | Copilot++ | FIM 链 + P95 可观测（v1.4 F1） | **Tab++ 多行 ghost · P95&lt;400ms** | 🔶 → **v1.5 F1–F2** |
+| C1 | Tab 级补全 | Copilot++ | FIM middle + Tab++ POC（v1.4.6，默认关） | **Tab++ 多行 ghost · P95&lt;400ms** | 🔶 → **v1.5 F1–F2** |
 | C2 | Chat + 选中上下文 | 强 | 有 | 保持 | ✅ |
 | C3 | **Composer 多文件** | 强 | Agent + `agentApplyService` 确认应用 | Diff 预览 + 部分接受 | ✅ IDE-1 基础 |
 | C4 | **Rules / 项目指令** | .cursorrules | `.aide/rules.md` 注入 + 设置中心编辑入口 | 设置 UI 编辑 | ✅ IDE-3 |
 | C5 | MCP 工具 | 有 | 代理 + 设置 + 自动跟进轮次 | MCP 客户端骨架 | 🔶 Phase IDE-3 |
 | C5b | **Chat @ 提及注入** | 有 | `@file` / `@path#symbol` → system prompt | 与索引联动 | ✅ P3 |
 | C6 | 后台 Agent | 有 | 生产策略卡（v1.4 F5） | 云队列 30min 级 | 🔶 v1.6+ |
-| C6b | **Spec / Hooks 工程** | Kiro 强 | Plan/Spec 队列（v1.1.1） | **hooks.yaml + 验收自动化** | ⬜ → **v1.5 F3–F6** |
-| C6c | **Activity Line** | Cascade 强 | Agent 时间线（v1.1） | **实时 Hook/队列/终端条** | ⬜ → **v1.5 F5** |
+| C6b | **Spec / Hooks 工程** | Kiro 强 | hooks/runtime-state **只读预览**（1.4.5–1.4.7） | **hooks 执行 + 验收自动化** | 🔶 → **v1.5 F3–F6** |
+| C6c | **Activity Line** | Cascade 强 | RFC + stub（1.4.8，默认关） | **实时 Hook/队列/终端条** | 🔶 → **v1.5 F5** |
 
 ---
 

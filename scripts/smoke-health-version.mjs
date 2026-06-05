@@ -1,6 +1,6 @@
 /**
  * Acceptable `/api/health` version strings for post-deploy smoke.
- * Allows current release line (1.3.x) and prior stable (1.2.x) during rollout.
+ * Allows current release line (1.4.x) and prior stable lines during rollout.
  */
 export function isAcceptableSmokeHealthVersion(version) {
   if (!version || typeof version !== 'string') return true
@@ -9,9 +9,10 @@ export function isAcceptableSmokeHealthVersion(version) {
   if (v === '1.2.0') return true
   if (v.startsWith('1.2.')) return true
   if (v.startsWith('1.3.')) return true
+  if (v.startsWith('1.4.')) return true
   return false
 }
 
 export function smokeHealthVersionHint(version) {
-  return `expected v1.2.x or v1.3.x, got ${version ?? '?'}`
+  return `expected v1.2.x–v1.4.x, got ${version ?? '?'}`
 }
