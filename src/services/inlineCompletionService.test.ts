@@ -11,12 +11,16 @@ vi.mock('./aiService', () => ({
   sendMessageWithDebounce: vi.fn(async () => 'line1\nline2\nline3'),
 }))
 
+const { fetchFimCompletionMock } = vi.hoisted(() => ({
+  fetchFimCompletionMock: vi.fn(async () => null as string | null),
+}))
+
 vi.mock('./fimCompletionService', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./fimCompletionService')>()
   return {
     ...actual,
-    supportsFimApi: () => false,
-    fetchFimCompletion: vi.fn(async () => null),
+    supportsFimApi: () => true,
+    fetchFimCompletion: fetchFimCompletionMock,
   }
 })
 
@@ -45,6 +49,8 @@ describe('inlineCompletionService', () => {
     vi.mocked(sendMessageWithDebounce).mockReset()
     vi.mocked(sendMessageWithDebounce).mockResolvedValue('line1\nline2\nline3')
     vi.mocked(fetchPlatformTabCompletion).mockClear()
+    fetchFimCompletionMock.mockReset()
+    fetchFimCompletionMock.mockResolvedValue(null)
   })
 
   it('returns null when AI is not configured', async () => {
@@ -108,6 +114,25 @@ describe('inlineCompletionService', () => {
     expect(eofKey).toContain('|eof')
     expect(midKey).not.toContain('|eof')
     expect(eofKey).not.toBe(midKey)
+  })
+
+  it('records FIM attempt and chat fallback when FIM returns empty', async () => {
+    fetchFimCompletionMock.mockResolvedValueOnce(null)
+    const result = await inlineCompletionService.fetchCompletion({
+      prefix: 'const value = 123',
+      suffix: '',
+      language: 'javascript',
+      filename: 'app.js',
+      config: { provider: 'deepseek', apiKey: 'sk-test' },
+      loggedIn: false,
+    })
+    expect(result).toBe('line1\nline2\nline3')
+    expect(fetchFimCompletionMock).toHaveBeenCalledTimes(1)
+    expect(sendMessageWithDebounce).toHaveBeenCalledTimes(1)
+    const metrics = getTabCompletionMetrics()
+    expect(metrics.fimAttempts).toBe(1)
+    expect(metrics.fimFallbackToChat).toBe(1)
+    expect(metrics.chatSuccess).toBe(1)
   })
 
   it('uses platform path when logged in with platform key mode', async () => {

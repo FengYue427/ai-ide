@@ -60,6 +60,7 @@ import { getV12FeatureStatus } from '../lib/v12Features'
 import { isIndexBuildTelemetryEnabled } from '../lib/v13Features'
 import { SettingsBackgroundAgentCard } from './SettingsBackgroundAgentCard'
 import { SettingsPluginOpsCard } from './SettingsPluginOpsCard'
+import { formatTabCompletionMetricsLine } from '../lib/formatTabCompletionMetrics'
 import { SettingsTabCompletionCard } from './SettingsTabCompletionCard'
 import { SettingsV13FeaturesCard } from './SettingsV13FeaturesCard'
 import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
@@ -769,15 +770,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                       {(() => {
                         void tabMetricsTick
                         const m = getTabCompletionMetrics()
-                        return t('settings.tabCompletion.metricsDesc', {
-                          hits: String(m.cacheHits),
-                          misses: String(m.cacheMisses),
-                          fim: String(m.fimSuccess),
-                          platform: String(m.platformSuccess),
-                          chat: String(m.chatSuccess),
-                          avgMs: m.avgLatencyMs != null ? String(m.avgLatencyMs) : '—',
-                          last: m.lastPath ?? '—',
-                        })
+                        return formatTabCompletionMetricsLine((key, params) => t(key, params), m)
                       })()}
                     </div>
                   </div>

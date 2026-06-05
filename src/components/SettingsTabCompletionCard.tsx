@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Gauge, RotateCcw } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { formatTabCompletionMetricsLine } from '../lib/formatTabCompletionMetrics'
 import { getTabCompletionMetrics, resetTabCompletionMetrics } from '../lib/inlineCompletionMetrics'
 
 export function SettingsTabCompletionCard() {
@@ -12,15 +13,10 @@ export function SettingsTabCompletionCard() {
     return () => window.clearInterval(id)
   }, [])
 
-  const metricsLine = t('settings.tabCompletion.metricsDesc', {
-    hits: metrics.cacheHits,
-    misses: metrics.cacheMisses,
-    fim: metrics.fimSuccess,
-    platform: metrics.platformSuccess,
-    chat: metrics.chatSuccess,
-    avgMs: metrics.avgLatencyMs != null ? String(metrics.avgLatencyMs) : '—',
-    last: metrics.lastPath ?? '—',
-  })
+  const metricsLine = formatTabCompletionMetricsLine(
+    (key, params) => t(key, params),
+    metrics,
+  )
 
   return (
     <div className="settings-card settings-card--grid" data-testid="settings-tab-completion">
@@ -43,10 +39,6 @@ export function SettingsTabCompletionCard() {
       </div>
       <p className="settings-privacy-text" style={{ marginTop: 8, fontSize: 12, lineHeight: 1.6 }}>
         {metricsLine}
-        {metrics.skipped > 0 ? ` · skipped: ${metrics.skipped}` : ''}
-        {metrics.failures > 0
-          ? ` · failures: ${metrics.failures}${metrics.lastFailureReason ? ` (${metrics.lastFailureReason})` : ''}`
-          : ''}
       </p>
     </div>
   )

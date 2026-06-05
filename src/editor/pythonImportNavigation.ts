@@ -1,5 +1,6 @@
 import type { DefinitionProjectFile } from './registerCrossFileDefinition'
-import { goToDefinition } from './languageServiceHostCore'
+import { goToDefinition, goToReferences } from './languageServiceHostCore'
+import type { ReferenceLocation } from '../services/referenceIndexService'
 
 export interface PythonDefinitionRequest {
   currentFile: string
@@ -100,4 +101,19 @@ export function resolvePythonDefinition(
     symbol,
     files,
   })
+}
+
+/** v1.3.6 — Python Shift+F12 with import-line symbol resolution (same precision tier as F12). */
+export function resolvePythonReferences(
+  request: PythonDefinitionRequest,
+): ReferenceLocation[] {
+  const { lineContent, symbol, files } = request
+  if (!symbol.trim()) return []
+
+  const parsed = parsePythonImportLine(lineContent)
+  if (parsed?.names.includes(symbol)) {
+    return goToReferences({ symbol, files })
+  }
+
+  return goToReferences({ symbol, files })
 }

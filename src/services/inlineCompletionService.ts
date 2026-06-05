@@ -4,6 +4,8 @@ import {
   getTabCompletionMetrics,
   recordTabCompletionCacheHit,
   recordTabCompletionFailure,
+  recordTabCompletionFimAttempt,
+  recordTabCompletionFimFallbackToChat,
   recordTabCompletionRequestStart,
   recordTabCompletionSkipped,
   recordTabCompletionSuccess,
@@ -149,6 +151,7 @@ export const inlineCompletionService = {
 
       if (strategy === 'fim') {
         path = 'fim'
+        recordTabCompletionFimAttempt()
         result = await fetchFimCompletion(request.config, prefix, suffix, maxLines)
       } else if (strategy === 'platform') {
         path = 'platform'
@@ -166,6 +169,7 @@ export const inlineCompletionService = {
         path = 'chat'
         result = await fetchChatTabCompletion(request, prefix, suffix, maxLines)
       } else if (!result && strategy === 'fim') {
+        recordTabCompletionFimFallbackToChat()
         path = 'chat'
         result = await fetchChatTabCompletion(request, prefix, suffix, maxLines)
       }

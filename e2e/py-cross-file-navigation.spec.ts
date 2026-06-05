@@ -4,8 +4,10 @@
 import { expect, test } from '@playwright/test'
 import { E2E_NAV_PYTHON_FILES, prepareE2EStorage, waitForShellReady } from './helpers'
 import {
+  clickEditorTab,
   expectActiveTabLabel,
   monacoGoToDefinitionAt,
+  monacoGoToReferencesAt,
   waitForTsProjectSync,
 } from './monaco-helpers'
 
@@ -24,5 +26,18 @@ test.describe('Cross-file Python navigation', () => {
   test('F12 on import opens lib/util.py', async ({ page }) => {
     await monacoGoToDefinitionAt(page, { lineNumber: 1, column: 22 })
     await expectActiveTabLabel(page, 'lib/util.py')
+  })
+
+  test('Shift+F12 on greet lists main.py cross-file references', async ({ page }) => {
+    await clickEditorTab(page, 'lib/util.py')
+    await monacoGoToReferencesAt(page, { lineNumber: 1, column: 5 })
+    const peek = page.locator('[data-testid="references-peek"]')
+    await expect(peek).toBeVisible({ timeout: 8_000 })
+    await expect(
+      peek.locator('.references-peek-bar__item').filter({ hasText: /main\.py/ }).first(),
+    ).toBeVisible()
+    await expect(
+      peek.locator('.references-peek-bar__item').filter({ hasText: /main\.py/ }).filter({ hasText: /4:/ }),
+    ).toBeVisible()
   })
 })

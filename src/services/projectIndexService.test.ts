@@ -11,6 +11,13 @@ import {
 } from './projectIndexService'
 
 describe('projectIndexService', () => {
+  it('extracts Python def and class symbols', () => {
+    const content = `def greet():\n    pass\n\nclass App:\n    pass\n`
+    const symbols = extractSymbolsFromContent('main.py', content)
+    expect(symbols.some((s) => s.name === 'greet' && s.kind === 'function')).toBe(true)
+    expect(symbols.some((s) => s.name === 'App' && s.kind === 'class')).toBe(true)
+  })
+
   it('extracts function and class symbols', () => {
     const content = `export function hello() {}
 class Foo {}

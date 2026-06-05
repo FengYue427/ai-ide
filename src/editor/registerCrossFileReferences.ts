@@ -1,5 +1,6 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import { isPythonNavigationEnabled } from '../lib/v13Features'
+import { resolvePythonReferences } from './pythonImportNavigation'
 import { goToReferences } from './languageServiceHostCore'
 import { getMonacoTypeScriptReferences } from './monacoTypeScriptNavigation'
 import type { ReferenceLocation } from '../services/referenceIndexService'
@@ -32,7 +33,16 @@ export function registerCrossFileReferenceProvider(
       const word = model.getWordAtPosition(position)
       if (!word?.word) return []
 
-      const refs = goToReferences({ symbol: word.word, files })
+      const isPython = model.getLanguageId() === 'python'
+      const refs = isPython
+        ? resolvePythonReferences({
+            currentFile,
+            lineContent: model.getLineContent(position.lineNumber),
+            column: position.column,
+            symbol: word.word,
+            files,
+          })
+        : goToReferences({ symbol: word.word, files })
       return refs.map((ref: ReferenceLocation) => ({
         uri: monaco.Uri.parse(`inmemory://${ref.path.replace(/\\/g, '/')}`),
         range: {

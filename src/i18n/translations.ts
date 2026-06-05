@@ -347,7 +347,13 @@ export const translations = {
     'settings.tabCompletion.path.off': '未配置 AI，补全不可用',
     'settings.tabCompletion.metricsTitle': '会话统计',
     'settings.tabCompletion.metricsDesc':
-      '缓存命中 {hits} · 未命中 {misses} · FIM {fim} · 平台 {platform} · 对话 {chat} · 平均延迟 {avgMs} ms · 上次路径 {last}',
+      '缓存命中 {hits} · 未命中 {misses} · 跳过 {skipped} · FIM 成功 {fim}（尝试 {fimAttempts} · 回退对话 {fimFallback}）· 平台 {platform} · 对话 {chat} · 平均延迟 {avgMs} ms · 上次路径 {last}',
+    'settings.tabCompletion.metricsFailures': '失败 {count}（{reason}）',
+    'settings.tabCompletion.failureReason.empty': '空结果',
+    'settings.tabCompletion.failureReason.timeout': '超时',
+    'settings.tabCompletion.failureReason.http413': '请求过大',
+    'settings.tabCompletion.failureReason.error': '错误',
+    'settings.tabCompletion.failureReason.unknown': '未知',
     'settings.editorPrefs': '编辑偏好',
     'settings.editorPrefs.desc':
       '当前版本先保留简洁设置，把最常用的自动保存、主题和语言收在一处。后续适合继续补充字体、缩进与格式化策略。',
@@ -2388,7 +2394,13 @@ export const translations = {
     'settings.tabCompletion.path.off': 'AI not configured; completions disabled',
     'settings.tabCompletion.metricsTitle': 'Session stats',
     'settings.tabCompletion.metricsDesc':
-      'Cache hits {hits} · misses {misses} · FIM {fim} · platform {platform} · chat {chat} · avg {avgMs} ms · last {last}',
+      'Cache hits {hits} · misses {misses} · skipped {skipped} · FIM ok {fim} (attempts {fimAttempts} · chat fallback {fimFallback}) · platform {platform} · chat {chat} · avg {avgMs} ms · last {last}',
+    'settings.tabCompletion.metricsFailures': 'Failures {count} ({reason})',
+    'settings.tabCompletion.failureReason.empty': 'empty',
+    'settings.tabCompletion.failureReason.timeout': 'timeout',
+    'settings.tabCompletion.failureReason.http413': 'payload too large',
+    'settings.tabCompletion.failureReason.error': 'error',
+    'settings.tabCompletion.failureReason.unknown': 'unknown',
     'settings.editorPrefs': 'Editor preferences',
     'settings.editorPrefs.desc':
       'Keeps settings minimal for now. Font, indent, and format options may come later.',

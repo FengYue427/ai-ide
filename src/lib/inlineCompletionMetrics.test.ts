@@ -4,6 +4,8 @@ import {
   getTabCompletionMetrics,
   recordTabCompletionCacheHit,
   recordTabCompletionFailure,
+  recordTabCompletionFimAttempt,
+  recordTabCompletionFimFallbackToChat,
   recordTabCompletionRequestStart,
   recordTabCompletionSkipped,
   recordTabCompletionSuccess,
@@ -42,5 +44,14 @@ describe('inlineCompletionMetrics', () => {
   it('classifies common errors', () => {
     expect(classifyTabCompletionFailure(new Error('HTTP 413 Payload Too Large'))).toBe('http413')
     expect(classifyTabCompletionFailure(new Error('request timeout'))).toBe('timeout')
+  })
+
+  it('tracks FIM attempts and chat fallback', () => {
+    recordTabCompletionFimAttempt()
+    recordTabCompletionFimAttempt()
+    recordTabCompletionFimFallbackToChat()
+    const m = getTabCompletionMetrics()
+    expect(m.fimAttempts).toBe(2)
+    expect(m.fimFallbackToChat).toBe(1)
   })
 })

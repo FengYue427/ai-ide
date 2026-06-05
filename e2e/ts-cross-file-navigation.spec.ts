@@ -65,14 +65,23 @@ test.describe('Cross-file TypeScript navigation', () => {
 
   test('peek reference click navigates to TS-accurate line in target file', async ({ page }) => {
     await clickEditorTab(page, 'lib/greet.ts')
-    await monacoGoToReferencesAt(page, { lineNumber: 1, column: 18 })
+    await monacoGoToReferencesAt(page, { lineNumber: 1, column: 17 })
     const peek = page.locator('[data-testid="references-peek"]')
     await expect(peek).toBeVisible({ timeout: 8_000 })
     const mainRefs = peek.locator('.references-peek-bar__item').filter({ hasText: 'main.ts' })
     await expect(mainRefs.first()).toBeVisible()
-    const line4Ref = mainRefs.filter({ hasText: /4:/ })
-    const targetRef = (await line4Ref.count()) > 0 ? line4Ref.first() : mainRefs.first()
-    await targetRef.click()
+    await expect(mainRefs.filter({ hasText: /4:10/ }).first()).toBeVisible({ timeout: 5_000 })
+    await mainRefs.filter({ hasText: /4:10/ }).first().click()
     await expectActiveTabLabel(page, 'main.ts')
+  })
+
+  test('Shift+F12 on greet exposes main.ts usage at line 4 column 10', async ({ page }) => {
+    await clickEditorTab(page, 'lib/greet.ts')
+    await monacoGoToReferencesAt(page, { lineNumber: 1, column: 17 })
+    const peek = page.locator('[data-testid="references-peek"]')
+    await expect(peek).toBeVisible({ timeout: 8_000 })
+    await expect(
+      peek.locator('.references-peek-bar__item').filter({ hasText: /main\.ts/ }).filter({ hasText: /4:10/ }),
+    ).toBeVisible({ timeout: 5_000 })
   })
 })

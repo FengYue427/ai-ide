@@ -7,6 +7,8 @@ export interface TabCompletionMetricsSnapshot {
   cacheMisses: number
   skipped: number
   fimSuccess: number
+  fimAttempts: number
+  fimFallbackToChat: number
   platformSuccess: number
   chatSuccess: number
   failures: number
@@ -21,6 +23,8 @@ const state = {
   cacheMisses: 0,
   skipped: 0,
   fimSuccess: 0,
+  fimAttempts: 0,
+  fimFallbackToChat: 0,
   platformSuccess: 0,
   chatSuccess: 0,
   failures: 0,
@@ -54,6 +58,14 @@ export function recordTabCompletionRequestStart(): void {
   state.cacheMisses += 1
 }
 
+export function recordTabCompletionFimAttempt(): void {
+  state.fimAttempts += 1
+}
+
+export function recordTabCompletionFimFallbackToChat(): void {
+  state.fimFallbackToChat += 1
+}
+
 export function recordTabCompletionSuccess(path: TabCompletionPath, latencyMs: number): void {
   state.lastPath = path
   state.lastLatencyMs = latencyMs
@@ -77,6 +89,8 @@ export function getTabCompletionMetrics(): TabCompletionMetricsSnapshot {
     cacheMisses: state.cacheMisses,
     skipped: state.skipped,
     fimSuccess: state.fimSuccess,
+    fimAttempts: state.fimAttempts,
+    fimFallbackToChat: state.fimFallbackToChat,
     platformSuccess: state.platformSuccess,
     chatSuccess: state.chatSuccess,
     failures: state.failures,
@@ -92,6 +106,8 @@ export function resetTabCompletionMetrics(): void {
   state.cacheMisses = 0
   state.skipped = 0
   state.fimSuccess = 0
+  state.fimAttempts = 0
+  state.fimFallbackToChat = 0
   state.platformSuccess = 0
   state.chatSuccess = 0
   state.failures = 0

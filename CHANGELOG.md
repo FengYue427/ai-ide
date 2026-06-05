@@ -7,6 +7,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.6] — 2026-06-05 · Tab II + 导航 II
+
+### Added
+
+- **v1.3.5 T1**：Tab debounce / maxLines 设置边界单测（`inlineCompletionPrefs`）
+- **v1.3.5 T2**：Tab 指标卡 i18n — skipped · 失败原因 · 各路径成功数
+- **v1.3.5 T3**：`fimAttempts` / `fimFallbackToChat` 可观测指标
+- **v1.3.6 L1**：`resolvePythonReferences` · Python Shift+F12 跨文件引用
+- **v1.3.6 L2**：大纲侧栏切换文件 sticky cache（def/class 不闪空）
+- **v1.3.6 L3**：TS 引用 E2E 列号断言加固（`4:10`）
+
+See [RELEASE_NOTES_v1.3.6.md](docs/RELEASE_NOTES_v1.3.6.md).
+
+---
+
 ## [1.3.4] — 2026-06-05 · 索引 2.0 可观测
 
 ### Added

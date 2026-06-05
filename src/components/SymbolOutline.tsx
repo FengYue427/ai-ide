@@ -5,6 +5,9 @@ import { formatOutlineSymbolLabel, isScopedOutlineSymbol } from '../lib/outlineD
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 
+/** v1.3.6 — keep last outline per path so tab switches do not flash empty. */
+const outlineCache = new Map<string, IndexedSymbol[]>()
+
 const KIND_LABEL: Record<SymbolKind, string> = {
   function: 'fn',
   class: 'class',
@@ -32,8 +35,13 @@ export function SymbolOutline({ collapsed, onToggleCollapsed }: SymbolOutlinePro
 
   const current = files[activeFile]
   const symbols = useMemo(() => {
-    if (!current?.content) return []
-    return extractSymbolsFromContent(current.name, current.content)
+    if (!current?.name) return []
+    if (current.content) {
+      const extracted = extractSymbolsFromContent(current.name, current.content)
+      outlineCache.set(current.name, extracted)
+      return extracted
+    }
+    return outlineCache.get(current.name) ?? []
   }, [current?.name, current?.content])
 
   if (!current) return null

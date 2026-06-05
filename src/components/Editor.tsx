@@ -14,6 +14,7 @@ import { goToDefinition, goToReferences } from '../editor/languageServiceHostCor
 import { registerLanguageServiceProviders } from '../editor/languageServiceHost'
 import { getMonacoTypeScriptDefinitions, getMonacoTypeScriptReferences } from '../editor/monacoTypeScriptNavigation'
 import { monacoLocationToReference } from '../editor/referenceLocationMapping'
+import { resolvePythonReferences } from '../editor/pythonImportNavigation'
 import { resolveReferenceNavigation } from '../editor/registerCrossFileReferences'
 import type { DefinitionProjectFile } from '../editor/registerCrossFileDefinition'
 import { libUriStringToWorkspacePath, workspacePathToLibUriString } from '../editor/editorModelUri'
@@ -262,10 +263,21 @@ const Editor: React.FC<EditorProps> = ({
       if (model && position) {
         const word = model.getWordAtPosition(position)
         if (word?.word) {
-          const tsRefs = await getMonacoTypeScriptReferences(model, position, filename)
+          const isPython = model.getLanguageId() === 'python'
+          const tsRefs = isPython
+            ? null
+            : await getMonacoTypeScriptReferences(model, position, filename)
           const refs = tsRefs?.length
             ? tsRefs.map(monacoLocationToReference)
-            : goToReferences({ symbol: word.word, files: allFilesRef.current })
+            : isPython
+              ? resolvePythonReferences({
+                  currentFile: filename,
+                  lineContent: model.getLineContent(position.lineNumber),
+                  column: position.column,
+                  symbol: word.word,
+                  files: allFilesRef.current,
+                })
+              : goToReferences({ symbol: word.word, files: allFilesRef.current })
           if (refs.length > 0) {
             setReferencesPeek({
               symbol: word.word,
