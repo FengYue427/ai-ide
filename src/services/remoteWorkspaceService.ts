@@ -51,10 +51,9 @@ function metaToEntry(meta: RemoteWorkspaceMeta): WorkspaceEntry {
 
 export const remoteWorkspaceService = {
   async listMetadata(): Promise<WorkspaceEntry[]> {
-    if (!authService.getCurrentUser()) return []
-
     try {
       const res = await fetch('/api/workspaces', { credentials: 'include' })
+      if (res.status === 401 || res.status === 403) return []
       if (!res.ok) return []
       const data = (await res.json()) as { workspaces?: RemoteWorkspaceMeta[] }
       return (data.workspaces ?? []).map(metaToEntry)

@@ -169,7 +169,18 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
       useIDEStore.getState().setRecentProjects(await recentFilesService.getRecentProjects())
     }
     if (isLoggedIn && result.cloudResult?.ok) {
-      await reloadUntilCloudListed(savedName)
+      const optimistic: WorkspaceEntry = {
+        id: saved?.id ?? savedName,
+        name: savedName,
+        description: saveDescription.trim() || undefined,
+        files: [],
+        settings: currentSettings,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        source: 'cloud',
+      }
+      setWorkspaces((prev) => [optimistic, ...prev.filter((workspace) => workspace.name !== savedName)])
+      void reloadUntilCloudListed(savedName)
     } else {
       await loadWorkspaces()
     }

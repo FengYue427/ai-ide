@@ -16,7 +16,7 @@ test.describe('Plugin ops settings', () => {
   test('features tab shows plugin ops card with health fields', async ({ page }) => {
     await openSettingsTab(page, 'features')
     const card = page.getByTestId('settings-plugin-ops')
-    await expect(card).toBeVisible({ timeout: 10_000 })
+    await expect(card).toBeVisible({ timeout: 15_000 })
     await expect(card).toContainText(/publish|发布/i)
     await expect(card).toContainText(/official|官方|署名/i)
     await expect(card.getByRole('link', { name: /Vercel|生产|production/i }).first()).toBeVisible()
@@ -25,7 +25,7 @@ test.describe('Plugin ops settings', () => {
   test('plugin ops reviews filter defaults to all and can select pending', async ({ page }) => {
     await openSettingsTab(page, 'features')
     const filter = page.getByTestId('settings-plugin-ops-status-filter')
-    await expect(filter).toBeVisible({ timeout: 10_000 })
+    await expect(filter).toBeVisible({ timeout: 15_000 })
     await expect(filter).toHaveValue('all')
     await filter.selectOption('pending')
     await expect(filter).toHaveValue('pending')

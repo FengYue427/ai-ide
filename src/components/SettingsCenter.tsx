@@ -224,7 +224,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   const [tabDebounceMs, setTabDebounceMs] = useState(getTabCompletionDebounceMs)
   const [tabMetricsTick, setTabMetricsTick] = useState(0)
   const aiGatewayEnabled = isAiGatewayEnabled()
-  const platformAiHealth = usePlatformAiHealth(aiGatewayEnabled)
+  const probePlatformHealth = aiGatewayEnabled || activeTab === 'features'
+  const platformAiHealth = usePlatformAiHealth(probePlatformHealth)
   const showPlatformUsageDashboard = aiGatewayEnabled && Boolean(currentUser) && activeTab === 'ai'
   const platformUsageDashboard = usePlatformUsageDashboard(showPlatformUsageDashboard)
 
@@ -829,17 +830,23 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 <SettingsV13FeaturesCard />
                 <SettingsTabCompletionCard />
                 <SettingsBackgroundAgentCard />
-                {aiGatewayEnabled ? (
-                  <SettingsPluginOpsCard
-                    plugins={
-                      platformAiHealth.status === 'ready'
+                <SettingsPluginOpsCard
+                  plugins={
+                    platformAiHealth.status === 'ready'
+                      ? platformAiHealth.plugins
+                      : platformAiHealth.status === 'unreachable'
                         ? platformAiHealth.plugins
                         : { publishEnabled: false, officialKeyConfigured: false }
-                    }
-                    healthStatus={platformAiHealth.status}
-                    showReviews={Boolean(currentUser)}
-                  />
-                ) : null}
+                  }
+                  healthStatus={
+                    platformAiHealth.status === 'loading'
+                      ? 'loading'
+                      : platformAiHealth.status === 'unreachable'
+                        ? 'unreachable'
+                        : 'ready'
+                  }
+                  showReviews={Boolean(currentUser)}
+                />
                 <div className="settings-card settings-card--row">
                   <div>
                     <div className="settings-row-title">{t('settings.feature.semantic.title')}</div>
