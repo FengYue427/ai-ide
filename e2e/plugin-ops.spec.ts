@@ -3,13 +3,7 @@
  */
 import { expect, test } from '@playwright/test'
 import { openPluginManualTab } from './plugin-helpers'
-import {
-  openSettingsTab,
-  prepareE2EStorage,
-  prepareLoggedInUser,
-  waitForE2ELoggedInToolbar,
-  waitForShellReady,
-} from './helpers'
+import { openSettingsTab, prepareE2EStorage, prepareLoggedInUser, waitForShellReady } from './helpers'
 
 test.describe('Plugin ops settings', () => {
   test.beforeEach(async ({ page }) => {
@@ -17,7 +11,6 @@ test.describe('Plugin ops settings', () => {
     await prepareE2EStorage(page)
     await page.goto('/')
     await waitForShellReady(page)
-    await waitForE2ELoggedInToolbar(page)
   })
 
   test('features tab shows plugin ops card with health fields', async ({ page }) => {

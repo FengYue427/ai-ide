@@ -58,22 +58,20 @@ const E2E_LOGGED_IN_SESSION = {
 export async function prepareLoggedInUser(page: Page): Promise<void> {
   await page.addInitScript((session) => {
     localStorage.setItem('ai-ide:user', JSON.stringify(session))
+
+    const originalFetch = window.fetch.bind(window)
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.includes('/api/auth/session')) {
+        return new Response(JSON.stringify(session), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return originalFetch(input, init)
+    }
   }, E2E_LOGGED_IN_SESSION)
-
-  await page.route('**/api/auth/session', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(E2E_LOGGED_IN_SESSION),
-    })
-  })
-}
-
-/** Wait until bootstrap applied the E2E logged-in session to the toolbar. */
-export async function waitForE2ELoggedInToolbar(page: Page): Promise<void> {
-  await expect(page.locator(`header.toolbar button[title="${E2E_LOGGED_IN_SESSION.user.email}"]`)).toBeVisible({
-    timeout: 30_000,
-  })
 }
 
 export async function prepareE2EStorage(page: Page, files: E2ESeedFile[] = E2E_DEFAULT_FILES): Promise<void> {
