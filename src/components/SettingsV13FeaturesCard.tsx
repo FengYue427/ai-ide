@@ -1,10 +1,27 @@
+import { useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { useI18n } from '../i18n'
-import { getV13FeatureStatus } from '../lib/v13Features'
+import { getIndexBuildTelemetry } from '../lib/indexBuildTelemetry'
+import {
+  getV13FeatureStatus,
+  isEmbeddingPersistCacheEnabled,
+  isIndexBuildTelemetryEnabled,
+} from '../lib/v13Features'
+import { getEmbeddingPersistMetrics } from '../services/embeddingPersistCache'
 
 export function SettingsV13FeaturesCard() {
   const { t } = useI18n()
   const status = getV13FeatureStatus()
+  const [embeddingMetrics, setEmbeddingMetrics] = useState(getEmbeddingPersistMetrics)
+  const [indexTelemetry, setIndexTelemetry] = useState(getIndexBuildTelemetry)
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setEmbeddingMetrics(getEmbeddingPersistMetrics())
+      setIndexTelemetry(getIndexBuildTelemetry())
+    }, 2000)
+    return () => window.clearInterval(id)
+  }, [])
 
   return (
     <div className="settings-card settings-card--grid" data-testid="settings-v13-features">
@@ -30,6 +47,23 @@ export function SettingsV13FeaturesCard() {
           {t('settings.v13.backgroundAgent')}:{' '}
           {status.backgroundAgent ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
         </li>
+        {isEmbeddingPersistCacheEnabled() ? (
+          <li>
+            {t('settings.v13.embeddingMetrics', {
+              hits: embeddingMetrics.hits,
+              misses: embeddingMetrics.misses,
+              expired: embeddingMetrics.expired,
+            })}
+          </li>
+        ) : null}
+        {isIndexBuildTelemetryEnabled() && indexTelemetry.lastMode ? (
+          <li>
+            {t('settings.v13.indexBuildMode', {
+              mode: indexTelemetry.lastMode,
+              ms: indexTelemetry.lastDurationMs ?? '—',
+            })}
+          </li>
+        ) : null}
       </ul>
     </div>
   )

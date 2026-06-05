@@ -860,6 +860,16 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                         {t('settings.semantic.onboarding.enableHint')}
                       </div>
                     ) : null}
+                    {semanticSearchEnabled && indexStats.indexedFiles === 0 && indexBuildState.status === 'ready' ? (
+                      <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        {t('settings.semantic.indexNotReady')}
+                      </div>
+                    ) : null}
+                    {semanticSearchEnabled && indexStats.capped ? (
+                      <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        {t('settings.semantic.indexCappedHint')}
+                      </div>
+                    ) : null}
                   </div>
                   <Toggle
                     checked={semanticSearchEnabled}
@@ -879,6 +889,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                       {indexStatusText}
                     </div>
+                    {indexStats.capped ? (
+                      <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        {t('settings.index.cappedHint')}
+                      </div>
+                    ) : null}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px', justifyContent: 'center' }}>
                     {indexBuildState.status === 'error' ? (

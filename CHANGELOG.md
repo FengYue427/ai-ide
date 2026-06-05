@@ -7,6 +7,30 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.4] — 2026-06-05 · 索引 2.0 可观测
+
+### Added
+
+- **v1.3.4 N1**：`embeddingPersistMetrics` · 设置页 v1.3 卡展示 hit/miss/expired
+- **v1.3.4 N2**：v1.3 卡展示 `indexBuildTelemetry` lastMode / ms
+- **v1.3.4 N3**：语义检索与索引状态联动提示（未就绪 / capped）
+
+See [RELEASE_NOTES_v1.3.4.md](docs/RELEASE_NOTES_v1.3.4.md).
+
+---
+
+## [1.3.3] — 2026-06-05 · Python import · Agent 预算 · capped 提示
+
+### Added
+
+- **v1.3.3 I1**：`pythonImportNavigation` · `from lib.util import` F12 链
+- **v1.3.3 I2**：`AGENT_INDEX_CONTEXT_MAX_CHARS` · `trimAgentIndexContextSection`
+- **v1.3.3 I3**：设置页索引 capped 文案 + 语义检索引导
+
+See [RELEASE_NOTES_v1.3.3.md](docs/RELEASE_NOTES_v1.3.3.md).
+
+---
+
 ## [1.3.2] — 2026-06-05 · Tab/断点/插件样例抛光
 
 ### Added

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildAgentIndexContextSection } from './agentIndexContextSection'
+import {
+  AGENT_INDEX_CONTEXT_MAX_CHARS,
+  buildAgentIndexContextSection,
+  trimAgentIndexContextSection,
+} from './agentIndexContextSection'
 
 describe('buildAgentIndexContextSection', () => {
   it('includes indexed file count', () => {
@@ -11,5 +15,15 @@ describe('buildAgentIndexContextSection', () => {
     })
     expect(section).toContain('5')
     expect(section).toContain('项目索引')
+    expect(section.length).toBeLessThanOrEqual(AGENT_INDEX_CONTEXT_MAX_CHARS)
+  })
+
+  it('trims oversized sections', () => {
+    const long = trimAgentIndexContextSection(
+      ['## 项目索引', ...Array.from({ length: 80 }, (_, i) => `- line ${i}`)].join('\n'),
+      200,
+    )
+    expect(long.length).toBeLessThanOrEqual(200)
+    expect(long).toContain('截断')
   })
 })

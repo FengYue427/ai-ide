@@ -1,5 +1,6 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import { isPythonNavigationEnabled } from '../lib/v13Features'
+import { resolvePythonDefinition } from './pythonImportNavigation'
 import { goToDefinition } from './languageServiceHostCore'
 import { getMonacoTypeScriptDefinitions } from './monacoTypeScriptNavigation'
 
@@ -36,12 +37,20 @@ export function registerCrossFileDefinitionProvider(
       const word = model.getWordAtPosition(position)
       if (!word?.word) return null
 
-      const location = goToDefinition({
-        file: currentFile,
-        line: position.lineNumber,
-        symbol: word.word,
-        files,
-      })
+      const location = isPython
+        ? resolvePythonDefinition({
+            currentFile,
+            lineContent: model.getLineContent(position.lineNumber),
+            column: position.column,
+            symbol: word.word,
+            files,
+          })
+        : goToDefinition({
+            file: currentFile,
+            line: position.lineNumber,
+            symbol: word.word,
+            files,
+          })
       if (!location) return null
 
       return {

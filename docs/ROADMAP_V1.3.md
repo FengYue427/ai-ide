@@ -1,61 +1,56 @@
 # v1.3 规划（B 轨 · 语言 + 索引 + Agent）
 
 > **更新**：2026-06-05  
-> **状态**：🔨 **v1.3.2 待 tag**（v1.3.1 ✅）  
-> **Kickoff**：[V1.3_KICKOFF.md](./V1.3_KICKOFF.md) · **Patch**：[ROADMAP_V1.3.x_PATCHES.md](./ROADMAP_V1.3.x_PATCHES.md)  
+> **状态**：🔨 **v1.3.x 进行中（目标 1.3.9）** · v1.3.4 待 tag  
+> **Patch 主规划**：[V1.3.x_MASTER_PLAN.md](./V1.3.x_MASTER_PLAN.md) · [ROADMAP_V1.3.x_PATCHES.md](./ROADMAP_V1.3.x_PATCHES.md)  
 > **前置**：[ROADMAP_V1.2.md](./ROADMAP_V1.2.md)（v1.2.0～v1.2.9 ✅）
 
 ---
 
 ## 1. 定位
 
-v1.3 为 v1.2 世代之后的 **产品深度 II**：从「TS 导航 + 工程 polish」升级到 **多语言入门 + 仓库理解 + Agent 可依赖**。
+v1.3 为 v1.2 世代之后的 **产品深度 II**。**patch 线做到 v1.3.9**，再顺理成章开 **v1.4**。
 
 | 子版本 | 主题 |
 |--------|------|
-| **v1.3.0** ✅ | F1–F7：Python · 索引2.0 · Agent · Tab · 插件 · 平台 — [RELEASE_NOTES_v1.3.0.md](./RELEASE_NOTES_v1.3.0.md) |
-| **v1.3.1** ✅ | GA 收口 · smoke 1.3.x — [RELEASE_NOTES_v1.3.1.md](./RELEASE_NOTES_v1.3.1.md) |
-| **v1.3.2** 🔨 | Tab 抛光 · 条件断点 · 插件样例 — [V1.3.2_GA_EXECUTION.md](./V1.3.2_GA_EXECUTION.md) |
-
-轨道 A：**v1.3.x** patch（热修 + 日用抛光），详见 [ROADMAP_V1.3.x_PATCHES.md](./ROADMAP_V1.3.x_PATCHES.md)。
+| **v1.3.0** ✅ | F1–F7 大版本 |
+| **v1.3.1** ✅ | GA 收口 |
+| **v1.3.2** ✅ | Tab · 断点 · 插件样例 |
+| **v1.3.3** ✅ | Python + Agent 预算 |
+| **v1.3.4** 🔨 | 索引 2.0 可观测 |
+| **v1.3.5** ⏳ | Tab II |
+| **v1.3.6** ⏳ | 导航 II |
+| **v1.3.7** ⏳ | Agent/Chat 可靠 |
+| **v1.3.8** ⏳ | Git 轻抛光 · 插件/MCP |
+| **v1.3.9** ⏳ | **收官** · v1.4 门 |
 
 ---
 
-## 2. v1.3.0 能力表（目标）
+## 2. v1.3.0 能力表
 
 | 主题 | 说明 |
 |------|------|
-| Python LSP | F12 / 大纲 / ADR — 见 [V1.3_MASTER_PLAN.md](./V1.3_MASTER_PLAN.md) F1 |
-| 索引 2.0 | 增量 + embedding 缓存 |
-| 后台 Agent | 生产策略 + E2E + 演示脚本 |
-| 搁置 | SSH · SSO · VSIX |
+| Python 导航 | F12 / 大纲 — F1 |
+| 索引 2.0 | embedding 持久化 + 遥测 — F2 |
+| Agent 索引上下文 | F5 |
+| Tab / 插件 / 平台 | F4 · F6 · F7 |
+| 搁置至 v1.4+ | SSH · SSO · VSIX · 全量 LSP |
 
 ---
 
-## 3. v1.2.x 收口
+## 3. 启动 v1.4 条件
 
-| 版本 | 状态 |
-|------|:----:|
-| v1.2.0～v1.2.8 | ✅ |
-| **v1.2.9** | ✅ [RELEASE_NOTES_v1.2.9.md](./RELEASE_NOTES_v1.2.9.md) |
-
----
-
-## 4. 启动条件
-
-- [x] v1.2.9 GA · tag `v1.2.9`
-- [x] v1.3.0 F1–F7 代码
-- [x] v1.3.1 GA · tag `v1.3.1`
-- [ ] v1.3.2 tag · CI 绿
-- [ ] v1.4 启动（v1.3.2 GA 后）
+- [ ] v1.3.9 tag
+- [ ] 生产 smoke 连续 **2 周** 5/5（见 [V1.3.9_SMOKE_WEEKLY.md](./V1.3.9_SMOKE_WEEKLY.md)）
+- [ ] `V1.4_KICKOFF.md` 起草完成（Z4，在 1.3.9 内）
 
 ---
 
-## 5. 文档索引
+## 4. 文档索引
 
 | 文档 | 用途 |
 |------|------|
-| [V1.3_KICKOFF.md](./V1.3_KICKOFF.md) | 北极星与阶段 |
-| [V1.3_MASTER_PLAN.md](./V1.3_MASTER_PLAN.md) | 任务与验收 |
-| [NEXT_EXECUTION.md](./NEXT_EXECUTION.md) | 当前工程入口 |
-| [IDE_GAP_CHECKLIST.md](./IDE_GAP_CHECKLIST.md) | 竞品差距跟踪 |
+| [V1.3.x_MASTER_PLAN.md](./V1.3.x_MASTER_PLAN.md) | 1.3.1～1.3.9 总表 |
+| [V1.3_KICKOFF.md](./V1.3_KICKOFF.md) | v1.3.0 F1–F7 |
+| [NEXT_EXECUTION.md](./NEXT_EXECUTION.md) | 当前入口 |
+| [IDE_GAP_CHECKLIST.md](./IDE_GAP_CHECKLIST.md) | 差距跟踪 |
