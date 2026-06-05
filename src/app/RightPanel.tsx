@@ -8,6 +8,8 @@ import { projectIndexManager } from '../services/projectIndexManager'
 import type { GitFileSyncUpdate } from '../services/gitService'
 import { useI18n } from '../i18n'
 import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
+import { isAideRuntimeUiEnabled } from '../lib/aideRuntimeUi'
+import { ActivityLine } from '../components/ActivityLine'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { useIDEStore, type RightPanelView } from '../store/ideStore'
 import type { WebContainer } from '@webcontainer/api'
@@ -75,6 +77,7 @@ export function RightPanel({
   const openGitDiffTab = useIDEStore((s) => s.openGitDiffTab)
 
   const backgroundAgentOn = isBackgroundAgentEnabled()
+  const aideRuntimeUiOn = isAideRuntimeUiEnabled()
   const currentFile = files[activeFile]
   const gitReadOnly = Boolean(collaborationRoomId && !collabRoleCanWrite(collaborationMemberRole))
 
@@ -184,6 +187,7 @@ export function RightPanel({
             closeLabel={t('panel.close')}
           />
           {renderChatTabs()}
+          {aideRuntimeUiOn && rightPanelView === 'chat' ? <ActivityLine /> : null}
           <div className="right-panel__body">
             {backgroundAgentOn && rightPanelView === 'backgroundJobs' ? (
               <BackgroundJobsPanel

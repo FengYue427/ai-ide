@@ -251,7 +251,7 @@ commands:
 | **1.4.4** ✅ | RFC v0.2 · ADR 评审 |
 | **1.4.5** ✅ | `hooksSchema.ts` · 设置 YAML 预览 |
 | **1.4.7** ✅ | Spec 目录 UI · `runtime-state` 类型 |
-| **1.4.8** | Activity Line RFC · orchestrator 接口 stub |
+| **1.4.8** ✅ | Activity Line RFC · orchestrator 接口 stub |
 | **v1.5 F3–F7** | 生产实现 + E2E |
 
 ---

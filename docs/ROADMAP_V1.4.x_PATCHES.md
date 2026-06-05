@@ -19,7 +19,7 @@
 | **v1.4.5** ✅ | hooks.yaml schema · 设置预览 | [V1.4.5_KICKOFF.md](./V1.4.5_KICKOFF.md) |
 | **v1.4.6** ✅ | Tab++ 深化 I（FIM middle · 指标 UX） | [V1.4.6_KICKOFF.md](./V1.4.6_KICKOFF.md) |
 | **v1.4.7** ✅ | Runtime 深化 I（Spec 目录 · runtime-state 草案） | [V1.4.7_KICKOFF.md](./V1.4.7_KICKOFF.md) |
-| **v1.4.8** | Activity Line RFC · orchestrator stub | — |
+| **v1.4.8** ✅ | Activity Line RFC · orchestrator stub | [V1.4.8_KICKOFF.md](./V1.4.8_KICKOFF.md) |
 | **v1.4.9** | **世代收官** · v1.5 门 | [V1.4.9_KICKOFF.md](./V1.4.9_KICKOFF.md) |
 
 **v1.5.0** 启动：`v1.4.9` tag + 生产 smoke **连续 2 周 5/5** + `V1.5_KICKOFF` 评审。

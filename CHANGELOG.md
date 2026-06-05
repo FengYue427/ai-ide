@@ -7,6 +7,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.4.8] — 2026-06-05 · Activity Line RFC · orchestrator stub
+
+### Added
+
+- **runtimeEventBus** · **runtimeOrchestrator stub** · **runtimeContextSnapshot**
+- **ActivityLine** 可折叠线框（`VITE_AIDE_RUNTIME_UI`，默认关）
+- RFC [ACTIVITY_LINE.md](docs/ACTIVITY_LINE.md) · E2E `activity-line.spec.ts`
+
+See [RELEASE_NOTES_v1.4.8.md](docs/RELEASE_NOTES_v1.4.8.md).
+
+---
+
 ## [1.4.7] — 2026-06-05 · Runtime 深化 I
 
 ### Added
