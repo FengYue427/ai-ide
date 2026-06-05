@@ -2,19 +2,16 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.3.9**（v1.3 世代收官）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.4](./docs/ROADMAP_V1.4.md)
+**当前版本：v1.4.0**（基础填坑 · 冲 3.4）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.4](./docs/ROADMAP_V1.4.md)
 
-## v1.3.9 收官 · v1.4 启动门
+## v1.4.0 生产级填坑（GA）
 
-- **v1.3.0～1.3.9** 全部交付 — [RELEASE_NOTES_v1.3.9.md](./docs/RELEASE_NOTES_v1.3.9.md)
-- 综合评分 **~3.28～3.32**（仍 &lt; 3.4，v1.4 填坑目标）
-- 下一世代：[V1.4_KICKOFF.md](./docs/V1.4_KICKOFF.md)（待 smoke 连续 2 周绿后编码）
+- **F1–F7**：Tab P95 · 2k 索引/Worker · Git hunk stage · 桌面壳 · 后台 Agent · MCP/插件 · 平台 GA
+- 环境变量：[V1.4_ENV.md](./docs/V1.4_ENV.md) · 发版说明：[RELEASE_NOTES_v1.4.0.md](./docs/RELEASE_NOTES_v1.4.0.md)
 
-## v1.3 能力摘要（GA）
+## v1.3 世代（已收官）
 
-- Python/TS 跨文件导航 · 索引 2.0 · Agent 索引上下文 · Tab 指标 · 插件运维 · Git 轻抛光
-
-详见 [ROADMAP_V1.3.md](./docs/ROADMAP_V1.3.md) · [V1.3_ENV.md](./docs/V1.3_ENV.md)
+- Python/TS 导航 · 索引 2.0 · Agent 可靠 · Git 轻抛光 — [ROADMAP_V1.3.md](./docs/ROADMAP_V1.3.md)
 
 ## v1.2.9 引用与运维（GA）
 

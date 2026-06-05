@@ -30,15 +30,21 @@ describe('inlineCompletionMetrics', () => {
     expect(m.platformSuccess).toBe(1)
     expect(m.lastPath).toBe('platform')
     expect(m.avgLatencyMs).toBe(100)
+    expect(m.p50LatencyMs).toBe(80)
+    expect(m.p95LatencyMs).toBe(120)
+    expect(m.p95UnderTarget).toBe(true)
+    expect(m.latencySampleCount).toBe(2)
   })
 
-  it('tracks skipped and failure reasons', () => {
+  it('tracks skipped and failure reasons with latency', () => {
     recordTabCompletionSkipped()
-    recordTabCompletionFailure('http413')
+    recordTabCompletionFailure('http413', 910)
     const m = getTabCompletionMetrics()
     expect(m.skipped).toBe(1)
     expect(m.failures).toBe(1)
     expect(m.lastFailureReason).toBe('http413')
+    expect(m.p95LatencyMs).toBe(910)
+    expect(m.p95UnderTarget).toBe(false)
   })
 
   it('classifies common errors', () => {

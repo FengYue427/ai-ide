@@ -6,8 +6,10 @@ import {
   MAX_TAB_MAX_LINES,
   MIN_TAB_DEBOUNCE_MS,
   MIN_TAB_MAX_LINES,
+  PRODUCTION_TAB_DEBOUNCE_MS,
   getTabCompletionDebounceMs,
   getTabCompletionMaxLines,
+  isTabCompletionEnabled,
   setTabCompletionDebounceMs,
   setTabCompletionMaxLines,
 } from './inlineCompletionPrefs'
@@ -55,5 +57,11 @@ describe('inlineCompletionPrefs', () => {
     localStorage.setItem('ai-ide:tab-completion-debounce-ms', 'NaN')
     expect(getTabCompletionMaxLines()).toBe(DEFAULT_TAB_MAX_LINES)
     expect(getTabCompletionDebounceMs()).toBe(DEFAULT_TAB_DEBOUNCE_MS)
+  })
+
+  it('uses production defaults when v1.4 flag is enabled', () => {
+    localStorage.setItem('ai-ide:feature:tabFimProduction', '1')
+    expect(isTabCompletionEnabled()).toBe(true)
+    expect(getTabCompletionDebounceMs()).toBe(PRODUCTION_TAB_DEBOUNCE_MS)
   })
 })

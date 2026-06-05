@@ -1,3 +1,12 @@
+import {
+  clearTabCompletionLatencySamples,
+  computeLatencyPercentile,
+  getTabCompletionLatencySamples,
+  isTabCompletionP95UnderTarget,
+  pushTabCompletionLatencySample,
+  TAB_COMPLETION_P95_TARGET_MS,
+} from './tabCompletionLatencyPercentile'
+
 export type TabCompletionPath = 'cache' | 'fim' | 'platform' | 'chat'
 
 export type TabCompletionFailureReason = 'empty' | 'timeout' | 'http413' | 'error' | 'unknown'
@@ -16,6 +25,11 @@ export interface TabCompletionMetricsSnapshot {
   lastPath: TabCompletionPath | null
   lastLatencyMs: number | null
   avgLatencyMs: number | null
+  p50LatencyMs: number | null
+  p95LatencyMs: number | null
+  latencySampleCount: number
+  p95TargetMs: number
+  p95UnderTarget: boolean | null
 }
 
 const state = {
@@ -33,6 +47,13 @@ const state = {
   lastLatencyMs: null as number | null,
   latencyTotalMs: 0,
   latencySamples: 0,
+}
+
+function recordLatencySample(ms: number): void {
+  state.lastLatencyMs = ms
+  state.latencyTotalMs += ms
+  state.latencySamples += 1
+  pushTabCompletionLatencySample(ms)
 }
 
 export function recordTabCompletionSkipped(): void {
@@ -68,22 +89,29 @@ export function recordTabCompletionFimFallbackToChat(): void {
 
 export function recordTabCompletionSuccess(path: TabCompletionPath, latencyMs: number): void {
   state.lastPath = path
-  state.lastLatencyMs = latencyMs
-  state.latencyTotalMs += latencyMs
-  state.latencySamples += 1
+  recordLatencySample(latencyMs)
   if (path === 'fim') state.fimSuccess += 1
   else if (path === 'platform') state.platformSuccess += 1
   else if (path === 'chat') state.chatSuccess += 1
 }
 
-export function recordTabCompletionFailure(reason: TabCompletionFailureReason = 'unknown'): void {
+export function recordTabCompletionFailure(
+  reason: TabCompletionFailureReason = 'unknown',
+  latencyMs?: number,
+): void {
   state.failures += 1
   state.lastFailureReason = reason
+  if (latencyMs != null && Number.isFinite(latencyMs)) {
+    recordLatencySample(Math.round(latencyMs))
+  }
 }
 
 export function getTabCompletionMetrics(): TabCompletionMetricsSnapshot {
-  const avgLatencyMs =
-    state.latencySamples > 0 ? Math.round(state.latencyTotalMs / state.latencySamples) : null
+  const samples = state.latencySamples
+  const avgLatencyMs = samples > 0 ? Math.round(state.latencyTotalMs / samples) : null
+  const rawSamples = getTabCompletionLatencySamples()
+  const p50LatencyMs = computeLatencyPercentile(rawSamples, 50)
+  const p95LatencyMs = computeLatencyPercentile(rawSamples, 95)
   return {
     cacheHits: state.cacheHits,
     cacheMisses: state.cacheMisses,
@@ -98,6 +126,11 @@ export function getTabCompletionMetrics(): TabCompletionMetricsSnapshot {
     lastPath: state.lastPath,
     lastLatencyMs: state.lastLatencyMs,
     avgLatencyMs,
+    p50LatencyMs,
+    p95LatencyMs,
+    latencySampleCount: rawSamples.length,
+    p95TargetMs: TAB_COMPLETION_P95_TARGET_MS,
+    p95UnderTarget: isTabCompletionP95UnderTarget(p95LatencyMs),
   }
 }
 
@@ -116,4 +149,5 @@ export function resetTabCompletionMetrics(): void {
   state.lastLatencyMs = null
   state.latencyTotalMs = 0
   state.latencySamples = 0
+  clearTabCompletionLatencySamples()
 }

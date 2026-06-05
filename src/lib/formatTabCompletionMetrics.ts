@@ -4,6 +4,10 @@ type MetricsTranslate = (
   key:
     | 'settings.tabCompletion.metricsDesc'
     | 'settings.tabCompletion.metricsFailures'
+    | 'settings.tabCompletion.metricsP95'
+    | 'settings.tabCompletion.metricsP95Unknown'
+    | 'settings.tabCompletion.metricsP95Pass'
+    | 'settings.tabCompletion.metricsP95Fail'
     | 'settings.tabCompletion.failureReason.empty'
     | 'settings.tabCompletion.failureReason.timeout'
     | 'settings.tabCompletion.failureReason.http413'
@@ -31,6 +35,23 @@ export function formatTabCompletionFailureReason(
   }
 }
 
+export function formatTabCompletionP95Line(t: MetricsTranslate, metrics: TabCompletionMetricsSnapshot): string {
+  if (metrics.latencySampleCount === 0) {
+    return t('settings.tabCompletion.metricsP95Unknown', { target: String(metrics.p95TargetMs) })
+  }
+  const p95Line = t('settings.tabCompletion.metricsP95', {
+    p50: metrics.p50LatencyMs != null ? String(metrics.p50LatencyMs) : '—',
+    p95: metrics.p95LatencyMs != null ? String(metrics.p95LatencyMs) : '—',
+    samples: String(metrics.latencySampleCount),
+    target: String(metrics.p95TargetMs),
+  })
+  if (metrics.p95UnderTarget == null) return p95Line
+  const statusKey = metrics.p95UnderTarget
+    ? 'settings.tabCompletion.metricsP95Pass'
+    : 'settings.tabCompletion.metricsP95Fail'
+  return `${p95Line} · ${t(statusKey)}`
+}
+
 export function formatTabCompletionMetricsLine(
   t: MetricsTranslate,
   metrics: TabCompletionMetricsSnapshot,
@@ -48,9 +69,12 @@ export function formatTabCompletionMetricsLine(
     last: metrics.lastPath ?? '—',
   })
 
-  if (metrics.failures <= 0) return line
+  const p95Line = formatTabCompletionP95Line(t, metrics)
+  const combined = `${line}\n${p95Line}`
 
-  return `${line} · ${t('settings.tabCompletion.metricsFailures', {
+  if (metrics.failures <= 0) return combined
+
+  return `${combined} · ${t('settings.tabCompletion.metricsFailures', {
     count: String(metrics.failures),
     reason: formatTabCompletionFailureReason(t, metrics.lastFailureReason),
   })}`

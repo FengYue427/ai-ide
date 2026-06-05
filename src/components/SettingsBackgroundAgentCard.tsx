@@ -19,6 +19,10 @@ export function SettingsBackgroundAgentCard() {
           {status.enabled ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
         </li>
         <li>
+          {t('settings.v14.backgroundAgentProduction')}:{' '}
+          {status.productionPolicy ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+        </li>
+        <li>
           {t('settings.backgroundAgent.cron')}: <code>{status.cronHint}</code>
         </li>
       </ul>

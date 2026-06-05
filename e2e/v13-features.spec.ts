@@ -12,9 +12,10 @@ test.describe('v1.3 feature settings', () => {
     await waitForShellReady(page)
   })
 
-  test('features tab shows v1.3, tab completion, and background agent cards', async ({ page }) => {
+  test('features tab shows v1.3/v1.4, tab completion, and background agent cards', async ({ page }) => {
     await openSettingsTab(page, 'features')
     await expect(page.getByTestId('settings-v13-features')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('settings-v14-features')).toBeVisible()
     await expect(page.getByTestId('settings-tab-completion')).toBeVisible()
     await expect(page.getByTestId('settings-background-agent')).toBeVisible()
   })

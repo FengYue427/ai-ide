@@ -11,8 +11,10 @@ import {
   type IndexSearchHit,
   type ProjectIndex,
 } from './projectIndexService'
+import { getIndexBuildModePreference } from '../lib/indexBuildPrefs'
 import { recordIndexBuildTelemetry } from '../lib/indexBuildTelemetry'
 import { isIndexBuildTelemetryEnabled } from '../lib/v13Features'
+import { getIndexWorkerMinSources } from '../lib/v14Features'
 import { clearSemanticSearchCache } from './semanticSearchService'
 import { workspaceContextService } from './workspaceContextService'
 
@@ -39,7 +41,6 @@ const EMPTY_STATS: IndexBuildStats = {
 
 const FULL_REBUILD_RATIO = 0.35
 const FULL_REBUILD_MIN_CHANGES = 12
-const WORKER_MIN_SOURCES = 80
 const SYNC_DEBOUNCE_MS = 500
 
 function contentSignature(content: string): string {
@@ -61,10 +62,13 @@ function runWhenIdle(fn: () => void): void {
 }
 
 function shouldUseIndexWorker(sourceCount: number): boolean {
+  const preference = getIndexBuildModePreference()
+  if (preference === 'sync') return false
   if (typeof Worker === 'undefined') return false
-  if (sourceCount < WORKER_MIN_SOURCES) return false
   if (typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test') return false
-  return true
+  if (preference === 'worker') return sourceCount > 0
+  const minSources = getIndexWorkerMinSources()
+  return sourceCount >= minSources
 }
 
 type IndexSourceRow = { path: string; content: string; language?: string }

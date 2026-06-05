@@ -57,11 +57,18 @@ import { workspaceContextService } from '../services/workspaceContextService'
 import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
 import { getIndexBuildTelemetry } from '../lib/indexBuildTelemetry'
 import { getV12FeatureStatus } from '../lib/v12Features'
+import {
+  getIndexBuildModePreference,
+  setIndexBuildModePreference,
+  type IndexBuildModePreference,
+} from '../lib/indexBuildPrefs'
 import { isIndexBuildTelemetryEnabled } from '../lib/v13Features'
+import { isIndex2kProductionEnabled } from '../lib/v14Features'
 import { SettingsBackgroundAgentCard } from './SettingsBackgroundAgentCard'
 import { SettingsPluginOpsCard } from './SettingsPluginOpsCard'
 import { formatTabCompletionMetricsLine } from '../lib/formatTabCompletionMetrics'
 import { SettingsTabCompletionCard } from './SettingsTabCompletionCard'
+import { SettingsV14FeaturesCard } from './SettingsV14FeaturesCard'
 import { SettingsV13FeaturesCard } from './SettingsV13FeaturesCard'
 import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
 import { usePlatformUsageDashboard } from '../hooks/usePlatformUsageDashboard'
@@ -303,6 +310,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
 
   const [indexStats, setIndexStats] = useState(projectIndexManager.getIndexStats())
   const [indexBuildState, setIndexBuildState] = useState(projectIndexManager.getBuildState())
+  const [indexBuildMode, setIndexBuildMode] = useState<IndexBuildModePreference>(getIndexBuildModePreference)
 
   useEffect(() => {
     return projectIndexManager.subscribe(() => {
@@ -821,6 +829,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   </ul>
                 </div>
                 <SettingsV13FeaturesCard />
+                <SettingsV14FeaturesCard />
                 <SettingsTabCompletionCard />
                 <SettingsBackgroundAgentCard />
                 <SettingsPluginOpsCard
@@ -885,6 +894,33 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     {indexStats.capped ? (
                       <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                         {t('settings.index.cappedHint')}
+                      </div>
+                    ) : null}
+                    {isIndex2kProductionEnabled() ? (
+                      <div style={{ marginTop: '10px', display: 'grid', gap: '6px' }} data-testid="settings-index-build-mode">
+                        <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {t('settings.v14.indexBuildMode')}
+                        </label>
+                        <select
+                          value={indexBuildMode}
+                          onChange={(event) => {
+                            const mode = event.target.value as IndexBuildModePreference
+                            setIndexBuildMode(mode)
+                            setIndexBuildModePreference(mode)
+                          }}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: '10px',
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--bg-primary)',
+                            color: 'var(--text-primary)',
+                            fontSize: '12px',
+                          }}
+                        >
+                          <option value="auto">{t('settings.v14.indexBuildMode.auto')}</option>
+                          <option value="worker">{t('settings.v14.indexBuildMode.worker')}</option>
+                          <option value="sync">{t('settings.v14.indexBuildMode.sync')}</option>
+                        </select>
                       </div>
                     ) : null}
                   </div>

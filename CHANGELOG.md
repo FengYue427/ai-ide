@@ -7,6 +7,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.4.0] — 2026-06-05 · 基础填坑 · 冲 3.4
+
+### Added
+
+- **F1**：Tab P95/P50 延迟分位 · `VITE_TAB_FIM_PRODUCTION`
+- **F2**：索引 2k/Worker 生产策略 · 构建模式 `auto/worker/sync`
+- **F3**：Git 状态矩阵摘要 · 块级 hunk stage 面板
+- **F4**：桌面壳生产策略 `VITE_DESKTOP_SHELL_PRODUCTION`
+- **F5**：后台 Agent 生产策略 `VITE_BACKGROUND_AGENT_PRODUCTION`
+- **F6**：MCP/插件生产策略 · 官方目录计数
+- **F7**：`v14Features` 汇总 · `V1.4_ENV.md` · `e2e/v14-features.spec.ts`
+
+See [RELEASE_NOTES_v1.4.0.md](docs/RELEASE_NOTES_v1.4.0.md).
+
+---
+
 ## [1.3.9] — 2026-06-05 · v1.3 世代收官
 
 ### Added

@@ -180,10 +180,13 @@ export const inlineCompletionService = {
         rememberCache(cacheKey, result)
         return result
       }
-      recordTabCompletionFailure('empty')
+      recordTabCompletionFailure('empty', Math.round(performance.now() - started))
       return null
     } catch (error) {
-      recordTabCompletionFailure(classifyTabCompletionFailure(error))
+      recordTabCompletionFailure(
+        classifyTabCompletionFailure(error),
+        Math.round(performance.now() - started),
+      )
       return null
     } finally {
       if (inFlightKey === cacheKey) inFlightKey = null

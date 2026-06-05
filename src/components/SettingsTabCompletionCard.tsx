@@ -37,7 +37,10 @@ export function SettingsTabCompletionCard() {
           <RotateCcw size={12} /> {t('settings.tabCompletion.metricsReset')}
         </button>
       </div>
-      <p className="settings-privacy-text" style={{ marginTop: 8, fontSize: 12, lineHeight: 1.6 }}>
+      <p
+        className="settings-privacy-text"
+        style={{ marginTop: 8, fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-line' }}
+      >
         {metricsLine}
       </p>
     </div>

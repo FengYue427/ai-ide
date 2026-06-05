@@ -1,52 +1,44 @@
 # 当前执行入口
 
-> **更新**：2026-06-05 — **v1.3.9 收官 GA** · 下一世代 **v1.4.0**（待启动条件）
+> **更新**：2026-06-05 — **v1.4.0 GA** ✅
 
 ---
 
 ## 策略
 
-- **v1.3.x 已收官**（1.3.0～1.3.9 ✅）
-- **v1.4.0** 编码待：smoke **连续 2 周** 5/5 + Kickoff 评审
-- **不做**宣传 / 上架
+- **v1.4.0** F1–F7 已交付
+- **不做**宣传 / 上架（除非单独决策）
+- 生产 smoke 周更：[V1.3.9_SMOKE_WEEKLY.md](./V1.3.9_SMOKE_WEEKLY.md)
 
-**主规划**：[V1.4_KICKOFF.md](./V1.4_KICKOFF.md) · [ROADMAP_V1.4.md](./ROADMAP_V1.4.md)
+**主规划**：[ROADMAP_V1.4.md](./ROADMAP_V1.4.md) · [RELEASE_NOTES_v1.4.0.md](./RELEASE_NOTES_v1.4.0.md)
 
 ---
 
-## v1.3.x 进度（收官）
+## v1.4.0 进度
 
-| 版本 | 状态 |
+| 阶段 | 状态 |
 |------|:----:|
-| 1.3.0～1.3.8 | ✅ |
-| **1.3.9** | ✅ 收官 — [RELEASE_NOTES_v1.3.9.md](./RELEASE_NOTES_v1.3.9.md) |
+| F1 Tab/FIM | ✅ |
+| F2 索引 2k/Worker | ✅ |
+| F3 Git 面板 | ✅ |
+| F4 桌面壳 | ✅ |
+| F5 后台 Agent | ✅ |
+| F6 MCP/插件 | ✅ |
+| F7 GA | ✅ |
 
 ---
 
-## v1.4 启动门
-
-| 条件 | 状态 |
-|------|:----:|
-| v1.3.0～1.3.9 tag | ✅ |
-| `V1.4_KICKOFF` 起草 | ✅ |
-| 生产 smoke 连续 2 周 5/5 | ⏳ 自 v1.3.9 部署日起 |
-| CI E2E 绿 | ⏳ 持续 |
-
-周更 playbook：[V1.3.9_SMOKE_WEEKLY.md](./V1.3.9_SMOKE_WEEKLY.md)
-
----
-
-## 发版（v1.3.9）
+## 发版
 
 ```bash
 npm run test:local
-git tag v1.3.9
+git tag v1.4.0
 git push origin main
-git push origin v1.3.9
+git push origin v1.4.0
 ```
 
 ---
 
-## 下一动作
+## 下一世代
 
-满足启动门后 → [V1.4_KICKOFF.md](./V1.4_KICKOFF.md) **F1** 编码
+v1.4.x patch 或 v1.5 规划（待评审）

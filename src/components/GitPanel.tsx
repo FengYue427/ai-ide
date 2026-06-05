@@ -35,6 +35,7 @@ import { isDesktopApp } from '../services/desktopBridge'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import { InlineStatePanel } from './InlineStatePanel'
+import { GitHunkStagePanel } from './GitHunkStagePanel'
 import { workspaceContextService } from '../services/workspaceContextService'
 import styles from './GitPanel.module.css'
 
@@ -500,6 +501,16 @@ const GitPanel: React.FC<GitPanelProps> = ({
             </div>
           )}
 
+          {status.length > 0 ? (
+            <div className={styles.matrixSummary} data-testid="git-status-matrix-summary">
+              {t('git.matrixSummary', {
+                staged: staged.length,
+                unstaged: unstaged.length,
+                total: status.length,
+              })}
+            </div>
+          ) : null}
+
           {shouldShowGitStatusPerfHint(status.length) ? (
             <InlineStatePanel
               compact
@@ -671,6 +682,16 @@ const GitPanel: React.FC<GitPanelProps> = ({
                             <Plus size={14} />
                           </button>
                         </>
+                      ) : null}
+                      {item.status === 'modified' || item.status === 'added' ? (
+                        <GitHunkStagePanel
+                          fs={fs}
+                          filepath={item.filepath}
+                          readOnly={readOnly}
+                          disabled={isBusy}
+                          onStaged={() => void refresh()}
+                          notify={notify}
+                        />
                       ) : null}
                     </div>
                   )
