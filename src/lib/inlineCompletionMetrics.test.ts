@@ -1,8 +1,11 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import {
+  classifyTabCompletionFailure,
   getTabCompletionMetrics,
   recordTabCompletionCacheHit,
+  recordTabCompletionFailure,
   recordTabCompletionRequestStart,
+  recordTabCompletionSkipped,
   recordTabCompletionSuccess,
   resetTabCompletionMetrics,
 } from './inlineCompletionMetrics'
@@ -25,5 +28,19 @@ describe('inlineCompletionMetrics', () => {
     expect(m.platformSuccess).toBe(1)
     expect(m.lastPath).toBe('platform')
     expect(m.avgLatencyMs).toBe(100)
+  })
+
+  it('tracks skipped and failure reasons', () => {
+    recordTabCompletionSkipped()
+    recordTabCompletionFailure('http413')
+    const m = getTabCompletionMetrics()
+    expect(m.skipped).toBe(1)
+    expect(m.failures).toBe(1)
+    expect(m.lastFailureReason).toBe('http413')
+  })
+
+  it('classifies common errors', () => {
+    expect(classifyTabCompletionFailure(new Error('HTTP 413 Payload Too Large'))).toBe('http413')
+    expect(classifyTabCompletionFailure(new Error('request timeout'))).toBe('timeout')
   })
 })

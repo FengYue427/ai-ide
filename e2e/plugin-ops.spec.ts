@@ -3,7 +3,13 @@
  */
 import { expect, test } from '@playwright/test'
 import { openPluginManualTab } from './plugin-helpers'
-import { openSettingsTab, prepareE2EStorage, prepareLoggedInUser, waitForShellReady } from './helpers'
+import {
+  openSettingsTab,
+  prepareE2EStorage,
+  prepareLoggedInUser,
+  preparePluginReviewSeed,
+  waitForShellReady,
+} from './helpers'
 
 test.describe('Plugin ops settings', () => {
   test.beforeEach(async ({ page }) => {
@@ -40,5 +46,25 @@ test.describe('Plugin ops settings', () => {
     await openPluginManualTab(page)
     await expect(page.getByTestId('plugin-publish-form')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByRole('button', { name: /提交审核|Submit for review/i })).toBeVisible()
+  })
+})
+
+test.describe('Plugin ops with local review seed', () => {
+  test.beforeEach(async ({ page }) => {
+    await prepareLoggedInUser(page)
+    await prepareE2EStorage(page)
+    await preparePluginReviewSeed(page)
+    await page.goto('/')
+    await waitForShellReady(page)
+  })
+
+  test('pending filter shows seeded community-sample review', async ({ page }) => {
+    await openSettingsTab(page, 'features')
+    const card = page.getByTestId('settings-plugin-ops')
+    await expect(card).toBeVisible({ timeout: 15_000 })
+    const filter = card.getByTestId('settings-plugin-ops-status-filter')
+    await filter.selectOption('pending')
+    const list = page.getByTestId('settings-plugin-ops-review-list')
+    await expect(list).toContainText(/community-sample/i, { timeout: 10_000 })
   })
 })

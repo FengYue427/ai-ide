@@ -426,6 +426,7 @@ export const DebugPanel: FC<DebugPanelProps> = ({
                         <input
                           type="text"
                           className="debug-panel-bp-input"
+                          data-testid="debug-breakpoint-condition"
                           defaultValue={bp.condition ?? ''}
                           key={`${bp.id}-cond-${bp.condition ?? ''}`}
                           placeholder={t('debug.breakpointConditionPlaceholder')}
@@ -450,6 +451,7 @@ export const DebugPanel: FC<DebugPanelProps> = ({
                           type="number"
                           min={2}
                           className="debug-panel-bp-input"
+                          data-testid="debug-breakpoint-hitcount"
                           defaultValue={formatHitCountForInput(bp.hitCount)}
                           key={`${bp.id}-hits-${bp.hitCount ?? ''}`}
                           placeholder="2"

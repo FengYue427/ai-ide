@@ -1,7 +1,7 @@
 # v1.3 规划（B 轨 · 语言 + 索引 + Agent）
 
 > **更新**：2026-06-05  
-> **状态**：🔨 **v1.3.1 待 tag**（代码就绪 · CI 门禁确认中）  
+> **状态**：🔨 **v1.3.2 待 tag**（v1.3.1 ✅）  
 > **Kickoff**：[V1.3_KICKOFF.md](./V1.3_KICKOFF.md) · **Patch**：[ROADMAP_V1.3.x_PATCHES.md](./ROADMAP_V1.3.x_PATCHES.md)  
 > **前置**：[ROADMAP_V1.2.md](./ROADMAP_V1.2.md)（v1.2.0～v1.2.9 ✅）
 
@@ -14,8 +14,8 @@ v1.3 为 v1.2 世代之后的 **产品深度 II**：从「TS 导航 + 工程 pol
 | 子版本 | 主题 |
 |--------|------|
 | **v1.3.0** ✅ | F1–F7：Python · 索引2.0 · Agent · Tab · 插件 · 平台 — [RELEASE_NOTES_v1.3.0.md](./RELEASE_NOTES_v1.3.0.md) |
-| **v1.3.1** 🔨 | GA 收口 · smoke 1.3.x — [V1.3.1_GA_EXECUTION.md](./V1.3.1_GA_EXECUTION.md) |
-| **v1.3.2** ⏳ | Tab 抛光 · 条件断点 · 插件样例 — [V1.3.2_KICKOFF.md](./V1.3.2_KICKOFF.md) |
+| **v1.3.1** ✅ | GA 收口 · smoke 1.3.x — [RELEASE_NOTES_v1.3.1.md](./RELEASE_NOTES_v1.3.1.md) |
+| **v1.3.2** 🔨 | Tab 抛光 · 条件断点 · 插件样例 — [V1.3.2_GA_EXECUTION.md](./V1.3.2_GA_EXECUTION.md) |
 
 轨道 A：**v1.3.x** patch（热修 + 日用抛光），详见 [ROADMAP_V1.3.x_PATCHES.md](./ROADMAP_V1.3.x_PATCHES.md)。
 
@@ -45,8 +45,9 @@ v1.3 为 v1.2 世代之后的 **产品深度 II**：从「TS 导航 + 工程 pol
 
 - [x] v1.2.9 GA · tag `v1.2.9`
 - [x] v1.3.0 F1–F7 代码
-- [ ] v1.3.1：CI E2E + stack 全绿 · smoke 5/5
-- [ ] v1.3.2 GA → v1.4 启动
+- [x] v1.3.1 GA · tag `v1.3.1`
+- [ ] v1.3.2 tag · CI 绿
+- [ ] v1.4 启动（v1.3.2 GA 后）
 
 ---
 

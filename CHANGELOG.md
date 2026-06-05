@@ -7,6 +7,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.2] — 2026-06-05 · Tab/断点/插件样例抛光
+
+### Added
+
+- **v1.3.2 T1**：`tabCompletionRequestGate` · Tab 早退 · debounce 350ms · EOF cache key · 失败原因指标
+- **v1.3.2 T2**：条件断点 CDP 单测扩展 · `BROWSER_LIMITATIONS` CDP vs inject
+- **v1.3.2 T3**：`fixtures/plugins/community-sample` · `PLUGIN_COMMUNITY_SAMPLE.md` · `seed-plugin-review.mjs` · plugin-ops E2E seed
+
+### Docs
+
+- [RELEASE_NOTES_v1.3.2.md](docs/RELEASE_NOTES_v1.3.2.md) · [V1.3.2_KICKOFF.md](docs/V1.3.2_KICKOFF.md)
+
+See [RELEASE_NOTES_v1.3.2.md](docs/RELEASE_NOTES_v1.3.2.md).
+
+---
+
 ## [1.3.1] — 2026-06-05 · GA 收口 · 生产 smoke 1.3.x
 
 ### Fixed

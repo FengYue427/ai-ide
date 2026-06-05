@@ -1,13 +1,16 @@
 import { getTabCompletionDebounceMs, getTabCompletionMaxLines } from '../lib/inlineCompletionPrefs'
 import {
+  classifyTabCompletionFailure,
   getTabCompletionMetrics,
   recordTabCompletionCacheHit,
   recordTabCompletionFailure,
   recordTabCompletionRequestStart,
+  recordTabCompletionSkipped,
   recordTabCompletionSuccess,
   resetTabCompletionMetrics,
   type TabCompletionPath,
 } from '../lib/inlineCompletionMetrics'
+import { shouldSkipTabCompletionRequest } from '../lib/tabCompletionRequestGate'
 import { resolveTabCompletionStrategy } from '../lib/tabCompletionStrategy'
 import { isAiConfigured } from '../lib/aiPlatformMode'
 import { sendMessageWithDebounce, type AIConfig } from './aiService'
@@ -35,10 +38,11 @@ function trimContext(text: string, maxLen: number, fromEnd: boolean): string {
   return fromEnd ? text.slice(-maxLen) : text.slice(0, maxLen)
 }
 
-function buildCacheKey(request: InlineCompletionRequest, maxLines: number): string {
+export function buildTabCompletionCacheKey(request: InlineCompletionRequest, maxLines: number): string {
   const prefix = trimContext(request.prefix, 200, true)
   const suffix = trimContext(request.suffix, 80, false)
-  return `${request.filename}:${request.language}:${maxLines}:${prefix.length}:${prefix.slice(-80)}:${suffix.slice(0, 40)}`
+  const suffixKey = suffix.length === 0 ? '|eof' : suffix.slice(0, 40)
+  return `${request.filename}:${request.language}:${maxLines}:${prefix.length}:${prefix.slice(-80)}:${suffixKey}`
 }
 
 function rememberCache(key: string, value: string): void {
@@ -118,8 +122,13 @@ export const inlineCompletionService = {
     const strategy = resolveTabCompletionStrategy(request.config, Boolean(request.loggedIn))
     if (strategy === 'none') return null
 
+    if (shouldSkipTabCompletionRequest(request.prefix)) {
+      recordTabCompletionSkipped()
+      return null
+    }
+
     const maxLines = getTabCompletionMaxLines()
-    const cacheKey = buildCacheKey(request, maxLines)
+    const cacheKey = buildTabCompletionCacheKey(request, maxLines)
     const cached = cache.get(cacheKey)
     if (cached) {
       recordTabCompletionCacheHit()
@@ -167,10 +176,10 @@ export const inlineCompletionService = {
         rememberCache(cacheKey, result)
         return result
       }
-      recordTabCompletionFailure()
+      recordTabCompletionFailure('empty')
       return null
-    } catch {
-      recordTabCompletionFailure()
+    } catch (error) {
+      recordTabCompletionFailure(classifyTabCompletionFailure(error))
       return null
     } finally {
       if (inFlightKey === cacheKey) inFlightKey = null

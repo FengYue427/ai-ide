@@ -5,7 +5,8 @@ const DEBOUNCE_MS_KEY = 'ai-ide:tab-completion-debounce-ms'
 export const DEFAULT_TAB_MAX_LINES = 5
 export const MIN_TAB_MAX_LINES = 1
 export const MAX_TAB_MAX_LINES = 12
-export const DEFAULT_TAB_DEBOUNCE_MS = 220
+/** v1.3.2: slightly higher default reduces empty-line flicker while staying responsive. */
+export const DEFAULT_TAB_DEBOUNCE_MS = 350
 export const MIN_TAB_DEBOUNCE_MS = 120
 export const MAX_TAB_DEBOUNCE_MS = 800
 

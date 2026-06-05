@@ -55,6 +55,23 @@ const E2E_LOGGED_IN_SESSION = {
   expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
 }
 
+const E2E_PLUGIN_REVIEW_SEED = [
+  {
+    reviewId: 'rev_e2e_community_sample',
+    status: 'pending' as const,
+    pluginId: 'community-sample',
+    version: '1.0.0',
+    manifestHash: 'e2e000000000000',
+    submittedAt: new Date().toISOString(),
+  },
+]
+
+export async function preparePluginReviewSeed(page: Page): Promise<void> {
+  await page.addInitScript((rows) => {
+    localStorage.setItem('ai-ide:plugin-publish-reviews', JSON.stringify(rows))
+  }, E2E_PLUGIN_REVIEW_SEED)
+}
+
 export async function prepareLoggedInUser(page: Page): Promise<void> {
   await page.addInitScript((session) => {
     localStorage.setItem('ai-ide:user', JSON.stringify(session))

@@ -43,7 +43,10 @@ export function SettingsTabCompletionCard() {
       </div>
       <p className="settings-privacy-text" style={{ marginTop: 8, fontSize: 12, lineHeight: 1.6 }}>
         {metricsLine}
-        {metrics.failures > 0 ? ` · failures: ${metrics.failures}` : ''}
+        {metrics.skipped > 0 ? ` · skipped: ${metrics.skipped}` : ''}
+        {metrics.failures > 0
+          ? ` · failures: ${metrics.failures}${metrics.lastFailureReason ? ` (${metrics.lastFailureReason})` : ''}`
+          : ''}
       </p>
     </div>
   )

@@ -1,0 +1,24 @@
+{
+  "manifest": {
+    "id": "community-sample",
+    "name": "Community Sample",
+    "version": "1.0.0",
+    "description": "Minimal third-party plugin for publish review walkthrough (v1.3.2).",
+    "author": "Community Dev",
+    "publisher": "community-dev",
+    "sdkVersion": 2,
+    "permissions": ["ui"],
+    "i18n": {
+      "zh-CN": {
+        "toolbar.label": "社区样例",
+        "notify.hello": "社区插件已激活"
+      },
+      "en-US": {
+        "toolbar.label": "Community sample",
+        "notify.hello": "Community plugin activated"
+      }
+    },
+    "entry": "main.js"
+  },
+  "source": "function activate(context) {\n  context.ui.addToolbarButton({\n    icon: 'puzzle',\n    label: context.t('toolbar.label'),\n    onClick: function () {\n      context.ui.showNotification(context.t('notify.hello'), 'info');\n    },\n  });\n}"
+}

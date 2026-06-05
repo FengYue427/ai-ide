@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  buildTabCompletionCacheKey,
   clearInlineCompletionCache,
   getTabCompletionMetrics,
   inlineCompletionService,
@@ -62,7 +63,7 @@ describe('inlineCompletionService', () => {
   it('caches identical prefix/suffix requests', async () => {
     const config = { provider: 'openai' as const, apiKey: 'sk-test' }
     const req = {
-      prefix: 'function hello() {\n  ',
+      prefix: 'function hello() {\n  const x = ',
       suffix: '\n}',
       language: 'typescript',
       filename: 'a.ts',
@@ -77,6 +78,36 @@ describe('inlineCompletionService', () => {
     expect(second).toBe('line1\nline2\nline3')
     expect(sendMessageWithDebounce).toHaveBeenCalledTimes(1)
     expect(getTabCompletionMetrics().cacheHits).toBe(1)
+  })
+
+  it('skips requests with too-short prefix on current line', async () => {
+    const result = await inlineCompletionService.fetchCompletion({
+      prefix: '  ',
+      suffix: '',
+      language: 'javascript',
+      filename: 'app.js',
+      config: { provider: 'openai', apiKey: 'sk-test' },
+      loggedIn: false,
+    })
+    expect(result).toBeNull()
+    expect(sendMessageWithDebounce).not.toHaveBeenCalled()
+    expect(getTabCompletionMetrics().skipped).toBe(1)
+  })
+
+  it('uses distinct cache keys for empty suffix at EOF', () => {
+    const config = { provider: 'openai' as const, apiKey: 'sk-test' }
+    const base = {
+      prefix: 'const value = 123',
+      language: 'javascript',
+      filename: 'app.js',
+      config,
+      loggedIn: false,
+    }
+    const eofKey = buildTabCompletionCacheKey({ ...base, suffix: '' }, 5)
+    const midKey = buildTabCompletionCacheKey({ ...base, suffix: '\n}' }, 5)
+    expect(eofKey).toContain('|eof')
+    expect(midKey).not.toContain('|eof')
+    expect(eofKey).not.toBe(midKey)
   })
 
   it('uses platform path when logged in with platform key mode', async () => {
