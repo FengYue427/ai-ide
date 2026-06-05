@@ -1,6 +1,6 @@
 # 当前执行入口
 
-> **更新**：2026-06-05 — **v1.2.9 GA** · **下一：v1.3 F1**
+> **更新**：2026-06-05 — **v1.3.0 F1–F7** · 待发 tag
 
 ---
 
@@ -17,19 +17,17 @@
 | 线 | 状态 | 文档 |
 |----|------|------|
 | **v1.2.9** | ✅ GA · `v1.2.9` | [RELEASE_NOTES_v1.2.9.md](./RELEASE_NOTES_v1.2.9.md) |
-| **v1.3** | 📋 规划 | [V1.3_KICKOFF.md](./V1.3_KICKOFF.md) · [ROADMAP_V1.3.md](./ROADMAP_V1.3.md) |
+| **v1.3.0** | 🔨 F1–F7 代码完成 | [RELEASE_NOTES_v1.3.0.md](./RELEASE_NOTES_v1.3.0.md) |
 
 ---
 
-## v1.3 下一工程线（规划）
+## v1.3.0 交付（F1–F7）
 
-| 阶段 | 主题 | 文档 |
-|------|------|------|
-| **F1** | Python / LSP 试点 | [V1.3_MASTER_PLAN.md](./V1.3_MASTER_PLAN.md) §2 |
-| **F2** | 索引 2.0 | §3 |
-| **F3** | 后台 Agent GA | §4 |
+| 阶段 | 文档 |
+|------|------|
+| F1–F7 | [V1.3_KICKOFF.md](./V1.3_KICKOFF.md) · [V1.3_MASTER_PLAN.md](./V1.3_MASTER_PLAN.md) |
 
-**门禁**：`npm run test:local` · `test:e2e:stack` · [V1.2.9_GA_EXECUTION.md](./V1.2.9_GA_EXECUTION.md) 生产 smoke
+**门禁**：`npm run test:local` · `npm run test:e2e:local` · tag `v1.3.0`
 
 ---
 

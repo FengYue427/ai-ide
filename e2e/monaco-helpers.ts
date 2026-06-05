@@ -29,7 +29,7 @@ export async function waitForMonacoHarness(page: Page): Promise<void> {
 /** Editor syncs TS extra libs on a 400ms debounce — wait before semantic navigation. */
 export async function waitForTsProjectSync(page: Page): Promise<void> {
   await waitForMonacoHarness(page)
-  await page.waitForTimeout(900)
+  await page.waitForTimeout(1_500)
 }
 
 export async function monacoSetCursorAt(
@@ -73,7 +73,7 @@ export async function monacoGoToDefinitionAt(
   await page.evaluate(() => {
     ;(window as MonacoHarnessWindow).__AI_IDE_STORE__?.getState().requestGoToDefinition()
   })
-  await page.waitForTimeout(900)
+  await page.waitForTimeout(1_500)
 }
 
 export async function expectActiveTabLabel(page: Page, label: string): Promise<void> {

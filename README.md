@@ -2,7 +2,15 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.2.9**（引用精度 · 动态 MCP 预留 · 插件审核运维）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.3](./docs/ROADMAP_V1.3.md)
+**当前版本：v1.3.0**（Python 导航 · 索引 2.0 · Agent/Tab/插件平台）· [CHANGELOG](./CHANGELOG.md) · [ROADMAP v1.3](./docs/ROADMAP_V1.3.md)
+
+## v1.3.0 语言与平台深度（开发中）
+
+- **F1**：Python 跨文件 F12（符号索引）· [ADR_V1.3_PYTHON_NAV.md](./docs/ADR_V1.3_PYTHON_NAV.md)
+- **F2**：Embedding 持久缓存 + 索引构建遥测
+- **F3–F7**：后台 Agent 设置卡 · Tab 指标 · Agent 索引上下文 · 插件审核计数 · v1.3 特性开关
+
+详见 [RELEASE_NOTES_v1.3.0.md](./docs/RELEASE_NOTES_v1.3.0.md) · [V1.3_ENV.md](./docs/V1.3_ENV.md)
 
 ## v1.2.9 引用与运维（GA）
 

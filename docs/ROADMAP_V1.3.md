@@ -1,7 +1,7 @@
 # v1.3 规划（B 轨 · 语言 + 索引 + Agent）
 
 > **更新**：2026-06-05  
-> **状态**：📋 **规划**  
+> **状态**：🔨 **v1.3.0 开发中**（F1–F7 ✅ 代码）  
 > **Kickoff**：[V1.3_KICKOFF.md](./V1.3_KICKOFF.md) · **Master**：[V1.3_MASTER_PLAN.md](./V1.3_MASTER_PLAN.md)  
 > **前置**：[ROADMAP_V1.2.md](./ROADMAP_V1.2.md)（v1.2.0～v1.2.9 ✅）
 
@@ -13,7 +13,7 @@ v1.3 为 v1.2 世代之后的 **产品深度 II**：从「TS 导航 + 工程 pol
 
 | 子版本 | 主题 |
 |--------|------|
-| **v1.3.0** 📋 | Python/LSP 试点 · 索引 2.0 · 后台 Agent GA |
+| **v1.3.0** 🔨 | F1–F7：Python · 索引2.0 · Agent · Tab · 插件 · 平台 — [RELEASE_NOTES_v1.3.0.md](./RELEASE_NOTES_v1.3.0.md) |
 | **v1.3.x** | Tab 补全抛光 · 插件第三方案例 · 条件断点完善 |
 
 轨道 A：**1.3.0.x** patch（热修）。

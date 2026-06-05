@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import { isPythonNavigationEnabled } from '../lib/v13Features'
 import { goToReferences } from './languageServiceHostCore'
 import { getMonacoTypeScriptReferences } from './monacoTypeScriptNavigation'
 import type { ReferenceLocation } from '../services/referenceIndexService'
@@ -12,12 +13,21 @@ export function registerCrossFileReferenceProvider(
   files: ReferenceProjectFile[],
   currentFile: string,
 ): monaco.IDisposable {
-  const languages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact', 'plaintext']
+  const languages = [
+    'typescript',
+    'javascript',
+    'typescriptreact',
+    'javascriptreact',
+    'plaintext',
+    ...(isPythonNavigationEnabled() ? (['python'] as const) : []),
+  ]
 
   return monaco.languages.registerReferenceProvider(languages, {
     async provideReferences(model, position) {
-      const tsRefs = await getMonacoTypeScriptReferences(model, position, currentFile)
-      if (tsRefs?.length) return tsRefs
+      if (model.getLanguageId() !== 'python') {
+        const tsRefs = await getMonacoTypeScriptReferences(model, position, currentFile)
+        if (tsRefs?.length) return tsRefs
+      }
 
       const word = model.getWordAtPosition(position)
       if (!word?.word) return []

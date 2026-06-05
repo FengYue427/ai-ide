@@ -75,6 +75,28 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     }
   }
 
+  /** Cloud metadata can lag immediately after POST /api/workspaces. */
+  const reloadUntilCloudListed = async (workspaceName: string) => {
+    const maxAttempts = 10
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const list = await listWorkspaceEntries(isLoggedIn)
+      const hit = list.find((workspace) => workspace.name === workspaceName)
+      if (hit?.source === 'cloud') {
+        const backup = await cloudSyncService.getAutoBackup()
+        setWorkspaces(list)
+        setAutoBackup(backup || null)
+        return
+      }
+      if (attempt < maxAttempts - 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 400))
+      } else {
+        const backup = await cloudSyncService.getAutoBackup()
+        setWorkspaces(list)
+        setAutoBackup(backup || null)
+      }
+    }
+  }
+
   useEffect(() => {
     void loadWorkspaces()
   }, [isLoggedIn])
@@ -146,7 +168,11 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
       })
       useIDEStore.getState().setRecentProjects(await recentFilesService.getRecentProjects())
     }
-    await loadWorkspaces()
+    if (isLoggedIn && result.cloudResult?.ok) {
+      await reloadUntilCloudListed(savedName)
+    } else {
+      await loadWorkspaces()
+    }
   }
 
   const handleLoad = async (workspace: WorkspaceEntry) => {

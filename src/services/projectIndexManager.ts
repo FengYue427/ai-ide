@@ -11,6 +11,8 @@ import {
   type IndexSearchHit,
   type ProjectIndex,
 } from './projectIndexService'
+import { recordIndexBuildTelemetry } from '../lib/indexBuildTelemetry'
+import { isIndexBuildTelemetryEnabled } from '../lib/v13Features'
 import { clearSemanticSearchCache } from './semanticSearchService'
 import { workspaceContextService } from './workspaceContextService'
 
@@ -178,7 +180,24 @@ class ProjectIndexManager {
     this.worker = null
   }
 
-  private finishBuild(sources: IndexSourceRow[], index: ProjectIndex, stats: IndexBuildStats): void {
+  private buildStartedAt: number | null = null
+
+  private finishBuild(
+    sources: IndexSourceRow[],
+    index: ProjectIndex,
+    stats: IndexBuildStats,
+    mode: 'full' | 'incremental' | 'worker' = 'full',
+    changeCount = 0,
+  ): void {
+    if (isIndexBuildTelemetryEnabled() && this.buildStartedAt != null) {
+      recordIndexBuildTelemetry({
+        durationMs: performance.now() - this.buildStartedAt,
+        mode,
+        indexedFiles: stats.indexedFiles,
+        changeCount,
+      })
+    }
+    this.buildStartedAt = null
     this.stats = stats
     this.index = index
     this.fileSignatures = new Map(
@@ -234,7 +253,7 @@ class ProjectIndexManager {
         return
       }
 
-      this.finishBuild(sources, assembleProjectIndex(data.files), stats)
+      this.finishBuild(sources, assembleProjectIndex(data.files), stats, 'worker')
     }
 
     this.worker.onerror = () => {
@@ -288,6 +307,7 @@ class ProjectIndexManager {
   private pendingEditorFiles: { name: string; content: string; language?: string }[] | null = null
 
   syncFromWorkspace(editorFiles: { name: string; content: string; language?: string }[]): void {
+    this.buildStartedAt = performance.now()
     this.status = 'building'
     this.progress = null
     this.emit()
@@ -308,7 +328,7 @@ class ProjectIndexManager {
 
       if (this.index.files.length === 0) {
         if (this.buildWithWorker(sources, stats)) return
-        this.finishBuild(sources, buildProjectIndex(sources), stats)
+        this.finishBuild(sources, buildProjectIndex(sources), stats, 'full')
         return
       }
 
@@ -337,10 +357,19 @@ class ProjectIndexManager {
 
       if (needsFullRebuild) {
         if (this.buildWithWorker(sources, stats)) return
-        this.finishBuild(sources, buildProjectIndex(sources), stats)
+        this.finishBuild(sources, buildProjectIndex(sources), stats, 'full', changeCount)
         return
       }
 
+      if (isIndexBuildTelemetryEnabled() && this.buildStartedAt != null) {
+        recordIndexBuildTelemetry({
+          durationMs: performance.now() - this.buildStartedAt,
+          mode: 'incremental',
+          indexedFiles: stats.indexedFiles,
+          changeCount,
+        })
+      }
+      this.buildStartedAt = null
       this.stats = stats
       this.index = { ...this.index, builtAt: Date.now() }
       if (changeCount > 0) clearSemanticSearchCache()

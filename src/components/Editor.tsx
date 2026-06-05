@@ -10,9 +10,9 @@ import {
 } from '../editor/monacoSetup'
 import { Z } from '../lib/layers'
 import { registerInlineCompletionProvider } from '../editor/registerInlineCompletion'
-import { goToReferences } from '../editor/languageServiceHostCore'
+import { goToDefinition, goToReferences } from '../editor/languageServiceHostCore'
 import { registerLanguageServiceProviders } from '../editor/languageServiceHost'
-import { getMonacoTypeScriptReferences } from '../editor/monacoTypeScriptNavigation'
+import { getMonacoTypeScriptDefinitions, getMonacoTypeScriptReferences } from '../editor/monacoTypeScriptNavigation'
 import { monacoLocationToReference } from '../editor/referenceLocationMapping'
 import { resolveReferenceNavigation } from '../editor/registerCrossFileReferences'
 import type { DefinitionProjectFile } from '../editor/registerCrossFileDefinition'
@@ -198,11 +198,58 @@ const Editor: React.FC<EditorProps> = ({
     if (!goToDefinitionNonce || readOnly) return
     const editor = editorRef.current
     if (!editor) return
-    const action =
-      editor.getAction('editor.action.goToDefinition') ??
-      editor.getAction('editor.action.revealDefinition')
-    void action?.run()
-  }, [goToDefinitionNonce, readOnly])
+    const model = editor.getModel()
+    const position = editor.getPosition()
+
+    void (async () => {
+      if (model && position) {
+        const word = model.getWordAtPosition(position)
+        if (word?.word) {
+          const tsDefs = await getMonacoTypeScriptDefinitions(model, position, filename)
+          if (tsDefs?.length) {
+            const loc = tsDefs[0]
+            const path = libUriStringToWorkspacePath(loc.uri.toString())
+            const nav = resolveReferenceNavigation(
+              allFilesRef.current,
+              path,
+              loc.range.startLineNumber,
+              loc.range.startColumn,
+            )
+            if (nav) {
+              setActiveFile(nav.fileIndex)
+              setEditorTarget({ line: nav.line, column: nav.column, nonce: Date.now() })
+              return
+            }
+          }
+
+          const fallback = goToDefinition({
+            file: filename,
+            line: position.lineNumber,
+            symbol: word.word,
+            files: allFilesRef.current,
+          })
+          if (fallback) {
+            const nav = resolveReferenceNavigation(
+              allFilesRef.current,
+              fallback.path,
+              fallback.line,
+              fallback.column ?? 1,
+            )
+            if (nav) {
+              setActiveFile(nav.fileIndex)
+              setEditorTarget({ line: nav.line, column: nav.column, nonce: Date.now() })
+              return
+            }
+          }
+        }
+      }
+
+      const action =
+        editor.getAction('editor.action.goToDefinition') ??
+        editor.getAction('editor.action.revealDefinition')
+      void action?.run()
+    })()
+  }, [goToDefinitionNonce, readOnly, filename, setActiveFile, setEditorTarget])
 
   useEffect(() => {
     if (!goToReferencesNonce || readOnly) return

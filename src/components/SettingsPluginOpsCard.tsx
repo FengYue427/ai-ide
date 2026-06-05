@@ -119,6 +119,12 @@ export function SettingsPluginOpsCard({
               <option value="pending">{t('settings.pluginOps.reviewsFilterPending')}</option>
             </select>
           </label>
+          <p className="settings-privacy-text" style={{ marginTop: 6, fontSize: 11 }}>
+            {t('settings.pluginOps.reviewsCount', {
+              total: reviews.length,
+              pending: reviews.filter((row) => row.status === 'pending').length,
+            })}
+          </p>
           {reviews.length === 0 ? (
             <p className="settings-privacy-text" style={{ marginTop: 6 }}>
               {t('settings.pluginOps.reviewsEmpty')}

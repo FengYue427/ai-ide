@@ -85,8 +85,10 @@ export interface IndexSearchHit {
 
 const SYMBOL_PATTERNS: { kind: SymbolKind; pattern: RegExp }[] = [
   { kind: 'function', pattern: /^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)/ },
+  { kind: 'function', pattern: /^\s*(?:async\s+)?def\s+(\w+)\s*\(/ },
   { kind: 'method', pattern: /^\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{/ },
   { kind: 'class', pattern: /^\s*(?:export\s+)?class\s+(\w+)/ },
+  { kind: 'class', pattern: /^\s*class\s+(\w+)\s*(?:\(|:)/ },
   { kind: 'interface', pattern: /^\s*(?:export\s+)?interface\s+(\w+)/ },
   { kind: 'type', pattern: /^\s*(?:export\s+)?type\s+(\w+)/ },
   { kind: 'enum', pattern: /^\s*(?:export\s+)?enum\s+(\w+)/ },

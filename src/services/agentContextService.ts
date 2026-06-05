@@ -1,5 +1,6 @@
 import type { Language } from '../i18n'
 import type { AgentSettings } from './agentSettingsService'
+import { buildAgentIndexContextSection } from './agentIndexContextSection'
 import { buildTerminalContextSection } from './terminalContextService'
 
 export function buildEditorFocusSection(activeFilePath: string | null, language: Language): string {
@@ -29,6 +30,9 @@ export function appendAgentContextSections(
     const terminal = buildTerminalContextSection(options.agentSettings.terminalContextMaxLines, options.language)
     if (terminal) prompt = `${prompt}\n\n${terminal}`
   }
+
+  const indexSection = buildAgentIndexContextSection(options.language)
+  if (indexSection) prompt = `${prompt}\n\n${indexSection}`
 
   return prompt
 }

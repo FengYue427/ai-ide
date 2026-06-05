@@ -7,6 +7,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.0] — 2026-06-05 · Python/索引2.0/Agent平台 F1–F7
+
+### Added
+
+- **v1.3 F1**：Python `def`/`class` 符号 · 跨文件 F12 · E2E `py-cross-file-navigation`
+- **v1.3 F2**：`embeddingPersistCache` · `indexBuildTelemetry` · 设置页索引耗时
+- **v1.3 F3**：`SettingsBackgroundAgentCard` · `getBackgroundAgentFeatureStatus`
+- **v1.3 F4**：`SettingsTabCompletionCard` · Tab 指标重置
+- **v1.3 F5**：`buildAgentIndexContextSection` 注入 Agent prompt
+- **v1.3 F6**：插件审核列表 total/pending 计数
+- **v1.3 F7**：`v13Features` · `SettingsV13FeaturesCard` · E2E `v13-features`
+
+### Docs
+
+- [RELEASE_NOTES_v1.3.0.md](docs/RELEASE_NOTES_v1.3.0.md) · [V1.3_KICKOFF.md](docs/V1.3_KICKOFF.md) · F1–F7 阶段文档
+
+See [RELEASE_NOTES_v1.3.0.md](docs/RELEASE_NOTES_v1.3.0.md).
+
+---
+
 ## [1.2.9] — 2026-06-05 · 引用精度/MCP 动态预留/插件审核运维
 
 ### Added

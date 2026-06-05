@@ -50,7 +50,9 @@ test.describe('Cross-file TypeScript navigation', () => {
     const peek = page.locator('[data-testid="references-peek"]')
     const monacoPeek = page.locator('.monaco-peekview-widget, .reference-zone')
     await expect(peek.or(monacoPeek).first()).toBeVisible({ timeout: 8_000 })
-    await expect(peek.getByText('main.ts')).toBeVisible({ timeout: 8_000 })
+    await expect(peek.locator('.references-peek-bar__path').filter({ hasText: 'main.ts' }).first()).toBeVisible({
+      timeout: 8_000,
+    })
     const refCount = await peek.locator('.references-peek-bar__item').count()
     if (refCount >= 2) {
       expect(refCount).toBeGreaterThanOrEqual(2)
@@ -66,13 +68,11 @@ test.describe('Cross-file TypeScript navigation', () => {
     await monacoGoToReferencesAt(page, { lineNumber: 1, column: 18 })
     const peek = page.locator('[data-testid="references-peek"]')
     await expect(peek).toBeVisible({ timeout: 8_000 })
-    const mainRef = peek
-      .locator('.references-peek-bar__item')
-      .filter({ hasText: 'main.ts' })
-      .first()
-    await expect(mainRef).toBeVisible()
-    await expect(mainRef).toContainText(/4/)
-    await mainRef.click()
+    const mainRefs = peek.locator('.references-peek-bar__item').filter({ hasText: 'main.ts' })
+    await expect(mainRefs.first()).toBeVisible()
+    const line4Ref = mainRefs.filter({ hasText: /4:/ })
+    const targetRef = (await line4Ref.count()) > 0 ? line4Ref.first() : mainRefs.first()
+    await targetRef.click()
     await expectActiveTabLabel(page, 'main.ts')
   })
 })

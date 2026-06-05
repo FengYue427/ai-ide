@@ -55,8 +55,13 @@ import { projectIndexManager } from '../services/projectIndexManager'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
+import { getIndexBuildTelemetry } from '../lib/indexBuildTelemetry'
 import { getV12FeatureStatus } from '../lib/v12Features'
+import { isIndexBuildTelemetryEnabled } from '../lib/v13Features'
+import { SettingsBackgroundAgentCard } from './SettingsBackgroundAgentCard'
 import { SettingsPluginOpsCard } from './SettingsPluginOpsCard'
+import { SettingsTabCompletionCard } from './SettingsTabCompletionCard'
+import { SettingsV13FeaturesCard } from './SettingsV13FeaturesCard'
 import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
 import { usePlatformUsageDashboard } from '../hooks/usePlatformUsageDashboard'
 import { useIDEStore, type AIConfigState, type AiKeyMode } from '../store/ideStore'
@@ -334,7 +339,14 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
       })
     }
 
-    return t('chat.indexOk', { count: indexStats.indexedFiles })
+    const base = t('chat.indexOk', { count: indexStats.indexedFiles })
+    if (!isIndexBuildTelemetryEnabled()) return base
+    const telemetry = getIndexBuildTelemetry()
+    if (telemetry.lastDurationMs == null) return base
+    return `${base} · ${t('settings.index.telemetry', {
+      ms: telemetry.lastDurationMs,
+      mode: telemetry.lastMode ?? '—',
+    })}`
   }, [indexBuildState.lastError, indexBuildState.progress, indexBuildState.status, indexStats.capped, indexStats.eligibleFiles, indexStats.indexedFiles, t])
 
   const refreshQuota = useCallback(() => {
@@ -394,6 +406,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
               <button
                 key={tab.id}
                 type="button"
+                data-testid={`settings-tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
                 className={`settings-nav-btn ${activeTab === tab.id ? 'settings-nav-btn--active' : ''}`}
               >
@@ -813,6 +826,9 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     </li>
                   </ul>
                 </div>
+                <SettingsV13FeaturesCard />
+                <SettingsTabCompletionCard />
+                <SettingsBackgroundAgentCard />
                 {aiGatewayEnabled ? (
                   <SettingsPluginOpsCard
                     plugins={

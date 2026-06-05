@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import { isPythonNavigationEnabled } from '../lib/v13Features'
 import { goToDefinition } from './languageServiceHostCore'
 import { getMonacoTypeScriptDefinitions } from './monacoTypeScriptNavigation'
 
@@ -16,12 +17,21 @@ export function registerCrossFileDefinitionProvider(
   files: DefinitionProjectFile[],
   currentFile: string,
 ): monaco.IDisposable {
-  const languages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
+  const languages = [
+    'typescript',
+    'javascript',
+    'typescriptreact',
+    'javascriptreact',
+    ...(isPythonNavigationEnabled() ? (['python'] as const) : []),
+  ]
 
   return monaco.languages.registerDefinitionProvider(languages, {
     async provideDefinition(model, position) {
-      const tsLocations = await getMonacoTypeScriptDefinitions(model, position, currentFile)
-      if (tsLocations?.length) return tsLocations
+      const isPython = model.getLanguageId() === 'python'
+      if (!isPython) {
+        const tsLocations = await getMonacoTypeScriptDefinitions(model, position, currentFile)
+        if (tsLocations?.length) return tsLocations
+      }
 
       const word = model.getWordAtPosition(position)
       if (!word?.word) return null
@@ -38,9 +48,9 @@ export function registerCrossFileDefinitionProvider(
         uri: toUri(location.path),
         range: {
           startLineNumber: location.line,
-          startColumn: 1,
+          startColumn: location.column ?? 1,
           endLineNumber: location.line,
-          endColumn: 1,
+          endColumn: location.column ?? 1,
         },
       }
     },

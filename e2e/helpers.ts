@@ -23,6 +23,20 @@ export const E2E_NAV_FILES = [
   },
 ]
 
+/** Cross-file Python navigation (v1.3 F1). */
+export const E2E_NAV_PYTHON_FILES = [
+  {
+    name: 'main.py',
+    content: "from lib.util import greet\n\ndef run():\n    return greet()\n",
+    language: 'python',
+  },
+  {
+    name: 'lib/util.py',
+    content: 'def greet():\n    return 42\n',
+    language: 'python',
+  },
+]
+
 /** TS sample for symbol outline + language navigation E2E (v1.2.5 F1). */
 export const E2E_SYMBOL_FILES = [
   {
@@ -104,4 +118,14 @@ export async function gotoApp(page: Page, path = '/'): Promise<void> {
 /** Toolbar settings — avoids status bar duplicate「设置」button. */
 export async function openSettingsFromToolbar(page: Page): Promise<void> {
   await page.locator('header.toolbar').getByRole('button', { name: /^(Settings|设置)$/ }).click()
+  await expect(page.locator('.settings-dialog')).toBeVisible({ timeout: 10_000 })
+}
+
+/** Settings sidebar tab (label includes description in a11y name — use test id). */
+export async function openSettingsTab(
+  page: Page,
+  tabId: 'ai' | 'appearance' | 'editor' | 'features' | 'advanced',
+): Promise<void> {
+  await openSettingsFromToolbar(page)
+  await page.getByTestId(`settings-tab-${tabId}`).click()
 }

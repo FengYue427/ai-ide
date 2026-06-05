@@ -13,14 +13,19 @@ export interface GoToDefinitionRequest {
   files: DefinitionProjectFile[]
 }
 
-export function goToDefinition(request: GoToDefinitionRequest): { path: string; line: number } | null {
+export function goToDefinition(
+  request: GoToDefinitionRequest,
+): { path: string; line: number; column?: number } | null {
   const searchFiles = selectFilesForDefinitionSearch(request.files, request.file)
   for (const file of searchFiles) {
     const symbols = extractSymbolsFromContent(file.name, file.content)
     const match = symbols.find((symbol) => symbol.name === request.symbol)
     if (!match) continue
     if (file.name === request.file && match.line === request.line) continue
-    return { path: file.name, line: match.line }
+    const lineText = file.content.split(/\r?\n/)[match.line - 1] ?? ''
+    const nameIndex = lineText.indexOf(match.name)
+    const column = nameIndex >= 0 ? nameIndex + 1 : 1
+    return { path: file.name, line: match.line, column }
   }
   return null
 }

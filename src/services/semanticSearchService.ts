@@ -3,10 +3,16 @@
  */
 
 import type { Language } from '../i18n'
+import { isEmbeddingPersistCacheEnabled } from '../lib/v13Features'
 import { isSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { serviceText } from '../lib/serviceI18n'
 import type { AIConfig } from './aiService'
 import { canUseEmbeddings, cosineSimilarity, createEmbedding } from './embeddingService'
+import {
+  loadPersistedChunkVectors,
+  savePersistedChunkVectors,
+  type PersistedChunkVector,
+} from './embeddingPersistCache'
 import { collectIndexSources } from './projectIndexService'
 
 export interface SemanticChunkHit {
@@ -57,6 +63,15 @@ async function embedChunks(
   const cached = chunkVectorCache.get(key)
   if (cached) return cached
 
+  if (isEmbeddingPersistCacheEnabled()) {
+    const persisted = await loadPersistedChunkVectors(key)
+    if (persisted?.length) {
+      const records = persisted as ChunkRecord[]
+      chunkVectorCache.set(key, records)
+      return records
+    }
+  }
+
   const chunks = splitIntoChunks(content)
   const records: ChunkRecord[] = []
 
@@ -68,6 +83,9 @@ async function embedChunks(
   }
 
   chunkVectorCache.set(key, records)
+  if (isEmbeddingPersistCacheEnabled() && records.length > 0) {
+    void savePersistedChunkVectors(key, records as PersistedChunkVector[])
+  }
   return records
 }
 

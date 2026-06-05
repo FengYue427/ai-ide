@@ -13,6 +13,11 @@ export async function openPluginManager(page: Page): Promise<void> {
   await expect(page.locator('.modal--plugins')).toBeVisible({ timeout: 10_000 })
 }
 
+export async function openPluginManualTab(page: Page): Promise<void> {
+  await openPluginManager(page)
+  await page.getByRole('button', { name: /手动安装|Manual install/i }).click()
+}
+
 export async function installHelloSandboxFromMarketplace(page: Page): Promise<void> {
   await openPluginManager(page)
   await page.getByRole('button', { name: /插件市场|Marketplace/i }).click()
