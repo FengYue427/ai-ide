@@ -4,6 +4,21 @@ import { loadGitReadonlySnapshot } from '../lib/gitReadonlySnapshot'
 import { useIDEStore } from '../store/ideStore'
 import type { FileItem } from '../types/file'
 
+export function shouldRunGitStatusRefresh(args: {
+  gitManualRefreshOnly: boolean
+  fsJustReady: boolean
+  manualTrigger: boolean
+}): boolean {
+  if (args.gitManualRefreshOnly && !args.fsJustReady && !args.manualTrigger) {
+    return false
+  }
+  return true
+}
+
+export function resolveGitStatusRefreshDelay(manualTrigger: boolean, fsJustReady: boolean): number {
+  return manualTrigger || fsJustReady ? 0 : gitStatusRefreshDelayMs('auto')
+}
+
 async function syncGitStatusCounts(
   fs: any,
   files: FileItem[],
@@ -49,12 +64,12 @@ export function useGitStatus(fs: any, files: FileItem[]) {
     const manualTrigger = gitStatusRefreshNonce > prevNonceRef.current
     prevNonceRef.current = gitStatusRefreshNonce
 
-    if (gitManualRefreshOnly && !fsJustReady && !manualTrigger) {
+    if (!shouldRunGitStatusRefresh({ gitManualRefreshOnly, fsJustReady, manualTrigger })) {
       return
     }
 
     let cancelled = false
-    const delay = manualTrigger || fsJustReady ? 0 : gitStatusRefreshDelayMs('auto')
+    const delay = resolveGitStatusRefreshDelay(manualTrigger, fsJustReady)
     const timer = setTimeout(() => {
       void (async () => {
         try {

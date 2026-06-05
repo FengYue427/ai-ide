@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { GitBranch, MessageSquare, Server, X } from 'lucide-react'
 import { ChatPanel, GitPanel } from './lazyPanels'
 import BackgroundJobsPanel from '../components/BackgroundJobsPanel'
-import { applyChangesToFiles, applyChangesToWorkspace } from '../services/fileApplyService'
+import { applyChangesToFiles, applyChangesWithResult } from '../services/fileApplyService'
 import { applyGitSyncToFiles, applyGitSyncToWorkspace } from './gitEditorSync'
 import { projectIndexManager } from '../services/projectIndexManager'
 import type { GitFileSyncUpdate } from '../services/gitService'
@@ -205,7 +205,21 @@ export function RightPanel({
                     language: file.language,
                   }))
                   setFiles((prev) => applyChangesToFiles(prev, payload))
-                  void applyChangesToWorkspace(payload)
+                  void applyChangesWithResult(payload).then((result) => {
+                    if (result.failures.length === 0) return
+                    const paths = result.failures.map((row) => row.path).join(', ')
+                    const reason = result.failures[0]?.reason ?? t('agentApply.failReason.unknown')
+                    notify(
+                      'error',
+                      t('agentApply.failTitle'),
+                      t('agentApply.failDetail', {
+                        applied: String(result.applied),
+                        total: String(payload.length),
+                        paths,
+                        reason,
+                      }),
+                    )
+                  })
                 }}
               />
             )}

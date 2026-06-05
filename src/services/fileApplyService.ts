@@ -1,7 +1,8 @@
 import type { FileItem } from '../types/file'
+import { localProjectService } from './localProjectService'
+import { normalizeProjectPath } from './localProjectPaths'
 import { workspaceContextService } from './workspaceContextService'
 import { clearSemanticSearchCache } from './semanticSearchService'
-import { syncToLocalDisk } from './localProjectSync'
 
 export interface FileChangeInput {
   path: string
@@ -50,34 +51,77 @@ export function getOldContentForPath(files: FileItem[], path: string): string {
   return index >= 0 ? files[index].content : ''
 }
 
-/** Mirror agent/editor file changes into the multi-file workspace store. */
-export async function applyChangesToWorkspace(changes: FileChangeInput[]): Promise<void> {
+export interface ApplyChangesFailure {
+  path: string
+  reason: string
+}
+
+export interface ApplyChangesResult {
+  applied: number
+  failures: ApplyChangesFailure[]
+  ok: boolean
+}
+
+async function syncToLocalDiskWithReason(path: string, content: string): Promise<string | null> {
+  if (!localProjectService.isBound()) return null
+  const normalized = normalizeProjectPath(path)
+  if (!normalized) return null
+  try {
+    await localProjectService.writeFile(normalized, content)
+    return null
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
+}
+
+/** v1.3.7 — apply with per-file failure reasons for user-visible feedback. */
+export async function applyChangesWithResult(changes: FileChangeInput[]): Promise<ApplyChangesResult> {
+  const failures: ApplyChangesFailure[] = []
+  let applied = 0
   let touched = false
 
   for (const change of changes) {
     const path = change.path.replace(/^\.\//, '')
-    const existing = workspaceContextService.getFile(path)
+    try {
+      const existing = workspaceContextService.getFile(path)
 
-    if (existing) {
-      await workspaceContextService.updateFile(path, change.content)
-      await syncToLocalDisk(path, change.content)
+      if (existing) {
+        await workspaceContextService.updateFile(path, change.content)
+      } else {
+        const name = path.split('/').pop() || path
+        await workspaceContextService.addFile({
+          name,
+          path,
+          content: change.content,
+          language: change.language,
+          selected: true,
+        })
+      }
+
+      const diskError = await syncToLocalDiskWithReason(path, change.content)
+      if (diskError) {
+        failures.push({ path, reason: diskError })
+        continue
+      }
+
+      applied += 1
       touched = true
-      continue
+    } catch (error) {
+      failures.push({
+        path,
+        reason: error instanceof Error ? error.message : String(error),
+      })
     }
-
-    const name = path.split('/').pop() || path
-    await workspaceContextService.addFile({
-      name,
-      path,
-      content: change.content,
-      language: change.language,
-      selected: true,
-    })
-    await syncToLocalDisk(path, change.content)
-    touched = true
   }
 
   if (touched) {
     clearSemanticSearchCache()
   }
+
+  return { applied, failures, ok: failures.length === 0 }
+}
+
+/** Mirror agent/editor file changes into the multi-file workspace store. */
+export async function applyChangesToWorkspace(changes: FileChangeInput[]): Promise<void> {
+  await applyChangesWithResult(changes)
 }

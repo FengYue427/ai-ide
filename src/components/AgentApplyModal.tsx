@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Check, FileText } from 'lucide-react'
 import { ModalShell } from './ui/ModalShell'
 import { DiffViewer } from './DiffViewer'
-import { applyChangesToFiles, applyChangesToWorkspace } from '../services/fileApplyService'
+import { applyChangesToFiles, applyChangesWithResult } from '../services/fileApplyService'
+import type { ToastKind } from './FeedbackCenter'
 import {
   acceptedHunkSummary,
   initHunkSelections,
@@ -13,7 +14,11 @@ import { computeLineDiff, defaultAcceptedHunks } from '../services/diffHunkServi
 import { useI18n } from '../i18n'
 import { useIDEStore, type AgentApplyItem } from '../store/ideStore'
 
-export function AgentApplyModal() {
+interface AgentApplyModalProps {
+  notify?: (kind: ToastKind, title: string, detail?: string) => void
+}
+
+export function AgentApplyModal({ notify }: AgentApplyModalProps) {
   const { t } = useI18n()
   const queue = useIDEStore((s) => s.agentApplyQueue)
   const selectedIndex = useIDEStore((s) => s.agentApplyIndex)
@@ -66,7 +71,21 @@ export function AgentApplyModal() {
       }
       return next
     })
-    void applyChangesToWorkspace(payload)
+    void applyChangesWithResult(payload).then((result) => {
+      if (result.failures.length === 0) return
+      const paths = result.failures.map((row) => row.path).join(', ')
+      const reason = result.failures[0]?.reason ?? t('agentApply.failReason.unknown')
+      notify?.(
+        'error',
+        t('agentApply.failTitle'),
+        t('agentApply.failDetail', {
+          applied: String(result.applied),
+          total: String(payload.length),
+          paths,
+          reason,
+        }),
+      )
+    })
     setAppliedPaths((prev) => {
       const next = new Set(prev)
       items.forEach((item) => next.add(item.path))

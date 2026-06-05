@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.3.6",
+  "version": "1.3.8",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -9,6 +9,7 @@
     "dev": "vite",
     "dev:api": "tsx scripts/local-dev-server.ts",
     "dev:stack": "concurrently -k -n api,web -c blue,green \"npm run dev:api\" \"npm run dev\"",
+    "seed:plugin-review": "node scripts/seed-plugin-review.mjs",
     "dev:stack:collab": "concurrently -k -n api,web -c blue,green \"npm run dev:api\" \"vite --mode collab-e2e\"",
     "dev:full": "npx vercel dev",
     "postinstall": "prisma generate",

@@ -102,6 +102,11 @@ import { buildSpecExecutionLog } from '../services/specExecutionLog'
 import { buildPromptWithSharedContext } from '../services/chatPromptPipeline'
 import { buildChatHistory } from '../services/chatHistory'
 import { getPayloadWarningData } from '../services/chatPayloadPreflight'
+import {
+  buildAgentSendSlimPlan,
+  evaluateAgentSendPreflight,
+  evaluateBuiltMessagesPreflight,
+} from '../services/agentSendPreflight'
 import { appendToSpecAcceptanceFile } from '../services/specAcceptanceService'
 import { findRetryUserText } from '../services/chatRetry'
 import { buildMcpFollowUpMessages } from '../services/chatMcpFollowUp'
@@ -1192,6 +1197,49 @@ ${t('ai.chat.prompt')}`
         return
       }
 
+      const slimPlan = buildAgentSendSlimPlan(
+        (key, params) => t(key, params),
+        historyLimit,
+        { agentMode },
+      )
+      const sendPreflight = evaluateAgentSendPreflight({
+        mentionGate,
+        meterEstimate: payloadMeterEstimate,
+        draftText: textToSend,
+        slimPlan,
+        forceSlim,
+      })
+      if (sendPreflight.payloadWarning) {
+        const warning = sendPreflight.payloadWarning
+        trackEvent('chat.payload_preflight_warn', {
+          estimatedBytes: warning.estimatedBytes,
+          budgetBytes: warning.budgetBytes,
+          provider: aiConfig.provider,
+          agentMode,
+          workspaceContext: effectiveWorkspaceContext,
+          phase: 'meter',
+        })
+        setPayloadWarning({
+          estimatedBytes: warning.estimatedBytes,
+          budgetBytes: warning.budgetBytes,
+          text: warning.text,
+          action,
+          slimPlan: warning.slimPlan,
+        })
+        if (!customInput) setInput(textToSend)
+        setMessages((prev) => removeTrailingUserMessage(prev, effectiveTextToSend))
+        setLoading(false)
+        notify?.(
+          'info',
+          t('chat.payload.preflightWarnTitle'),
+          t('chat.payload.preflightWarnDetail', {
+            estimatedKb: toKb(warning.estimatedBytes),
+            budgetKb: toKb(warning.budgetBytes),
+          }),
+        )
+        return
+      }
+
       const agentSettings = await loadAgentSettings()
       const history = buildChatHistory(
         messages.map((message) => ({ role: message.role, content: message.content })),
@@ -1211,6 +1259,42 @@ ${t('ai.chat.prompt')}`
           forceSlim,
         )
         const toolMessages = buildAgentToolMessages(workspaceSummary, effectiveTextToSend, history)
+        const builtPayloadWarning = evaluateBuiltMessagesPreflight({
+          messages: toolMessages,
+          provider: aiConfig.provider,
+          draftText: textToSend,
+          slimPlan,
+          forceSlim,
+        })
+        if (builtPayloadWarning) {
+          trackEvent('chat.payload_preflight_warn', {
+            estimatedBytes: builtPayloadWarning.estimatedBytes,
+            budgetBytes: builtPayloadWarning.budgetBytes,
+            provider: aiConfig.provider,
+            agentMode,
+            workspaceContext: effectiveWorkspaceContext,
+            phase: 'tool_loop',
+          })
+          setPayloadWarning({
+            estimatedBytes: builtPayloadWarning.estimatedBytes,
+            budgetBytes: builtPayloadWarning.budgetBytes,
+            text: builtPayloadWarning.text,
+            action,
+            slimPlan: builtPayloadWarning.slimPlan,
+          })
+          if (!customInput) setInput(textToSend)
+          setMessages((prev) => removeTrailingUserMessage(prev, effectiveTextToSend))
+          setLoading(false)
+          notify?.(
+            'info',
+            t('chat.payload.preflightWarnTitle'),
+            t('chat.payload.preflightWarnDetail', {
+              estimatedKb: toKb(builtPayloadWarning.estimatedBytes),
+              budgetKb: toKb(builtPayloadWarning.budgetBytes),
+            }),
+          )
+          return
+        }
 
         const labelActivity = (tool: AgentActivityEntry['tool'], detail: string, ok: boolean) => {
           const toolLabel = t(`agent.tool.${tool}` as 'agent.tool.read_file')
@@ -1369,12 +1453,7 @@ ${t('ai.chat.prompt')}`
         }
       }
       const budgetBytes = getPayloadBudget(aiConfig.provider)
-      const warning = getPayloadWarningData(estimatedBytes, budgetBytes, textToSend, [
-        t('chat.payload.planHistory', { count: historyLimit }),
-        t('chat.payload.planInput', { count: 1200 }),
-        t('chat.payload.planWorkspace'),
-        t('chat.payload.planMention'),
-      ])
+      const warning = getPayloadWarningData(estimatedBytes, budgetBytes, textToSend, slimPlan)
       if (warning) {
         if (!forceSlim) {
           trackEvent('chat.payload_preflight_warn', {

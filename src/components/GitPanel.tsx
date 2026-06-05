@@ -666,6 +666,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
                             onClick={() => handleStage(item.filepath)}
                             className={styles.fileIconButton}
                             title={t('git.stageTitle')}
+                            data-testid={`git-stage-file-${item.filepath.replace(/[^\w.-]+/g, '_')}`}
                           >
                             <Plus size={14} />
                           </button>

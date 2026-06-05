@@ -5,6 +5,15 @@
 
 ---
 
+## dev:stack 快速走通（v1.3.8）
+
+1. `npm run dev:stack`（API `3001` + Web `3000`）
+2. `.env.local` 设置 `PLUGIN_PUBLISH_ENABLED=true`
+3. 登录后 **插件面板 → 发布表单** 提交 `community-sample.plugin.json`，或运行 `npm run seed:plugin-review` 写入本地 pending
+4. **设置 → 功能 → 插件运维**：筛选 **待审核**，应看到 `community-sample`
+
+---
+
 ## 1. 准备包
 
 样例为最小 **community** 插件：仅 `ui` 权限、无签名（审核队列用）。
@@ -36,7 +45,7 @@ Cookie: <session>
 ### 可选：本地 seed（无 API 时演示）
 
 ```bash
-node scripts/seed-plugin-review.mjs
+npm run seed:plugin-review
 ```
 
 在浏览器刷新设置页后，运维卡可显示一条本地 pending 记录（localStorage）。

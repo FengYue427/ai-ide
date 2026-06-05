@@ -27,6 +27,8 @@ npm run dev:stack
 
 支付/订阅骨架验收：[`BILLING_SKELETON.md`](./BILLING_SKELETON.md)
 
+插件发布 stack 走通（社区样例 pending）：[`PLUGIN_COMMUNITY_SAMPLE.md`](./PLUGIN_COMMUNITY_SAMPLE.md)
+
 ### 方式 B — Docker 本地 Postgres（可选）
 
 | 变量 | 说明 |

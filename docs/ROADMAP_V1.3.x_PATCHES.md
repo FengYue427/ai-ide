@@ -17,8 +17,8 @@
 | **v1.3.4** | 索引 2.0 可观测 | [V1.3.4_KICKOFF.md](./V1.3.4_KICKOFF.md) |
 | **v1.3.5** ✅ | Tab 补全 II | [V1.3.5_KICKOFF.md](./V1.3.5_KICKOFF.md) |
 | **v1.3.6** ✅ | 导航 II（TS + Python） | [V1.3.6_KICKOFF.md](./V1.3.6_KICKOFF.md) |
-| **v1.3.7** | Agent/Chat 可靠性 | [V1.3.7_KICKOFF.md](./V1.3.7_KICKOFF.md) |
-| **v1.3.8** | Git 轻抛光 · 插件/MCP | [V1.3.8_KICKOFF.md](./V1.3.8_KICKOFF.md) |
+| **v1.3.7** ✅ | Agent/Chat 可靠性 | [V1.3.7_KICKOFF.md](./V1.3.7_KICKOFF.md) |
+| **v1.3.8** ✅ | Git 轻抛光 · 插件/MCP | [V1.3.8_KICKOFF.md](./V1.3.8_KICKOFF.md) |
 | **v1.3.9** | **世代收官** · v1.4 门 | [V1.3.9_KICKOFF.md](./V1.3.9_KICKOFF.md) |
 
 **v1.4.0** 启动：`v1.3.9` tag + 生产 smoke **连续 2 周 5/5**。

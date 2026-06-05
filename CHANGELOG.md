@@ -7,6 +7,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.8] — 2026-06-05 · Agent 可靠 + Git/插件抛光
+
+### Added
+
+- **v1.3.7 A1**：`agentSendPreflight` · 表计/tool-loop 发送前 payload 阻断
+- **v1.3.7 A2**：`applyChangesWithResult` · Agent 应用失败 Toast/i18n
+- **v1.3.7 A3**：MCP 设置卡工具数 + 表计预留文案联动
+- **v1.3.8 G1**：`useGitStatus` 刷新策略单测 · prefs 持久化单测
+- **v1.3.8 G2**：`stageFile` 别名 · Git 单文件 stage `data-testid`
+- **v1.3.8 G3**：`seed:plugin-review` · `PLUGIN_COMMUNITY_SAMPLE` dev:stack 快速节
+
+See [RELEASE_NOTES_v1.3.8.md](docs/RELEASE_NOTES_v1.3.8.md).
+
+---
+
 ## [1.3.6] — 2026-06-05 · Tab II + 导航 II
 
 ### Added

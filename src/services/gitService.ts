@@ -51,6 +51,9 @@ export async function addFile(fs: any, dir: string, filepath: string): Promise<v
   await git.add({ fs, dir, filepath })
 }
 
+/** Alias for single-file stage (v1.3.8 G2). */
+export const stageFile = addFile
+
 export async function removeFile(fs: any, dir: string, filepath: string): Promise<void> {
   try {
     await git.remove({ fs, dir, filepath })

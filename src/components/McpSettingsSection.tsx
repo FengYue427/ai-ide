@@ -5,12 +5,15 @@ import { MCP_OFFICIAL_PRESETS } from '../data/mcpOfficialCatalog'
 import {
   createMcpServerDraft,
   createMcpServerFromPreset,
+  getMcpToolCountEstimateSync,
   loadMcpServers,
   loadMcpSettings,
+  refreshMcpToolCountEstimate,
   saveMcpServers,
   saveMcpSettings,
   type McpSettings,
 } from '../services/mcpConfigService'
+import { estimateMcpPayloadReserveBytes } from '../services/mcpPayloadReserve'
 import type { McpServerConfig } from '../services/mcpTypes'
 import { pingMcpServer } from '../services/mcpClientService'
 
@@ -42,6 +45,7 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
   const [settings, setSettings] = useState<McpSettings>({ autoFollowUp: true, maxFollowUpRounds: 2 })
   const [pingStatus, setPingStatus] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [mcpToolCount, setMcpToolCount] = useState<number | undefined>(getMcpToolCountEstimateSync())
 
   useEffect(() => {
     void (async () => {
@@ -49,12 +53,16 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
       setServers(loadedServers)
       setSettings(loadedSettings)
       setLoading(false)
+      const count = await refreshMcpToolCountEstimate()
+      setMcpToolCount(count)
     })()
   }, [])
 
   const persist = useCallback(async () => {
     await saveMcpServers(servers)
     await saveMcpSettings(settings)
+    const count = await refreshMcpToolCountEstimate()
+    setMcpToolCount(count)
   }, [servers, settings])
 
   useEffect(() => {
@@ -94,6 +102,14 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
           <div>
             <div style={{ fontWeight: 700 }}>{t('mcp.title')}</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t('mcp.desc')}</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: 4 }}>
+              {mcpToolCount == null
+                ? t('mcp.toolCountUnknown')
+                : t('mcp.toolCountHint', {
+                    count: mcpToolCount,
+                    reserveKb: Math.round(estimateMcpPayloadReserveBytes(mcpToolCount) / 1024),
+                  })}
+            </div>
           </div>
         </div>
 

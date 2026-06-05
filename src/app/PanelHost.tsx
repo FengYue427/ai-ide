@@ -387,7 +387,7 @@ export function PanelHost({
         />
       )}
 
-      {showAgentApplyModal && <AgentApplyModal />}
+      {showAgentApplyModal && <AgentApplyModal notify={notify} />}
 
       {showSnippetLibrary && (
         <SnippetLibrary
