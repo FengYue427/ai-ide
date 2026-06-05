@@ -845,7 +845,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                         ? 'unreachable'
                         : 'ready'
                   }
-                  showReviews={Boolean(currentUser)}
+                  showReviews
                 />
                 <div className="settings-card settings-card--row">
                   <div>

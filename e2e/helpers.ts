@@ -50,13 +50,29 @@ export type E2ESeedFile = { name: string; content: string; language: string }
 
 /** Seed IndexedDB before navigation so first-time welcome does not cover the toolbar. */
 /** Pretend a logged-in user so toolbar billing CTA is visible in static preview. */
+const E2E_LOGGED_IN_SESSION = {
+  user: { id: 'e2e-user', email: 'e2e@ai-ide.test', name: 'E2E' },
+  expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+}
+
 export async function prepareLoggedInUser(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const session = {
-      user: { id: 'e2e-user', email: 'e2e@ai-ide.test', name: 'E2E' },
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    }
+  await page.addInitScript((session) => {
     localStorage.setItem('ai-ide:user', JSON.stringify(session))
+  }, E2E_LOGGED_IN_SESSION)
+
+  await page.route('**/api/auth/session', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(E2E_LOGGED_IN_SESSION),
+    })
+  })
+}
+
+/** Wait until bootstrap applied the E2E logged-in session to the toolbar. */
+export async function waitForE2ELoggedInToolbar(page: Page): Promise<void> {
+  await expect(page.locator(`header.toolbar button[title="${E2E_LOGGED_IN_SESSION.user.email}"]`)).toBeVisible({
+    timeout: 30_000,
   })
 }
 

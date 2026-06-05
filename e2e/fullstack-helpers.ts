@@ -48,8 +48,7 @@ export async function expectCloudWorkspaceListed(page: Page, workspaceName: stri
   await expect(workspaceModal.locator('.wm-state-panel--loading')).toHaveCount(0, { timeout: 30_000 })
   const cardTitle = workspaceModal.locator('.wm-list .wm-card-title').filter({ hasText: workspaceName })
   await expect(cardTitle).toBeVisible({ timeout: 30_000 })
-  const cardPanel = workspaceModal.locator('.wm-list > .wm-panel').filter({ has: cardTitle })
-  const cloudBadge = cardPanel.locator('.wm-badge--cloud').filter({ hasText: /云端|Cloud/i })
+  const cloudBadge = cardTitle.locator('.wm-badge--cloud').filter({ hasText: /云端|Cloud/i })
   await expect(async () => {
     if (await cloudBadge.isVisible()) return
     await page.waitForTimeout(500)

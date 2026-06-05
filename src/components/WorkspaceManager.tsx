@@ -75,9 +75,25 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     }
   }
 
+  const mergeListKeepingOptimisticCloud = (
+    list: WorkspaceEntry[],
+    workspaceName: string,
+    prev: WorkspaceEntry[],
+  ): WorkspaceEntry[] => {
+    const serverCloud = list.find((workspace) => workspace.name === workspaceName && workspace.source === 'cloud')
+    if (serverCloud) return list
+
+    const optimistic = prev.find(
+      (workspace) => workspace.name === workspaceName && workspace.source === 'cloud',
+    )
+    if (!optimistic) return list
+
+    return [optimistic, ...list.filter((workspace) => workspace.name !== workspaceName)]
+  }
+
   /** Cloud metadata can lag immediately after POST /api/workspaces. */
   const reloadUntilCloudListed = async (workspaceName: string) => {
-    const maxAttempts = 10
+    const maxAttempts = 15
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const list = await listWorkspaceEntries(isLoggedIn)
       const hit = list.find((workspace) => workspace.name === workspaceName)
@@ -91,7 +107,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
         await new Promise((resolve) => window.setTimeout(resolve, 400))
       } else {
         const backup = await cloudSyncService.getAutoBackup()
-        setWorkspaces(list)
+        setWorkspaces((prev) => mergeListKeepingOptimisticCloud(list, workspaceName, prev))
         setAutoBackup(backup || null)
       }
     }
