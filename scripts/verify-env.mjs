@@ -59,7 +59,8 @@ const productionCnPay = [
 const productionStripe = [
   { key: 'STRIPE_SECRET_KEY', hint: 'sk_live_... (optional overseas)' },
   { key: 'STRIPE_WEBHOOK_SECRET', hint: 'whsec_...' },
-  { key: 'STRIPE_PRICE_PRO', hint: 'price_...' },
+  { key: 'STRIPE_PRICE_PRO', hint: 'price_... ($9.99/mo — must match plans.ts)' },
+  { key: 'STRIPE_PRICE_ENTERPRISE', hint: 'price_... ($19.99/mo — must match plans.ts)' },
 ]
 
 const oauthOptional = [

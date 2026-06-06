@@ -5,10 +5,44 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Planned — v1.5.4+
+### Planned — v1.5.6+
 
-- 平台 AI 体验抛光
+- 支付宝新 Price 生产
 - 见 [ROADMAP_V1.5.x_PATCHES.md](docs/ROADMAP_V1.5.x_PATCHES.md)
+
+---
+
+## [1.5.5] — 2026-06-06 · Stripe Price 生产对齐
+
+### Added
+
+- **`verify:stripe:prices`**：`stripePriceVerify` 校验 Dashboard Price 与 `plans.ts`（$9.99 / $19.99）
+- **E2E billing**：套餐弹窗断言 Team **$19.99** · 免费经济模型文案
+
+### Changed
+
+- **Stripe 文档**：`STRIPE_SETUP` · `PAYMENT_DECISION_GLOBAL_STRIPE` 对齐 v1.5 定价
+- **`verify-env`**：生产模式推荐 `STRIPE_PRICE_ENTERPRISE`
+
+See [RELEASE_NOTES_v1.5.5.md](docs/RELEASE_NOTES_v1.5.5.md).
+
+---
+
+## [1.5.4] — 2026-06-06 · 平台 AI 体验
+
+### Added
+
+- **欢迎页**：`welcome-platform-quota-hint` · 免费 200 加权配额 / 经济模型说明
+- **设置 AI**：`settings-platform-economy-hint` · 平台专用文案（无 BYOK 困惑）
+- **配额组件**：免费版 `quota.freeEconomyHint`
+- **E2E**：`platform-onboarding.spec.ts`
+
+### Changed
+
+- **套餐 fallback 文案**：Free 经济模型 · 无限工作区 · Team **$19.99**
+- **平台-only 路径**：cloud degraded · 用量仪表盘 · 未配置提示去掉 BYOK
+
+See [RELEASE_NOTES_v1.5.4.md](docs/RELEASE_NOTES_v1.5.4.md).
 
 ---
 

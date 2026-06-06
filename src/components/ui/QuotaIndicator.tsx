@@ -48,6 +48,12 @@ export function QuotaIndicator({
           ) : (
             <>
               {t('quota.remaining', { count: Math.max(0, quota.remaining) })}
+              {quota.plan === 'free' ? (
+                <>
+                  {' '}
+                  · {t('quota.freeEconomyHint')}
+                </>
+              ) : null}
               {showPlan && quota.plan ? (
                 <>
                   {' '}

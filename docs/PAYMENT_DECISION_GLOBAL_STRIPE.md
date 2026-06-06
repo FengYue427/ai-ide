@@ -2,7 +2,7 @@
 
 > **日期**：2026-06-01  
 > **决策**：暂缓 B 站与国内收款主推；**Stripe 美元订阅** 为 GA 收款方式。  
-> **定价**：Pro **$4.99/月** · Team **$12.99/月**（代码常量见 `lib/billing/plans.ts`）。
+> **定价**：Pro **$9.99/月** · Team **$19.99/月**（代码常量见 `lib/billing/plans.ts` · v1.5 加权配额调价）。
 
 ## 结论
 
@@ -16,8 +16,8 @@
 ## Stripe Dashboard 必做
 
 1. **Products** → 两个 recurring Price（USD）  
-   - Pro：**$4.99 / month**  
-   - Team：**$12.99 / month**  
+   - Pro：**$9.99 / month**  
+   - Team：**$19.99 / month**  
 2. 复制 Price ID → `STRIPE_PRICE_PRO` / `STRIPE_PRICE_ENTERPRISE`  
 3. Webhook：`https://ai-ide-flame.vercel.app/api/subscription/webhook`  
 4. Vercel 环境变量见 [STRIPE_SETUP.md](./STRIPE_SETUP.md)
@@ -30,6 +30,7 @@
 
 ```bash
 npm run test:local -- lib/billing/plans.test.ts
+npm run verify:stripe:prices   # 配置 STRIPE_* 后校验 Dashboard Price 与 plans.ts
 # 配置 STRIPE_* 后
 stripe listen --forward-to localhost:3001/api/subscription/webhook
 npm run dev:stack

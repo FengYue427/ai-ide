@@ -140,6 +140,8 @@ export const translations = {
     'welcome.cloudOk': '云端账号服务正常，可注册并同步工作区。',
     'welcome.cloudDegraded':
       '云端数据库暂不可用：注册/云工作区可能失败。你仍可使用 BYOK 与本地编辑；维护者请检查部署环境变量。',
+    'welcome.cloudDegradedPlatform':
+      '云端数据库暂不可用：注册/云工作区可能失败。本地编辑仍可用；维护者请检查 DATABASE_URL 与 AUTH_SECRET。',
     'welcome.networkTips':
       '页面加载慢或 API 超时？国内访问 vercel.app 可能不稳定。可稍后重试、更换网络，或下载 Windows/macOS 桌面版。自定义域名见 docs/CUSTOM_DOMAIN.md。',
     'welcome.title': '更快进入思路，更少消耗在环境上',
@@ -148,6 +150,8 @@ export const translations = {
     'welcome.platformCta': '免费注册即可使用平台 AI，无需自备 DeepSeek / OpenAI API Key（类似 Cursor 开箱即用）。',
     'welcome.platformCtaButton': '免费注册并开始',
     'welcome.platformCtaSignupPage': '或打开注册页（便于收藏与搜索）',
+    'welcome.platformQuotaHint':
+      '免费版：每日 200 加权配额，默认经济模型（如 DeepSeek Flash）；升级 Pro 解锁全档模型与 2000 配额。',
     'welcome.settings': '设置中心',
     'welcome.quickStart': '快速开始',
     'welcome.recent': '最近项目',
@@ -268,15 +272,22 @@ export const translations = {
     'settings.ai.platformReady': '服务端已配置平台 AI（{provider}），登录后即可使用平台模式。',
     'settings.ai.platformReadyBadge': 'Chat / Agent / Tab 补全 / 插件可走平台网关',
     'settings.ai.platformNotConfigured': '部署未配置 PLATFORM_DEEPSEEK_API_KEY，平台模式暂不可用；可切换 BYOK 或联系管理员。',
+    'settings.ai.platformNotConfiguredPlatformOnly':
+      '部署未配置平台 AI 密钥，登录用户的 Chat / Agent 暂不可用；请联系管理员配置 PLATFORM_* 环境变量。',
+    'settings.ai.platformFreeEconomyHint':
+      '免费版仅可用经济模型（Flash / Lite 等），每次请求按档位消耗加权配额；Pro 解锁标准 / 高级 / 前沿模型。',
     'settings.ai.platformUnreachable': '无法连接 /api/health，请检查网络或稍后重试。',
     'settings.ai.usageDashboardTitle': '平台 AI 用量',
     'settings.ai.usageDashboardDesc':
       '只读统计：平台网关请求、每日配额与估算成本（非正式账单）。BYOK 直连不计入「平台」柱。',
+    'settings.ai.usageDashboardDescPlatform':
+      '只读统计：平台网关请求、每日加权配额与估算成本（非正式账单）。',
     'settings.ai.usageDashboardLoading': '正在加载用量数据…',
     'settings.ai.usageDashboardError': '无法加载用量仪表盘，请确认已登录且数据库可用。',
     'settings.ai.usageDashboardRefresh': '刷新',
     'settings.ai.usagePlatformToday': '今日平台请求',
     'settings.ai.usageOtherToday': '今日其他（同步/BYOK）',
+    'settings.ai.usageOtherTodayPlatform': '今日其他（同步）',
     'settings.ai.usageCostToday': '今日估算成本',
     'settings.ai.usageCostPeriod': '近 {days} 日估算成本',
     'settings.ai.usageCostFootnote': '按约 ${rate}/次估算；近 {days} 日平台请求 {total} 次。仅供参考。',
@@ -510,17 +521,17 @@ export const translations = {
     'subscription.updated': '订阅状态已更新',
     'subscription.resumed': '订阅已恢复',
     'subscription.plan.free.name': '免费版',
-    'subscription.plan.free.desc': '个人学习与日常小项目，配额已放宽。',
-    'subscription.plan.free.f1': '基础 AI 对话',
-    'subscription.plan.free.f2': '10 个云工作区',
-    'subscription.plan.free.f3': '每日 200 次配额',
+    'subscription.plan.free.desc': '个人学习与日常小项目；登录即用平台 AI。',
+    'subscription.plan.free.f1': '平台 AI · 经济模型（Flash / Lite）',
+    'subscription.plan.free.f2': '无限云工作区',
+    'subscription.plan.free.f3': '每日 200 加权配额单位',
     'subscription.plan.pro.name': '专业版',
     'subscription.plan.pro.desc': '高频个人开发者，$9.99/月。',
     'subscription.plan.pro.f1': '每日 2000 加权配额单位',
     'subscription.plan.pro.f2': '无限工作区',
     'subscription.plan.pro.f3': 'Stripe 安全订阅',
     'subscription.plan.enterprise.name': '团队版',
-    'subscription.plan.enterprise.desc': '小团队与重度用户，$12.99/月。',
+    'subscription.plan.enterprise.desc': '小团队与重度用户，$19.99/月。',
     'subscription.plan.enterprise.f1': '配额不限',
     'subscription.plan.enterprise.f2': '无限工作区',
     'subscription.plan.enterprise.f3': '团队能力（规划）',
@@ -730,6 +741,7 @@ export const translations = {
     'quota.exhausted': '今日额度已用完，请明天再试或升级套餐。',
     'quota.unlimitedPlan': '当前计划配额不限。',
     'quota.remaining': '剩余约 {count} 次',
+    'quota.freeEconomyHint': '免费版仅经济模型',
     'quota.plan': '计划',
     'sidebar.filenamePlaceholder': '输入文件名，例如 index.ts',
     'sidebar.create': '创建',
@@ -2279,6 +2291,8 @@ export const translations = {
     'welcome.cloudOk': 'Cloud accounts are available — sign in and sync workspaces.',
     'welcome.cloudDegraded':
       'Cloud database is unavailable — sign-in and cloud workspaces may fail. BYOK and local editing still work.',
+    'welcome.cloudDegradedPlatform':
+      'Cloud database is unavailable — sign-in and cloud workspaces may fail. Local editing still works; admins should check DATABASE_URL and AUTH_SECRET.',
     'welcome.networkTips':
       'Slow load or API timeouts? Access to vercel.app can be unstable in some regions. Retry later, switch networks, or install the Windows desktop app (local disk and terminal do not rely on browser file APIs). Custom domain planned in v1.0.8.',
     'welcome.title': 'Get into flow faster, spend less time on setup',
@@ -2288,6 +2302,8 @@ export const translations = {
       'Sign up free to use platform AI—no DeepSeek or OpenAI API key required (Cursor-style out of the box).',
     'welcome.platformCtaButton': 'Sign up free',
     'welcome.platformCtaSignupPage': 'Or open the signup page (SEO-friendly)',
+    'welcome.platformQuotaHint':
+      'Free tier: 200 weighted quota units/day on economy models (e.g. DeepSeek Flash). Upgrade to Pro for all tiers and 2000 units.',
     'welcome.settings': 'Settings',
     'welcome.quickStart': 'Quick start',
     'welcome.recent': 'Recent projects',
@@ -2409,15 +2425,22 @@ export const translations = {
     'settings.ai.platformReadyBadge': 'Chat, Agent, tab completion, and plugins can use the platform gateway',
     'settings.ai.platformNotConfigured':
       'PLATFORM_DEEPSEEK_API_KEY is not set on the deployment. Platform mode is unavailable—use BYOK or ask your admin.',
+    'settings.ai.platformNotConfiguredPlatformOnly':
+      'Platform AI keys are not configured on this deployment. Signed-in Chat / Agent is unavailable until PLATFORM_* env vars are set.',
+    'settings.ai.platformFreeEconomyHint':
+      'Free plan: economy-tier models only (Flash / Lite). Each request consumes weighted quota units; Pro unlocks standard, premium, and frontier models.',
     'settings.ai.platformUnreachable': 'Could not reach /api/health. Check your network and try again.',
     'settings.ai.usageDashboardTitle': 'Platform AI usage',
     'settings.ai.usageDashboardDesc':
       'Read-only stats: platform gateway requests, daily quota, and estimated cost (not an invoice). BYOK direct calls are not counted as platform.',
+    'settings.ai.usageDashboardDescPlatform':
+      'Read-only stats: platform gateway requests, daily weighted quota, and estimated cost (not an invoice).',
     'settings.ai.usageDashboardLoading': 'Loading usage data…',
     'settings.ai.usageDashboardError': 'Could not load the usage dashboard. Sign in and ensure the database is available.',
     'settings.ai.usageDashboardRefresh': 'Refresh',
     'settings.ai.usagePlatformToday': 'Platform requests today',
     'settings.ai.usageOtherToday': 'Other today (sync / BYOK)',
+    'settings.ai.usageOtherTodayPlatform': 'Other today (sync)',
     'settings.ai.usageCostToday': 'Est. cost today',
     'settings.ai.usageCostPeriod': 'Est. cost ({days}d)',
     'settings.ai.usageCostFootnote':
@@ -2655,17 +2678,17 @@ export const translations = {
     'subscription.updated': 'Subscription updated',
     'subscription.resumed': 'Subscription resumed',
     'subscription.plan.free.name': 'Free',
-    'subscription.plan.free.desc': 'Learning and small projects with generous quota.',
-    'subscription.plan.free.f1': 'Basic AI chat',
-    'subscription.plan.free.f2': '10 cloud workspaces',
-    'subscription.plan.free.f3': '200 requests / day',
+    'subscription.plan.free.desc': 'Learning and small projects with platform AI after sign-in.',
+    'subscription.plan.free.f1': 'Platform AI · economy models (Flash / Lite)',
+    'subscription.plan.free.f2': 'Unlimited cloud workspaces',
+    'subscription.plan.free.f3': '200 weighted quota units / day',
     'subscription.plan.pro.name': 'Pro',
     'subscription.plan.pro.desc': 'Power users, $9.99/mo.',
     'subscription.plan.pro.f1': '2000 weighted quota units / day',
     'subscription.plan.pro.f2': 'Unlimited workspaces',
     'subscription.plan.pro.f3': 'Secure Stripe subscription',
     'subscription.plan.enterprise.name': 'Team',
-    'subscription.plan.enterprise.desc': 'Teams and heavy usage, $12.99/mo.',
+    'subscription.plan.enterprise.desc': 'Teams and heavy usage, $19.99/mo.',
     'subscription.plan.enterprise.f1': 'Unlimited quota',
     'subscription.plan.enterprise.f2': 'Unlimited workspaces',
     'subscription.plan.enterprise.f3': 'Team features (planned)',
@@ -2882,6 +2905,7 @@ export const translations = {
     'quota.exhausted': 'Daily quota used. Try tomorrow or upgrade.',
     'quota.unlimitedPlan': 'Unlimited quota on this plan.',
     'quota.remaining': 'About {count} left',
+    'quota.freeEconomyHint': 'Free plan · economy models only',
     'quota.plan': 'Plan',
     'sidebar.filenamePlaceholder': 'Filename, e.g. index.ts',
     'sidebar.create': 'Create',

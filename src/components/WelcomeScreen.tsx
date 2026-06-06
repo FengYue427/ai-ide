@@ -233,6 +233,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {isAiGatewayEnabled() && onRegister ? (
               <div className="welcome-platform-cta" data-testid="welcome-platform-cta">
                 <p className="welcome-platform-cta-text">{t('welcome.platformCta')}</p>
+                <p className="welcome-platform-quota-hint" data-testid="welcome-platform-quota-hint">
+                  {t('welcome.platformQuotaHint')}
+                </p>
                 <button type="button" className="welcome-platform-cta-btn" onClick={onRegister}>
                   {t('welcome.platformCtaButton')}
                   <ArrowRight size={16} />
@@ -276,7 +279,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             }`}
             role="status"
           >
-            {cloudHealth.status === 'ok' ? t('welcome.cloudOk') : t('welcome.cloudDegraded')}
+            {cloudHealth.status === 'ok'
+              ? t('welcome.cloudOk')
+              : isAiGatewayEnabled()
+                ? t('welcome.cloudDegradedPlatform')
+                : t('welcome.cloudDegraded')}
           </p>
         )}
 

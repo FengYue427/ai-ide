@@ -526,7 +526,9 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                             ? t('settings.ai.platformReady', {
                                 provider: platformAiHealth.provider ?? '—',
                               })
-                            : t('settings.ai.platformNotConfigured')}
+                            : platformOnlyMode
+                              ? t('settings.ai.platformNotConfiguredPlatformOnly')
+                              : t('settings.ai.platformNotConfigured')}
                     </p>
                     {platformAiHealth.status === 'ready' && platformAiHealth.configured ? (
                       <div className="settings-privacy-row" style={{ marginTop: 8 }}>
@@ -564,6 +566,9 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     <div className="settings-field" data-testid="settings-platform-only-ai">
                       <label className="settings-label">{t('settings.ai.keyMode')}</label>
                       <p className="settings-privacy-text">{t('settings.ai.keyModePlatformHint')}</p>
+                      <p className="settings-privacy-text" data-testid="settings-platform-economy-hint">
+                        {t('settings.ai.platformFreeEconomyHint')}
+                      </p>
                     </div>
                   ) : null}
 

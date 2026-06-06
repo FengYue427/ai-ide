@@ -1,5 +1,6 @@
 import { BarChart3, RefreshCw } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { isByokLegacyAllowed } from '../lib/v15Features'
 import type { PlatformUsageDashboard } from '../services/platformUsageDashboardService'
 import { QuotaIndicator } from './ui/QuotaIndicator'
 
@@ -29,6 +30,7 @@ export function PlatformAiUsageDashboard({
   refreshing = false,
 }: PlatformAiUsageDashboardProps) {
   const { t } = useI18n()
+  const platformOnly = !isByokLegacyAllowed()
   const barMax = maxBarValue(data.daily)
 
   return (
@@ -51,7 +53,9 @@ export function PlatformAiUsageDashboard({
         ) : null}
       </div>
 
-      <p className="settings-privacy-text">{t('settings.ai.usageDashboardDesc')}</p>
+      <p className="settings-privacy-text">
+        {t(platformOnly ? 'settings.ai.usageDashboardDescPlatform' : 'settings.ai.usageDashboardDesc')}
+      </p>
 
       <QuotaIndicator quota={data.quota} showPlan compact={false} className="platform-usage-dashboard__quota" />
 
@@ -86,7 +90,7 @@ export function PlatformAiUsageDashboard({
         </div>
         <div className="platform-usage-dashboard__stat">
           <span className="platform-usage-dashboard__stat-label">
-            {t('settings.ai.usageOtherToday')}
+            {t(platformOnly ? 'settings.ai.usageOtherTodayPlatform' : 'settings.ai.usageOtherToday')}
           </span>
           <span className="platform-usage-dashboard__stat-value">{data.otherToday}</span>
         </div>
