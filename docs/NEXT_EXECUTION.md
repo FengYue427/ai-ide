@@ -1,33 +1,35 @@
 # 当前执行入口
 
-> **更新**：2026-06-06 — **v1.5.7** · 进入 **v1.5.8 E2E/i18n 热修**
+> **更新**：2026-06-06 — **v1.5.9 收官** · 进入 **v1.6.0 评审**
 
 ---
 
 ## 策略
 
-- **v1.5.5** ✅ Stripe Price · `verify:stripe:prices`
-- **v1.5.6** ✅ 支付宝 ¥39/¥79 · `verify:alipay:prices`
-- **v1.5.7** ✅ Activity Line 默认折叠 · Spec hooks 引导
+- **v1.5.1–1.5.9** ✅ patch 线全部交付
+- **v1.6 门**：tag `v1.5.9` · smoke 连续 2 周 5/5 · ROADMAP 评审
 - **Patch 详表**：[ROADMAP_V1.5.x_PATCHES.md](./ROADMAP_V1.5.x_PATCHES.md)
 
 ---
 
-## 当前：v1.5.8（E2E 回归 · i18n · 边缘热修）
+## 当前：v1.6.0 启动评审
 
 | 条件 | 状态 |
 |------|:----:|
-| 单测 ≥801 | ☐ CI |
-| E2E ≥64 | ☐ CI |
-| 无 P0 回归 | ☐ |
+| v1.5.9 tag + deploy | ☐ |
+| smoke 2 周 5/5 | ☐ |
+| `ROADMAP_V1.6.md` 签字 | ☐ |
 
 ---
 
 ## 门禁
 
 ```bash
-npm run test:local
-npm run verify:alipay:prices
+npm run verify:release:gates
+npm run verify:env:v15
 npm run verify:stripe:prices
+npm run verify:alipay:prices
 npm run smoke:production -- https://ai-ide-flame.vercel.app
 ```
+
+**Kickoff**：[V1.6_KICKOFF.md](./V1.6_KICKOFF.md)

@@ -5,10 +5,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Planned — v1.5.8+
+### Planned — v1.6.0
 
-- E2E 回归 · i18n 热修
-- 见 [ROADMAP_V1.5.x_PATCHES.md](docs/ROADMAP_V1.5.x_PATCHES.md)
+- 见 [ROADMAP_V1.6.md](docs/ROADMAP_V1.6.md) · [V1.6_KICKOFF.md](docs/V1.6_KICKOFF.md)
+
+---
+
+## [1.5.9] — 2026-06-06 · v1.5 世代收官
+
+### Added
+
+- **`verify:release:gates`** · **`releaseGates.ts`** — unit ≥800 · E2E ≥64 静态门禁
+- **收官文档**：`V1.5.9_GA_EXECUTION` · `V1.5.9_SMOKE_WEEKLY` · `v159Closeout.test.ts`
+- **v1.6 门**：`COMPETITOR_SCORE_V1.5` 1.5.9 基线 · `V1.6_KICKOFF` 条件更新
+
+See [RELEASE_NOTES_v1.5.9.md](docs/RELEASE_NOTES_v1.5.9.md).
+
+---
+
+## [1.5.8] — 2026-06-06 · E2E 回归 · i18n
+
+### Added
+
+- **Spec workflow i18n**：`SpecsSection` · `spec.catalog.lastExecuted` / `sourceLinks`
+- **E2E**：`v158-regression.spec.ts`（+3，合计 **65+**）
+- **i18n-regression**：spec.workflow · hooksGuide 用例
+
+See [RELEASE_NOTES_v1.5.8.md](docs/RELEASE_NOTES_v1.5.8.md).
 
 ---
 

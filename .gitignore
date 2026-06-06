@@ -41,6 +41,7 @@ npm-debug.log*
 # Tests
 test-results/
 playwright-report/
+.vitest-gate-report.json
 api-server.log
 
 .vercel

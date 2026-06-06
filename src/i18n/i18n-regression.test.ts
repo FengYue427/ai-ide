@@ -57,6 +57,16 @@ const SERVICE_TEXT_CASES: Case[] = [
     en: 'Code context from @ mentions',
     zh: '用户 @ 提及的代码上下文',
   },
+  {
+    key: 'spec.workflow.create',
+    en: 'Create Spec',
+    zh: '创建 Spec',
+  },
+  {
+    key: 'spec.catalog.hooksGuide.title',
+    en: /Runtime automation/i,
+    zh: /Runtime 自动化/,
+  },
 ]
 
 const API_SUCCESS_CASES: Array<{

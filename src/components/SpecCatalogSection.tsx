@@ -222,8 +222,12 @@ export function SpecCatalogSection({
                     ? ` · ${t('spec.catalog.hooksCount', { count: String(spec.hooksCount) })}`
                     : ''}
                   {!spec.hooksValid && spec.hasHooks ? ` · ${t('spec.catalog.hooksInvalid')}` : ''}
-                  {spec.lastExecutedAt ? ` · 最近执行 ${spec.lastExecutedAt}` : ''}
-                  {(specLinkCounts[spec.tasksPath] ?? 0) > 0 ? ` · 来源 ${specLinkCounts[spec.tasksPath]}` : ''}
+                  {spec.lastExecutedAt
+                    ? ` · ${t('spec.catalog.lastExecuted', { at: spec.lastExecutedAt })}`
+                    : ''}
+                  {(specLinkCounts[spec.tasksPath] ?? 0) > 0
+                    ? ` · ${t('spec.catalog.sourceLinks', { count: String(specLinkCounts[spec.tasksPath]) })}`
+                    : ''}
                 </div>
                 {spec.lastHookLogLine ? (
                   <div

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Language } from '../i18n'
+import { useI18n, type Language } from '../i18n'
 
 interface SpecTaskItem {
   path: string
@@ -17,22 +17,28 @@ interface SpecsSectionProps {
   onRunTask: (path: string, text: string) => void
 }
 
-export function SpecsSection({ language, onCreateSpec, onOpenSpecsRoot, tasks, onMarkTaskDone, onRunTask }: SpecsSectionProps) {
+export function SpecsSection({
+  language,
+  onCreateSpec,
+  onOpenSpecsRoot,
+  tasks,
+  onMarkTaskDone,
+  onRunTask,
+}: SpecsSectionProps) {
+  const { t } = useI18n()
   const [specName, setSpecName] = useState('')
 
   return (
-    <div className="settings-card settings-card--grid">
-      <div className="settings-row-title">Specs 工作流（requirements/design/tasks/acceptance）</div>
-      <div className="settings-row-desc">
-        在 `.aide/specs/&lt;name&gt;/` 下创建标准四件套，并自动进入 Chat/Agent 上下文。
-      </div>
+    <div className="settings-card settings-card--grid" data-testid="spec-workflow-section">
+      <div className="settings-row-title">{t('spec.workflow.title')}</div>
+      <div className="settings-row-desc">{t('spec.workflow.desc')}</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         <input
           type="text"
           className="settings-input"
           style={{ flex: 1, minWidth: 220 }}
           value={specName}
-          placeholder="例如: auth-refactor"
+          placeholder={t('spec.catalog.namePlaceholder')}
           onChange={(e) => setSpecName(e.target.value)}
         />
         <button
@@ -43,15 +49,17 @@ export function SpecsSection({ language, onCreateSpec, onOpenSpecsRoot, tasks, o
             setSpecName('')
           }}
         >
-          创建 Spec
+          {t('spec.workflow.create')}
         </button>
         <button type="button" className="btn btn-secondary" onClick={onOpenSpecsRoot}>
-          打开 Specs
+          {t('spec.workflow.openRoot')}
         </button>
       </div>
       {tasks.length > 0 ? (
         <div style={{ marginTop: 10, border: '1px solid var(--border-color)', borderRadius: 10, padding: 10 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Spec 任务（最近 8 条）</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            {t('spec.workflow.tasksRecent')}
+          </div>
           <div style={{ display: 'grid', gap: 6, maxHeight: 180, overflow: 'auto' }}>
             {tasks.slice(0, 8).map((task) => (
               <div key={`${task.path}-${task.line}`} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -68,10 +76,10 @@ export function SpecsSection({ language, onCreateSpec, onOpenSpecsRoot, tasks, o
                 {!task.done ? (
                   <>
                     <button type="button" className="btn btn-secondary" onClick={() => onRunTask(task.path, task.text)}>
-                      执行任务
+                      {t('spec.workflow.runTask')}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={() => onMarkTaskDone(task.path, task.line)}>
-                      标记完成
+                      {t('spec.workflow.markDone')}
                     </button>
                   </>
                 ) : null}

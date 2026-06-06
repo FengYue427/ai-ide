@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.5.7",
+  "version": "1.5.9",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -43,6 +43,7 @@
     "verify:env:v15": "node scripts/verify-env.mjs --production --v15-production",
     "verify:stripe:prices": "tsx scripts/verify-stripe-prices.ts",
     "verify:alipay:prices": "tsx scripts/verify-alipay-prices.ts",
+    "verify:release:gates": "node scripts/verify-release-gates.mjs",
     "predeploy:check": "npm run test:local && node scripts/verify-env.mjs",
     "check:release": "npm run test:local && node scripts/verify-env.mjs --production",
     "check:release:billing": "npm run test:local && node scripts/verify-env.mjs --production --require-cn-billing",
