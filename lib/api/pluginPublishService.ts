@@ -110,7 +110,7 @@ export function validatePluginPublishBody(body: unknown): PluginPublishValidatio
   return { ok: true, pkg: normalized }
 }
 
-export function createPluginPublishReview(pkg: PluginPublishPackage, submitterUserId: string) {
+export async function createPluginPublishReview(pkg: PluginPublishPackage, submitterUserId: string) {
   const reviewId = `rev_${randomBytes(8).toString('hex')}`
   const manifestHash = createHash('sha256')
     .update(
@@ -135,7 +135,7 @@ export function createPluginPublishReview(pkg: PluginPublishPackage, submitterUs
   }
 
   enqueuePluginPublishReview(record)
-  void persistPluginPublishReview(record)
+  await persistPluginPublishReview(record)
 
   console.info('[PluginPublish] queued for manual review', {
     reviewId,

@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       return localizedErrorResponse(req, validation.errorKey, 400, validation.params)
     }
 
-    const review = createPluginPublishReview(validation.pkg, auth.user.id)
+    const review = await createPluginPublishReview(validation.pkg, auth.user.id)
     return localizedSuccessResponse(req, 'api.plugin.publishAccepted', review, 202)
   } catch (error) {
     console.error('[PluginPublish] error:', error)

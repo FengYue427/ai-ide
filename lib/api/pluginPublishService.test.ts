@@ -38,11 +38,11 @@ describe('pluginPublishService', () => {
     expect(result).toEqual({ ok: false, errorKey: 'api.plugin.publishInvalidId' })
   })
 
-  it('creates a pending review record', () => {
+  it('creates a pending review record', async () => {
     const validated = validatePluginPublishBody(validPkg)
     expect(validated.ok).toBe(true)
     if (!validated.ok) return
-    const review = createPluginPublishReview(validated.pkg, 'user-1')
+    const review = await createPluginPublishReview(validated.pkg, 'user-1')
     expect(review.status).toBe('pending')
     expect(review.reviewId).toMatch(/^rev_[a-f0-9]{16}$/)
     expect(review.pluginId).toBe('demo-plugin')
