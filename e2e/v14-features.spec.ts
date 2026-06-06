@@ -26,7 +26,7 @@ test.describe('v1.4 feature settings', () => {
     await openSettingsTab(page, 'features')
     const metrics = page.getByTestId('settings-tab-completion')
     await expect(metrics).toBeVisible()
-    await expect(metrics.getByText(/P95|P50|延迟分位|Latency percentiles/i)).toBeVisible()
+    await expect(metrics.getByText(/延迟分位：|Latency percentiles:/i)).toBeVisible()
   })
 
   test('tab completion card shows Tab++ POC badge when session flag is on', async ({ page }) => {

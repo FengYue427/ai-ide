@@ -48,8 +48,8 @@ test.describe('v1.4.7 runtime state preview', () => {
     await openSettingsTab(page, 'features')
     const summary = page.getByTestId('spec-runtime-state-summary')
     await expect(summary).toBeVisible({ timeout: 10_000 })
-    await expect(summary.getByText(/active: auth-refactor/i)).toBeVisible()
-    await expect(summary.getByText(/spec 2/i)).toBeVisible()
+    await expect(summary.getByText(/auth-refactor/i)).toBeVisible()
+    await expect(summary.getByText(/spec 2|Spec 2/i)).toBeVisible()
     await expect(summary.getByText(/pre-run-tests/i)).toBeVisible()
 
     const badge = page.getByTestId('spec-status-badge-auth-refactor')

@@ -28,7 +28,7 @@ test.describe('v1.5 feature settings', () => {
     await openSettingsTab(page, 'features')
     const card = page.getByTestId('settings-v15-features')
     await expect(card).toBeVisible({ timeout: 10_000 })
-    await expect(card.getByText(/v1\.5|v1.5/i)).toBeVisible()
+    await expect(card.locator('strong')).toContainText(/v1\.5/i)
     const rows = card.getByRole('listitem')
     await expect(rows.filter({ hasText: /Tab\+\+|Tab\+\+/i })).toBeVisible()
     await expect(rows.filter({ hasText: /Spec Artifacts|hooks\.yaml/i })).toBeVisible()

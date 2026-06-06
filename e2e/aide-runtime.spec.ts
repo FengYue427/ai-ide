@@ -29,7 +29,7 @@ test.describe('v1.5 aide runtime F4/F6', () => {
   test.beforeEach(async ({ page }) => {
     await prepareLoggedInUser(page)
     await prepareE2EStorage(page, E2E_RUNTIME_STATE_FILES)
-    await page.evaluate(() => {
+    await page.addInitScript(() => {
       localStorage.setItem('ai-ide:feature:aideRuntimeUi', '1')
       localStorage.setItem('ai-ide:feature:aideRuntime', '1')
     })

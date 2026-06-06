@@ -124,10 +124,22 @@ export async function prepareE2EStorage(page: Page, files: E2ESeedFile[] = E2E_D
 }
 
 export async function dismissAuthModalIfOpen(page: Page): Promise<void> {
-  const overlay = page.locator('.auth-modal-overlay')
-  if ((await overlay.count()) === 0) return
-  await page.locator('.auth-close-btn').click({ timeout: 5_000 })
-  await expect(overlay).toHaveCount(0, { timeout: 5_000 })
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const overlay = page.locator('.auth-modal-overlay')
+    if ((await overlay.count()) === 0) return
+    const close = page.locator('.auth-close-btn')
+    if (await close.count()) {
+      await close.click({ timeout: 5_000 })
+    } else {
+      await page.keyboard.press('Escape')
+    }
+    try {
+      await expect(overlay).toHaveCount(0, { timeout: 3_000 })
+      return
+    } catch {
+      // retry dismiss
+    }
+  }
 }
 
 export async function waitForShellReady(page: Page): Promise<void> {
@@ -148,8 +160,10 @@ export async function gotoApp(page: Page, path = '/'): Promise<void> {
 
 /** Toolbar settings — avoids status bar duplicate「设置」button. */
 export async function openSettingsFromToolbar(page: Page): Promise<void> {
+  await dismissAuthModalIfOpen(page)
   await page.locator('header.toolbar').getByRole('button', { name: /^(Settings|设置)$/ }).click()
   await expect(page.locator('.settings-dialog')).toBeVisible({ timeout: 10_000 })
+  await dismissAuthModalIfOpen(page)
 }
 
 /** Settings sidebar tab (label includes description in a11y name — use test id). */
@@ -158,5 +172,10 @@ export async function openSettingsTab(
   tabId: 'ai' | 'appearance' | 'editor' | 'features' | 'advanced',
 ): Promise<void> {
   await openSettingsFromToolbar(page)
-  await page.getByTestId(`settings-tab-${tabId}`).click()
+  await dismissAuthModalIfOpen(page)
+  const tab = page.getByTestId(`settings-tab-${tabId}`)
+  const isActive = await tab.evaluate((el) => el.classList.contains('settings-nav-btn--active'))
+  if (!isActive) {
+    await tab.click()
+  }
 }

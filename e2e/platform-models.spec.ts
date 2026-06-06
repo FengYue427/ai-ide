@@ -1,13 +1,18 @@
 import { test, expect } from '@playwright/test'
+import {
+  openSettingsTab,
+  prepareE2EStorage,
+  prepareLoggedInUser,
+  waitForShellReady,
+} from './helpers'
 
 test.describe('v1.5 platform models (F0)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem('ai-ide:auth-mock-user', JSON.stringify({ id: 'e2e-user', email: 'e2e@test.local' }))
-    })
+    await prepareLoggedInUser(page)
+    await prepareE2EStorage(page)
     await page.goto('/')
-    await page.getByRole('button', { name: /设置|Settings/i }).click()
-    await page.getByRole('button', { name: /AI|人工智能/i }).click()
+    await waitForShellReady(page)
+    await openSettingsTab(page, 'ai')
   })
 
   test('shows platform-only AI settings without BYOK key field', async ({ page }) => {
