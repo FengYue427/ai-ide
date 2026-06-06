@@ -67,6 +67,7 @@ describe('runtimeOrchestrator', () => {
     expect(result.accepted).toBe(true)
     expect(result.mode).toBe('production')
     expect(prompt).toBe('run first task')
-    expect(backfill?.taskText).toBe('Implement login')
+    expect(backfill).not.toBeNull()
+    expect(backfill!.taskText).toBe('Implement login')
   })
 })

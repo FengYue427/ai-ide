@@ -29,7 +29,7 @@ describe('hookRunner', () => {
   afterEach(() => {
     clearRuntimeEvents()
     vi.mocked(isDesktopApp).mockReturnValue(false)
-    vi.mocked(getDesktopApi).mockReturnValue(null)
+    vi.mocked(getDesktopApi).mockReturnValue(undefined)
   })
 
   it('skips shell hooks in browser', async () => {

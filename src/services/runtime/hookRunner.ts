@@ -85,7 +85,7 @@ function runAgentHook(hook: RuntimeHookDef): HookRunOutcome {
   }
 }
 
-function runEnqueueHook(hook: RuntimeHookDef, ctx: HookRunContext): HookRunOutcome {
+function runEnqueueHook(hook: RuntimeHookDef, _ctx: HookRunContext): HookRunOutcome {
   if (!hook.spec?.trim() || !hook.task?.trim()) {
     return { hookId: hook.id, status: 'fail', message: 'enqueue hook missing spec/task' }
   }

@@ -1,5 +1,6 @@
 /** v1.5 F3 — Spec artifacts (hooks.yaml validate · upsert). */
 
+import type { FileItem } from '../../types/file'
 import {
   hooksPathFromTasksPath,
   parseHooksYaml,
@@ -45,10 +46,10 @@ export function validateSpecHooksYaml(content: string, tasksPath: string): SpecA
 }
 
 export function upsertHooksFileInWorkspace(
-  files: Array<{ name: string; content: string; language?: string }>,
+  files: FileItem[],
   tasksPath: string,
   content: string,
-): { ok: true; files: typeof files } | { ok: false; errors: string[] } {
+): { ok: true; files: FileItem[] } | { ok: false; errors: string[] } {
   const validation = validateSpecHooksYaml(content, tasksPath)
   if (!validation.ok) {
     const errors = [

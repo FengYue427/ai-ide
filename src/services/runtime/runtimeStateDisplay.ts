@@ -1,9 +1,10 @@
 /** v1.5.3 — localized runtime-state summary for settings / spec catalog. */
 
+import type { TranslationKey } from '../../i18n/translations'
 import { specNameFromTasksPath, type RuntimeStateDocument } from './runtimeState'
 
 export type RuntimeStateDisplayTranslator = (
-  key: string,
+  key: TranslationKey,
   params?: Record<string, string | number>,
 ) => string
 

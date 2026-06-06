@@ -1,6 +1,7 @@
 /** v1.5 F4 — orchestrator with optional production dual-write. */
 
 import { isAideRuntimeProductionEnabled } from '../../lib/v15Features'
+import type { FileItem } from '../../types/file'
 import { publishSpecQueueIntent } from './runtimeActivityPublishers'
 import { publishRuntimeEvent } from './runtimeEventBus'
 import { readHooksContentFromFiles, runHooksForEvent } from './hookRunner'
@@ -45,12 +46,14 @@ export interface SpecQueueWritePayload {
   backfill: Required<RuntimeIntentBackfill>
 }
 
+export type OrchestratorFilesUpdater = FileItem[] | ((prev: FileItem[]) => FileItem[])
+
 export interface OrchestratorQueueWriter {
   writeImmediate: (payload: SpecQueueWritePayload) => void
   appendExecution: (payload: SpecQueueWritePayload) => void
   getQueueDepth: () => { specPending: number; planPending: number }
-  getFiles: () => Array<{ name: string; content: string; language?: string }>
-  setFiles: (files: Array<{ name: string; content: string; language?: string }>) => void
+  getFiles: () => FileItem[]
+  setFiles: (files: OrchestratorFilesUpdater) => void
 }
 
 let intentCounter = 0

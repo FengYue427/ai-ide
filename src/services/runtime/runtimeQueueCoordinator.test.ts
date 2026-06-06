@@ -25,7 +25,7 @@ function createDeps(overrides?: Partial<SpecQueueCoordinatorDeps>): SpecQueueCoo
   return {
     getFiles: () => files,
     setFiles: (next) => {
-      files = next
+      files = typeof next === 'function' ? next(files) : next
     },
     setQueuedChatPrompt: () => {},
     setQueuedSpecBackfill: (next) => {

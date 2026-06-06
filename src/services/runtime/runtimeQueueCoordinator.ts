@@ -2,6 +2,7 @@
 
 import { isDesktopApp, getDesktopApi } from '../desktopBridge'
 import { isAideRuntimeProductionEnabled } from '../../lib/v15Features'
+import type { FileItem } from '../../types/file'
 import { useIDEStore, type QueuedSpecBackfill, type QueuedSpecExecution } from '../../store/ideStore'
 import { verifyAcceptanceAsync } from './acceptanceRunner'
 import { formatAcceptanceVerifyFailures } from './acceptanceVerifyMessages'
@@ -9,21 +10,21 @@ import { readHooksContentFromFiles, runHooksForEvent } from './hookRunner'
 import { publishSpecQueueIntent, publishVerifyFail } from './runtimeActivityPublishers'
 import {
   enqueueSpecRuntimeIntent,
+  type OrchestratorFilesUpdater,
   type OrchestratorQueueWriter,
   type RuntimeIntent,
 } from './runtimeOrchestrator'
 import { hookResultsFromOutcomes, upsertRuntimeStateInFiles } from './runtimeStateWriter'
 import { specNameFromTasksPath } from './runtimeState'
 
-export interface FileLike {
-  name: string
-  content: string
-  language?: string
-}
+export type CoordinatorFilesUpdater = OrchestratorFilesUpdater
+
+/** @deprecated Use FileItem — kept for tests importing FileLike */
+export type FileLike = FileItem
 
 export interface SpecQueueCoordinatorDeps {
-  getFiles: () => FileLike[]
-  setFiles: (files: FileLike[]) => void
+  getFiles: () => FileItem[]
+  setFiles: (files: CoordinatorFilesUpdater) => void
   setQueuedChatPrompt: (prompt: string) => void
   setQueuedSpecBackfill: (backfill: QueuedSpecBackfill | null) => void
   appendSpecExecution: (item: QueuedSpecExecution) => void
