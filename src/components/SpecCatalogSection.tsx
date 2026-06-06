@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useI18n, type Language } from '../i18n'
+import { dismissSpecHooksGuide, shouldShowSpecHooksGuide } from '../lib/specCatalogOnboarding'
 import {
   filterSpecCatalog,
   sortSpecCatalog,
@@ -52,9 +53,12 @@ export function SpecCatalogSection({
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState<SpecCatalogSort>('recent-exec')
   const [visibleCount, setVisibleCount] = useState(8)
+  const [showHooksGuide, setShowHooksGuide] = useState(() => shouldShowSpecHooksGuide())
   const filtered = useMemo(() => sortSpecCatalog(filterSpecCatalog(specs, query), sortBy), [specs, query, sortBy])
   const items = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
   const activeSpecPath = runtimeStatePreview?.activeSpecPath ?? null
+  const needsHooksGuide =
+    showHooksGuide && (specs.length === 0 || specs.some((spec) => !spec.hasHooks))
 
   const statusLabel = (status: SpecExecutionStatus): string => {
     switch (status) {
@@ -73,13 +77,45 @@ export function SpecCatalogSection({
     <div className="settings-card settings-card--grid">
       <div className="settings-row-title">{t('spec.catalog.title')}</div>
       <div className="settings-row-desc">{t('spec.catalog.desc')}</div>
+      {needsHooksGuide ? (
+        <div
+          className="settings-onboarding-banner"
+          role="note"
+          data-testid="spec-catalog-hooks-guide"
+          style={{
+            marginTop: 10,
+            padding: 12,
+            borderRadius: 10,
+            border: '1px solid color-mix(in srgb, var(--accent-color) 30%, var(--border-color))',
+            background: 'color-mix(in srgb, var(--accent-color) 6%, transparent)',
+          }}
+        >
+          <div style={{ display: 'grid', gap: 6 }}>
+            <strong>{t('spec.catalog.hooksGuide.title')}</strong>
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
+              {t('spec.catalog.hooksGuide.desc')}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ marginTop: 10 }}
+            onClick={() => {
+              dismissSpecHooksGuide()
+              setShowHooksGuide(false)
+            }}
+          >
+            {t('spec.catalog.hooksGuide.dismiss')}
+          </button>
+        </div>
+      ) : null}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         <input
           type="text"
           className="settings-input"
           style={{ flex: 1, minWidth: 220 }}
           value={specName}
-          placeholder="例如: auth-refactor"
+          placeholder={t('spec.catalog.namePlaceholder')}
           onChange={(e) => setSpecName(e.target.value)}
         />
         <button

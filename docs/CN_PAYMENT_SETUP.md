@@ -4,15 +4,22 @@
 
 > **路线**：国内优先 → D3 GA — [PAYMENT_DECISION_CN_2026-05.md](./PAYMENT_DECISION_CN_2026-05.md) · 周计划 [PHASE4_CN_PAYMENT.md](./PHASE4_CN_PAYMENT.md) · 商户申请 [CN_MERCHANT_APPLY_CHECKLIST.md](./CN_MERCHANT_APPLY_CHECKLIST.md)
 
-## 定价与配额（宽松默认值）
+## 定价与配额（v1.5 · 与 `lib/billing/plans.ts` 一致）
 
 | 计划 | 月费 | AI 配额/日 | 云工作区 |
 |------|------|------------|----------|
-| 免费版 | ¥0 | 200 | 10 |
-| 专业版 | **¥19** | 5000 | 不限 |
-| 团队版 | **¥49** | 不限 | 不限 |
+| 免费版 | ¥0 | 200 加权单位（经济模型） | 不限 |
+| 专业版 | **¥39** | 2000 加权单位 | 不限 |
+| 团队版 | **¥79** | 不限 | 不限 |
 
 修改价格与配额：编辑 `lib/billing/plans.ts` 后执行 `npm run db:seed`（或 `npm run db:neon`）同步数据库。
+
+校验支付宝 checkout 金额：
+
+```bash
+npm run verify:alipay:prices
+npm run verify:alipay:prices -- --production   # 生产 GA：拒绝 ALIPAY_SANDBOX=true
+```
 
 ---
 

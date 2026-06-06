@@ -5,10 +5,37 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Planned — v1.5.6+
+### Planned — v1.5.8+
 
-- 支付宝新 Price 生产
+- E2E 回归 · i18n 热修
 - 见 [ROADMAP_V1.5.x_PATCHES.md](docs/ROADMAP_V1.5.x_PATCHES.md)
+
+---
+
+## [1.5.7] — 2026-06-06 · Activity Line · Spec 目录 UI
+
+### Added
+
+- **Activity Line**：默认折叠 + localStorage 偏好 · `activityLine.expandHint`
+- **Spec 目录**：`spec-catalog-hooks-guide` 三步 hooks 创建引导
+- **E2E**：`spec-catalog-ui.spec.ts` · activity-line 默认折叠断言
+
+See [RELEASE_NOTES_v1.5.7.md](docs/RELEASE_NOTES_v1.5.7.md).
+
+---
+
+## [1.5.6] — 2026-06-06 · 支付宝 Price 生产对齐
+
+### Added
+
+- **`cnPriceVerify`** · **`verify:alipay:prices`** — Pro ¥39 · Team ¥79 与 `plans.ts` 一致
+- **E2E**：`billing-cn.spec.ts` — 支付宝开启时展示 ¥39/¥79
+
+### Changed
+
+- **`billing:preflight`** · **`CN_PAYMENT_SETUP.md`** — v1.5 CNY 定价与校验命令
+
+See [RELEASE_NOTES_v1.5.6.md](docs/RELEASE_NOTES_v1.5.6.md).
 
 ---
 

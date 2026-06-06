@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { readActivityLineCollapsed, writeActivityLineCollapsed } from '../lib/activityLinePrefs'
 import { ChevronDown, ChevronRight, Activity, Bot, GitBranch, ShieldAlert, Zap } from 'lucide-react'
 import { useI18n, type TranslationKey } from '../i18n'
 import {
@@ -59,7 +60,7 @@ function eventLabel(
 
 export function ActivityLine() {
   const { t } = useI18n()
-  const [collapsed, setCollapsed] = useState(true)
+  const [collapsed, setCollapsed] = useState(() => readActivityLineCollapsed(true))
   const [events, setEvents] = useState<RuntimeEvent[]>(() => getRecentRuntimeEvents(MAX_VISIBLE))
 
   useEffect(() => {
@@ -92,7 +93,13 @@ export function ActivityLine() {
       <button
         type="button"
         data-testid="aide-activity-line-toggle"
-        onClick={() => setCollapsed((value) => !value)}
+        onClick={() => {
+          setCollapsed((value) => {
+            const next = !value
+            writeActivityLineCollapsed(next)
+            return next
+          })
+        }}
         style={{
           width: '100%',
           display: 'flex',
@@ -115,7 +122,7 @@ export function ActivityLine() {
             .join(' · ')}
         </span>
         <span style={{ marginLeft: 'auto', opacity: 0.8 }}>
-          {t('activityLine.eventCount', { count: String(events.length) })}
+          {collapsed ? t('activityLine.expandHint') : t('activityLine.eventCount', { count: String(events.length) })}
         </span>
       </button>
       {!collapsed ? (

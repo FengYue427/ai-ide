@@ -44,8 +44,8 @@ let issues = 0
 
 console.log('=== CN payment preflight ===\n')
 
-console.log('定价（代码内置）: 免费 / 专业版 ¥19 / 团队版 ¥49')
-console.log('配额: 免费 200次/日·10工作区 | 专业 5000次/日 | 团队 不限\n')
+console.log('定价（lib/billing/plans.ts）: 免费 / 专业版 ¥39 / 团队版 ¥79')
+console.log('配额: 免费 200 加权单位/日 · 经济模型 | 专业 2000 | 团队 不限\n')
 
 if (has('APP_URL')) console.log(`✅ APP_URL=${process.env.APP_URL}`)
 else {
@@ -119,6 +119,7 @@ console.log('\n下一步:')
 console.log('  npm run dev:stack')
 console.log('  curl http://127.0.0.1:3001/api/subscription/payment-methods')
 console.log('  登录 → 订阅 → 支付宝或微信')
-console.log('\n文档: docs/CN_PAYMENT_SETUP.md\n')
+console.log('\n文档: docs/CN_PAYMENT_SETUP.md')
+console.log('校验: npm run verify:alipay:prices\n')
 
 process.exit(issues > 0 && !alipayOk && !wechatOk ? 1 : 0)

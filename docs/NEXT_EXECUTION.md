@@ -1,26 +1,25 @@
 # 当前执行入口
 
-> **更新**：2026-06-06 — **v1.5.5** · 进入 **v1.5.6 支付宝生产**
+> **更新**：2026-06-06 — **v1.5.7** · 进入 **v1.5.8 E2E/i18n 热修**
 
 ---
 
 ## 策略
 
-- **v1.5.1–1.5.2** ✅ 生产 env · Tab++ 默认 · P95 400ms
-- **v1.5.3** ✅ Runtime 抛光
-- **v1.5.4** ✅ 平台 AI 体验（欢迎页 · 经济模型配额 · 无 BYOK 困惑）
-- **v1.5.5** ✅ Stripe Price 对齐 `plans.ts` · `verify:stripe:prices`
+- **v1.5.5** ✅ Stripe Price · `verify:stripe:prices`
+- **v1.5.6** ✅ 支付宝 ¥39/¥79 · `verify:alipay:prices`
+- **v1.5.7** ✅ Activity Line 默认折叠 · Spec hooks 引导
 - **Patch 详表**：[ROADMAP_V1.5.x_PATCHES.md](./ROADMAP_V1.5.x_PATCHES.md)
 
 ---
 
-## 当前：v1.5.6（支付宝新 Price 生产）
+## 当前：v1.5.8（E2E 回归 · i18n · 边缘热修）
 
 | 条件 | 状态 |
 |------|:----:|
-| 沙箱 → 生产 Price | ☐ |
-| 订阅回调 smoke | ☐ |
-| CN billing E2E | ☐ |
+| 单测 ≥801 | ☐ CI |
+| E2E ≥64 | ☐ CI |
+| 无 P0 回归 | ☐ |
 
 ---
 
@@ -28,7 +27,7 @@
 
 ```bash
 npm run test:local
-npm run verify:env:v15
-npm run verify:stripe:prices   # 需 STRIPE_* 
+npm run verify:alipay:prices
+npm run verify:stripe:prices
 npm run smoke:production -- https://ai-ide-flame.vercel.app
 ```

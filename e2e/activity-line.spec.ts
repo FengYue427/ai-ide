@@ -28,6 +28,14 @@ test.describe('v1.4.8 activity line stub', () => {
     await expect(card).toContainText(/stub/i)
   })
 
+  test('chat panel shows activity line collapsed by default', async ({ page }) => {
+    await openChatPanelFromActivityBar(page)
+    const line = page.getByTestId('aide-activity-line')
+    await expect(line).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('aide-activity-line-body')).toHaveCount(0)
+    await expect(line).toContainText(/点击展开|Click to expand/i)
+  })
+
   test('chat panel shows activity line and displays published event', async ({ page }) => {
     await openChatPanelFromActivityBar(page)
     const line = page.getByTestId('aide-activity-line')
