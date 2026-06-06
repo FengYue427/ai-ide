@@ -135,6 +135,8 @@ export const JA_JP_BULK_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'settings.tabCompletion.tabPlusPlusProductionOn': 'Tab++ 本番: 複数行 ghost 補完有効（v1.5 F1）',
   'settings.tabCompletion.tabPlusPlusProductionTargets':
     'Tab++ 本番目標: P95 < {p95} ms · debounce {debounce} ms · ≤{lines} 行',
+  'settings.tabCompletion.p95CollectHint':
+    'エディタで入力すると、ここに Tab 遅延 P95 サンプルが表示されます。',
   'settings.index.cappedHint': 'ブラウザのインデックス上限に達しました。@ とセマンティック検索の対象外ファイルがあります。',
   'settings.semantic.indexNotReady': 'インデックス未完了 — ワークスペースを読み込み、完了後にセマンティック @ を使ってください。',
   'settings.semantic.indexCappedHint': 'インデックスは切り詰め済み — セマンティック検索は部分集合のみ。大規模リポはデスクトップ版を検討してください。',

@@ -13,6 +13,7 @@ describe('isAcceptableSmokeHealthVersion', () => {
     expect(isAcceptableSmokeHealthVersion('1.4.0')).toBe(true)
     expect(isAcceptableSmokeHealthVersion('1.4.9')).toBe(true)
     expect(isAcceptableSmokeHealthVersion('1.5.0')).toBe(true)
+    expect(isAcceptableSmokeHealthVersion('1.5.2')).toBe(true)
   })
 
   it('rejects other lines', () => {

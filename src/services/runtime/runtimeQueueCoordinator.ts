@@ -4,6 +4,7 @@ import { isDesktopApp, getDesktopApi } from '../desktopBridge'
 import { isAideRuntimeProductionEnabled } from '../../lib/v15Features'
 import { useIDEStore, type QueuedSpecBackfill, type QueuedSpecExecution } from '../../store/ideStore'
 import { verifyAcceptanceAsync } from './acceptanceRunner'
+import { formatAcceptanceVerifyFailures } from './acceptanceVerifyMessages'
 import { readHooksContentFromFiles, runHooksForEvent } from './hookRunner'
 import { publishSpecQueueIntent, publishVerifyFail } from './runtimeActivityPublishers'
 import {
@@ -109,7 +110,7 @@ export async function enqueueSpecTaskViaRuntime(
 export async function onSpecQueueItemSucceeded(
   backfill: QueuedSpecBackfill,
   deps: SpecQueueCoordinatorDeps,
-): Promise<{ verifyOk: boolean; enqueueIntents: RuntimeIntent[] }> {
+): Promise<{ verifyOk: boolean; verifyDetail?: string; enqueueIntents: RuntimeIntent[] }> {
   if (!isAideRuntimeProductionEnabled()) {
     return { verifyOk: true, enqueueIntents: [] }
   }
@@ -172,7 +173,11 @@ export async function onSpecQueueItemSucceeded(
     await enqueueSpecRuntimeIntent(intent, buildQueueWriter(deps))
   }
 
-  return { verifyOk: verify.ok, enqueueIntents }
+  return {
+    verifyOk: verify.ok,
+    verifyDetail: verify.ok ? undefined : formatAcceptanceVerifyFailures(verify),
+    enqueueIntents,
+  }
 }
 
 export async function onAgentFilesApplied(

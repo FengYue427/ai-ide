@@ -5,10 +5,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Planned — v1.5.1+
+### Planned — v1.5.4+
 
-- Tab++/Runtime 抛光 patch 线
-- 见 [ROADMAP_V1.5.md](docs/ROADMAP_V1.5.md) §2
+- 平台 AI 体验抛光
+- 见 [ROADMAP_V1.5.x_PATCHES.md](docs/ROADMAP_V1.5.x_PATCHES.md)
+
+---
+
+## [1.5.3] — 2026-06-05 · Runtime 抛光
+
+### Added
+
+- **验收失败文案**：`formatAcceptanceVerifyFailures` — Chat 通知展示未勾选项/命令详情
+- **队列暂停/恢复**：`runtimeQueuePause` · 任务队列 banner · `runtime-queue-resume`
+- **runtime-state 可读**：`formatRuntimeStateDisplayLines` · 设置页/Spec 目录本地化摘要
+
+See [RELEASE_NOTES_v1.5.3.md](docs/RELEASE_NOTES_v1.5.3.md).
+
+---
+
+## [1.5.2] — 2026-06-05 · 生产 GA · Tab++ 默认开
+
+### Added
+
+- **v1.5.1 部署**：`.env.production` · `verify:env:v15` · `v15ProductionEnv` catalog
+- **v1.5.2 Tab++ GA**：production build 默认开 v1.5 flags · P95 **400ms** · 设置页采集提示
+- **欢迎页**：onboarding 去掉 BYOK · `welcome-platform-cta` testid
+
+See [RELEASE_NOTES_v1.5.2.md](docs/RELEASE_NOTES_v1.5.2.md) · [V1.5.1_GA_EXECUTION.md](docs/V1.5.1_GA_EXECUTION.md).
 
 ---
 

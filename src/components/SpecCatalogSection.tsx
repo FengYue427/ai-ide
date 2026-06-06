@@ -9,6 +9,7 @@ import {
 import type { PlanSpecLink } from '../services/planSpecLinkService'
 import type { SpecHooksPreview } from '../services/runtime/specHooksPreview'
 import { deriveSpecExecutionStatus, type SpecExecutionStatus } from '../services/runtime/runtimeState'
+import { formatRuntimeStateDisplayLines } from '../services/runtime/runtimeStateDisplay'
 import type { RuntimeStatePreview } from '../services/runtime/runtimeStatePreview'
 
 interface SpecCatalogSectionProps {
@@ -134,7 +135,12 @@ export function SpecCatalogSection({
             {t('spec.catalog.runtimeStateSummary')}
           </div>
           {runtimeStatePreview.parse.ok ? (
-            runtimeStatePreview.summaryLines.map((line) => <div key={line}>{line}</div>)
+            (runtimeStatePreview.parse.document
+              ? formatRuntimeStateDisplayLines(runtimeStatePreview.parse.document, (key, params) =>
+                  t(key, params),
+                )
+              : runtimeStatePreview.summaryLines
+            ).map((line) => <div key={line}>{line}</div>)
           ) : (
             runtimeStatePreview.parse.errors.map((err) => <div key={err}>{err}</div>)
           )}

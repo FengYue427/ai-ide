@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
   Bot,
   CheckSquare,
@@ -150,6 +150,11 @@ import {
   buildIdeSpecQueueCoordinatorDeps,
   onSpecQueueItemSucceeded,
 } from '../services/runtime/runtimeQueueCoordinator'
+import {
+  clearRuntimeQueuePause,
+  getRuntimeQueuePause,
+  subscribeRuntimeQueuePause,
+} from '../services/runtime/runtimeQueuePause'
 import type { QueuedSpecBackfill } from '../store/ideStore'
 
 interface Message {
@@ -203,6 +208,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 }) => {
   const { t, language } = useI18n()
   const currentPlan = useIDEStore((s) => s.currentPlan)
+  const runtimeQueuePause = useSyncExternalStore(
+    subscribeRuntimeQueuePause,
+    getRuntimeQueuePause,
+    () => null,
+  )
 
   const createWelcomeMessage = useCallback(
     (config: AIConfig) => {
@@ -1082,7 +1092,7 @@ ${t('ai.chat.prompt')}`
         notify?.(
           'error',
           t('runtime.verifyFail.title'),
-          t('runtime.verifyFail.detail'),
+          result.verifyDetail ?? t('runtime.verifyFail.detail'),
         )
       }
     },
@@ -2169,7 +2179,7 @@ ${t('ai.chat.prompt')}`
 
       <McpToolLogPanel entries={mcpToolEntries} />
 
-      {(!loading && (queuedChatPrompt || queuedPlanExecutions.length > 0 || queuedSpecExecutions.length > 0 || sendQueue.length > 0)) || (loading && sendQueue.length > 0) ? (
+      {(!loading && (runtimeQueuePause || queuedChatPrompt || queuedPlanExecutions.length > 0 || queuedSpecExecutions.length > 0 || sendQueue.length > 0)) || (loading && sendQueue.length > 0) ? (
         <TaskQueuePanel
           sessionStatus={sessionStatus}
           runId={runId}
@@ -2183,6 +2193,11 @@ ${t('ai.chat.prompt')}`
           recentDoneQueueItems={recentDoneQueueItems}
           failedPlanExecution={failedPlanExecution}
           failedSpecExecution={failedSpecExecution}
+          runtimeQueuePause={runtimeQueuePause}
+          onResumeRuntimeQueue={() => {
+            clearRuntimeQueuePause()
+            notify?.('success', t('runtime.queuePaused.resumedTitle'), t('runtime.queuePaused.resumedDetail'))
+          }}
           onExportReport={exportQueueReport}
           onSaveReport={saveQueueReportToWorkspace}
           onOpenLatestReport={openLatestQueueReport}

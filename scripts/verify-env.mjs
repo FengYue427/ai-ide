@@ -4,7 +4,7 @@
  * Usage:
  *   node scripts/verify-env.mjs
  *   node scripts/verify-env.mjs --production
- *   node scripts/verify-env.mjs --production --require-cn-billing   # Path B: merchants required
+ *   node scripts/verify-env.mjs --production --v15-production   # v1.5.1 prod client flags
  */
 import { existsSync, readFileSync } from 'fs'
 import { dirname, join } from 'path'
@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const production = process.argv.includes('--production')
+const v15Production = process.argv.includes('--v15-production')
 /** When set, require Alipay or WeChat env for production (Path B). Default Path A does not require merchants. */
 const requireCnBilling = process.argv.includes('--require-cn-billing')
 /** D3 GA: cron secret + recommend Sentry (use with --production --require-cn-billing). */
@@ -19,10 +20,11 @@ const d3Ga = process.argv.includes('--d3-ga')
 const urlArgIndex = process.argv.indexOf('--url')
 const remoteUrl = urlArgIndex >= 0 ? process.argv[urlArgIndex + 1]?.replace(/\/$/, '') : ''
 const envPath = join(root, '.env.local')
+const envProductionPath = join(root, '.env.production')
 
-function loadEnvFile() {
-  if (!existsSync(envPath)) return
-  for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+function loadEnvFile(path, { onlyIfUnset = true } = {}) {
+  if (!existsSync(path)) return
+  for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
     const t = line.trim()
     if (!t || t.startsWith('#')) continue
     const eq = t.indexOf('=')
@@ -32,11 +34,14 @@ function loadEnvFile() {
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1)
     }
-    if (!process.env[key]) process.env[key] = val
+    if (!onlyIfUnset || !process.env[key]) process.env[key] = val
   }
 }
 
-loadEnvFile()
+loadEnvFile(envPath)
+if (production || v15Production) {
+  loadEnvFile(envProductionPath)
+}
 
 const required = [
   { key: 'DATABASE_URL', hint: 'Neon/Supabase Postgres connection string' },
@@ -122,6 +127,23 @@ if (production) {
   if (process.env.VITE_ALLOW_OFFLINE_AUTH === 'true') {
     console.log('\n  ❌ VITE_ALLOW_OFFLINE_AUTH=true — must not be set for production builds')
     failed++
+  }
+  if (v15Production || production) {
+    const v15Vite = [
+      { key: 'VITE_AI_GATEWAY', hint: 'Platform AI gateway (login users)' },
+      { key: 'VITE_TAB_PLUS_PLUS', hint: 'Tab++ multiline ghost + FIM' },
+      { key: 'VITE_AIDE_SPEC_ARTIFACTS_V2', hint: 'Spec hooks.yaml catalog' },
+      { key: 'VITE_AIDE_RUNTIME', hint: 'Runtime orchestrator + hookRunner' },
+      { key: 'VITE_AIDE_ACTIVITY_LINE', hint: 'Activity Line production UI' },
+    ]
+    const strictV15 = v15Production
+    check(v15Vite, 'v1.5 production client flags (Vite build-time):', { soft: !strictV15 })
+    if (process.env.VITE_ALLOW_BYOK_LEGACY === 'true') {
+      console.log('\n  ❌ VITE_ALLOW_BYOK_LEGACY=true — must be false/unset for v1.5 production')
+      failed++
+    } else {
+      console.log('  ✅ VITE_ALLOW_BYOK_LEGACY off')
+    }
   }
   if (process.env.ALIPAY_SANDBOX === 'true') {
     console.log('\n  ❌ ALIPAY_SANDBOX=true — must be unset/false for production GA')

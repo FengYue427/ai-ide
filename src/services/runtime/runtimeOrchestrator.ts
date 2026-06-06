@@ -4,6 +4,13 @@ import { isAideRuntimeProductionEnabled } from '../../lib/v15Features'
 import { publishSpecQueueIntent } from './runtimeActivityPublishers'
 import { publishRuntimeEvent } from './runtimeEventBus'
 import { readHooksContentFromFiles, runHooksForEvent } from './hookRunner'
+import {
+  formatHookPauseReason,
+  getRuntimeQueuePause,
+  isRuntimeQueuePaused,
+  setRuntimeQueuePaused,
+  clearRuntimeQueuePause,
+} from './runtimeQueuePause'
 import { hookResultsFromOutcomes, upsertRuntimeStateInFiles } from './runtimeStateWriter'
 import { specNameFromTasksPath } from './runtimeState'
 
@@ -77,6 +84,16 @@ export async function enqueueSpecRuntimeIntent(
     return { accepted: true, mode, intentId }
   }
 
+  if (isRuntimeQueuePaused()) {
+    const paused = getRuntimeQueuePause()
+    return {
+      accepted: false,
+      mode,
+      intentId,
+      pauseReason: paused?.reason ?? 'runtime queue paused',
+    }
+  }
+
   const specName = specNameFromTasksPath(backfill.taskPath)
   const hooksContent = readHooksContentFromFiles(writer.getFiles(), backfill.taskPath)
   const hookBatch = await runHooksForEvent({
@@ -97,11 +114,21 @@ export async function enqueueSpecRuntimeIntent(
   writer.setFiles(files)
 
   if (hookBatch.shouldPauseQueue) {
+    const failed = hookBatch.outcomes.find((outcome) => outcome.status === 'fail')
+    const reason = formatHookPauseReason(
+      failed?.hookId,
+      failed?.message ?? 'queue.before hook failed',
+    )
+    setRuntimeQueuePaused({
+      reason,
+      hookId: failed?.hookId,
+      specPath: backfill.taskPath,
+    })
     return {
       accepted: false,
       mode,
       intentId,
-      pauseReason: 'queue.before hook failed',
+      pauseReason: reason,
     }
   }
 
@@ -122,6 +149,7 @@ export async function enqueueSpecRuntimeIntent(
   }
 
   publishSpecQueueIntent(backfill.taskPath, backfill.taskText)
+  clearRuntimeQueuePause()
   return { accepted: true, mode, intentId }
 }
 

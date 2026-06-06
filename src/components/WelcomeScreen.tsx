@@ -231,7 +231,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             </div>
             <p className="welcome-lead">{t('welcome.lead')}</p>
             {isAiGatewayEnabled() && onRegister ? (
-              <div className="welcome-platform-cta">
+              <div className="welcome-platform-cta" data-testid="welcome-platform-cta">
                 <p className="welcome-platform-cta-text">{t('welcome.platformCta')}</p>
                 <button type="button" className="welcome-platform-cta-btn" onClick={onRegister}>
                   {t('welcome.platformCtaButton')}

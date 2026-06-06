@@ -96,4 +96,36 @@ describe('runtimeQueueCoordinator', () => {
 
     expect(result.verifyOk).toBe(true)
   })
+
+  it('returns verify detail when acceptance has open items', async () => {
+    const { isAideRuntimeProductionEnabled } = await import('../../lib/v15Features')
+    vi.mocked(isAideRuntimeProductionEnabled).mockReturnValue(true)
+
+    const deps = createDeps({
+      getFiles: () => [
+        {
+          name: '.aide/specs/demo/acceptance.md',
+          content: '- [ ] ship login',
+          language: 'markdown',
+        },
+        {
+          name: '.aide/specs/demo/tasks.md',
+          content: '# Demo',
+          language: 'markdown',
+        },
+      ],
+    })
+
+    const result = await onSpecQueueItemSucceeded(
+      {
+        taskPath: '.aide/specs/demo/tasks.md',
+        taskText: 'Implement login',
+        specAcceptancePath: '.aide/specs/demo/acceptance.md',
+      },
+      deps,
+    )
+
+    expect(result.verifyOk).toBe(false)
+    expect(result.verifyDetail).toContain('ship login')
+  })
 })

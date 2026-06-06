@@ -88,6 +88,15 @@ export function SettingsTabCompletionCard() {
               lines: String(TAB_PLUS_PLUS_PRODUCTION_MAX_LINES),
             })}
           </p>
+          {metrics.latencySampleCount === 0 ? (
+            <p
+              className="settings-privacy-text"
+              data-testid="settings-tab-p95-hint"
+              style={{ marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}
+            >
+              {t('settings.tabCompletion.p95CollectHint')}
+            </p>
+          ) : null}
         </>
       ) : null}
     </div>

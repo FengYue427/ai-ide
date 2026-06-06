@@ -6,6 +6,7 @@ import {
   isTabPlusPlusEnabled,
   isTabPlusPlusProductionEnabled,
   isActivityLineProductionEnabled,
+  isV15ProductionDefaultsActive,
 } from './v15Features'
 
 describe('v15Features', () => {
@@ -27,6 +28,28 @@ describe('v15Features', () => {
     expect(isTabPlusPlusProductionEnabled()).toBe(true)
     expect(isTabPlusPlusEnabled()).toBe(true)
     expect(getV15FeatureStatus().tabPlusPlus).toBe(true)
+  })
+
+  it('defaults v1.5 flags on in production build when env unset (v1.5.2)', () => {
+    vi.stubEnv('PROD', true)
+    vi.stubEnv('MODE', 'production')
+    vi.stubEnv('DEV', false)
+    expect(isV15ProductionDefaultsActive()).toBe(true)
+    expect(isTabPlusPlusProductionEnabled()).toBe(true)
+    expect(isAideRuntimeProductionEnabled()).toBe(true)
+    expect(isActivityLineProductionEnabled()).toBe(true)
+  })
+
+  it('respects explicit false in production build', () => {
+    vi.stubEnv('PROD', true)
+    vi.stubEnv('MODE', 'production')
+    import.meta.env.VITE_TAB_PLUS_PLUS = 'false'
+    expect(isTabPlusPlusProductionEnabled()).toBe(false)
+  })
+
+  it('accepts numeric 1 for env flags', () => {
+    import.meta.env.VITE_TAB_PLUS_PLUS = '1'
+    expect(isTabPlusPlusProductionEnabled()).toBe(true)
   })
 
   it('enables Activity Line production from env', () => {

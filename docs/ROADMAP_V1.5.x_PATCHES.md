@@ -12,9 +12,9 @@
 | 子版本 | 主题 | 状态 |
 |--------|------|:----:|
 | **v1.5.0** | F0–F8 大版本 | ✅ |
-| **v1.5.1** | GA 部署 · prod env · smoke 绿 | ⬜ |
-| **v1.5.2** | Tab++ 抛光（P95 实测 · debounce · 默认策略） | ⬜ |
-| **v1.5.3** | Runtime 抛光（agent hook · 队列 UX · 错误文案） | ⬜ |
+| **v1.5.1** | GA 部署 · prod env · smoke 绿 | ✅ |
+| **v1.5.2** | Tab++ 抛光（P95 实测 · debounce · 默认策略） | ✅ |
+| **v1.5.3** | Runtime 抛光（agent hook · 队列 UX · 错误文案） | ✅ |
 | **v1.5.4** | 平台 AI 体验（欢迎页 · 套餐文案 · 配额提示） | ⬜ |
 | **v1.5.5** | Stripe 新 Price 生产 | ⬜ |
 | **v1.5.6** | 支付宝新 Price 生产 | ⬜ |
@@ -30,8 +30,8 @@
 
 | 版本 | 北极星 | 关键验收 |
 |------|--------|----------|
-| **1.5.1** | 线上与 repo 一致 | Vercel `V1.5_ENV` 全开 · smoke 5/5 · health 版本 1.5.0 |
-| **1.5.2** | Tab 敢默认开 | prod `VITE_TAB_PLUS_PLUS=1` · P95 指标卡有样本 · 主观可用 |
+| **1.5.1** | 线上与 repo 一致 | Vercel `V1.5_ENV` 全开 · smoke 5/5 · health 版本 1.5.x |
+| **1.5.2** | Tab 敢默认开 | prod 默认开 Tab++ · P95 400ms · debounce 250ms |
 | **1.5.3** | Runtime 不吓用户 | verify 失败文案 · queue 暂停可恢复 · runtime-state 可读 |
 | **1.5.4** | 新用户 3 分钟上手 | 欢迎页平台 CTA · Free economy 限制清晰 · 无 BYOK 困惑 |
 | **1.5.5** | 海外付得出去 | Stripe Price 对齐 `plans.ts` · E2E billing 绿 |
@@ -61,7 +61,7 @@ npm run smoke:production -- https://ai-ide-flame.vercel.app
 
 | 基线 | 只增不减 |
 |------|:--------:|
-| `test:unit` | **789+** |
+| `test:unit` | **800+** |
 | E2E 合计 | **64+** |
 
 ---

@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { useI18n } from '../i18n'
 import type { QueuedPlanExecution, QueuedSpecExecution } from '../store/ideStore'
 import type { ChatSessionStatus } from '../services/chatSessionOrchestrator'
+import type { RuntimeQueuePauseState } from '../services/runtime/runtimeQueuePause'
 import { QueuePreviewList } from './QueuePreviewList'
 
 export interface FailedPlanExecution {
@@ -34,6 +35,8 @@ interface TaskQueuePanelProps {
   recentDoneQueueItems: RecentDoneQueueItem[]
   failedPlanExecution: FailedPlanExecution | null
   failedSpecExecution: FailedSpecExecution | null
+  runtimeQueuePause: RuntimeQueuePauseState | null
+  onResumeRuntimeQueue: () => void
   onExportReport: () => void
   onSaveReport: () => void
   onOpenLatestReport: () => void
@@ -61,6 +64,8 @@ export const TaskQueuePanel = memo(function TaskQueuePanel({
   recentDoneQueueItems,
   failedPlanExecution,
   failedSpecExecution,
+  runtimeQueuePause,
+  onResumeRuntimeQueue,
   onExportReport,
   onSaveReport,
   onOpenLatestReport,
@@ -92,6 +97,33 @@ export const TaskQueuePanel = memo(function TaskQueuePanel({
       <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: 'var(--text-primary)' }}>
         {t('queue.panel.title')}
       </div>
+      {runtimeQueuePause ? (
+        <div
+          data-testid="runtime-queue-paused-banner"
+          style={{
+            marginBottom: 8,
+            padding: '8px 10px',
+            borderRadius: 8,
+            border: '1px solid var(--danger-color, #c44)',
+            background: 'rgba(239, 68, 68, 0.08)',
+            fontSize: 11,
+            lineHeight: 1.5,
+            color: 'var(--danger-color, #c44)',
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('runtime.queuePaused.title')}</div>
+          <div>{runtimeQueuePause.reason}</div>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            data-testid="runtime-queue-resume"
+            style={{ marginTop: 8, padding: '4px 8px', fontSize: 11 }}
+            onClick={onResumeRuntimeQueue}
+          >
+            {t('runtime.queuePaused.resume')}
+          </button>
+        </div>
+      ) : null}
       <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>
         {t('queue.panel.sessionStatus', { status: sessionStatus })}
         {runId ? ` · ${runId}` : ''}

@@ -21,12 +21,22 @@ function isDevRuntime(): boolean {
   return import.meta.env.DEV && import.meta.env.MODE !== 'test'
 }
 
+function isV15ProductionBuild(): boolean {
+  return Boolean(import.meta.env.PROD) && import.meta.env.MODE !== 'test'
+}
+
 function readEnvFlag(name: string, sessionKey: string): boolean {
   const raw = import.meta.env[name]
-  if (raw === 'true') return true
-  if (raw === 'false') return false
+  if (raw === 'true' || raw === '1') return true
+  if (raw === 'false' || raw === '0') return false
   if (isDevRuntime()) return true
+  // v1.5.2: production builds default v1.5 flags ON unless explicitly false.
+  if (isV15ProductionBuild()) return true
   return readLocalFeatureFlag(sessionKey)
+}
+
+export function isV15ProductionDefaultsActive(): boolean {
+  return isV15ProductionBuild()
 }
 
 export function isByokLegacyAllowed(): boolean {

@@ -1,6 +1,6 @@
 {
   "name": "ai-ide",
-  "version": "1.5.0",
+  "version": "1.5.3",
   "description": "开源 AI 原生轻量 IDE",
   "author": "AI IDE",
   "type": "module",
@@ -40,6 +40,7 @@
     "test:e2e:install": "playwright install chromium",
     "verify:env": "node scripts/verify-env.mjs",
     "verify:env:prod": "node scripts/verify-env.mjs --production",
+    "verify:env:v15": "node scripts/verify-env.mjs --production --v15-production",
     "predeploy:check": "npm run test:local && node scripts/verify-env.mjs",
     "check:release": "npm run test:local && node scripts/verify-env.mjs --production",
     "check:release:billing": "npm run test:local && node scripts/verify-env.mjs --production --require-cn-billing",
