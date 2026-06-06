@@ -19,6 +19,7 @@ Thumbs.db
 # Environment
 .env
 .env.local
+.env.production
 .env.*.local
 secrets/
 scripts/.plugin-signing-key.json

@@ -20,7 +20,9 @@ const d3Ga = process.argv.includes('--d3-ga')
 const urlArgIndex = process.argv.indexOf('--url')
 const remoteUrl = urlArgIndex >= 0 ? process.argv[urlArgIndex + 1]?.replace(/\/$/, '') : ''
 const envPath = join(root, '.env.local')
-const envProductionPath = join(root, '.env.production')
+const envProductionPath = existsSync(join(root, '.env.production'))
+  ? join(root, '.env.production')
+  : join(root, '.env.production.example')
 
 function loadEnvFile(path, { onlyIfUnset = true } = {}) {
   if (!existsSync(path)) return
