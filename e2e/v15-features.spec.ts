@@ -30,10 +30,10 @@ test.describe('v1.5 feature settings', () => {
     await expect(card).toBeVisible({ timeout: 10_000 })
     await expect(card.locator('strong')).toContainText(/v1\.5/i)
     const rows = card.getByRole('listitem')
-    await expect(rows.filter({ hasText: /Tab\+\+|Tab\+\+/i })).toBeVisible()
-    await expect(rows.filter({ hasText: /Spec Artifacts|hooks\.yaml/i })).toBeVisible()
-    await expect(rows.filter({ hasText: /AIDE Runtime|Runtime 引擎/i })).toBeVisible()
-    await expect(rows.filter({ hasText: /Activity Line/i })).toBeVisible()
+    await expect(rows.filter({ hasText: /Tab\+\+ 生产|Tab\+\+ production/i })).toHaveCount(1)
+    await expect(rows.filter({ hasText: /Spec Artifacts|hooks\.yaml/i }).first()).toBeVisible()
+    await expect(rows.filter({ hasText: /AIDE Runtime|Runtime 引擎/i }).first()).toBeVisible()
+    await expect(rows.filter({ hasText: /Activity Line/i }).first()).toBeVisible()
   })
 
   test('runtime stub card shows F4 badge when runtime production flag is on', async ({ page }) => {

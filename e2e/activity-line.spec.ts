@@ -3,6 +3,7 @@
  */
 import { expect, test } from '@playwright/test'
 import {
+  openChatPanelFromActivityBar,
   openSettingsTab,
   prepareE2EStorage,
   prepareLoggedInUser,
@@ -28,7 +29,7 @@ test.describe('v1.4.8 activity line stub', () => {
   })
 
   test('chat panel shows activity line and displays published event', async ({ page }) => {
-    await page.getByRole('button', { name: /AI 助手|AI Assistant/i }).click()
+    await openChatPanelFromActivityBar(page)
     const line = page.getByTestId('aide-activity-line')
     await expect(line).toBeVisible({ timeout: 10_000 })
 

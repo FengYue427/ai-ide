@@ -86,6 +86,18 @@ export async function prepareLoggedInUser(page: Page): Promise<void> {
           headers: { 'Content-Type': 'application/json' },
         })
       }
+      if (url.includes('/api/workspaces')) {
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      if (url.includes('/api/subscription') && !url.includes('/plans')) {
+        return new Response(
+          JSON.stringify({ plan: 'free', status: 'active', userId: session.user.id }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
       return originalFetch(input, init)
     }
   }, E2E_LOGGED_IN_SESSION)
@@ -176,6 +188,15 @@ export async function openSettingsTab(
   const tab = page.getByTestId(`settings-tab-${tabId}`)
   const isActive = await tab.evaluate((el) => el.classList.contains('settings-nav-btn--active'))
   if (!isActive) {
+    await dismissAuthModalIfOpen(page)
     await tab.click()
+    await dismissAuthModalIfOpen(page)
   }
+}
+
+/** Activity bar — AI chat (dismiss auth overlay first). */
+export async function openChatPanelFromActivityBar(page: Page): Promise<void> {
+  await dismissAuthModalIfOpen(page)
+  await page.locator('.activity-bar').getByRole('button', { name: /AI 助手|AI Assistant/i }).click()
+  await dismissAuthModalIfOpen(page)
 }
