@@ -4,7 +4,7 @@ import { buildFimContextFromSelection, type FimEditorSelection } from '../lib/fi
 import { buildGhostInlineRange } from '../lib/ghostLayoutEngine'
 import { isAiConfigured } from '../lib/aiPlatformMode'
 import { inlineCompletionService } from '../services/inlineCompletionService'
-import { isTabPlusPlusPocEnabled } from '../lib/tabPlusPlusPoc'
+import { isTabPlusPlusEnabled } from '../lib/v15Features'
 import { useIDEStore } from '../store/ideStore'
 
 function toInlineCompletionItem(
@@ -12,7 +12,7 @@ function toInlineCompletionItem(
   model: monaco.editor.ITextModel,
   position: monaco.Position,
 ): { insertText: string; range: monaco.Range } {
-  if (!isTabPlusPlusPocEnabled()) {
+  if (!isTabPlusPlusEnabled()) {
     return {
       insertText: text,
       range: new monaco.Range(

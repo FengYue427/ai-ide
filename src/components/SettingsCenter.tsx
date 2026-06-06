@@ -55,6 +55,12 @@ import { projectIndexManager } from '../services/projectIndexManager'
 import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
+import {
+  filterModelsForPlan,
+  formatModelOptionLabel,
+  PLATFORM_CLOUD_PROVIDERS,
+} from '../lib/platformModelCatalog'
+import { isByokLegacyAllowed } from '../lib/v15Features'
 import { getIndexBuildTelemetry } from '../lib/indexBuildTelemetry'
 import { getV12FeatureStatus } from '../lib/v12Features'
 import {
@@ -69,6 +75,7 @@ import { SettingsPluginOpsCard } from './SettingsPluginOpsCard'
 import { formatTabCompletionMetricsLine } from '../lib/formatTabCompletionMetrics'
 import { SettingsTabCompletionCard } from './SettingsTabCompletionCard'
 import { SettingsV14FeaturesCard } from './SettingsV14FeaturesCard'
+import { SettingsV15FeaturesCard } from './SettingsV15FeaturesCard'
 import { SettingsAideRuntimeStubCard } from './SettingsAideRuntimeStubCard'
 import { SettingsV13FeaturesCard } from './SettingsV13FeaturesCard'
 import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
@@ -117,6 +124,8 @@ interface SettingsCenterProps {
   onSyncAideToWorkspace?: () => void
   onOpenSpecTasks?: (tasksPath: string) => void
   onOpenSpecAcceptance?: (tasksPath: string) => void
+  onOpenSpecHooks?: (tasksPath: string) => void
+  onCreateSpecHooks?: (tasksPath: string, specName: string) => void
   onRunFirstOpenSpecTask?: (tasksPath: string) => void
   planItems?: PlanCatalogItem[]
   planLinkCounts?: Record<string, number>
@@ -185,6 +194,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onSyncAideToWorkspace,
   onOpenSpecTasks,
   onOpenSpecAcceptance,
+  onOpenSpecHooks,
+  onCreateSpecHooks,
   onRunFirstOpenSpecTask,
   planItems = [],
   planLinkCounts = {},
@@ -239,10 +250,25 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   const [tabDebounceMs, setTabDebounceMs] = useState(getTabCompletionDebounceMs)
   const [tabMetricsTick, setTabMetricsTick] = useState(0)
   const aiGatewayEnabled = isAiGatewayEnabled()
+  const byokLegacyAllowed = isByokLegacyAllowed()
+  const platformOnlyMode = aiGatewayEnabled && !byokLegacyAllowed
   const probePlatformHealth = aiGatewayEnabled || activeTab === 'features'
   const platformAiHealth = usePlatformAiHealth(probePlatformHealth)
   const showPlatformUsageDashboard = aiGatewayEnabled && Boolean(currentUser) && activeTab === 'ai'
   const platformUsageDashboard = usePlatformUsageDashboard(showPlatformUsageDashboard)
+
+  const availableProviders = useMemo(() => {
+    const providers = Object.keys(modelOptions) as AIModel[]
+    if (!platformOnlyMode) return providers
+    return providers.filter(
+      (provider) => provider === 'ollama' || PLATFORM_CLOUD_PROVIDERS.includes(provider),
+    )
+  }, [platformOnlyMode])
+
+  const availableModels = useMemo(
+    () => filterModelsForPlan(localAIConfig.provider, modelOptions[localAIConfig.provider].models, currentPlan),
+    [currentPlan, localAIConfig.provider],
+  )
 
   const tabs = useMemo(
     () =>
@@ -390,7 +416,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
 
   const handleSave = () => {
     void (async () => {
-      onSaveAIConfig(localAIConfig)
+      const nextConfig =
+        platformOnlyMode && localAIConfig.provider !== 'ollama'
+          ? { ...localAIConfig, keyMode: 'platform' as const, apiKey: '' }
+          : localAIConfig
+      onSaveAIConfig(nextConfig)
       if (localAutoSave !== autoSaveEnabled) onToggleAutoSave()
       if (localFormatOnSave !== formatOnSaveEnabled) onToggleFormatOnSave()
       if (localTheme !== theme) onToggleTheme()
@@ -508,7 +538,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 ) : null}
 
                 <div className="settings-card settings-card--grid">
-                  {aiGatewayEnabled ? (
+                  {aiGatewayEnabled && byokLegacyAllowed ? (
                     <div className="settings-field">
                       <label className="settings-label">{t('settings.ai.keyMode')}</label>
                       <select
@@ -530,6 +560,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                           : t('settings.ai.keyModeByokHint')}
                       </p>
                     </div>
+                  ) : platformOnlyMode ? (
+                    <div className="settings-field" data-testid="settings-platform-only-ai">
+                      <label className="settings-label">{t('settings.ai.keyMode')}</label>
+                      <p className="settings-privacy-text">{t('settings.ai.keyModePlatformHint')}</p>
+                    </div>
                   ) : null}
 
                   <div className="settings-field">
@@ -546,7 +581,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                         })
                       }}
                     >
-                      {(Object.keys(modelOptions) as AIModel[]).map((provider) => (
+                      {(availableProviders).map((provider) => (
                         <option key={provider} value={provider}>
                           {t(modelProviderTranslationKey(provider, 'name'))}
                         </option>
@@ -555,7 +590,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     <p className="settings-privacy-text">{t(modelProviderTranslationKey(localAIConfig.provider, 'desc'))}</p>
                   </div>
 
-                  {localAIConfig.keyMode !== 'platform' || !aiGatewayEnabled ? (
+                  {(byokLegacyAllowed && localAIConfig.keyMode !== 'platform') || !aiGatewayEnabled ? (
                     <div className="settings-field">
                       <label className="settings-label">{t('settings.ai.apiKey')}</label>
                       <input
@@ -575,9 +610,9 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                       value={localAIConfig.model}
                       onChange={(event) => setLocalAIConfig({ ...localAIConfig, model: event.target.value })}
                     >
-                      {modelOptions[localAIConfig.provider].models.map((model) => (
+                      {availableModels.map((model) => (
                         <option key={model} value={model}>
-                          {model}
+                          {platformOnlyMode ? formatModelOptionLabel(localAIConfig.provider, model) : model}
                         </option>
                       ))}
                     </select>
@@ -837,6 +872,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 </div>
                 <SettingsV13FeaturesCard />
                 <SettingsV14FeaturesCard />
+                <SettingsV15FeaturesCard />
                 <SettingsTabCompletionCard />
                 <SettingsAideRuntimeStubCard />
                 <SettingsBackgroundAgentCard />
@@ -1029,6 +1065,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     onOpenSpecsRoot={onOpenSpecsRoot}
                     onOpenSpecTasks={onOpenSpecTasks}
                     onOpenSpecAcceptance={onOpenSpecAcceptance}
+                    onOpenSpecHooks={onOpenSpecHooks}
+                    onCreateSpecHooks={onCreateSpecHooks}
                     onRunFirstOpenTask={onRunFirstOpenSpecTask}
                   />
                 ) : null}

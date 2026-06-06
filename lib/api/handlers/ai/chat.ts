@@ -1,13 +1,10 @@
 /**
- * Platform AI gateway — chat stream + agent completions (v1.1.8).
+ * Platform AI gateway — chat stream + agent completions (v1.5 F0).
  */
-import {
-  forwardOpenAiAgent,
-  forwardOpenAiChat,
-  type ChatMessage,
-} from '../../aiGateway/forwardOpenAiChat'
+import { forwardPlatformAgent, forwardPlatformChat } from '../../aiGateway/forwardPlatformChat'
 import { resolvePlatformAiRoute } from '../../aiGateway/platformConfig'
-import { AI_USAGE_PLATFORM_TYPE, consumeAiUsage } from '../../../billing/usageDb'
+import { getModelWeight, isPlatformModelAllowedForPlan } from '../../../billing/modelWeights'
+import { AI_USAGE_PLATFORM_TYPE, consumeAiUsage, resolveUserPlanName } from '../../../billing/usageDb'
 import { jsonResponse } from '../../http'
 import { localizedErrorResponse } from '../../localizedError'
 import { resolveRateLimitOptions } from '../../rateLimit'
@@ -15,6 +12,7 @@ import { checkRateLimitDistributed } from '../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../rateLimitResponse'
 import { requireAuth } from '../../requireAuth'
 import { trackServerEvent } from '../../logger'
+import type { ChatMessage } from '../../aiGateway/forwardOpenAiChat'
 
 type ChatBody = {
   provider?: string
@@ -67,24 +65,6 @@ export async function POST(req: Request) {
       return localizedErrorResponse(req, 'api.ai.messagesRequired', 400)
     }
 
-    const usage = await consumeAiUsage(auth.user.id, 1, {
-      usageType: AI_USAGE_PLATFORM_TYPE,
-    })
-    if (!usage.ok) {
-      trackServerEvent(req, 'ai.chat.quota_exceeded', {
-        userId: auth.user.id,
-        plan: usage.quota.plan,
-      })
-      return jsonResponse(
-        {
-          errorKey: 'api.usage.quotaExceeded',
-          source: 'server',
-          quota: usage.quota,
-        },
-        429,
-      )
-    }
-
     const resolved = resolvePlatformAiRoute({
       provider: body.provider,
       model: body.model,
@@ -93,13 +73,47 @@ export async function POST(req: Request) {
       return jsonResponse({ error: resolved.reason }, 503)
     }
 
+    const plan = await resolveUserPlanName(auth.user.id)
+    if (!isPlatformModelAllowedForPlan(resolved.route.provider, resolved.route.model, plan)) {
+      return jsonResponse(
+        {
+          errorKey: 'api.usage.modelTierRestricted',
+          plan,
+          model: resolved.route.model,
+          provider: resolved.route.provider,
+        },
+        403,
+      )
+    }
+
+    const weight = getModelWeight(resolved.route.provider, resolved.route.model)
+    const usage = await consumeAiUsage(auth.user.id, weight, {
+      usageType: AI_USAGE_PLATFORM_TYPE,
+    })
+    if (!usage.ok) {
+      trackServerEvent(req, 'ai.chat.quota_exceeded', {
+        userId: auth.user.id,
+        plan: usage.quota.plan,
+        weight,
+      })
+      return jsonResponse(
+        {
+          errorKey: 'api.usage.quotaExceeded',
+          source: 'server',
+          quota: usage.quota,
+          weight,
+        },
+        429,
+      )
+    }
+
     const tools = Array.isArray(body.tools) ? body.tools : []
     if (tools.length > 0) {
-      return forwardOpenAiAgent(resolved.route, { messages, tools })
+      return forwardPlatformAgent(resolved.route, { messages, tools })
     }
 
     const chatMessages = messages.filter(isBasicChatMessage)
-    return forwardOpenAiChat(resolved.route, chatMessages, { stream: body.stream !== false })
+    return forwardPlatformChat(resolved.route, chatMessages, { stream: body.stream !== false })
   } catch (error) {
     console.error('[AI Chat] error:', error)
     return localizedErrorResponse(req, 'api.ai.chatFailed', 500)

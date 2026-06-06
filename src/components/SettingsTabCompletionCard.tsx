@@ -9,6 +9,12 @@ import {
   TAB_PLUS_PLUS_POC_P95_TARGET_MS,
 } from '../lib/tabPlusPlusPoc'
 import { getTabCompletionDebounceMs } from '../lib/inlineCompletionPrefs'
+import {
+  isTabPlusPlusProductionEnabled,
+  TAB_PLUS_PLUS_PRODUCTION_DEBOUNCE_MS,
+  TAB_PLUS_PLUS_PRODUCTION_MAX_LINES,
+  TAB_PLUS_PLUS_PRODUCTION_P95_TARGET_MS,
+} from '../lib/v15Features'
 
 export function SettingsTabCompletionCard() {
   const { t } = useI18n()
@@ -62,6 +68,24 @@ export function SettingsTabCompletionCard() {
             {t('settings.tabCompletion.tabPlusPlusPocTargets', {
               p95: String(TAB_PLUS_PLUS_POC_P95_TARGET_MS),
               debounce: String(getTabCompletionDebounceMs() || TAB_PLUS_PLUS_POC_DEBOUNCE_MS),
+            })}
+          </p>
+        </>
+      ) : null}
+      {isTabPlusPlusProductionEnabled() ? (
+        <>
+          <p
+            className="settings-privacy-text"
+            data-testid="settings-tab-plus-plus-production"
+            style={{ marginTop: 6, fontSize: 12, color: 'var(--accent-color)' }}
+          >
+            {t('settings.tabCompletion.tabPlusPlusProductionOn')}
+          </p>
+          <p className="settings-privacy-text" style={{ marginTop: 4, fontSize: 11 }}>
+            {t('settings.tabCompletion.tabPlusPlusProductionTargets', {
+              p95: String(TAB_PLUS_PLUS_PRODUCTION_P95_TARGET_MS),
+              debounce: String(getTabCompletionDebounceMs() || TAB_PLUS_PLUS_PRODUCTION_DEBOUNCE_MS),
+              lines: String(TAB_PLUS_PLUS_PRODUCTION_MAX_LINES),
             })}
           </p>
         </>

@@ -5,6 +5,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Planned — v1.5.1+
+
+- Tab++/Runtime 抛光 patch 线
+- 见 [ROADMAP_V1.5.md](docs/ROADMAP_V1.5.md) §2
+
+---
+
+## [1.5.0] — 2026-06-05 · 平台模型 · Tab++ · AIDE Runtime
+
+### Added
+
+- **F0 平台模型**：多厂商网关 · 弃 BYOK · 加权配额 · 套餐调价
+- **F1/F2 Tab++**：多行 ghost · FIM middle · Spec 上下文 · 部分接受
+- **F3 Spec Artifacts v2**：hooks.yaml schema · 设置页浏览/创建
+- **F4 Runtime Engine**：orchestrator 双写 · hookRunner 四类 hook
+- **F5 Activity Line**：生产 UI + 事件发布
+- **F6 Verify**：acceptanceRunner · runtime-state 持久化
+- **F7 GA**：`SettingsV15FeaturesCard` · `V1.5_ENV` · E2E v15/Tab++/Runtime
+- **F8 收官**：`COMPETITOR_SCORE_V1.5` · `IDE_GAP` 更新 · `V1.6_KICKOFF` 起草
+
+See [RELEASE_NOTES_v1.5.0.md](docs/RELEASE_NOTES_v1.5.0.md) · [COMPETITOR_SCORE_V1.5.md](docs/COMPETITOR_SCORE_V1.5.md).
+
 ---
 
 ## [1.4.9] — 2026-06-05 · v1.4 世代收官

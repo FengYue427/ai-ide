@@ -2,7 +2,7 @@
 
 开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
 
-**当前版本：v1.4.9**（v1.4 世代收官 ✅）· **下一世代：v1.5.0**（smoke 2 周绿后 F1）· [CHANGELOG](./CHANGELOG.md) · [V1.5 规划](./docs/ROADMAP_V1.5.md)
+**当前版本：v1.4.9**（v1.4 世代收官 ✅）· **下一世代：v1.5.0**（**F0 平台多模型** · Tab++ · Runtime）· [CHANGELOG](./CHANGELOG.md) · [V1.5 规划](./docs/ROADMAP_V1.5.md) · [平台模型 ADR](./docs/ADR_V1.5_PLATFORM_MODELS.md)
 
 ## v1.4.x（做到 1.4.9 再开 v1.5）
 

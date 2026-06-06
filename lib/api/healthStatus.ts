@@ -15,6 +15,7 @@ export type HealthPayload = {
   platformAi?: {
     configured: boolean
     provider?: string
+    providers?: string[]
   }
   plugins?: {
     publishEnabled: boolean

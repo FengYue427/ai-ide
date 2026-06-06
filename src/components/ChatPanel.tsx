@@ -146,6 +146,11 @@ import {
   loadQueueSessionStats,
   saveQueueSessionStats,
 } from '../services/queueSessionStatsPersistenceService'
+import {
+  buildIdeSpecQueueCoordinatorDeps,
+  onSpecQueueItemSucceeded,
+} from '../services/runtime/runtimeQueueCoordinator'
+import type { QueuedSpecBackfill } from '../store/ideStore'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -1059,6 +1064,31 @@ ${t('ai.chat.prompt')}`
     [aiConfig.model, aiConfig.provider, editorFiles, setFiles],
   )
 
+  const specQueueCoordinatorDeps = useCallback(
+    () =>
+      buildIdeSpecQueueCoordinatorDeps({
+        setFiles,
+        setQueuedChatPrompt,
+        setQueuedSpecBackfill,
+        setQueuedSpecExecutions,
+      }),
+    [setFiles, setQueuedChatPrompt, setQueuedSpecBackfill, setQueuedSpecExecutions],
+  )
+
+  const finishSpecQueueItem = useCallback(
+    async (backfill: QueuedSpecBackfill) => {
+      const result = await onSpecQueueItemSucceeded(backfill, specQueueCoordinatorDeps())
+      if (!result.verifyOk) {
+        notify?.(
+          'error',
+          t('runtime.verifyFail.title'),
+          t('runtime.verifyFail.detail'),
+        )
+      }
+    },
+    [notify, specQueueCoordinatorDeps, t],
+  )
+
   const generateFilesFromResponse = useCallback(
     (assistantContent: string) => {
       if (!onGenerateFiles) return
@@ -1354,18 +1384,20 @@ ${t('ai.chat.prompt')}`
         }
 
         if (queuedSpecBackfill) {
+          const specBackfill = queuedSpecBackfill
           appendExecutionToSpecAcceptance(
-            queuedSpecBackfill.specAcceptancePath,
-            queuedSpecBackfill.taskText,
+            specBackfill.specAcceptancePath,
+            specBackfill.taskText,
             assistantContent,
             executionRunId,
           )
           setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
           setRecentDoneQueueItems((prev) => [
-            { kind: 'spec' as const, text: queuedSpecBackfill.taskText },
+            { kind: 'spec' as const, text: specBackfill.taskText },
             ...prev,
           ].slice(0, 5))
           setFailedSpecExecution(null)
+          void finishSpecQueueItem(specBackfill)
         }
 
         if (queuedPlanBackfill) {
@@ -1535,18 +1567,20 @@ ${t('ai.chat.prompt')}`
       }
 
       if (queuedSpecBackfill) {
+        const specBackfill = queuedSpecBackfill
         appendExecutionToSpecAcceptance(
-          queuedSpecBackfill.specAcceptancePath,
-          queuedSpecBackfill.taskText,
+          specBackfill.specAcceptancePath,
+          specBackfill.taskText,
           assistantContent,
           executionRunId,
         )
         setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
         setRecentDoneQueueItems((prev) => [
-          { kind: 'spec' as const, text: queuedSpecBackfill.taskText },
+          { kind: 'spec' as const, text: specBackfill.taskText },
           ...prev,
         ].slice(0, 5))
         setFailedSpecExecution(null)
+        void finishSpecQueueItem(specBackfill)
       }
 
       if (queuedPlanBackfill) {

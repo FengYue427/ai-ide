@@ -17,43 +17,42 @@ export interface PlanDefinition {
 }
 
 /** Stripe global pricing (USD/mo). CN merchants use priceCny when enabled. */
-export const STRIPE_USD_PRO = 4.99
-export const STRIPE_USD_ENTERPRISE = 12.99
+export const STRIPE_USD_PRO = 9.99
+export const STRIPE_USD_ENTERPRISE = 19.99
 
-/** Default quotas; Stripe Pro $4.99/mo · Team $12.99/mo. */
+/** v1.5 weighted quota units/day; Pro $9.99/mo · Team $19.99/mo. */
 export const BILLING_PLANS: PlanDefinition[] = [
   {
     id: 'free',
     name: 'free',
     displayName: '免费版',
-    description: '个人学习与日常小项目，配额已放宽',
+    description: '个人学习与日常小项目',
     price: 0,
     currency: 'USD',
     features: [
-      '平台 AI 对话（登录即用，每日 200 次）',
-      '可选自带 API Key（BYOK）',
-      '最多 10 个云工作区',
-      '3GB 云存储额度（规划）',
+      '平台 AI 对话（登录即用，经济模型）',
+      '每日 200 加权配额单位',
+      '无限云工作区',
+      '30GB 云存储额度（规划）',
     ],
-    limits: { aiRequestsPerDay: 5000, workspaces: -1, storageGB: 30 },
+    limits: { aiRequestsPerDay: 200, workspaces: -1, storageGB: 30 },
   },
   {
     id: 'pro',
     name: 'pro',
     displayName: '专业版',
-    description: '高频个人开发者，高性价比',
+    description: '高频个人开发者，全模型平台 AI',
     price: STRIPE_USD_PRO,
     currency: 'USD',
-    priceCny: 19,
+    priceCny: 39,
     features: [
-      '平台 AI + Agent（高配额）',
-      '全部模型与 BYOK',
+      '平台 AI + Agent（全档模型）',
+      '每日 2000 加权配额单位',
       '无限云工作区',
-      '每日 5000 次配额（宽松）',
       '30GB 云存储额度（规划）',
       'Stripe 订阅',
     ],
-    limits: { aiRequestsPerDay: 5000, workspaces: -1, storageGB: 30 },
+    limits: { aiRequestsPerDay: 2000, workspaces: -1, storageGB: 30 },
   },
   {
     id: 'enterprise',
@@ -62,7 +61,7 @@ export const BILLING_PLANS: PlanDefinition[] = [
     description: '小团队与重度用户，配额几乎不限',
     price: STRIPE_USD_ENTERPRISE,
     currency: 'USD',
-    priceCny: 49,
+    priceCny: 79,
     features: [
       '专业版全部能力',
       'AI 配额不限（-1）',

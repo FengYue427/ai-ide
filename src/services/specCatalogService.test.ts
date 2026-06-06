@@ -14,6 +14,30 @@ describe('specCatalogService', () => {
     expect(items).toHaveLength(1)
     expect(items[0].uncheckedTasks).toBe(1)
     expect(items[0].lastExecutedAt).toBe('2026-05-28')
+    expect(items[0].hasHooks).toBe(false)
+    expect(items[0].hooksCount).toBe(0)
+  })
+
+  it('includes hooks metadata from previews', () => {
+    const files = [{ name: '.aide/specs/demo/tasks.md', content: '# Demo\n\n- [ ] Task\n' }]
+    const previews = {
+      '.aide/specs/demo/tasks.md': {
+        hooksPath: '.aide/specs/demo/hooks.yaml',
+        exists: true,
+        parse: {
+          ok: true,
+          document: {
+            version: 1 as const,
+            hooks: [{ id: 'a', on: 'queue.before' as const, run: 'shell' as const, command: 'npm test' }],
+          },
+          errors: [],
+        },
+        previewLines: ['a · queue.before · shell'],
+      },
+    }
+    const items = buildSpecCatalog(files, { hooksPreviews: previews })
+    expect(items[0].hooksCount).toBe(1)
+    expect(items[0].hooksValid).toBe(true)
   })
 
   it('sorts by most open tasks', () => {

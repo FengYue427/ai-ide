@@ -1,17 +1,60 @@
-import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight, Activity } from 'lucide-react'
-import { useI18n } from '../i18n'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, Activity, Bot, GitBranch, ShieldAlert, Zap } from 'lucide-react'
+import { useI18n, type TranslationKey } from '../i18n'
 import {
   exposeRuntimeEventBusForE2E,
   getRecentRuntimeEvents,
   subscribeRuntimeEvents,
   type RuntimeEvent,
+  type RuntimeEventType,
 } from '../services/runtime/runtimeEventBus'
 
-const MAX_VISIBLE = 12
+const MAX_VISIBLE = 16
 
-function formatEventLine(event: RuntimeEvent): string {
-  return `${event.type} · ${event.message}`
+function eventIcon(type: RuntimeEventType) {
+  switch (type) {
+    case 'queue.progress':
+      return <GitBranch size={12} />
+    case 'agent.fileWrite':
+      return <Bot size={12} />
+    case 'hook.start':
+    case 'hook.end':
+      return <Zap size={12} />
+    case 'verify.fail':
+      return <ShieldAlert size={12} color="var(--danger-color, #c44)" />
+    default:
+      return <Activity size={12} />
+  }
+}
+
+function formatEventTime(at: string): string {
+  const date = new Date(at)
+  if (Number.isNaN(date.getTime())) return at
+  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function eventLabel(
+  event: RuntimeEvent,
+  t: (key: TranslationKey, params?: Record<string, string>) => string,
+): string {
+  const spec = typeof event.meta?.spec === 'string' ? event.meta.spec : null
+  const prefix = spec ? `[${spec}] ` : ''
+  switch (event.type) {
+    case 'queue.progress':
+      return `${prefix}${event.message}`
+    case 'agent.fileWrite':
+      return `${t('activityLine.agentWrite')} · ${event.message}`
+    case 'hook.start':
+      return `${t('activityLine.hookStart')} · ${event.message}`
+    case 'hook.end': {
+      const ok = event.meta?.ok === true
+      return `${t('activityLine.hookEnd')} · ${event.message} · ${ok ? t('activityLine.ok') : t('activityLine.fail')}`
+    }
+    case 'verify.fail':
+      return `${t('activityLine.verifyFail')} · ${event.message}`
+    default:
+      return event.message
+  }
 }
 
 export function ActivityLine() {
@@ -27,12 +70,21 @@ export function ActivityLine() {
     })
   }, [])
 
+  const typeCounts = useMemo(() => {
+    const counts: Partial<Record<RuntimeEventType, number>> = {}
+    for (const event of events) {
+      counts[event.type] = (counts[event.type] ?? 0) + 1
+    }
+    return counts
+  }, [events])
+
   return (
     <div
       data-testid="aide-activity-line"
+      className="aide-activity-line"
       style={{
         borderBottom: '1px solid var(--border-color)',
-        background: 'var(--bg-secondary, rgba(0,0,0,0.15))',
+        background: 'var(--bg-secondary, rgba(0,0,0,0.12))',
         fontSize: 11,
         lineHeight: 1.5,
       }}
@@ -57,6 +109,11 @@ export function ActivityLine() {
         {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
         <Activity size={14} color="var(--accent-color)" />
         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('activityLine.title')}</span>
+        <span style={{ marginLeft: 8, opacity: 0.75, fontSize: 10 }}>
+          {Object.entries(typeCounts)
+            .map(([type, count]) => `${type.split('.')[0]}:${count}`)
+            .join(' · ')}
+        </span>
         <span style={{ marginLeft: 'auto', opacity: 0.8 }}>
           {t('activityLine.eventCount', { count: String(events.length) })}
         </span>
@@ -65,7 +122,7 @@ export function ActivityLine() {
         <div
           data-testid="aide-activity-line-body"
           style={{
-            maxHeight: 120,
+            maxHeight: 160,
             overflow: 'auto',
             padding: '0 10px 8px',
             color: 'var(--text-secondary)',
@@ -77,7 +134,17 @@ export function ActivityLine() {
             events
               .slice()
               .reverse()
-              .map((event) => <div key={`${event.at}-${event.message}`}>{formatEventLine(event)}</div>)
+              .map((event) => (
+                <div
+                  key={`${event.at}-${event.type}-${event.message}`}
+                  data-testid={`aide-activity-event-${event.type}`}
+                  style={{ display: 'flex', gap: 6, alignItems: 'flex-start', padding: '2px 0' }}
+                >
+                  <span style={{ marginTop: 2, opacity: 0.85 }}>{eventIcon(event.type)}</span>
+                  <span style={{ flex: 1 }}>{eventLabel(event, t)}</span>
+                  <span style={{ opacity: 0.6, whiteSpace: 'nowrap' }}>{formatEventTime(event.at)}</span>
+                </div>
+              ))
           )}
         </div>
       ) : null}

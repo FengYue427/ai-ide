@@ -115,6 +115,26 @@ export const JA_JP_BULK_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'settings.v14.backgroundAgentProduction': 'Background Agent production policy',
   'settings.v14.mcpPluginProduction': 'MCP/plugin production policy',
   'settings.v14.catalogCounts': 'Official MCP {mcp} · plugin catalog {plugins}',
+  'settings.v15.title': 'v1.5 機能（読み取り専用）',
+  'settings.v15.desc': 'v1.5 本番フラグ: プラットフォームモデル · Tab++ · Spec Artifacts · AIDE Runtime · Activity Line。',
+  'settings.v15.platformModels': 'プラットフォームモデル / BYOK 無効',
+  'settings.v15.tabPlusPlus': 'Tab++ 本番（複数行 ghost · FIM）',
+  'settings.v15.tabPlusPlusTargets': 'Tab++ 目標: P95 < {p95} ms · debounce {debounce} ms · ≤{lines} 行',
+  'settings.v15.specArtifactsV2': 'Spec Artifacts v2（hooks.yaml）',
+  'settings.v15.aideRuntime': 'AIDE Runtime エンジン',
+  'settings.v15.orchestratorMode': 'Orchestrator モード: {mode}',
+  'settings.v15.activityLine': 'Activity Line 本番 UI',
+  'settings.v15.byokLegacy': 'BYOK レガシー入口',
+  'settings.aideRuntime.stubCardTitle': 'AIDE Runtime Stub',
+  'settings.aideRuntime.stubCardDesc':
+    'Activity Line と orchestrator は {mode} モード: イベントのみ、キュー排水なし。VITE_AIDE_RUNTIME_UI または session flag で有効化。',
+  'settings.aideRuntime.productionCardDesc':
+    'Activity Line 本番 UI 有効（VITE_AIDE_ACTIVITY_LINE）。キュー · Agent 書き込み · Hook イベントが Chat 上部に表示されます。',
+  'settings.aideRuntime.engineProductionCardDesc':
+    'AIDE Runtime 本番エンジン有効（VITE_AIDE_RUNTIME · {mode}）。Spec 入隊で queue.before hooks · Agent apply と検証失敗で follow-up hooks と runtime-state.json 書き込み。',
+  'settings.tabCompletion.tabPlusPlusProductionOn': 'Tab++ 本番: 複数行 ghost 補完有効（v1.5 F1）',
+  'settings.tabCompletion.tabPlusPlusProductionTargets':
+    'Tab++ 本番目標: P95 < {p95} ms · debounce {debounce} ms · ≤{lines} 行',
   'settings.index.cappedHint': 'ブラウザのインデックス上限に達しました。@ とセマンティック検索の対象外ファイルがあります。',
   'settings.semantic.indexNotReady': 'インデックス未完了 — ワークスペースを読み込み、完了後にセマンティック @ を使ってください。',
   'settings.semantic.indexCappedHint': 'インデックスは切り詰め済み — セマンティック検索は部分集合のみ。大規模リポはデスクトップ版を検討してください。',

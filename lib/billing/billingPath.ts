@@ -33,7 +33,7 @@ export function pricingNoteForPath(path: BillingPath, capabilities: BillingCapab
     if (isStripeOnly(capabilities)) {
       return `Stripe checkout; Pro $${STRIPE_USD_PRO}/mo, Team $${STRIPE_USD_ENTERPRISE}/mo`
     }
-    return `支持${parts.join('、')}；专业版 ¥19/月，团队版 ¥49/月（Stripe：$${STRIPE_USD_PRO} / $${STRIPE_USD_ENTERPRISE}）`
+    return `支持${parts.join('、')}；专业版 ¥39/月，团队版 ¥79/月（Stripe：$${STRIPE_USD_PRO} / $${STRIPE_USD_ENTERPRISE}）`
   }
   if (path === 'dev') {
     return '开发/集成环境：可一键模拟升级（未配置商户时）'

@@ -20,6 +20,14 @@ import { sendMessageWithDebounce, type AIConfig } from './aiService'
 import { buildChatFimPromptWithMiddle } from '../lib/fimMiddleSegment'
 import { fetchFimCompletion, trimCompletionToMaxLines } from './fimCompletionService'
 import { fetchPlatformTabCompletion } from './platformAiService'
+import {
+  appendTabPlusPlusContextToPrompt,
+  buildTabPlusPlusContext,
+  extendTabCompletionCacheKey,
+  type TabPlusPlusContext,
+} from '../lib/tabPlusPlusContext'
+import { isTabPlusPlusEnabled } from '../lib/v15Features'
+import { PROJECT_TASKS_PATH } from './projectTasksService'
 
 const MAX_PREFIX_CHARS = 2000
 const MAX_SUFFIX_CHARS = 800
@@ -70,8 +78,9 @@ function buildChatFimPrompt(
   prefix: string,
   suffix: string,
   maxLines: number,
+  tabContext?: TabPlusPlusContext | null,
 ): string {
-  return buildChatFimPromptWithMiddle(
+  const base = buildChatFimPromptWithMiddle(
     request.language,
     request.filename,
     prefix,
@@ -79,6 +88,32 @@ function buildChatFimPrompt(
     request.middle,
     maxLines,
   )
+  return tabContext ? appendTabPlusPlusContextToPrompt(base, tabContext) : base
+}
+
+async function resolveTabContextFiles(): Promise<Array<{ name: string; content: string }>> {
+  const { useIDEStore } = await import('../store/ideStore')
+  return useIDEStore.getState().files.map((file) => ({ name: file.name, content: file.content }))
+}
+
+async function resolveTabPlusPlusContext(
+  request: InlineCompletionRequest,
+  prefix: string,
+  suffix: string,
+): Promise<TabPlusPlusContext | null> {
+  if (!isTabPlusPlusEnabled()) return null
+  const openFiles = await resolveTabContextFiles()
+  const activeSpecPath = openFiles.some((file) => file.name === PROJECT_TASKS_PATH)
+    ? PROJECT_TASKS_PATH
+    : null
+  return buildTabPlusPlusContext({
+    prefix,
+    suffix,
+    middle: request.middle,
+    filename: request.filename,
+    openFiles,
+    activeSpecPath,
+  })
 }
 
 async function fetchChatTabCompletion(
@@ -86,10 +121,11 @@ async function fetchChatTabCompletion(
   prefix: string,
   suffix: string,
   maxLines: number,
+  tabContext?: TabPlusPlusContext | null,
 ): Promise<string | null> {
   const raw = await sendMessageWithDebounce(
     request.config,
-    [{ role: 'user', content: buildChatFimPrompt(request, prefix, suffix, maxLines) }],
+    [{ role: 'user', content: buildChatFimPrompt(request, prefix, suffix, maxLines, tabContext) }],
     undefined,
     {
       debounceMs: getTabCompletionDebounceMs(),
@@ -128,7 +164,13 @@ export const inlineCompletionService = {
     }
 
     const maxLines = getTabCompletionMaxLines()
-    const cacheKey = buildTabCompletionCacheKey(request, maxLines)
+    const prefix = trimContext(request.prefix, MAX_PREFIX_CHARS, true)
+    const suffix = trimContext(request.suffix, MAX_SUFFIX_CHARS, false)
+    const tabContext = await resolveTabPlusPlusContext(request, prefix, suffix)
+    let cacheKey = buildTabCompletionCacheKey(request, maxLines)
+    if (tabContext) {
+      cacheKey = extendTabCompletionCacheKey(cacheKey, tabContext)
+    }
     const cached = cache.get(cacheKey)
     if (cached) {
       recordTabCompletionCacheHit()
@@ -139,8 +181,6 @@ export const inlineCompletionService = {
     inFlightKey = cacheKey
     recordTabCompletionRequestStart()
 
-    const prefix = trimContext(request.prefix, MAX_PREFIX_CHARS, true)
-    const suffix = trimContext(request.suffix, MAX_SUFFIX_CHARS, false)
     if (request.middle?.trim()) {
       recordTabCompletionFimMiddleContext()
     }
@@ -163,16 +203,18 @@ export const inlineCompletionService = {
           maxLines,
           request.language,
           request.filename,
+          undefined,
+          tabContext,
         )
       }
 
       if (!result && strategy !== 'fim') {
         path = 'chat'
-        result = await fetchChatTabCompletion(request, prefix, suffix, maxLines)
+        result = await fetchChatTabCompletion(request, prefix, suffix, maxLines, tabContext)
       } else if (!result && strategy === 'fim') {
         recordTabCompletionFimFallbackToChat()
         path = 'chat'
-        result = await fetchChatTabCompletion(request, prefix, suffix, maxLines)
+        result = await fetchChatTabCompletion(request, prefix, suffix, maxLines, tabContext)
       }
 
       if (result && result.length > 0) {

@@ -1,29 +1,29 @@
 # 与 Cursor / Kiro 级 IDE 的差距清单
 
 > 对照对象：**Cursor**（VS Code + 全仓 AI）、**Kiro**（规格驱动 Agent IDE）。  
-> **复评版本**：**v1.4.9 收官** — [COMPETITOR_SCORE_V1.4.9.md](./COMPETITOR_SCORE_V1.4.9.md)  
-> **战略转向**：[V1.5_STRATEGY_PIVOT.md](./V1.5_STRATEGY_PIVOT.md) — 冲击 Tab++ / Spec 工程 / AIDE Runtime  
+> **复评版本**：**v1.5.0 GA** — [COMPETITOR_SCORE_V1.5.md](./COMPETITOR_SCORE_V1.5.md)  
+> **战略转向**：[V1.5_STRATEGY_PIVOT.md](./V1.5_STRATEGY_PIVOT.md) — Tab++/Runtime **已交付首版**  
 > 执行跟踪与 [OPTIMIZATION_PLAN.md](./OPTIMIZATION_PLAN.md) 并行。
 
 **评分说明**：0 = 无 · 1 = 演示 · 2 = 可用 · 3 = 生产级 · 4 = 行业领先  
-**目标分**：v1.4 GA ~3.4 → **v1.5 GA ≥3.50**；宣传仍关闭直至 v1.5 GA 后单独决策。
+**目标分**：v1.5 GA **≥3.50 ✅** → v1.6 **≥3.55**；宣传仍关闭直至单独决策。
 
 ---
 
-## 总览（v1.4.9 → v1.5 目标）
+## 总览（v1.5.0 达成 → v1.6 目标）
 
-| 维度 | v1.4.9（估） | **v1.5 目标** | 差距 | v1.5 承接 |
+| 维度 | v1.5.0（估） | **v1.6 目标** | 差距 | v1.6 承接 |
 |------|:------------:|:-------------:|------|-----------|
-| 编辑器核心 | 3.3 | 3.5 | 小 | 抛光 |
-| 语言服务 / 导航 | 3.3 | 3.5 | 小 | 维持 TS/Python |
-| 代码库理解 / 检索 | 3.5 | 3.6 | 小 | Runtime 索引注入 |
-| AI 与编辑融合 | **3.3** | **3.8** | **大** | **F1–F2 Tab++** |
-| Agent / 自动化 | **3.5** | **3.6** | 中 | **F4–F6 AIDE Runtime** |
-| 运行 / 调试 / Git | 3.4 | 3.5 | 小 | 维持 v1.4 F3/F4 |
-| 扩展 / MCP | 2.9 | 3.0 | 小 | 维持 v1.4 F6 |
-| 协作 / 团队 | 1.8 | 2.0 | 大 | Beta 维持 |
-| 商业化 / 部署 | 3.2 | 3.2 | — | 非 v1.5 主线 |
-| **综合（主力 IDE）** | **~3.40～3.44** | **≥3.50** | Tab++/Runtime | [ROADMAP_V1.5.md](./ROADMAP_V1.5.md) |
+| 编辑器核心 | 3.5 | 3.5 | — | 维持 |
+| 语言服务 / 导航 | 3.5 | 3.5 | — | 维持 TS/Python |
+| 代码库理解 / 检索 | 3.6 | 3.6 | — | Runtime 注入维持 |
+| AI 与编辑融合 | **3.7** | **3.8** | 小 | **v1.6 F0 Tab 默认开** |
+| Agent / 自动化 | **3.7** | **3.8** | 小 | **v1.6 F3/F4 云 Agent · Runtime 抛光** |
+| 运行 / 调试 / Git | 3.5 | 3.5 | — | 维持 |
+| 扩展 / MCP | 3.0 | 3.0 | — | 维持 |
+| 协作 / 团队 | 1.8 | 2.0 | 大 | v1.6 F5 RC |
+| 商业化 / 部署 | **3.4** | **3.6** | 中 | **v1.6 F1 支付生产** |
+| **综合（主力 IDE）** | **~3.50～3.52** | **≥3.55** | Tab 默认 · 支付 | [ROADMAP_V1.6.md](./ROADMAP_V1.6.md) |
 
 ---
 
@@ -58,15 +58,15 @@
 
 | ID | 能力 | Cursor/Kiro | 我们现状 | 目标 | 状态 |
 |----|------|-------------|----------|------|------|
-| C1 | Tab 级补全 | Copilot++ | FIM middle + Tab++ POC（v1.4.6，默认关） | **Tab++ 多行 ghost · P95&lt;400ms** | 🔶 → **v1.5 F1–F2** |
+| C1 | Tab 级补全 | Copilot++ | **Tab++ 生产**（`VITE_TAB_PLUS_PLUS` · 多行 ghost · P95&lt;400ms） | prod 默认开 · 主观跟手 | 🔶 → **v1.6 F0** |
 | C2 | Chat + 选中上下文 | 强 | 有 | 保持 | ✅ |
 | C3 | **Composer 多文件** | 强 | Agent + `agentApplyService` 确认应用 | Diff 预览 + 部分接受 | ✅ IDE-1 基础 |
 | C4 | **Rules / 项目指令** | .cursorrules | `.aide/rules.md` 注入 + 设置中心编辑入口 | 设置 UI 编辑 | ✅ IDE-3 |
 | C5 | MCP 工具 | 有 | 代理 + 设置 + 自动跟进轮次 | MCP 客户端骨架 | 🔶 Phase IDE-3 |
 | C5b | **Chat @ 提及注入** | 有 | `@file` / `@path#symbol` → system prompt | 与索引联动 | ✅ P3 |
-| C6 | 后台 Agent | 有 | 生产策略卡（v1.4 F5） | 云队列 30min 级 | 🔶 v1.6+ |
-| C6b | **Spec / Hooks 工程** | Kiro 强 | hooks/runtime-state **只读预览**（1.4.5–1.4.7） | **hooks 执行 + 验收自动化** | 🔶 → **v1.5 F3–F6** |
-| C6c | **Activity Line** | Cascade 强 | RFC + stub（1.4.8，默认关） | **实时 Hook/队列/终端条** | 🔶 → **v1.5 F5** |
+| C6 | 后台 Agent | 有 | 生产策略卡（v1.4 F5） | 云队列 30min 级 | 🔶 → **v1.6 F3** |
+| C6b | **Spec / Hooks 工程** | Kiro 强 | **hooks 执行 + acceptance 自动化**（v1.5 F3–F6） | agent hook 排水 · 队列持久化 | 🔶 → **v1.6 F4** |
+| C6c | **Activity Line** | Cascade 强 | **Activity Line 生产 UI**（v1.5 F5） | 终端 tail · 桌面深化 | 🔶 → **v1.6 F2** |
 
 ---
 
@@ -76,7 +76,7 @@
 |----|------|-------------|----------|------|------|
 | D1 | 终端 | 集成 | terminalBridge | 保持 | 🔶 |
 | D2 | **调试器** | 完整 | 无 | 浏览器内断点（难）或说明限制 | 🔶 见 BROWSER_LIMITATIONS |
-| D3 | Git UI | 完整 | 分支 · 轻 stage · 状态刷新 | status 矩阵 + hunk stage | 🔶 → **v1.4 F3** |
+| D3 | Git UI | 完整 | status 矩阵 + hunk stage | 保持 | ✅ v1.4 F3 |
 | D4 | WebContainer 运行 | N/A 本地 | 有 | 文档化限制 | 🔶 |
 | D5 | 任务 / npm scripts | 有 | 命令面板 `npm run` | 运行 package.json scripts | 🔶 IDE-3 |
 
@@ -88,7 +88,8 @@
 |----|------|-------------|----------|------|------|
 | E1 | 桌面原生 | 是 | 浏览器 | 可选 Electron 壳（长期） | 🔶 见 ELECTRON_EVAL |
 | E2 | 账号 + 云同步 | 有 | 有 API | 生产部署稳定 | 🚧 P0 |
-| E3 | 国内支付 | 无 | 骨架 | 沙箱 → 生产 | 🚧 P1 |
+| E3 | 国内支付 | 无 | 骨架 + v1.5 调价代码 | **Stripe/支付宝 新 Price 生产** | 🚧 → **v1.6 F1** |
+| E3b | **订阅含 AI（无 BYOK）** | Cursor Pro | **平台多模型 · 弃 BYOK UI**（v1.5 F0） | 新 Price 生产 · 商户上线 | 🔶 → **v1.6 F1** |
 | E4 | 插件市场 | VS Code | 官方目录 + 安装 Tab（M3） | 远程清单 + 签名 M2 | 🔶 P3 M3 ✅ |
 | E5 | 实时协作 | 有 | Yjs + WebRTC Beta 文案 | 信令/冲突策略 | 🔶 Beta 已标注 |
 

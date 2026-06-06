@@ -60,6 +60,13 @@ import {
 } from '../services/reportArchiveService'
 import { buildSpecCatalog } from '../services/specCatalogService'
 import { buildSpecHooksPreview } from '../services/runtime/specHooksPreview'
+import { buildDefaultHooksYaml, upsertHooksFileInWorkspace } from '../services/runtime/specArtifactsService'
+import { hooksPathFromTasksPath } from '../services/runtime/hooksSchema'
+import { getRecentRuntimeEvents } from '../services/runtime/runtimeEventBus'
+import {
+  buildIdeSpecQueueCoordinatorDeps,
+  enqueueSpecTaskViaRuntime,
+} from '../services/runtime/runtimeQueueCoordinator'
 import { buildRuntimeStatePreview } from '../services/runtime/runtimeStatePreview'
 import {
   buildPlanLinkCountMap,
@@ -270,7 +277,22 @@ export function PanelHost({
   const planItems = buildPlanCatalog(files)
   const planTemplates = listPlanTemplates(files)
   const reportItems = buildReportCatalog(files)
-  const specCatalogItems = buildSpecCatalog(files)
+  const specHooksPreviews = useMemo(() => {
+    const map: Record<string, ReturnType<typeof buildSpecHooksPreview>> = {}
+    for (const file of files) {
+      if (!/^\.aide\/specs\/[^/]+\/tasks\.md$/i.test(file.name)) continue
+      map[file.name] = buildSpecHooksPreview(files, file.name)
+    }
+    return map
+  }, [files])
+  const specCatalogItems = useMemo(
+    () =>
+      buildSpecCatalog(files, {
+        hooksPreviews: specHooksPreviews,
+        runtimeEvents: getRecentRuntimeEvents(),
+      }),
+    [files, specHooksPreviews],
+  )
   const planSpecLinks = readPlanSpecLinks(files)
   const planLinkCounts = buildPlanLinkCountMap(planSpecLinks)
   const specLinkCounts = planSpecLinks.reduce<Record<string, number>>((acc, link) => {
@@ -285,13 +307,6 @@ export function PanelHost({
     acc[item.tasksPath] = listPlanLinksForSpec(planSpecLinks, item.tasksPath)
     return acc
   }, {})
-  const specHooksPreviews = useMemo(() => {
-    const map: Record<string, ReturnType<typeof buildSpecHooksPreview>> = {}
-    for (const spec of specCatalogItems) {
-      map[spec.tasksPath] = buildSpecHooksPreview(files, spec.tasksPath)
-    }
-    return map
-  }, [files, specCatalogItems])
   const runtimeStatePreview = useMemo(() => buildRuntimeStatePreview(files), [files])
   const latestReportAt = reportItems
     .map((item) => item.generatedAt)
@@ -648,6 +663,29 @@ export function PanelHost({
             setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
             closeSettingsPanel()
           }}
+          onOpenSpecHooks={(tasksPath) => {
+            const hooksPath = hooksPathFromTasksPath(tasksPath)
+            const targetIndex = files.findIndex((file) => file.name === hooksPath)
+            if (targetIndex < 0) return
+            setActiveFile(targetIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
+          }}
+          onCreateSpecHooks={(tasksPath, specName) => {
+            const content = buildDefaultHooksYaml(specName)
+            const result = upsertHooksFileInWorkspace(files, tasksPath, content)
+            if (!result.ok) {
+              notify('error', t('spec.catalog.hooksInvalid'), result.errors.join('; '))
+              return
+            }
+            setFiles(result.files)
+            const hooksPath = hooksPathFromTasksPath(tasksPath)
+            const targetIndex = result.files.findIndex((file) => file.name === hooksPath)
+            if (targetIndex >= 0) setActiveFile(targetIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            notify('success', t('spec.catalog.createHooks'), hooksPath)
+            closeSettingsPanel()
+          }}
           onRunFirstOpenSpecTask={(tasksPath) => {
             const file = files.find((f) => f.name === tasksPath)
             if (!file) return
@@ -658,14 +696,31 @@ export function PanelHost({
             }
             const prompt = `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${tasksPath}] ${first.text}`
             const acceptancePath = tasksPath.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
-            setQueuedChatPrompt(prompt)
-            setQueuedSpecBackfill({
-              taskPath: tasksPath,
-              taskText: first.text,
-              specAcceptancePath: acceptancePath,
+            void enqueueSpecTaskViaRuntime(
+              {
+                tasksPath,
+                taskText: first.text,
+                specAcceptancePath: acceptancePath,
+                prompt,
+              },
+              buildIdeSpecQueueCoordinatorDeps({
+                setFiles,
+                setQueuedChatPrompt,
+                setQueuedSpecBackfill,
+                setQueuedSpecExecutions,
+              }),
+            ).then((result) => {
+              if (!result.accepted) {
+                notify(
+                  'error',
+                  t('runtime.queuePaused.title'),
+                  result.pauseReason ?? t('runtime.queuePaused.detail'),
+                )
+                return
+              }
+              closeSettingsPanel()
+              openChatPanel()
             })
-            closeSettingsPanel()
-            openChatPanel()
           }}
           planItems={planItems}
           planLinkCounts={planLinkCounts}

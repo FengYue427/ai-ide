@@ -1,4 +1,7 @@
 import { parseProjectTasks } from './projectTasksService'
+import type { SpecHooksPreview } from './runtime/specHooksPreview'
+import { formatHookEventLine, getRecentHookEventsForSpec } from './runtime/specHookLog'
+import type { RuntimeEvent } from './runtime/runtimeEventBus'
 
 export interface SpecCatalogItem {
   tasksPath: string
@@ -7,6 +10,10 @@ export interface SpecCatalogItem {
   uncheckedTasks: number
   totalTasks: number
   lastExecutedAt: string | null
+  hooksCount: number
+  hooksValid: boolean
+  hasHooks: boolean
+  lastHookLogLine: string | null
 }
 
 interface FileLike {
@@ -14,7 +21,7 @@ interface FileLike {
   content: string
 }
 
-export type SpecCatalogSort = 'recent-exec' | 'most-open' | 'title'
+export type SpecCatalogSort = 'recent-exec' | 'most-open' | 'title' | 'most-hooks'
 
 const SPEC_TASKS_RE = /^\.aide\/specs\/([^/]+)\/tasks\.md$/i
 const SPEC_EXEC_RE = /^##\s+Spec Execution Log \((.+)\)\s*$/gm
@@ -32,7 +39,13 @@ function parseLastExecutedAt(acceptanceContent: string | undefined): string | nu
   return matches[matches.length - 1][1]?.trim() || null
 }
 
-export function buildSpecCatalog(files: FileLike[]): SpecCatalogItem[] {
+export function buildSpecCatalog(
+  files: FileLike[],
+  options?: {
+    hooksPreviews?: Record<string, SpecHooksPreview>
+    runtimeEvents?: RuntimeEvent[]
+  },
+): SpecCatalogItem[] {
   return files
     .filter((file) => SPEC_TASKS_RE.test(file.name))
     .map((file) => {
@@ -41,6 +54,9 @@ export function buildSpecCatalog(files: FileLike[]): SpecCatalogItem[] {
       const acceptancePath = file.name.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
       const acceptance = files.find((f) => f.name === acceptancePath)
       const title = file.content.match(TITLE_RE)?.[1]?.trim() || specName
+      const hooksPreview = options?.hooksPreviews?.[file.name]
+      const hookEvents = options?.runtimeEvents ?? []
+      const recentHook = getRecentHookEventsForSpec(specName, hookEvents, 1)[0]
       return {
         tasksPath: file.name,
         specName,
@@ -48,6 +64,10 @@ export function buildSpecCatalog(files: FileLike[]): SpecCatalogItem[] {
         uncheckedTasks: tasks.filter((t) => !t.done).length,
         totalTasks: tasks.length,
         lastExecutedAt: parseLastExecutedAt(acceptance?.content),
+        hasHooks: Boolean(hooksPreview?.exists),
+        hooksCount: hooksPreview?.parse.document?.hooks.length ?? 0,
+        hooksValid: Boolean(hooksPreview?.exists && hooksPreview.parse.ok),
+        lastHookLogLine: recentHook ? formatHookEventLine(recentHook) : null,
       }
     })
 }
@@ -65,6 +85,11 @@ export function sortSpecCatalog(items: SpecCatalogItem[], sortBy: SpecCatalogSor
   const next = [...items]
   if (sortBy === 'title') {
     return next.sort((a, b) => a.title.localeCompare(b.title))
+  }
+  if (sortBy === 'most-hooks') {
+    return next.sort(
+      (a, b) => b.hooksCount - a.hooksCount || b.uncheckedTasks - a.uncheckedTasks || a.title.localeCompare(b.title),
+    )
   }
   if (sortBy === 'most-open') {
     return next.sort((a, b) => b.uncheckedTasks - a.uncheckedTasks || a.title.localeCompare(b.title))

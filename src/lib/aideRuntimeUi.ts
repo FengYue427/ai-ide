@@ -1,9 +1,12 @@
-/** v1.4.8 — Activity Line UI flag (default off). See docs/ACTIVITY_LINE.md */
+/** v1.4.8 / v1.5 F5 — Activity Line UI flag. See docs/ACTIVITY_LINE.md */
+
+import { isActivityLineProductionEnabled } from './v15Features'
 
 const AIDE_RUNTIME_UI_LS = 'ai-ide:feature:aideRuntimeUi'
 
-/** POC/stub only: explicit env or session flag — never auto-on in dev. */
+/** Legacy stub flag or v1.5 F5 production Activity Line. */
 export function isAideRuntimeUiEnabled(): boolean {
+  if (isActivityLineProductionEnabled()) return true
   const raw = import.meta.env.VITE_AIDE_RUNTIME_UI
   if (raw === 'true') return true
   if (raw === 'false') return false

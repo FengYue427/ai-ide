@@ -3,6 +3,8 @@ import { Check, FileText } from 'lucide-react'
 import { ModalShell } from './ui/ModalShell'
 import { DiffViewer } from './DiffViewer'
 import { applyChangesToFiles, applyChangesWithResult } from '../services/fileApplyService'
+import { publishAgentFileWrite } from '../services/runtime/runtimeActivityPublishers'
+import { onAgentFilesApplied } from '../services/runtime/runtimeQueueCoordinator'
 import type { ToastKind } from './FeedbackCenter'
 import {
   acceptedHunkSummary,
@@ -27,6 +29,7 @@ export function AgentApplyModal({ notify }: AgentApplyModalProps) {
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
   const setFiles = useIDEStore((s) => s.setFiles)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
+  const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
 
   const [appliedPaths, setAppliedPaths] = useState<Set<string>>(new Set())
   const [hunkSelections, setHunkSelections] = useState<HunkSelectionMap>(() =>
@@ -72,7 +75,18 @@ export function AgentApplyModal({ notify }: AgentApplyModalProps) {
       return next
     })
     void applyChangesWithResult(payload).then((result) => {
-      if (result.failures.length === 0) return
+      if (result.failures.length === 0) {
+        items.forEach((item) => publishAgentFileWrite(item.path))
+        void onAgentFilesApplied(
+          payload.map((row) => row.path),
+          {
+            getFiles: () => useIDEStore.getState().files,
+            setFiles,
+          },
+          queuedSpecBackfill?.taskPath,
+        )
+        return
+      }
       const paths = result.failures.map((row) => row.path).join(', ')
       const reason = result.failures[0]?.reason ?? t('agentApply.failReason.unknown')
       notify?.(

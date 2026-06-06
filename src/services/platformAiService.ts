@@ -1,5 +1,8 @@
 import { createTranslator } from '../i18n'
 import { getApiLanguage } from '../lib/apiLanguage'
+import { isPlatformCloudProvider } from '../lib/platformModelCatalog'
+import type { TabPlusPlusContext } from '../lib/tabPlusPlusContext'
+import { appendTabPlusPlusContextToPrompt } from '../lib/tabPlusPlusContext'
 import type { AIConfig } from './aiService'
 
 export type PlatformChatMessage = {
@@ -46,7 +49,7 @@ export async function sendPlatformMessage(
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      provider: config.provider === 'openai' || config.provider === 'deepseek' ? config.provider : 'deepseek',
+      provider: isPlatformCloudProvider(config.provider) ? config.provider : 'deepseek',
       model: config.model,
       messages,
       stream: Boolean(onStream),
@@ -129,9 +132,13 @@ export async function fetchPlatformTabCompletion(
   language: string,
   filename: string,
   signal?: AbortSignal,
+  tabContext?: TabPlusPlusContext | null,
 ): Promise<string | null> {
   const { trimCompletionToMaxLines } = await import('./fimCompletionService')
-  const content = buildPlatformTabPrompt(language, filename, prefix, suffix, maxLines)
+  let content = buildPlatformTabPrompt(language, filename, prefix, suffix, maxLines)
+  if (tabContext) {
+    content = appendTabPlusPlusContextToPrompt(content, tabContext)
+  }
   const raw = await sendPlatformMessage(
     config,
     [

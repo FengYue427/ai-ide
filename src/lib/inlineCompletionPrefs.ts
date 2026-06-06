@@ -1,4 +1,9 @@
 import { isTabFimProductionEnabled } from './v14Features'
+import {
+  isTabPlusPlusProductionEnabled,
+  TAB_PLUS_PLUS_PRODUCTION_DEBOUNCE_MS,
+  TAB_PLUS_PLUS_PRODUCTION_MAX_LINES,
+} from './v15Features'
 import { isTabPlusPlusPocEnabled, TAB_PLUS_PLUS_POC_DEBOUNCE_MS } from './tabPlusPlusPoc'
 
 const ENABLED_KEY = 'ai-ide:tab-completion-enabled'
@@ -7,7 +12,9 @@ const DEBOUNCE_MS_KEY = 'ai-ide:tab-completion-debounce-ms'
 
 export const DEFAULT_TAB_MAX_LINES = 5
 export const MIN_TAB_MAX_LINES = 1
-export const MAX_TAB_MAX_LINES = 12
+export const MAX_TAB_MAX_LINES = 20
+/** v1.5 F1 production default when Tab++ is on. */
+export const TAB_PLUS_PLUS_MAX_LINES = TAB_PLUS_PLUS_PRODUCTION_MAX_LINES
 /** v1.3.2: slightly higher default reduces empty-line flicker while staying responsive. */
 export const DEFAULT_TAB_DEBOUNCE_MS = 350
 /** v1.4 F1: production Tab/FIM debounce when VITE_TAB_FIM_PRODUCTION is on. */
@@ -29,6 +36,7 @@ export function setTabCompletionEnabled(enabled: boolean): void {
 }
 
 export function getTabCompletionMaxLines(): number {
+  if (isTabPlusPlusProductionEnabled()) return TAB_PLUS_PLUS_MAX_LINES
   if (typeof localStorage === 'undefined') return DEFAULT_TAB_MAX_LINES
   const raw = localStorage.getItem(MAX_LINES_KEY)
   const n = raw ? Number.parseInt(raw, 10) : DEFAULT_TAB_MAX_LINES
@@ -44,6 +52,7 @@ export function setTabCompletionMaxLines(lines: number): void {
 
 function defaultTabDebounceMs(): number {
   if (isTabPlusPlusPocEnabled()) return TAB_PLUS_PLUS_POC_DEBOUNCE_MS
+  if (isTabPlusPlusProductionEnabled()) return TAB_PLUS_PLUS_PRODUCTION_DEBOUNCE_MS
   return isTabFimProductionEnabled() ? PRODUCTION_TAB_DEBOUNCE_MS : DEFAULT_TAB_DEBOUNCE_MS
 }
 

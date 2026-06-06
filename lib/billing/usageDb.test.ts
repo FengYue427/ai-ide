@@ -10,20 +10,20 @@ describe('usageDb', () => {
   })
 
   it('blocks when free plan limit reached', () => {
-    const quota = buildQuotaSnapshot('free', 5000)
+    const quota = buildQuotaSnapshot('free', 200)
     expect(quota.allowed).toBe(false)
     expect(quota.remaining).toBe(0)
   })
 
   it('allows one more request below free limit', () => {
-    const quota = buildQuotaSnapshot('free', 4999)
+    const quota = buildQuotaSnapshot('free', 199)
     expect(quota.allowed).toBe(true)
     expect(quota.remaining).toBe(1)
   })
 
   it('exposes plan limits from billing catalog', () => {
-    expect(getAiDailyLimit('free')).toBe(5000)
-    expect(getAiDailyLimit('pro')).toBe(5000)
+    expect(getAiDailyLimit('free')).toBe(200)
+    expect(getAiDailyLimit('pro')).toBe(2000)
     expect(getAiDailyLimit('enterprise')).toBe(-1)
   })
 })

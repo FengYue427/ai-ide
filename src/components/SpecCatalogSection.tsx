@@ -24,6 +24,8 @@ interface SpecCatalogSectionProps {
   onOpenSpecsRoot: () => void
   onOpenSpecTasks: (tasksPath: string) => void
   onOpenSpecAcceptance: (tasksPath: string) => void
+  onOpenSpecHooks?: (tasksPath: string) => void
+  onCreateSpecHooks?: (tasksPath: string, specName: string) => void
   onRunFirstOpenTask: (tasksPath: string) => void
 }
 
@@ -40,6 +42,8 @@ export function SpecCatalogSection({
   onOpenSpecsRoot,
   onOpenSpecTasks,
   onOpenSpecAcceptance,
+  onOpenSpecHooks,
+  onCreateSpecHooks,
   onRunFirstOpenTask,
 }: SpecCatalogSectionProps) {
   const { t } = useI18n()
@@ -108,6 +112,7 @@ export function SpecCatalogSection({
         >
           <option value="recent-exec">{t('spec.catalog.sort.recentExec')}</option>
           <option value="most-open">{t('spec.catalog.sort.mostOpen')}</option>
+          <option value="most-hooks">{t('spec.catalog.sort.mostHooks')}</option>
           <option value="title">{t('spec.catalog.sort.title')}</option>
         </select>
       </div>
@@ -171,9 +176,21 @@ export function SpecCatalogSection({
                     open: String(spec.uncheckedTasks),
                     total: String(spec.totalTasks),
                   })}
+                  {spec.hasHooks
+                    ? ` · ${t('spec.catalog.hooksCount', { count: String(spec.hooksCount) })}`
+                    : ''}
+                  {!spec.hooksValid && spec.hasHooks ? ` · ${t('spec.catalog.hooksInvalid')}` : ''}
                   {spec.lastExecutedAt ? ` · 最近执行 ${spec.lastExecutedAt}` : ''}
                   {(specLinkCounts[spec.tasksPath] ?? 0) > 0 ? ` · 来源 ${specLinkCounts[spec.tasksPath]}` : ''}
                 </div>
+                {spec.lastHookLogLine ? (
+                  <div
+                    data-testid={`spec-hook-log-${spec.specName}`}
+                    style={{ fontSize: 11, color: 'var(--text-secondary)', fontStyle: 'italic' }}
+                  >
+                    {t('spec.catalog.lastHookLog')}: {spec.lastHookLogLine}
+                  </div>
+                ) : null}
                 {(specPlanLinks[spec.tasksPath]?.length ?? 0) > 0 && onOpenLinkedPlan ? (
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span>{t('spec.catalog.sourcePlans')}:</span>
@@ -202,6 +219,26 @@ export function SpecCatalogSection({
                   <button type="button" className="btn btn-secondary" onClick={() => onOpenSpecAcceptance(spec.tasksPath)}>
                     acceptance
                   </button>
+                  {spec.hasHooks && onOpenSpecHooks ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      data-testid={`spec-open-hooks-${spec.specName}`}
+                      onClick={() => onOpenSpecHooks(spec.tasksPath)}
+                    >
+                      {t('spec.catalog.openHooks')}
+                    </button>
+                  ) : null}
+                  {!spec.hasHooks && onCreateSpecHooks ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      data-testid={`spec-create-hooks-${spec.specName}`}
+                      onClick={() => onCreateSpecHooks(spec.tasksPath, spec.specName)}
+                    >
+                      {t('spec.catalog.createHooks')}
+                    </button>
+                  ) : null}
                   {spec.uncheckedTasks > 0 ? (
                     <button type="button" className="btn btn-secondary" onClick={() => onRunFirstOpenTask(spec.tasksPath)}>
                       {t('spec.catalog.runFirst')}

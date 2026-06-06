@@ -1,4 +1,6 @@
-import type { PlatformAiRoute } from './platformConfig'
+import type { PlatformAiRoute } from './platformCatalog'
+
+type OpenAiCompatibleRoute = Pick<PlatformAiRoute, 'provider' | 'apiKey' | 'endpoint' | 'model'>
 
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant'
@@ -7,7 +9,7 @@ export type ChatMessage = {
 
 /** Proxy OpenAI-compatible chat (streaming SSE) with platform credentials. */
 export async function forwardOpenAiChat(
-  route: PlatformAiRoute,
+  route: OpenAiCompatibleRoute,
   messages: ChatMessage[],
   options?: { stream?: boolean; signal?: AbortSignal },
 ): Promise<Response> {
@@ -56,7 +58,7 @@ export async function forwardOpenAiChat(
 
 /** Agent tool loop — non-streaming JSON completion. */
 export async function forwardOpenAiAgent(
-  route: PlatformAiRoute,
+  route: OpenAiCompatibleRoute,
   input: { messages: unknown[]; tools: unknown[] },
   options?: { signal?: AbortSignal },
 ): Promise<Response> {

@@ -42,4 +42,9 @@ describe('aideRuntimeUi', () => {
     import.meta.env.VITE_AIDE_RUNTIME_UI = 'false'
     expect(isAideRuntimeUiEnabled()).toBe(false)
   })
+
+  it('enables via v1.5 Activity Line production flag', () => {
+    import.meta.env.VITE_AIDE_ACTIVITY_LINE = 'true'
+    expect(isAideRuntimeUiEnabled()).toBe(true)
+  })
 })
