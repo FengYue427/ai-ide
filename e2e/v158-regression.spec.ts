@@ -20,7 +20,7 @@ test.describe('v1.5.8 regression', () => {
     await gotoApp(page)
     await openSubscriptionFromToolbar(page)
     await expect(page.getByText('$9.99').first()).toBeVisible()
-    await expect(page.getByText(/(公测期|Stripe|Stripe 订阅|¥39|支付宝|Alipay)/)).toBeVisible()
+    await expect(page.getByText(/(公测期|Stripe|Stripe 订阅|¥39|支付宝|Alipay)/).first()).toBeVisible()
   })
 
   test('welcome platform quota hint still visible from welcome screen', async ({ page }) => {
