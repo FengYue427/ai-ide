@@ -208,6 +208,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 }) => {
   const { t, language } = useI18n()
   const currentPlan = useIDEStore((s) => s.currentPlan)
+  const planDisplayName = useMemo(() => {
+    if (currentPlan === 'free' || currentPlan === 'pro' || currentPlan === 'enterprise') {
+      return t(`subscription.plan.${currentPlan}.name`)
+    }
+    return currentPlan
+  }, [currentPlan, t])
   const runtimeQueuePause = useSyncExternalStore(
     subscribeRuntimeQueuePause,
     getRuntimeQueuePause,
@@ -1877,7 +1883,7 @@ ${t('ai.chat.prompt')}`
               </span>
             </div>
 
-            <QuotaIndicator quota={quota} label={t('chat.quotaToday')} inline />
+            <QuotaIndicator quota={quota} inline planDisplayName={planDisplayName} />
 
             <button
               type="button"
