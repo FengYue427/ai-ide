@@ -1,7 +1,7 @@
 import { prismaSupportsTransactions } from '../../src/lib/prismaTransactions'
 
 export type UpsertDelegate<T> = {
-  findUnique: (args: { where: unknown }) => Promise<T | null>
+  findUnique: (args: { where: unknown; include?: unknown }) => Promise<T | null>
   create: (args: { data: unknown; include?: unknown }) => Promise<T>
   update: (args: { where: unknown; data: unknown; include?: unknown }) => Promise<T>
   upsert: (args: {
@@ -12,7 +12,19 @@ export type UpsertDelegate<T> = {
   }) => Promise<T>
 }
 
-/** Neon HTTP has no `$transaction`; Prisma `upsert` may still require one. */
+async function reloadWithInclude<T>(
+  delegate: UpsertDelegate<T>,
+  where: unknown,
+  include: unknown,
+): Promise<T> {
+  const row = await delegate.findUnique({ where, include })
+  if (!row) {
+    throw new Error('prismaUpsert: row missing after write')
+  }
+  return row
+}
+
+/** Neon HTTP has no `$transaction`; avoid `upsert` and `update({ include })` on serverless driver. */
 export async function prismaUpsert<T>(args: {
   delegate: UpsertDelegate<T>
   where: unknown
@@ -31,27 +43,42 @@ export async function prismaUpsert<T>(args: {
 
   const existing = await args.delegate.findUnique({ where: args.where })
   if (existing) {
-    return args.delegate.update({
+    await args.delegate.update({
       where: args.where,
       data: args.update,
-      include: args.include,
     })
+    if (args.include) {
+      return reloadWithInclude(args.delegate, args.where, args.include)
+    }
+    const row = await args.delegate.findUnique({ where: args.where })
+    if (!row) {
+      throw new Error('prismaUpsert: row missing after update')
+    }
+    return row
   }
   try {
-    return await args.delegate.create({
+    await args.delegate.create({
       data: args.create,
-      include: args.include,
     })
   } catch (error) {
     if (isPrismaUniqueViolation(error)) {
-      return args.delegate.update({
+      await args.delegate.update({
         where: args.where,
         data: args.update,
-        include: args.include,
       })
+    } else {
+      throw error
     }
-    throw error
   }
+
+  if (args.include) {
+    return reloadWithInclude(args.delegate, args.where, args.include)
+  }
+  const row = await args.delegate.findUnique({ where: args.where })
+  if (!row) {
+    throw new Error('prismaUpsert: row missing after create')
+  }
+  return row
 }
 
 function isPrismaUniqueViolation(error: unknown): boolean {

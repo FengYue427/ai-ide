@@ -1850,44 +1850,69 @@ ${t('ai.chat.prompt')}`
       <div
         className={`chat-panel-header chat-panel-header--dense ${embeddedInRightPanel ? 'chat-panel-header--embedded' : ''}`}
       >
-        <div className="chat-control-strip">
-          <div className="chat-control-strip__chips" title={t('chat.sessionTitle')}>
-            <span className="chat-chip chat-chip--model">{aiConfig.provider}</span>
-            <span className="chat-chip chat-chip--model">{aiConfig.model || t('chat.noModel')}</span>
-            <span
-              className={`chat-chip ${isConfigured ? 'chat-chip--success' : 'chat-chip--warning'}`}
-              title={
-                isConfigured
-                  ? t('chat.configured')
+        <div className="chat-header-grid">
+          <div className="chat-header-grid__meta">
+            <div className="chat-control-strip__chips" title={t('chat.sessionTitle')}>
+              <span
+                className="chat-chip chat-chip--model chat-chip--model-combo"
+                title={`${aiConfig.provider}${aiConfig.model ? ` / ${aiConfig.model}` : ''}`}
+              >
+                {aiConfig.model ? `${aiConfig.provider} · ${aiConfig.model}` : aiConfig.provider}
+              </span>
+              <span
+                className={`chat-chip ${isConfigured ? 'chat-chip--success' : 'chat-chip--warning'}`}
+                title={
+                  isConfigured
+                    ? t('chat.configured')
+                    : needsPlatformSignIn
+                      ? t('chat.pendingPlatformSignIn')
+                      : t('chat.pendingConfig')
+                }
+              >
+                {isConfigured
+                  ? t('chat.configuredShort')
                   : needsPlatformSignIn
-                    ? t('chat.pendingPlatformSignIn')
-                    : t('chat.pendingConfig')
-              }
-            >
-              {isConfigured
-                ? t('chat.configuredShort')
-                : needsPlatformSignIn
-                  ? t('chat.pendingPlatformSignInShort')
-                  : t('chat.pendingConfigShort')}
-            </span>
-          </div>
+                    ? t('chat.pendingPlatformSignInShort')
+                    : t('chat.pendingConfigShort')}
+              </span>
+            </div>
 
-          <QuotaIndicator quota={quota} label={t('chat.quotaToday')} inline />
+            <QuotaIndicator quota={quota} label={t('chat.quotaToday')} inline />
 
-          <div className="chat-control-strip__toggles" role="group" aria-label={t('chat.modesGroup')}>
             <button
               type="button"
-              className="chat-mode-btn chat-mode-btn--icon chat-mode-btn--active"
+              className="chat-controls-toggle"
+              onClick={() => {
+                setControlsExpanded((prev) => {
+                  const next = !prev
+                  try {
+                    localStorage.setItem('ai-ide:chat-controls-expanded', String(next))
+                  } catch {
+                    // ignore
+                  }
+                  return next
+                })
+              }}
+              aria-expanded={controlsExpanded}
+              title={controlsExpanded ? t('chat.controlsCollapse') : t('chat.controlsExpand')}
+            >
+              {controlsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+          </div>
+
+          <div className="chat-mode-segment" role="group" aria-label={t('chat.modesGroup')}>
+            <button
+              type="button"
+              className="chat-mode-segment__btn chat-mode-segment__btn--active"
               title={
                 agentMode && supportsAgentToolCalling(aiConfig.provider)
                   ? `${t('chat.agentModeTitle')} · ${t('chat.agentToolsActive')}`
                   : t('chat.agentModeTitle')
               }
-              disabled
               aria-pressed="true"
             >
-              <Zap size={15} />
-              <span className="chat-sr-only">{t('chat.agent')}</span>
+              <Zap size={13} aria-hidden />
+              <span>{t('chat.agent')}</span>
             </button>
 
             <button
@@ -1910,19 +1935,19 @@ ${t('ai.chat.prompt')}`
                   return next
                 })
               }}
-              className={`chat-mode-btn chat-mode-btn--icon ${planMode ? 'chat-mode-btn--active' : ''}`}
+              className={`chat-mode-segment__btn ${planMode ? 'chat-mode-segment__btn--active' : ''}`}
               title={planMode ? t('chat.planModeOn') : t('chat.planModeOff')}
               aria-pressed={planMode}
             >
-              <ListTodo size={15} />
-              <span className="chat-sr-only">Plan</span>
+              <ListTodo size={13} aria-hidden />
+              <span>{t('chat.planShort')}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setUseWorkspaceContext((value) => !value)}
               disabled={workspaceStats.selectedFiles === 0}
-              className={`chat-mode-btn chat-mode-btn--icon ${useWorkspaceContext ? 'chat-mode-btn--active' : ''}`}
+              className={`chat-mode-segment__btn ${useWorkspaceContext ? 'chat-mode-segment__btn--active' : ''}`}
               title={
                 workspaceStats.selectedFiles === 0
                   ? t('chat.workspaceEmpty')
@@ -1930,34 +1955,14 @@ ${t('ai.chat.prompt')}`
               }
               aria-pressed={useWorkspaceContext}
             >
-              <FolderOpen size={15} />
-              {useWorkspaceContext ? <CheckSquare size={12} className="chat-mode-btn__badge" /> : null}
-              <span className="chat-sr-only">
-                {t('chat.workspaceCtx')}
+              <FolderOpen size={13} aria-hidden />
+              <span>
+                {t('chat.workspaceShort')}
                 {workspaceStats.selectedFiles > 0 ? ` (${workspaceStats.selectedFiles})` : ''}
               </span>
+              {useWorkspaceContext ? <CheckSquare size={11} className="chat-mode-segment__badge" aria-hidden /> : null}
             </button>
           </div>
-
-          <button
-            type="button"
-            className="chat-controls-toggle"
-            onClick={() => {
-              setControlsExpanded((prev) => {
-                const next = !prev
-                try {
-                  localStorage.setItem('ai-ide:chat-controls-expanded', String(next))
-                } catch {
-                  // ignore
-                }
-                return next
-              })
-            }}
-            aria-expanded={controlsExpanded}
-            title={controlsExpanded ? t('chat.controlsCollapse') : t('chat.controlsExpand')}
-          >
-            {controlsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
         </div>
 
         {controlsExpanded ? (

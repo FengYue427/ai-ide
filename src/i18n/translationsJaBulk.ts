@@ -407,6 +407,8 @@ export const JA_JP_BULK_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'chat.modesGroup': 'AI モード',
   'chat.planModeOn': 'Plan モード ON',
   'chat.planModeOff': 'Plan モードをオン',
+  'chat.planShort': 'Plan',
+  'chat.workspaceShort': 'ワークスペース',
   'chat.error.abortedBody': 'This reply was stopped manually.',
   'chat.error.abortedHint': 'Edit your question and send again.',
   'chat.error.abortedTitle': 'Generation stopped',

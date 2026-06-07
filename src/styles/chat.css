@@ -177,16 +177,31 @@
 /* v1.1.9.3 — dense control strip, maximize message area */
 .chat-panel-header--dense {
   flex-shrink: 0;
-  padding: 4px 8px;
-  gap: 2px;
+  padding: 6px 8px;
+  gap: 4px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .chat-panel-header--dense.chat-panel-header--embedded {
-  padding: 4px 8px;
+  padding: 6px 8px;
 }
 
 .chat-control-strip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chat-header-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.chat-header-grid__meta {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -209,6 +224,76 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-chip--model-combo {
+  max-width: min(140px, 42vw);
+}
+
+.chat-mode-segment {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+
+.chat-mode-segment__btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+
+.chat-mode-segment__btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-mode-segment__btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.chat-mode-segment__btn--active {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-color) 34%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+}
+
+.chat-mode-segment__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.chat-mode-segment__badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  color: var(--accent-color);
+}
+
+.chat-panel--embedded .chat-header-grid__meta .quota-indicator--inline {
+  width: 76px;
+  flex-shrink: 0;
+}
+
+.chat-panel--embedded .chat-mode-segment__btn {
+  font-size: 10px;
+  padding-inline: 4px;
 }
 
 .chat-control-strip__toggles {
