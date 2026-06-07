@@ -15,6 +15,7 @@ import { usePublicWelfare } from '../hooks/usePublicWelfare'
 import { authService } from '../services/authService'
 import { useIDEStore } from '../store/ideStore'
 import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
+import { findPlanByName, formatPlanPrice } from '../../lib/billing/plans'
 import type { ConfirmRequest, ToastKind } from '../components/FeedbackCenter'
 
 interface AppToolbarProps {
@@ -52,6 +53,8 @@ export function AppToolbar({
   const currentPlan = useIDEStore((s) => s.currentPlan)
   const setCurrentUser = useIDEStore((s) => s.setCurrentUser)
   const pluginToolbarButtons = useIDEStore((s) => s.pluginToolbarButtons)
+  const proPlan = findPlanByName('pro')
+  const proStartingPrice = proPlan ? formatPlanPrice(proPlan) : '$9.99'
 
   const renderPluginIcon = (icon: string) => {
     if (icon === 'bar-chart') return <BarChart2 size={14} />
@@ -143,7 +146,7 @@ export function AppToolbar({
             {!currentUser
               ? t('toolbar.plans.guest')
               : currentPlan === 'free'
-                ? t('toolbar.plans.upgrade')
+                ? t('toolbar.plans.upgrade', { price: proStartingPrice })
                 : t('toolbar.plans.team')}
           </span>
         </button>

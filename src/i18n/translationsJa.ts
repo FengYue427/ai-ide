@@ -154,7 +154,7 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'subscription.checkout.stripe': 'Stripe でアップグレード',
   'subscription.checkout.stripeHint': 'Stripe の安全なチェックアウトにリダイレクトしてサブスクリプションを完了します',
   'subscription.checkout.welfareIncluded': '公益無料に含まれます',
-  'subscription.pricing.liveStripe': '{methods} 対応；Pro $4.99/月、Team $12.99/月',
+  'subscription.pricing.liveStripe': '{methods} 対応；Pro $9.99/月、Team $19.99/月',
   'subscription.pricing.publicWelfare':
     '公益無料 IDE：サブスクリプション料は永久無料。プラットフォーム AI の日次クォータは緩和済み。BYOK の利用を推奨します。',
 

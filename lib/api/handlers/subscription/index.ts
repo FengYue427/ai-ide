@@ -2,7 +2,7 @@
  * Subscription status API — reads from DB when authenticated
  */
 import { jsonResponse } from '../../http'
-import { appendApiMessage } from '../../localizedError'
+import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
 import { optionalAuth } from '../../requireAuth'
 import { expireUserSubscriptionIfDue } from '../../../billing/subscriptionExpiry'
 import { isPublicWelfareMode, PUBLIC_WELFARE_PLAN } from '../../../billing/publicWelfare'
@@ -66,6 +66,6 @@ export async function GET(req: Request) {
     })
   } catch (error) {
     console.error('[Subscription] Status error:', error)
-    return jsonResponse({ subscription: freeSubscription })
+    return localizedErrorResponse(req, 'api.subscription.readFailed', 500)
   }
 }

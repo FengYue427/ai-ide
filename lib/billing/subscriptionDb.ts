@@ -33,6 +33,26 @@ export type SubscriptionExternalIds = {
   paddleSubscriptionId?: string
 }
 
+const DEFAULT_BILLING_DAYS = 30
+
+/** Extend from current period end when renewing; fresh window for new subscriptions. */
+export function computeSubscriptionPeriod(
+  existing: { plan: { name: string }; currentPeriodStart: Date; currentPeriodEnd: Date } | null,
+  extendDays = DEFAULT_BILLING_DAYS,
+  now = new Date(),
+): { currentPeriodStart: Date; currentPeriodEnd: Date } {
+  if (!existing || existing.plan.name === 'free') {
+    const end = new Date(now)
+    end.setDate(end.getDate() + extendDays)
+    return { currentPeriodStart: now, currentPeriodEnd: end }
+  }
+
+  const base = existing.currentPeriodEnd > now ? existing.currentPeriodEnd : now
+  const end = new Date(base)
+  end.setDate(end.getDate() + extendDays)
+  return { currentPeriodStart: existing.currentPeriodStart, currentPeriodEnd: end }
+}
+
 export async function upsertUserSubscription(
   userId: string,
   planName: string,
@@ -45,15 +65,14 @@ export async function upsertUserSubscription(
     throw new Error(`未知计划: ${planName}`)
   }
 
-  const now = new Date()
-  const periodEnd = new Date(now)
-  periodEnd.setDate(periodEnd.getDate() + 30)
+  const existing = await getUserSubscription(userId)
+  const { currentPeriodStart, currentPeriodEnd } = computeSubscriptionPeriod(existing)
 
   const payload = {
     planId: plan.id,
     status: 'active' as const,
-    currentPeriodStart: now,
-    currentPeriodEnd: periodEnd,
+    currentPeriodStart,
+    currentPeriodEnd,
     cancelAtPeriodEnd: false,
     stripeCustomerId: externalIds?.stripeCustomerId,
     stripeSubscriptionId: externalIds?.stripeSubscriptionId,
