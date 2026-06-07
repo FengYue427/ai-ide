@@ -136,20 +136,19 @@ export async function prepareE2EStorage(page: Page, files: E2ESeedFile[] = E2E_D
 }
 
 export async function dismissAuthModalIfOpen(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const overlay = page.locator('.auth-modal-overlay')
+  const overlay = page.locator('.auth-modal-overlay')
+  for (let attempt = 0; attempt < 6; attempt++) {
     if ((await overlay.count()) === 0) return
+    await page.keyboard.press('Escape')
     const close = page.locator('.auth-close-btn')
-    if (await close.count()) {
-      await close.click({ timeout: 5_000 })
-    } else {
-      await page.keyboard.press('Escape')
+    if (await close.isVisible().catch(() => false)) {
+      await close.click({ timeout: 3_000 }).catch(() => {})
     }
     try {
-      await expect(overlay).toHaveCount(0, { timeout: 3_000 })
+      await overlay.waitFor({ state: 'detached', timeout: 4_000 })
       return
     } catch {
-      // retry dismiss
+      // retry dismiss — parallel workers sometimes reopen auth overlay
     }
   }
 }
@@ -189,9 +188,22 @@ export async function openSettingsTab(
   const isActive = await tab.evaluate((el) => el.classList.contains('settings-nav-btn--active'))
   if (!isActive) {
     await dismissAuthModalIfOpen(page)
+    await expect(page.locator('.auth-modal-overlay')).toHaveCount(0, { timeout: 5_000 })
     await tab.click()
     await dismissAuthModalIfOpen(page)
   }
+}
+
+/** Toolbar subscription CTA — label varies for guest vs logged-in free vs pro. */
+export async function openSubscriptionFromToolbar(page: Page): Promise<void> {
+  await dismissAuthModalIfOpen(page)
+  const upgradeBtn = page.locator('header.toolbar').getByRole('button', {
+    name: /查看套餐|升级套餐|升级团队版|View plans|Upgrade from|Upgrade to Team/i,
+  })
+  await expect(upgradeBtn).toBeVisible({ timeout: 15_000 })
+  await upgradeBtn.click()
+  await dismissAuthModalIfOpen(page)
+  await expect(page.getByText(/订阅计划|^Plans$/i)).toBeVisible({ timeout: 10_000 })
 }
 
 /** Activity bar — AI chat (dismiss auth overlay first). */

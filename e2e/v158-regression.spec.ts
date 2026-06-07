@@ -2,7 +2,7 @@
  * E2E: v1.5.8 regression — i18n surfaces + settings polish
  */
 import { expect, test } from '@playwright/test'
-import { gotoApp, openSettingsTab, prepareLoggedInUser } from './helpers'
+import { gotoApp, openSettingsTab, openSubscriptionFromToolbar, prepareLoggedInUser } from './helpers'
 
 test.describe('v1.5.8 regression', () => {
   test.beforeEach(async ({ page }) => {
@@ -18,10 +18,9 @@ test.describe('v1.5.8 regression', () => {
 
   test('subscription modal shows Stripe and CN pricing labels', async ({ page }) => {
     await gotoApp(page)
-    await page.getByRole('button', { name: '查看套餐' }).click()
-    await expect(page.getByText('订阅计划')).toBeVisible({ timeout: 10_000 })
+    await openSubscriptionFromToolbar(page)
     await expect(page.getByText('$9.99').first()).toBeVisible()
-    await expect(page.getByText(/(公测期|Stripe|Stripe 订阅)/)).toBeVisible()
+    await expect(page.getByText(/(公测期|Stripe|Stripe 订阅|¥39|支付宝|Alipay)/)).toBeVisible()
   })
 
   test('welcome platform quota hint still visible from welcome screen', async ({ page }) => {

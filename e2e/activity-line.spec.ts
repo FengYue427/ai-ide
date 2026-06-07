@@ -3,22 +3,19 @@
  */
 import { expect, test } from '@playwright/test'
 import {
+  gotoApp,
   openChatPanelFromActivityBar,
   openSettingsTab,
-  prepareE2EStorage,
   prepareLoggedInUser,
-  waitForShellReady,
 } from './helpers'
 
 test.describe('v1.4.8 activity line stub', () => {
   test.beforeEach(async ({ page }) => {
     await prepareLoggedInUser(page)
-    await prepareE2EStorage(page)
     await page.addInitScript(() => {
       localStorage.setItem('ai-ide:feature:aideRuntimeUi', '1')
     })
-    await page.goto('/')
-    await waitForShellReady(page)
+    await gotoApp(page)
   })
 
   test('features tab shows runtime stub card when flag is on', async ({ page }) => {
