@@ -1,4 +1,5 @@
 import { isAlipayConfigured, isCnPaymentConfigured, isWechatPayConfigured } from './cnPayment'
+import { isPaddleConfigured } from './paddle'
 import { isPublicWelfareMode } from './publicWelfare'
 import { isStripeConfigured } from './stripe'
 
@@ -7,7 +8,7 @@ export function isDevBillingAllowed(): boolean {
   if (isPublicWelfareMode()) return false
   if (process.env.VERCEL_ENV === 'production') return false
   if (process.env.NODE_ENV === 'production') return false
-  if (isCnPaymentConfigured() || isStripeConfigured()) return false
+  if (isCnPaymentConfigured() || isStripeConfigured() || isPaddleConfigured()) return false
   if (process.env.ALLOW_DEV_BILLING === 'true') return true
   return true
 }
@@ -26,6 +27,7 @@ export type BillingCapabilities = {
   alipay: boolean
   wechat: boolean
   stripe: boolean
+  paddle: boolean
   devMock: boolean
   devSimulate: boolean
   publicWelfare: boolean
@@ -37,6 +39,7 @@ export function getBillingCapabilities(): BillingCapabilities {
     alipay: welfare ? false : isAlipayConfigured(),
     wechat: welfare ? false : isWechatPayConfigured(),
     stripe: welfare ? false : isStripeConfigured(),
+    paddle: welfare ? false : isPaddleConfigured(),
     devMock: welfare ? false : isDevBillingAllowed(),
     devSimulate: welfare ? false : isDevPaymentSimulateAllowed(),
     publicWelfare: welfare,

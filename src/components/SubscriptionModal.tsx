@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Building2, Check, Crown, Loader2, Zap } from 'lucide-react'
 import { hasCheckoutPayment } from '../../lib/billing/checkout'
+import { preferCnBillingCheckout } from '../../lib/billing/billingRegion'
 import { localizePlans } from '../lib/localizePlan'
 import { pickApiResponseMessage } from '../lib/apiUserMessage'
 import { buildSubscriptionPricingNote } from '../lib/subscriptionPricingNote'
@@ -105,8 +106,15 @@ const planVisuals: Record<string, { icon: React.ReactNode; headClass: string }> 
 
 function checkoutButtonLabel(
   plan: Plan,
-  paymentMethods: { alipay: boolean; wechat: boolean; stripe: boolean; publicWelfare: boolean },
+  paymentMethods: {
+    alipay: boolean
+    wechat: boolean
+    stripe: boolean
+    paddle: boolean
+    publicWelfare: boolean
+  },
   checkoutAvailable: boolean,
+  useCnCheckout: boolean,
   t: (key: TranslationKey) => string,
 ): string {
   if (paymentMethods.publicWelfare && plan.price > 0) {
@@ -114,9 +122,12 @@ function checkoutButtonLabel(
   }
   if (plan.price === 0) return t('subscription.checkout.free')
   if (!checkoutAvailable) return t('subscription.checkout.beta')
-  if (paymentMethods.alipay && !paymentMethods.wechat) return t('subscription.checkout.alipay')
-  if (paymentMethods.wechat && !paymentMethods.alipay) return t('subscription.checkout.wechat')
-  if (paymentMethods.alipay || paymentMethods.wechat) return t('subscription.checkout.cn')
+  if (useCnCheckout) {
+    if (paymentMethods.alipay && !paymentMethods.wechat) return t('subscription.checkout.alipay')
+    if (paymentMethods.wechat && !paymentMethods.alipay) return t('subscription.checkout.wechat')
+    return t('subscription.checkout.cn')
+  }
+  if (paymentMethods.paddle) return t('subscription.checkout.paddle')
   if (paymentMethods.stripe) return t('subscription.checkout.stripe')
   return t('subscription.checkout.upgrade')
 }
@@ -138,9 +149,16 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     alipay: false,
     wechat: false,
     stripe: false,
+    paddle: false,
     devMock: false,
     publicWelfare: false,
   })
+  const useCnCheckout = useMemo(
+    () =>
+      preferCnBillingCheckout(language) &&
+      (paymentMethods.alipay || paymentMethods.wechat),
+    [language, paymentMethods.alipay, paymentMethods.wechat],
+  )
   const displayPlans = useMemo(
     () => localizePlans(plans.length > 0 ? plans : fallbackPlans, t),
     [plans, fallbackPlans, t],
@@ -182,6 +200,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
           alipay?: boolean
           wechat?: boolean
           stripe?: boolean
+          paddle?: boolean
           devMock?: boolean
           publicWelfare?: boolean
         }>(r),
@@ -192,6 +211,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             alipay: Boolean(data.alipay),
             wechat: Boolean(data.wechat),
             stripe: Boolean(data.stripe),
+            paddle: Boolean(data.paddle),
             devMock: Boolean(data.devMock),
             publicWelfare: Boolean(data.publicWelfare),
           })
@@ -249,22 +269,28 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     setError('')
     setSuccess('')
 
-    if (paymentMethods.alipay || paymentMethods.wechat) {
+    if (useCnCheckout) {
       setCnPayPlan(plan)
       return
     }
 
-    if (paymentMethods.stripe) {
+    if (paymentMethods.paddle || paymentMethods.stripe) {
       setProcessingPlanId(planId)
       try {
+        const channel = paymentMethods.paddle ? 'paddle' : 'stripe'
         const response = await fetch('/api/subscription/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ planId: planName }),
+          body: JSON.stringify({ planId: planName, channel }),
         })
         const data = await readJsonResponse<{ mode?: string; url?: string; error?: string }>(response)
-        if (response.ok && data?.mode === 'stripe' && data.url && /^https?:\/\//i.test(data.url)) {
+        if (
+          response.ok &&
+          (data?.mode === 'paddle' || data?.mode === 'stripe') &&
+          data.url &&
+          /^https?:\/\//i.test(data.url)
+        ) {
           window.location.href = data.url
           return
         }
@@ -638,7 +664,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                           ) : isCurrent ? (
                             t('subscription.checkout.current')
                           ) : (
-                            checkoutButtonLabel(plan, paymentMethods, checkoutAvailable, t)
+                            checkoutButtonLabel(plan, paymentMethods, checkoutAvailable, useCnCheckout, t)
                           )}
                         </button>
                         {checkoutAvailable && plan.price > 0 && !isCurrent && paymentMethods.stripe && (

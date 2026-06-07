@@ -1,5 +1,5 @@
 /**
- * Subscription checkout — 支付宝 / 微信（优先），Stripe（海外主路径），开发 mock 兜底
+ * Subscription checkout — 支付宝 / 微信（国内），Paddle MoR / Stripe（海外），开发 mock 兜底
  */
 import { jsonResponse } from '../../http'
 import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
@@ -9,9 +9,12 @@ import { isPublicWelfareMode } from '../../../billing/publicWelfare'
 import { createCnCheckout, isAlipayConfigured, isCnPaymentConfigured, isWechatPayConfigured } from '../../../billing/cnPayment'
 import type { PaymentChannel } from '../../../billing/paymentOrders'
 import { findPlanByName, getBillablePlanNames, getPlanAmountCents } from '../../../billing/plans'
+import { createPaddleCheckoutSession, isPaddleConfigured } from '../../../billing/paddle'
 import { getUserSubscription, upsertUserSubscription } from '../../../billing/subscriptionDb'
 import { createStripeCheckoutSession, isStripeConfigured } from '../../../billing/stripe'
 import { trackServerEvent } from '../../logger'
+
+type CheckoutChannel = PaymentChannel | 'stripe' | 'paddle'
 
 export async function POST(request: Request) {
   try {
@@ -22,7 +25,7 @@ export async function POST(request: Request) {
     const auth = await requireAuth(request)
     if (!auth.ok) return auth.response
 
-    const body = (await request.json()) as { planId?: string; channel?: PaymentChannel }
+    const body = (await request.json()) as { planId?: string; channel?: CheckoutChannel }
     const planId = body.planId?.trim()
     const channel = body.channel
 
@@ -71,8 +74,64 @@ export async function POST(request: Request) {
       return jsonResponse(result)
     }
 
+    if (channel === 'paddle') {
+      if (!isPaddleConfigured()) {
+        return localizedErrorResponse(request, 'api.checkout.paddleNotConfigured', 503)
+      }
+      const url = await createPaddleCheckoutSession({
+        req: request,
+        userId: auth.user.id,
+        email: auth.user.email,
+        planName: plan.name,
+      })
+      trackServerEvent(request, 'billing.checkout.created', {
+        userId: auth.user.id,
+        plan: plan.name,
+        channel: 'paddle',
+        mode: 'paddle',
+      })
+      return jsonResponse({ mode: 'paddle', url })
+    }
+
+    if (channel === 'stripe') {
+      if (!isStripeConfigured()) {
+        return localizedErrorResponse(request, 'api.checkout.stripeNotConfigured', 503)
+      }
+      const existing = await getUserSubscription(auth.user.id)
+      const url = await createStripeCheckoutSession({
+        req: request,
+        userId: auth.user.id,
+        email: auth.user.email,
+        planName: plan.name,
+        stripeCustomerId: existing?.stripeCustomerId,
+      })
+      trackServerEvent(request, 'billing.checkout.created', {
+        userId: auth.user.id,
+        plan: plan.name,
+        channel: 'stripe',
+        mode: 'stripe',
+      })
+      return jsonResponse({ mode: 'stripe', url })
+    }
+
     if (isCnPaymentConfigured()) {
       return localizedErrorResponse(request, 'api.checkout.channelRequired', 400)
+    }
+
+    if (isPaddleConfigured()) {
+      const url = await createPaddleCheckoutSession({
+        req: request,
+        userId: auth.user.id,
+        email: auth.user.email,
+        planName: plan.name,
+      })
+      trackServerEvent(request, 'billing.checkout.created', {
+        userId: auth.user.id,
+        plan: plan.name,
+        channel: 'paddle',
+        mode: 'paddle',
+      })
+      return jsonResponse({ mode: 'paddle', url })
     }
 
     if (isStripeConfigured()) {

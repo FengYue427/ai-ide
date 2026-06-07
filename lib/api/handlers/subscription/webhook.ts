@@ -32,8 +32,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   await upsertUserSubscription(userId, planName, {
-    customerId: typeof session.customer === 'string' ? session.customer : undefined,
-    subscriptionId:
+    stripeCustomerId: typeof session.customer === 'string' ? session.customer : undefined,
+    stripeSubscriptionId:
       typeof session.subscription === 'string' ? session.subscription : undefined,
   })
 }

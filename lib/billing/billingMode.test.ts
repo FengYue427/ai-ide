@@ -39,6 +39,7 @@ describe('billingMode', () => {
       alipay: expect.any(Boolean),
       wechat: expect.any(Boolean),
       stripe: expect.any(Boolean),
+      paddle: expect.any(Boolean),
       devMock: expect.any(Boolean),
       devSimulate: expect.any(Boolean),
     })

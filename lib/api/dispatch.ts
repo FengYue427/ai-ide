@@ -110,6 +110,12 @@ const routes: RouteEntry[] = [
   },
   {
     method: 'POST',
+    match: (p) => (p === '/api/subscription/paddle/webhook' ? {} : null),
+    load: () => import('./handlers/subscription/paddle-webhook'),
+    export: 'POST',
+  },
+  {
+    method: 'POST',
     match: (p) => (p === '/api/subscription/cancel' ? {} : null),
     load: () => import('./handlers/subscription/cancel'),
     export: 'POST',

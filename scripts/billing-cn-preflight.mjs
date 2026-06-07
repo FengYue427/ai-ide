@@ -1,12 +1,14 @@
 /**
  * Check Alipay / WeChat env without calling payment APIs.
  * Usage: node scripts/billing-cn-preflight.mjs
+ *        node scripts/billing-cn-preflight.mjs --production
  */
 import { existsSync, readFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { parseEnvLocalContent } from './load-env-local.mjs'
 
+const productionMode = process.argv.includes('--production')
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const envPath = join(root, '.env.local')
 
@@ -42,7 +44,7 @@ function hasKey(name, pathName) {
 
 let issues = 0
 
-console.log('=== CN payment preflight ===\n')
+console.log(`=== CN payment preflight${productionMode ? ' (production)' : ''} ===\n`)
 
 console.log('定价（lib/billing/plans.ts）: 免费 / 专业版 ¥39 / 团队版 ¥79')
 console.log('配额: 免费 200 加权单位/日 · 经济模型 | 专业 2000 | 团队 不限\n')
@@ -76,6 +78,7 @@ if (alipayOk) {
   const gateway =
     process.env.ALIPAY_GATEWAY?.trim() ||
     (sandbox ? 'https://openapi-sandbox.dl.alipaydev.com/gateway.do' : 'https://openapi.alipay.com/gateway.do')
+  const gatewayIsSandbox = gateway.includes('sandbox') || gateway.includes('alipaydev')
   let pemWarn = ''
   try {
     const priv = has('ALIPAY_PRIVATE_KEY')
@@ -95,6 +98,38 @@ if (alipayOk) {
     `✅ 支付宝已配置 (${sandbox ? '沙箱' : '正式'}) gateway=${gateway}${pemWarn ? `\n   ⚠️ PEM 可能无效:${pemWarn}` : ''}`,
   )
   if (pemWarn) issues++
+
+  if (productionMode) {
+    if (sandbox) {
+      console.log('❌ 生产模式: 请删除 ALIPAY_SANDBOX（或设为 false）')
+      issues++
+    }
+    if (gatewayIsSandbox) {
+      console.log('❌ 生产模式: ALIPAY_GATEWAY 不能指向沙箱域名')
+      issues++
+    }
+    const appUrl = process.env.APP_URL?.trim() || ''
+    if (!/^https:\/\//i.test(appUrl) || /localhost|127\.0\.0\.1/i.test(appUrl)) {
+      console.log('❌ 生产模式: APP_URL 须为 https 生产域名（如 https://ai-ide-flame.vercel.app）')
+      issues++
+    } else {
+      console.log(`✅ 生产 notify/return 基址: ${appUrl.replace(/\/$/, '')}`)
+      console.log(`   支付宝开放平台异步通知: ${appUrl.replace(/\/$/, '')}/api/payment/alipay/notify`)
+    }
+    if (has('PAYMENT_NOTIFY_URL')) {
+      console.log(
+        '⚠️  生产 Vercel 建议删除 PAYMENT_NOTIFY_URL（留空则自动用 APP_URL；仅本地 ngrok 需要）',
+      )
+    }
+    if (process.env.ALLOW_DEV_BILLING === 'true') {
+      console.log('❌ 生产模式: ALLOW_DEV_BILLING 必须未设置')
+      issues++
+    }
+    const appId = process.env.ALIPAY_APP_ID?.trim() || ''
+    if (/^9021000/i.test(appId)) {
+      console.log('⚠️  ALIPAY_APP_ID 以 9021000 开头 — 常见为沙箱 AppID，请确认已换生产 AppID')
+    }
+  }
 } else {
   console.log('❌ 支付宝未齐: 需要 ALIPAY_APP_ID + 应用私钥 + 支付宝公钥')
   issues++
@@ -119,7 +154,11 @@ console.log('\n下一步:')
 console.log('  npm run dev:stack')
 console.log('  curl http://127.0.0.1:3001/api/subscription/payment-methods')
 console.log('  登录 → 订阅 → 支付宝或微信')
-console.log('\n文档: docs/CN_PAYMENT_SETUP.md')
-console.log('校验: npm run verify:alipay:prices\n')
+console.log('\n文档: docs/CN_PAYMENT_SETUP.md · docs/CN_MERCHANT_APPLY_CHECKLIST.md')
+console.log('校验: npm run verify:alipay:prices -- --production\n')
 
-process.exit(issues > 0 && !alipayOk && !wechatOk ? 1 : 0)
+if (productionMode && alipayOk && issues === 0) {
+  console.log('✅ 生产支付宝 env 检查通过 — 请在 Vercel Redeploy 后实付 ¥39 验收升级\n')
+}
+
+process.exit(issues > 0 ? 1 : 0)

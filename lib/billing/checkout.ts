@@ -3,13 +3,14 @@ export type PaymentMethodsFlags = {
   alipay?: boolean
   wechat?: boolean
   stripe?: boolean
+  paddle?: boolean
   devMock?: boolean
   publicWelfare?: boolean
 }
 
 export function hasCheckoutPayment(methods: PaymentMethodsFlags): boolean {
   if (methods.publicWelfare) return false
-  return Boolean(methods.alipay || methods.wechat || methods.stripe || methods.devMock)
+  return Boolean(methods.alipay || methods.wechat || methods.stripe || methods.paddle || methods.devMock)
 }
 
 export const BETA_BILLING_NOTE =

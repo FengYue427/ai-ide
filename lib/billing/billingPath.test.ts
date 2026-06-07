@@ -1,55 +1,35 @@
 import { describe, expect, it } from 'vitest'
 import { pricingNoteForPath, resolveBillingPath } from './billingPath'
 
+const baseCaps = {
+  alipay: false,
+  wechat: false,
+  stripe: false,
+  paddle: false,
+  devMock: false,
+  devSimulate: false,
+  publicWelfare: false,
+}
+
 describe('billingPath', () => {
   it('resolves path B when CN or Stripe configured', () => {
-    expect(
-      resolveBillingPath({
-        alipay: true,
-        wechat: false,
-        stripe: false,
-        devMock: false,
-        devSimulate: false,
-        publicWelfare: false,
-      }),
-    ).toBe('B')
+    expect(resolveBillingPath({ ...baseCaps, alipay: true })).toBe('B')
+  })
+
+  it('resolves path B when Paddle configured', () => {
+    expect(resolveBillingPath({ ...baseCaps, paddle: true })).toBe('B')
   })
 
   it('resolves path welfare when public welfare mode', () => {
-    expect(
-      resolveBillingPath({
-        alipay: false,
-        wechat: false,
-        stripe: false,
-        devMock: false,
-        devSimulate: false,
-        publicWelfare: true,
-      }),
-    ).toBe('welfare')
+    expect(resolveBillingPath({ ...baseCaps, publicWelfare: true })).toBe('welfare')
   })
 
   it('resolves path A for public beta without merchants', () => {
-    expect(
-      resolveBillingPath({
-        alipay: false,
-        wechat: false,
-        stripe: false,
-        devMock: false,
-        devSimulate: false,
-        publicWelfare: false,
-      }),
-    ).toBe('A')
+    expect(resolveBillingPath(baseCaps)).toBe('A')
   })
 
   it('uses beta note for path A', () => {
-    const note = pricingNoteForPath('A', {
-      alipay: false,
-      wechat: false,
-      stripe: false,
-      devMock: false,
-      devSimulate: false,
-      publicWelfare: false,
-    })
+    const note = pricingNoteForPath('A', baseCaps)
     expect(note).toContain('公测')
   })
 })

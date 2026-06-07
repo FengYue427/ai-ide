@@ -10,6 +10,11 @@ import {
   scheduleSubscriptionCancel,
 } from '../../../billing/subscriptionDb'
 import {
+  cancelPaddleSubscriptionAtPeriodEnd,
+  cancelPaddleSubscriptionImmediately,
+  isPaddleConfigured,
+} from '../../../billing/paddle'
+import {
   cancelStripeSubscriptionAtPeriodEnd,
   cancelStripeSubscriptionImmediately,
   isStripeConfigured,
@@ -28,7 +33,15 @@ export async function POST(request: Request) {
       return localizedErrorResponse(request, 'api.subscription.freeNoCancel', 400)
     }
 
-    if (record.stripeSubscriptionId && isStripeConfigured()) {
+    if (record.paddleSubscriptionId && isPaddleConfigured()) {
+      if (immediate) {
+        await cancelPaddleSubscriptionImmediately(record.paddleSubscriptionId)
+        await downgradeUserToFree(auth.user.id)
+      } else {
+        await cancelPaddleSubscriptionAtPeriodEnd(record.paddleSubscriptionId)
+        await scheduleSubscriptionCancel(auth.user.id)
+      }
+    } else if (record.stripeSubscriptionId && isStripeConfigured()) {
       if (immediate) {
         await cancelStripeSubscriptionImmediately(record.stripeSubscriptionId)
         await downgradeUserToFree(auth.user.id)

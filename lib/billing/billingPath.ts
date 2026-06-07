@@ -8,14 +8,14 @@ export type BillingPath = 'A' | 'B' | 'dev' | 'welfare'
 
 export function resolveBillingPath(capabilities: BillingCapabilities): BillingPath {
   if (capabilities.publicWelfare) return 'welfare'
-  if (capabilities.alipay || capabilities.wechat || capabilities.stripe) return 'B'
+  if (capabilities.alipay || capabilities.wechat || capabilities.stripe || capabilities.paddle) return 'B'
   if (capabilities.devMock) return 'dev'
   return 'A'
 }
 
-function isStripeOnly(capabilities: BillingCapabilities): boolean {
+function isOverseasOnly(capabilities: BillingCapabilities): boolean {
   return (
-    capabilities.stripe &&
+    (capabilities.stripe || capabilities.paddle) &&
     !capabilities.alipay &&
     !capabilities.wechat
   )
@@ -29,8 +29,12 @@ export function pricingNoteForPath(path: BillingPath, capabilities: BillingCapab
     const parts: string[] = []
     if (capabilities.alipay) parts.push('支付宝')
     if (capabilities.wechat) parts.push('微信')
+    if (capabilities.paddle) parts.push('Paddle')
     if (capabilities.stripe) parts.push('Stripe')
-    if (isStripeOnly(capabilities)) {
+    if (isOverseasOnly(capabilities)) {
+      if (capabilities.paddle && !capabilities.stripe) {
+        return `Paddle checkout; Pro $${STRIPE_USD_PRO}/mo, Team $${STRIPE_USD_ENTERPRISE}/mo`
+      }
       return `Stripe checkout; Pro $${STRIPE_USD_PRO}/mo, Team $${STRIPE_USD_ENTERPRISE}/mo`
     }
     return `支持${parts.join('、')}；专业版 ¥39/月，团队版 ¥79/月（Stripe：$${STRIPE_USD_PRO} / $${STRIPE_USD_ENTERPRISE}）`

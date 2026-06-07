@@ -26,13 +26,17 @@ export async function ensurePlansSeeded(): Promise<void> {
   }
 }
 
+export type SubscriptionExternalIds = {
+  stripeCustomerId?: string
+  stripeSubscriptionId?: string
+  paddleCustomerId?: string
+  paddleSubscriptionId?: string
+}
+
 export async function upsertUserSubscription(
   userId: string,
   planName: string,
-  stripeIds?: {
-    customerId?: string
-    subscriptionId?: string
-  },
+  externalIds?: SubscriptionExternalIds,
 ): Promise<SubscriptionWithPlan> {
   await ensurePlansSeeded()
 
@@ -51,8 +55,10 @@ export async function upsertUserSubscription(
     currentPeriodStart: now,
     currentPeriodEnd: periodEnd,
     cancelAtPeriodEnd: false,
-    stripeCustomerId: stripeIds?.customerId,
-    stripeSubscriptionId: stripeIds?.subscriptionId,
+    stripeCustomerId: externalIds?.stripeCustomerId,
+    stripeSubscriptionId: externalIds?.stripeSubscriptionId,
+    paddleCustomerId: externalIds?.paddleCustomerId,
+    paddleSubscriptionId: externalIds?.paddleSubscriptionId,
   }
 
   return prismaUpsert<SubscriptionWithPlan>({
@@ -135,11 +141,11 @@ export async function syncSubscriptionFromStripe(stripeSub: {
   if (!record) {
     if (userId && planName) {
       return upsertUserSubscription(userId, planName, {
-        customerId:
+        stripeCustomerId:
           typeof stripeSub.customer === 'string'
             ? stripeSub.customer
             : stripeSub.customer?.id,
-        subscriptionId: stripeSub.id,
+        stripeSubscriptionId: stripeSub.id,
       })
     }
     return null
@@ -172,6 +178,63 @@ export async function syncSubscriptionFromStripe(stripeSub: {
     },
   })
   return reloadSubscriptionWithPlan(record.userId)
+}
+
+export async function findSubscriptionByPaddleId(paddleSubscriptionId: string) {
+  return prisma.subscription.findFirst({
+    where: { paddleSubscriptionId },
+    include: { plan: true },
+  })
+}
+
+/** Apply Paddle Billing subscription payload to our Subscription row. */
+export async function syncSubscriptionFromPaddle(paddleSub: Record<string, unknown>) {
+  const customRaw = paddleSub.custom_data
+  const custom =
+    customRaw && typeof customRaw === 'object' ? (customRaw as Record<string, unknown>) : {}
+  const userId = typeof custom.userId === 'string' ? custom.userId : undefined
+  const planName = typeof custom.planName === 'string' ? custom.planName : undefined
+  const subscriptionId = typeof paddleSub.id === 'string' ? paddleSub.id : undefined
+  const customerId = typeof paddleSub.customer_id === 'string' ? paddleSub.customer_id : undefined
+  const status = typeof paddleSub.status === 'string' ? paddleSub.status : ''
+
+  let record = userId ? await getUserSubscription(userId) : null
+  if (!record && subscriptionId) {
+    record = await findSubscriptionByPaddleId(subscriptionId)
+  }
+
+  if (status === 'canceled') {
+    if (record) await downgradeUserToFree(record.userId)
+    return null
+  }
+
+  const targetUserId = userId ?? record?.userId
+  const targetPlan = planName ?? record?.plan.name
+  if (!targetUserId || !targetPlan) return null
+
+  await upsertUserSubscription(targetUserId, targetPlan, {
+    paddleCustomerId: customerId ?? record?.paddleCustomerId ?? undefined,
+    paddleSubscriptionId: subscriptionId ?? record?.paddleSubscriptionId ?? undefined,
+  })
+
+  const period = paddleSub.current_billing_period
+  const periodData: { currentPeriodStart?: Date; currentPeriodEnd?: Date } = {}
+  if (period && typeof period === 'object') {
+    const p = period as Record<string, unknown>
+    if (typeof p.starts_at === 'string') periodData.currentPeriodStart = new Date(p.starts_at)
+    if (typeof p.ends_at === 'string') periodData.currentPeriodEnd = new Date(p.ends_at)
+  }
+
+  await prisma.subscription.update({
+    where: { userId: targetUserId },
+    data: {
+      ...periodData,
+      status: status === 'past_due' ? 'past_due' : 'active',
+      cancelAtPeriodEnd: status === 'paused',
+    },
+  })
+
+  return reloadSubscriptionWithPlan(targetUserId)
 }
 
 export async function markSubscriptionPastDueByStripeSubscriptionId(

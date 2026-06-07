@@ -99,6 +99,12 @@ export function getStripePriceId(planName: string): string | undefined {
   return undefined
 }
 
+export function getPaddlePriceId(planName: string): string | undefined {
+  if (planName === 'pro') return process.env.PADDLE_PRICE_PRO?.trim()
+  if (planName === 'enterprise') return process.env.PADDLE_PRICE_ENTERPRISE?.trim()
+  return undefined
+}
+
 /** CNY amount in fen (分) for Alipay/WeChat. */
 export function getPlanPriceCny(plan: PlanDefinition): number {
   if (plan.priceCny != null && plan.priceCny > 0) return plan.priceCny

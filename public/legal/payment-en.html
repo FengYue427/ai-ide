@@ -17,31 +17,47 @@
   </style>
 </head>
 <body>
-  <p class="muted"><a href="/">← AI IDE</a> · <a href="/legal/payment.html">中文</a> · <a href="/legal/terms-en.html">Terms</a></p>
+  <p class="muted"><a href="/">← AI IDE</a> · <a href="/legal/payment.html">中文</a> · <a href="/legal/terms-en.html">Terms</a> · <a href="/legal/refund-en.html">Refund</a></p>
   <h1>Billing &amp; Subscriptions</h1>
-  <p class="muted">v1.2 · Pro $4.99/mo · Team $12.99/mo · Last updated: June 1, 2026</p>
-  <p class="notice"><strong>Stripe billing</strong> when enabled. Checkout prices on Stripe Checkout prevail; this page summarizes plans and disputes.</p>
+  <p class="muted">v1.5 · Pro $9.99/mo · Team $19.99/mo · Last updated: June 7, 2026</p>
+  <p class="notice"><strong>Platform AI subscriptions</strong> are billed via <strong>Paddle</strong> (international) or <strong>Alipay</strong> (mainland China). Checkout prices prevail; this page summarizes plans and policies.</p>
 
-  <h2>Plans (USD)</h2>
+  <h2>Plans (USD — international via Paddle)</h2>
   <table>
     <thead>
-      <tr><th>Plan</th><th>Price</th><th>AI quota (approx.)</th></tr>
+      <tr><th>Plan</th><th>Price</th><th>Platform AI quota (approx.)</th></tr>
     </thead>
     <tbody>
-      <tr><td>Free</td><td>$0</td><td>200 / day</td></tr>
-      <tr><td>Pro</td><td>$4.99 / month</td><td>5000 / day</td></tr>
-      <tr><td>Team</td><td>$12.99 / month</td><td>Unlimited</td></tr>
+      <tr><td>Free</td><td>$0</td><td>200 units / day</td></tr>
+      <tr><td>Pro</td><td>$9.99 / month</td><td>5000 units / day</td></tr>
+      <tr><td>Team</td><td>$19.99 / month</td><td>Unlimited</td></tr>
+    </tbody>
+  </table>
+  <p>Paddle is the <strong>Merchant of Record</strong> for non–mainland-China purchases. Your receipt is issued by Paddle; taxes may be collected at checkout per your region.</p>
+
+  <h2>Plans (CNY — mainland China via Alipay)</h2>
+  <table>
+    <thead>
+      <tr><th>Plan</th><th>Price</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Pro</td><td>¥39 / month (approx. 30-day period)</td></tr>
+      <tr><td>Team</td><td>¥79 / month (approx. 30-day period)</td></tr>
     </tbody>
   </table>
 
   <h2>Payment methods</h2>
-  <p><strong>Stripe</strong> Checkout and Customer Portal for subscriptions. Cards and other methods supported by Stripe in your region. BYOK API keys may still be used per product rules.</p>
+  <ul>
+    <li><strong>Paddle</strong> (USD): card and local methods supported by Paddle in your region. Manage billing in the Paddle customer portal from in-app subscription settings.</li>
+    <li><strong>Alipay</strong> (CNY): redirect checkout for mainland China deployments.</li>
+    <li><strong>BYOK</strong> (optional): you may supply your own AI provider keys; platform quota rules still apply where documented in the product.</li>
+  </ul>
 
   <h2>Renewal &amp; cancellation</h2>
-  <p>Subscriptions renew monthly until canceled. Cancel at period end or downgrade immediately in the subscription UI. Manage payment methods in the Stripe customer portal.</p>
+  <p>Paddle subscriptions renew monthly until canceled. Cancel at period end or downgrade from the subscription UI. Alipay purchases are typically fixed ~30-day periods unless auto-renew is explicitly enabled.</p>
 
   <h2>Refunds</h2>
-  <p>Contact us via <a href="https://github.com/FengYue427/ai-ide/issues">GitHub Issues</a> for duplicate charges or fulfillment failures.</p>
+  <p>See our dedicated <a href="/legal/refund-en.html">Refund Policy</a>. For Paddle purchases, request refunds through Paddle’s receipt or customer portal. For Alipay, contact us via <a href="https://github.com/FengYue427/ai-ide/issues">GitHub Issues</a> with your order ID.</p>
 
   <h2>Operator</h2>
   <ul>
@@ -49,9 +65,8 @@
     <li><strong>Service</strong>: <a href="https://ai-ide-flame.vercel.app">https://ai-ide-flame.vercel.app</a></li>
     <li><strong>Repository</strong>: <a href="https://github.com/FengYue427/ai-ide">github.com/FengYue427/ai-ide</a></li>
     <li><strong>Support</strong>: <a href="https://github.com/FengYue427/ai-ide/issues">GitHub Issues</a></li>
-    <li><strong>Legal entity ID / address</strong>: To be published when a registered business entity is in place.</li>
   </ul>
 
-  <p class="muted"><a href="/legal/privacy-en.html">Privacy</a></p>
+  <p class="muted"><a href="/legal/privacy-en.html">Privacy</a> · <a href="/legal/refund-en.html">Refund Policy</a></p>
 </body>
 </html>
