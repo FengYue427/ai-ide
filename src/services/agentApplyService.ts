@@ -10,7 +10,7 @@ export interface AgentFileChange {
   language: string
 }
 
-const HEADING_FILE = /^###\s+([\w./\-]+\.[\w]+)\s*$/m
+const HEADING_FILE = /^###\s+([\w./\-]+\.[\w]+)\s*$/gm
 const INLINE_FILE =
   /(?:^|\n)(?:文件|filename|file)[:\s]+`?([\w./\-]+\.[\w]+)`?/im
 

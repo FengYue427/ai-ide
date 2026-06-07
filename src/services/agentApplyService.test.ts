@@ -15,4 +15,19 @@ export const x = 1
     expect(changes[0].path).toBe('src/foo.ts')
     expect(changes[0].content).toContain('export const x')
   })
+
+  it('does not throw matchAll when multiple ### headings exist', () => {
+    const md = `### src/a.ts
+\`\`\`ts
+export const a = 1
+\`\`\`
+
+### src/b.ts
+\`\`\`ts
+export const b = 2
+\`\`\`
+`
+    expect(() => parseAgentFileChanges(md)).not.toThrow()
+    expect(parseAgentFileChanges(md).length).toBeGreaterThan(0)
+  })
 })
