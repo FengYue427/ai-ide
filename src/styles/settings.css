@@ -9,6 +9,7 @@
   padding: var(--space-4);
   background: rgba(4, 8, 18, 0.78);
   backdrop-filter: blur(8px);
+  overscroll-behavior: contain;
 }
 
 .settings-dialog {
@@ -18,6 +19,8 @@
   overflow: hidden;
   display: grid;
   grid-template-columns: 240px 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
@@ -30,6 +33,10 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background:
     radial-gradient(circle at top left, rgba(124, 156, 255, 0.14), transparent 30%),
     color-mix(in srgb, var(--bg-secondary) 94%, transparent);
@@ -118,15 +125,24 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .settings-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
   padding: 16px var(--space-5) 14px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
+  background: var(--bg-secondary);
 }
 
 .settings-header__kicker {
@@ -167,20 +183,25 @@
 }
 
 .settings-body {
-  flex: 1;
-  overflow: auto;
+  flex: 1 0 auto;
+  overflow: visible;
   padding: var(--space-4);
   display: grid;
   gap: 12px;
 }
 
 .settings-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex-shrink: 0;
   padding: 14px var(--space-5);
   border-top: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  background: var(--bg-secondary);
 }
 
 .settings-footer__hint {
@@ -618,6 +639,7 @@
 @media (max-width: 860px) {
   .settings-dialog {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     max-height: 90vh;
   }
 
@@ -625,6 +647,7 @@
     border-right: none;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: var(--space-3);
+    max-height: 38vh;
   }
 
   .settings-nav {
