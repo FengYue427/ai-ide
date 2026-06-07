@@ -101,6 +101,7 @@ export const API_MESSAGES_JA = {
   'api.subscription.noStripeCustomer': 'No Stripe customer found. Complete a paid サブスクリプション first.',
   'api.subscription.portalFailed': 'Could not open customer portal',
   'api.subscription.portalNotConfigured': 'Stripe customer portal is not configured',
+  'api.subscription.readFailed': 'サブスクリプション状態を読み込めません。しばらくしてから再試行してください。',
   'api.subscription.resumeActive': 'サブスクリプション is still active',
   'api.subscription.resumeFailed': '失敗 to resume サブスクリプション',
   'api.subscription.resumeOk': 'サブスクリプション resumed; renewal continues next period',
