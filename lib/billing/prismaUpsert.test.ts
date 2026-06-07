@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { prismaUpsert, type UpsertDelegate } from './prismaUpsert'
 
+type SubscriptionRow = { id: string; plan: { name: string } }
+
 describe('prismaUpsert', () => {
   const prevUrl = process.env.DATABASE_URL
 
@@ -17,9 +19,9 @@ describe('prismaUpsert', () => {
       create: vi.fn(),
       update: vi.fn(),
       upsert: vi.fn().mockResolvedValue({ id: '1', plan: { name: 'pro' } }),
-    } satisfies UpsertDelegate<{ id: string; plan: { name: string } }>
+    } satisfies UpsertDelegate<SubscriptionRow>
 
-    const result = await prismaUpsert({
+    const result = await prismaUpsert<SubscriptionRow>({
       delegate,
       where: { userId: 'u1' },
       create: { userId: 'u1' },
@@ -49,9 +51,9 @@ describe('prismaUpsert', () => {
       create: vi.fn(),
       update: vi.fn().mockResolvedValue({ id: '1' }),
       upsert: vi.fn(),
-    } satisfies UpsertDelegate<{ id: string; plan: { name: string } }>
+    } satisfies UpsertDelegate<SubscriptionRow>
 
-    const result = await prismaUpsert({
+    const result = await prismaUpsert<SubscriptionRow>({
       delegate,
       where: { userId: 'u1' },
       create: { userId: 'u1', planId: 'p1' },
