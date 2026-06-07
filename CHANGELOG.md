@@ -5,9 +5,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Planned — v1.6.0
+---
 
-- 上市就绪 GA — 见 [V1.6_GA_EXECUTION.md](docs/V1.6_GA_EXECUTION.md) · [ROADMAP_V1.6.md](docs/ROADMAP_V1.6.md) · [V1.6_PAYMENT_DECISION.md](docs/V1.6_PAYMENT_DECISION.md)
+## [1.6.0] — 2026-06-07 · 上市就绪 GA（进行中）
+
+### Added
+
+- **v1.6 启动**：版本 `1.6.0` · `v16Features` / `v16ProductionEnv` · 设置页 v1.6 状态卡
+- **海外兜底**：`overseasCheckout` — 无 MoR 时订阅 UI 展示「即将开放」· 禁用海外付费按钮
+- **运维**：`npm run v16:preflight` · `verify:env:v16` · `migrate-deploy.mjs` 自动读 `.env.local`
+- **Release gates** 提升至 unit ≥820 · E2E ≥70
+
+See [RELEASE_NOTES_v1.6.0.md](docs/RELEASE_NOTES_v1.6.0.md) · [V1.6_GA_EXECUTION.md](docs/V1.6_GA_EXECUTION.md)
 
 ---
 

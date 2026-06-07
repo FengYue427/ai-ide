@@ -76,6 +76,7 @@ import { formatTabCompletionMetricsLine } from '../lib/formatTabCompletionMetric
 import { SettingsTabCompletionCard } from './SettingsTabCompletionCard'
 import { SettingsV14FeaturesCard } from './SettingsV14FeaturesCard'
 import { SettingsV15FeaturesCard } from './SettingsV15FeaturesCard'
+import { SettingsV16FeaturesCard } from './SettingsV16FeaturesCard'
 import { SettingsAideRuntimeStubCard } from './SettingsAideRuntimeStubCard'
 import { SettingsV13FeaturesCard } from './SettingsV13FeaturesCard'
 import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
@@ -877,6 +878,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 </div>
                 <SettingsV13FeaturesCard />
                 <SettingsV14FeaturesCard />
+                <SettingsV16FeaturesCard />
                 <SettingsV15FeaturesCard />
                 <SettingsTabCompletionCard />
                 <SettingsAideRuntimeStubCard />

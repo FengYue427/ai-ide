@@ -1,5 +1,7 @@
 import type { Language, TranslateFn } from '../i18n'
 import type { PaymentMethodsFlags } from '../../lib/billing/checkout'
+import { preferCnBillingCheckout } from '../../lib/billing/billingRegion'
+import { isOverseasCheckoutDeferred } from '../../lib/billing/overseasCheckout'
 import { isPublicWelfareClient } from './publicWelfare'
 
 function isOverseasOnly(methods: PaymentMethodsFlags): boolean {
@@ -14,6 +16,21 @@ export function buildSubscriptionPricingNote(
   if (methods.publicWelfare || isPublicWelfareClient()) {
     return t('subscription.pricing.publicWelfare')
   }
+
+  const useCnCheckout =
+    preferCnBillingCheckout(language) && Boolean(methods.alipay || methods.wechat)
+
+  if (isOverseasCheckoutDeferred(methods, useCnCheckout)) {
+    if (methods.alipay || methods.wechat) {
+      const parts: string[] = []
+      if (methods.alipay) parts.push(t('subscription.payMethod.alipay'))
+      if (methods.wechat) parts.push(t('subscription.payMethod.wechat'))
+      const separator = language === 'zh-CN' ? '、' : ', '
+      return t('subscription.pricing.cnWithOverseasSoon', { methods: parts.join(separator) })
+    }
+    return t('subscription.overseasComingSoon')
+  }
+
   if (methods.alipay || methods.wechat || methods.stripe || methods.paddle) {
     const parts: string[] = []
     if (methods.alipay) parts.push(t('subscription.payMethod.alipay'))

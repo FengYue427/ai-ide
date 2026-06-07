@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Building2, Check, Crown, Loader2, Zap } from 'lucide-react'
 import { hasCheckoutPayment } from '../../lib/billing/checkout'
 import { preferCnBillingCheckout } from '../../lib/billing/billingRegion'
+import { isOverseasCheckoutDeferred } from '../../lib/billing/overseasCheckout'
 import { localizePlans } from '../lib/localizePlan'
 import { pickApiResponseMessage } from '../lib/apiUserMessage'
 import { buildSubscriptionPricingNote } from '../lib/subscriptionPricingNote'
@@ -115,12 +116,14 @@ function checkoutButtonLabel(
   },
   checkoutAvailable: boolean,
   useCnCheckout: boolean,
+  overseasDeferred: boolean,
   t: (key: TranslationKey) => string,
 ): string {
   if (paymentMethods.publicWelfare && plan.price > 0) {
     return t('subscription.checkout.welfareIncluded')
   }
   if (plan.price === 0) return t('subscription.checkout.free')
+  if (overseasDeferred && !useCnCheckout) return t('subscription.checkout.overseasSoon')
   if (!checkoutAvailable) return t('subscription.checkout.beta')
   if (useCnCheckout) {
     if (paymentMethods.alipay && !paymentMethods.wechat) return t('subscription.checkout.alipay')
@@ -158,6 +161,10 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
       preferCnBillingCheckout(language) &&
       (paymentMethods.alipay || paymentMethods.wechat),
     [language, paymentMethods.alipay, paymentMethods.wechat],
+  )
+  const overseasCheckoutDeferred = useMemo(
+    () => isOverseasCheckoutDeferred(paymentMethods, useCnCheckout),
+    [paymentMethods, useCnCheckout],
   )
   const displayPlans = useMemo(
     () => localizePlans(plans.length > 0 ? plans : fallbackPlans, t),
@@ -464,7 +471,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             </p>
           </div>
 
-          {localizedPricingNote && (checkoutAvailable || paymentMethods.publicWelfare) && (
+          {localizedPricingNote &&
+            (checkoutAvailable || paymentMethods.publicWelfare || overseasCheckoutDeferred) && (
             <AlertBanner variant="info">{localizedPricingNote}</AlertBanner>
           )}
 
@@ -499,7 +507,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
             </div>
           )}
 
-          {!checkoutAvailable && !loading && (
+          {!checkoutAvailable && !loading && !overseasCheckoutDeferred && (
             <div className="subscription-beta-banner" role="status">
               {t('subscription.betaNote')}
             </div>
@@ -653,7 +661,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                           disabled={
                             !!processingPlanId ||
                             isCurrent ||
-                            (paymentMethods.publicWelfare && plan.price > 0)
+                            (paymentMethods.publicWelfare && plan.price > 0) ||
+                            (overseasCheckoutDeferred && plan.price > 0 && !useCnCheckout)
                           }
                         >
                           {isProcessing ? (
@@ -664,7 +673,14 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                           ) : isCurrent ? (
                             t('subscription.checkout.current')
                           ) : (
-                            checkoutButtonLabel(plan, paymentMethods, checkoutAvailable, useCnCheckout, t)
+                            checkoutButtonLabel(
+                              plan,
+                              paymentMethods,
+                              checkoutAvailable,
+                              useCnCheckout,
+                              overseasCheckoutDeferred,
+                              t,
+                            )
                           )}
                         </button>
                         {checkoutAvailable && plan.price > 0 && !isCurrent && paymentMethods.stripe && (

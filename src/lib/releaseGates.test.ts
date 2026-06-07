@@ -15,11 +15,11 @@ describe('releaseGates', () => {
   })
 
   it('evaluates thresholds', () => {
-    expect(evaluateReleaseGateCounts({ unit: 800, e2e: 64 }).ok).toBe(true)
-    expect(evaluateReleaseGateCounts({ unit: 799, e2e: 64 }).ok).toBe(false)
+    expect(evaluateReleaseGateCounts({ unit: 820, e2e: 69 }).ok).toBe(true)
+    expect(evaluateReleaseGateCounts({ unit: 819, e2e: 69 }).ok).toBe(false)
   })
 
-  it('meets v1.5.8 E2E baseline in repo', () => {
+  it('meets v1.6 E2E baseline in repo', () => {
     const root = process.cwd()
     let e2e = 0
     const e2eDir = join(root, 'e2e')
@@ -30,7 +30,7 @@ describe('releaseGates', () => {
   })
 
   it('documents unit baseline constant', () => {
-    expect(RELEASE_GATE_MIN_UNIT).toBeGreaterThanOrEqual(800)
+    expect(RELEASE_GATE_MIN_UNIT).toBeGreaterThanOrEqual(820)
     expect(existsSync(join(process.cwd(), 'scripts', 'verify-release-gates.mjs'))).toBe(true)
   })
 })

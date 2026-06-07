@@ -1,6 +1,6 @@
-/** v1.5.8 — release gate baselines (see ROADMAP_V1.5.x_PATCHES.md). */
-export const RELEASE_GATE_MIN_UNIT = 800
-export const RELEASE_GATE_MIN_E2E = 64
+/** v1.6.0 — release gate baselines (see ROADMAP_V1.6.md). GA target E2E 70+. */
+export const RELEASE_GATE_MIN_UNIT = 820
+export const RELEASE_GATE_MIN_E2E = 69
 
 /** Count top-level `test(` or `it(` declarations in a source file. */
 export function countTestDeclarations(source: string): number {
