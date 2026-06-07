@@ -7,7 +7,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Planned — v1.6.0
 
-- 见 [ROADMAP_V1.6.md](docs/ROADMAP_V1.6.md) · [V1.6_KICKOFF.md](docs/V1.6_KICKOFF.md)
+- 上市就绪 GA — 见 [V1.6_GA_EXECUTION.md](docs/V1.6_GA_EXECUTION.md) · [ROADMAP_V1.6.md](docs/ROADMAP_V1.6.md) · [V1.6_PAYMENT_DECISION.md](docs/V1.6_PAYMENT_DECISION.md)
 
 ---
 
