@@ -6,6 +6,7 @@ import {
   groupDiffHunks,
   type DiffLine,
 } from './diffHunkService'
+import { serviceText } from '../lib/serviceI18n'
 import { getFileDiff, stageFile } from './gitService'
 
 function filePathOnFs(dir: string, filepath: string): string {
@@ -48,7 +49,7 @@ export async function stageWorkdirHunks(
 ): Promise<void> {
   const preview = await loadWorkdirHunkPreview(fs, dir, filepath)
   if (preview.hunks.length === 0 || acceptedHunkIndices.size === 0) {
-    throw new Error('No hunks selected')
+    throw new Error(serviceText('git.error.noHunksSelected'))
   }
 
   const stagedContent = applyPartialDiff(

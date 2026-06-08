@@ -245,6 +245,12 @@ const UI_PREFIXES = [
   'modal.',
   'workspace.',
   'payment.',
+  'git.',
+  'debug.',
+  'queue.',
+  'wm.',
+  'mcp.',
+  'backgroundJobs.',
 ]
 
 const translationsSrc = fs.readFileSync(path.join(root, 'src/i18n/translations.ts'), 'utf8')

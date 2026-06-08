@@ -532,7 +532,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                               : t('settings.ai.platformNotConfigured')}
                     </p>
                     {platformAiHealth.status === 'ready' && platformAiHealth.configured ? (
-                      <div className="settings-privacy-row" style={{ marginTop: 8 }}>
+                      <div className="settings-privacy-row settings-note">
                         <Zap size={14} color="var(--success-color)" />
                         <span>{t('settings.ai.platformReadyBadge')}</span>
                       </div>
@@ -861,7 +861,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 >
                   <div className="settings-row-title">{t('settings.v12.card.title')}</div>
                   <div className="settings-row-desc">{t('settings.v12.card.desc')}</div>
-                  <ul className="settings-v12-status-list" style={{ margin: '10px 0 0', paddingLeft: '18px', fontSize: '12px', lineHeight: 1.7 }}>
+                  <ul className="settings-v12-status-list">
                     <li>
                       {t('settings.v12.multiRoot')}:{' '}
                       {v12FeatureStatus.multiRoot ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
@@ -905,23 +905,15 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     <div className="settings-row-title">{t('settings.feature.semantic.title')}</div>
                     <div className="settings-row-desc">{t('settings.feature.semantic.desc')}</div>
                     {!semanticEmbeddingAvailable ? (
-                      <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        {t('settings.semantic.onboarding.needKey')}
-                      </div>
+                      <div className="settings-note">{t('settings.semantic.onboarding.needKey')}</div>
                     ) : !semanticSearchEnabled ? (
-                      <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        {t('settings.semantic.onboarding.enableHint')}
-                      </div>
+                      <div className="settings-note">{t('settings.semantic.onboarding.enableHint')}</div>
                     ) : null}
                     {semanticSearchEnabled && indexStats.indexedFiles === 0 && indexBuildState.status === 'ready' ? (
-                      <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        {t('settings.semantic.indexNotReady')}
-                      </div>
+                      <div className="settings-note">{t('settings.semantic.indexNotReady')}</div>
                     ) : null}
                     {semanticSearchEnabled && indexStats.capped ? (
-                      <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        {t('settings.semantic.indexCappedHint')}
-                      </div>
+                      <div className="settings-note">{t('settings.semantic.indexCappedHint')}</div>
                     ) : null}
                   </div>
                   <Toggle
@@ -935,37 +927,24 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   />
                 </div>
 
-                <div className="settings-card settings-card--row" style={{ marginTop: '12px' }}>
-                  <div style={{ flex: 1 }}>
+                <div className="settings-card settings-card--row settings-mt-sm">
+                  <div className="settings-flex-1">
                     <div className="settings-row-title">{t('settings.index.card.title')}</div>
                     <div className="settings-row-desc">{t('settings.index.card.desc')}</div>
-                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                      {indexStatusText}
-                    </div>
+                    <div className="settings-note settings-note--sm">{indexStatusText}</div>
                     {indexStats.capped ? (
-                      <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        {t('settings.index.cappedHint')}
-                      </div>
+                      <div className="settings-note settings-note--sm">{t('settings.index.cappedHint')}</div>
                     ) : null}
                     {isIndex2kProductionEnabled() ? (
-                      <div style={{ marginTop: '10px', display: 'grid', gap: '6px' }} data-testid="settings-index-build-mode">
-                        <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          {t('settings.v14.indexBuildMode')}
-                        </label>
+                      <div className="settings-index-mode" data-testid="settings-index-build-mode">
+                        <label className="settings-index-mode__label">{t('settings.v14.indexBuildMode')}</label>
                         <select
+                          className="settings-index-mode__select"
                           value={indexBuildMode}
                           onChange={(event) => {
                             const mode = event.target.value as IndexBuildModePreference
                             setIndexBuildMode(mode)
                             setIndexBuildModePreference(mode)
-                          }}
-                          style={{
-                            padding: '8px 10px',
-                            borderRadius: '10px',
-                            border: '1px solid var(--border-color)',
-                            background: 'var(--bg-primary)',
-                            color: 'var(--text-primary)',
-                            fontSize: '12px',
                           }}
                         >
                           <option value="auto">{t('settings.v14.indexBuildMode.auto')}</option>
@@ -975,7 +954,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                       </div>
                     ) : null}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px', justifyContent: 'center' }}>
+                  <div className="settings-index-actions">
                     {indexBuildState.status === 'error' ? (
                       <button
                         type="button"
@@ -996,7 +975,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                       href="https://github.com/FengYue427/ai-ide/blob/main/docs/BROWSER_LIMITATIONS.md#capacity-limits"
                       target="_blank"
                       rel="noreferrer"
-                      style={{ fontSize: '11px', color: 'var(--accent-color)' }}
+                      className="settings-accent-link"
                     >
                       {t('settings.index.limitLinkLabel')}
                     </a>
@@ -1004,23 +983,23 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 </div>
 
                 <div className="settings-card settings-card--row settings-card--payload">
-                  <div style={{ flex: 1 }}>
+                  <div className="settings-flex-1">
                     <div className="settings-row-title">{t('settings.payload.card.title')}</div>
                     <div className="settings-row-desc">{t('settings.payload.card.desc')}</div>
-                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    <div className="settings-note settings-note--sm">
                       {t('settings.payload.card.providerBudget', {
                         provider: t(modelProviderTranslationKey(localAIConfig.provider, 'name')),
                         budgetKb: payloadBudgetKb,
                       })}
                     </div>
-                    <div style={{ marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    <div className="settings-note settings-note--xs">
                       {t('settings.payload.card.strategy')}
                     </div>
                   </div>
                   <span className="settings-badge settings-badge--experimental">413 Guard</span>
                 </div>
                 <div className="settings-card settings-card--row">
-                  <div style={{ flex: 1 }}>
+                  <div className="settings-flex-1">
                     <div className="settings-row-title">{t('settings.cloudSave.card.title')}</div>
                     <div className="settings-row-desc">
                       {t('settings.cloudSave.card.desc', {
@@ -1146,7 +1125,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   <p className="settings-row-desc">{t('settings.advanced.cautionDesc')}</p>
                   <div className="settings-actions-row">
                     <button type="button" className="btn btn-secondary" onClick={onClearLocalData}>
-                      <Database size={14} style={{ marginRight: '6px' }} />
+                      <Database size={14} className="settings-icon-inline" />
                       {t('settings.advanced.clear')}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={onResetDefaults}>
@@ -1173,7 +1152,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                 {t('common.cancel')}
               </button>
               <button type="button" onClick={handleSave} className="btn btn-primary">
-                <Save size={16} style={{ marginRight: '6px' }} />
+                <Save size={16} className="settings-icon-inline" />
                 {t('settings.saveChanges')}
               </button>
             </div>

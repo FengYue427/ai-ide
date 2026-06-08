@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Plus, Server, Trash2, Zap } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { MCP_OFFICIAL_PRESETS } from '../data/mcpOfficialCatalog'
@@ -16,24 +16,6 @@ import {
 import { estimateMcpPayloadReserveBytes } from '../services/mcpPayloadReserve'
 import type { McpServerConfig } from '../services/mcpTypes'
 import { pingMcpServer } from '../services/mcpClientService'
-
-const cardStyle: React.CSSProperties = {
-  padding: '18px',
-  borderRadius: '16px',
-  border: '1px solid var(--border-color)',
-  background: 'color-mix(in srgb, var(--bg-secondary) 88%, transparent)',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 12px',
-  borderRadius: '10px',
-  border: '1px solid var(--border-color)',
-  background: 'var(--bg-primary)',
-  color: 'var(--text-primary)',
-  fontSize: '13px',
-  outline: 'none',
-}
 
 interface McpSettingsSectionProps {
   onRegisterPersist: (persist: () => Promise<void>) => void
@@ -88,21 +70,21 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
 
   if (loading) {
     return (
-      <div style={cardStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{t('mcp.loading')}</div>
+      <div className="mcp-card">
+        <div className="mcp-card__desc">{t('mcp.loading')}</div>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'grid', gap: '14px' }}>
-      <div style={cardStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+    <div className="mcp-stack">
+      <div className="mcp-card">
+        <div className="mcp-card__head">
           <Server size={18} />
           <div>
-            <div style={{ fontWeight: 700 }}>{t('mcp.title')}</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t('mcp.desc')}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: 4 }}>
+            <div className="mcp-card__title">{t('mcp.title')}</div>
+            <div className="mcp-card__desc">{t('mcp.desc')}</div>
+            <div className="mcp-card__meta">
               {mcpToolCount == null
                 ? t('mcp.toolCountUnknown')
                 : t('mcp.toolCountHint', {
@@ -114,33 +96,17 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
         </div>
 
         <div style={{ marginBottom: '14px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-secondary)' }}>
-            {t('mcp.catalog.title')}
-          </div>
-          <div style={{ display: 'grid', gap: '8px' }}>
+          <div className="mcp-section-label">{t('mcp.catalog.title')}</div>
+          <div className="mcp-preset-list">
             {MCP_OFFICIAL_PRESETS.map((preset) => (
-              <div
-                key={preset.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  border: '1px dashed var(--border-color)',
-                  background: 'color-mix(in srgb, var(--bg-primary) 92%, transparent)',
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: '13px' }}>{t(preset.nameKey)}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.45, marginTop: '2px' }}>
-                    {t(preset.descKey)}
-                  </div>
+              <div key={preset.id} className="mcp-preset-row">
+                <div className="mcp-preset-row__body">
+                  <div className="mcp-preset-row__name">{t(preset.nameKey)}</div>
+                  <div className="mcp-preset-row__desc">{t(preset.descKey)}</div>
                 </div>
                 <button
                   type="button"
-                  className="btn btn-secondary"
-                  style={{ padding: '6px 10px', flexShrink: 0 }}
+                  className="btn btn-secondary mcp-preset-row__btn"
                   onClick={() => {
                     setServers((prev) => [
                       ...prev,
@@ -150,12 +116,7 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
                 >
                   {t('mcp.catalog.add')}
                 </button>
-                <a
-                  href={preset.docsUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ fontSize: '11px', color: 'var(--accent-color)', alignSelf: 'center', flexShrink: 0 }}
-                >
+                <a href={preset.docsUrl} target="_blank" rel="noreferrer" className="mcp-preset-row__docs">
                   {t('mcp.catalog.docs')}
                 </a>
               </div>
@@ -164,30 +125,22 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
         </div>
 
         {servers.length === 0 ? (
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>{t('mcp.empty')}</div>
+          <div className="mcp-card__desc" style={{ marginBottom: '12px' }}>
+            {t('mcp.empty')}
+          </div>
         ) : null}
 
-        <div style={{ display: 'grid', gap: '12px' }}>
+        <div className="mcp-server-list">
           {servers.map((server) => (
-            <div
-              key={server.id}
-              style={{
-                padding: '12px',
-                borderRadius: '12px',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-primary)',
-                display: 'grid',
-                gap: '8px',
-              }}
-            >
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div key={server.id} className="mcp-server-row">
+              <div className="mcp-server-row__toolbar">
                 <input
-                  style={{ ...inputStyle, flex: 1 }}
+                  className="settings-input mcp-server-row__name"
                   value={server.name}
                   onChange={(event) => updateServer(server.id, { name: event.target.value })}
                   placeholder={t('mcp.displayName')}
                 />
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                <label className="mcp-server-row__toggle">
                   <input
                     type="checkbox"
                     checked={server.enabled}
@@ -195,21 +148,29 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
                   />
                   {t('mcp.enabled')}
                 </label>
-                <button type="button" className="btn btn-secondary" style={{ padding: '6px 10px' }} onClick={() => void handlePing(server)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary mcp-server-row__btn"
+                  onClick={() => void handlePing(server)}
+                >
                   {t('mcp.test')}
                 </button>
-                <button type="button" className="btn btn-secondary" style={{ padding: '6px 10px' }} onClick={() => removeServer(server.id)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary mcp-server-row__btn"
+                  onClick={() => removeServer(server.id)}
+                >
                   <Trash2 size={14} />
                 </button>
               </div>
               <input
-                style={inputStyle}
+                className="settings-input"
                 value={server.url}
                 onChange={(event) => updateServer(server.id, { url: event.target.value })}
                 placeholder="https://example.com/mcp"
               />
               {pingStatus[server.id] ? (
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{pingStatus[server.id]}</div>
+                <div className="mcp-server-row__ping">{pingStatus[server.id]}</div>
               ) : null}
             </div>
           ))}
@@ -217,21 +178,20 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
 
         <button
           type="button"
-          className="btn btn-secondary"
-          style={{ marginTop: '12px' }}
+          className="btn btn-secondary mcp-add-btn"
           onClick={() => setServers((prev) => [...prev, createMcpServerDraft()])}
         >
-          <Plus size={14} style={{ marginRight: '6px' }} />
+          <Plus size={14} className="settings-icon-inline" />
           {t('mcp.add')}
         </button>
       </div>
 
-      <div style={cardStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+      <div className="mcp-card">
+        <div className="mcp-card__head">
           <Zap size={18} />
-          <div style={{ fontWeight: 700 }}>{t('mcp.followUp.title')}</div>
+          <div className="mcp-card__title">{t('mcp.followUp.title')}</div>
         </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', marginBottom: '10px' }}>
+        <label className="mcp-followup-label">
           <input
             type="checkbox"
             checked={settings.autoFollowUp}
@@ -239,13 +199,13 @@ export function McpSettingsSection({ onRegisterPersist }: McpSettingsSectionProp
           />
           {t('mcp.followUp.checkbox')}
         </label>
-        <label style={{ display: 'grid', gap: '6px', fontSize: '13px' }}>
+        <label className="mcp-followup-rounds">
           <span style={{ color: 'var(--text-secondary)' }}>{t('mcp.followUp.maxRounds')}</span>
           <input
             type="number"
             min={0}
             max={5}
-            style={{ ...inputStyle, maxWidth: '120px' }}
+            className="settings-input mcp-followup-rounds__input"
             value={settings.maxFollowUpRounds}
             onChange={(event) =>
               setSettings((prev) => ({

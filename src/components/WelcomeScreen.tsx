@@ -109,7 +109,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           title: t('welcome.quick.new.title'),
           description: t('welcome.quick.new.desc'),
           icon: Plus,
-          accent: '#10b981',
+          accent: 'var(--accent-quick-new)',
           actionKey: 'new' as const,
           cta: t('welcome.cta.template'),
         },
@@ -117,7 +117,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           title: t('welcome.quick.open.title'),
           description: t('welcome.quick.open.desc'),
           icon: FolderOpen,
-          accent: '#3b82f6',
+          accent: 'var(--accent-quick-open)',
           actionKey: 'open' as const,
           cta: t('welcome.cta.manage'),
         },
@@ -125,7 +125,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           title: t('welcome.quick.ai.title'),
           description: t('welcome.quick.ai.desc'),
           icon: Bot,
-          accent: '#8b5cf6',
+          accent: 'var(--accent-quick-ai)',
           actionKey: 'ai' as const,
           cta: t('welcome.cta.ai'),
         },
@@ -140,42 +140,42 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           icon: Bot,
           titleKey: 'welcome.feature.ai.title' as TranslationKey,
           descKey: 'welcome.feature.ai.desc' as TranslationKey,
-          color: '#8b5cf6',
+          color: 'var(--accent-feature-ai)',
           action: 'ai' as WelcomeFeatureAction,
         },
         {
           icon: Play,
           titleKey: 'welcome.feature.run.title' as TranslationKey,
           descKey: 'welcome.feature.run.desc' as TranslationKey,
-          color: '#2563eb',
+          color: 'var(--accent-feature-run)',
           action: 'run' as WelcomeFeatureAction,
         },
         {
           icon: Terminal,
           titleKey: 'welcome.feature.terminal.title' as TranslationKey,
           descKey: 'welcome.feature.terminal.desc' as TranslationKey,
-          color: '#059669',
+          color: 'var(--accent-feature-terminal)',
           action: 'terminal' as WelcomeFeatureAction,
         },
         {
           icon: GitBranch,
           titleKey: 'welcome.feature.git.title' as TranslationKey,
           descKey: 'welcome.feature.git.desc' as TranslationKey,
-          color: '#ec4899',
+          color: 'var(--accent-feature-git)',
           action: 'git' as WelcomeFeatureAction,
         },
         {
           icon: Palette,
           titleKey: 'welcome.feature.settings.title' as TranslationKey,
           descKey: 'welcome.feature.settings.desc' as TranslationKey,
-          color: '#f59e0b',
+          color: 'var(--accent-feature-settings)',
           action: 'settings' as WelcomeFeatureAction,
         },
         {
           icon: Globe,
           titleKey: 'welcome.feature.collab.title' as TranslationKey,
           descKey: 'welcome.feature.collab.desc' as TranslationKey,
-          color: '#06b6d4',
+          color: 'var(--accent-feature-collab)',
           action: 'collab' as WelcomeFeatureAction,
         },
       ] as const,
@@ -230,6 +230,22 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               </div>
             </div>
             <p className="welcome-lead">{t('welcome.lead')}</p>
+            <div className="welcome-dual-path" data-testid="welcome-dual-path">
+              <button type="button" className="welcome-dual-path__card" onClick={onNewProject}>
+                <strong>{t('welcome.pathLocalTitle')}</strong>
+                <span>{t('welcome.pathLocalDesc')}</span>
+              </button>
+              {onRegister ? (
+                <button
+                  type="button"
+                  className="welcome-dual-path__card welcome-dual-path__card--cloud"
+                  onClick={onRegister}
+                >
+                  <strong>{t('welcome.pathCloudTitle')}</strong>
+                  <span>{t('welcome.pathCloudDesc')}</span>
+                </button>
+              ) : null}
+            </div>
             {isAiGatewayEnabled() && onRegister ? (
               <div className="welcome-platform-cta" data-testid="welcome-platform-cta">
                 <p className="welcome-platform-cta-text">{t('welcome.platformCta')}</p>

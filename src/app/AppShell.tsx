@@ -13,6 +13,7 @@ import { useFileActions } from '../hooks/useFileActions'
 import { useFileEditor } from '../hooks/useFileEditor'
 import { usePanelWidth } from '../hooks/usePanelWidth'
 import { usePanelResize } from '../hooks/usePanelResize'
+import { useNarrowViewport } from '../hooks/useNarrowViewport'
 import { useUIActions } from '../hooks/useUIActions'
 import { useWebContainer } from '../hooks/useWebContainer'
 import { useCollaborationSync } from '../hooks/useCollaborationSync'
@@ -265,6 +266,7 @@ export function AppShell() {
   })
 
   const [showFileSidebar, setShowFileSidebar] = useState(true)
+  const isNarrowViewport = useNarrowViewport()
   const { sidebarWidth, rightPanelWidth, setSidebarWidth, setRightPanelWidth, resetSidebarWidth, resetRightPanelWidth } = usePanelWidth()
   const sidebarResize = usePanelResize(sidebarWidth, setSidebarWidth, 'right')
   const rightPanelResize = usePanelResize(rightPanelWidth, setRightPanelWidth, 'left')
@@ -278,7 +280,7 @@ export function AppShell() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const mql = window.matchMedia('(max-width: 900px)')
+    const mql = window.matchMedia('(max-width: 720px)')
     const handler = () => {
       if (mql.matches && (showChatPanel || showGitPanel || auxiliaryActive)) {
         setShowFileSidebar(false)
@@ -337,7 +339,24 @@ export function AppShell() {
           isReady={isReady}
         />
 
-        <div className={`workspace-main ${showFileSidebar ? '' : 'workspace-main--no-sidebar'}`}>
+        <div
+          className={[
+            'workspace-main',
+            !showFileSidebar ? 'workspace-main--no-sidebar' : '',
+            isNarrowViewport ? 'workspace-main--narrow' : '',
+            isNarrowViewport && showFileSidebar ? 'workspace-main--sidebar-drawer' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {isNarrowViewport && showFileSidebar ? (
+            <button
+              type="button"
+              className="workspace-sidebar-backdrop"
+              aria-label={t('common.close')}
+              onClick={() => setShowFileSidebar(false)}
+            />
+          ) : null}
           {showFileSidebar ? (
             <>
               <FileSidebar
@@ -367,7 +386,14 @@ export function AppShell() {
               output={output}
             />
 
-            <div className="workbench-editor-column">
+            <div
+              className={[
+                'workbench-editor-column',
+                isNarrowViewport && (showChatPanel || showGitPanel) ? 'workbench-editor-column--panel-drawer' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
               <div className="workspace">
                 <EditorLayout
           isReady={isReady}

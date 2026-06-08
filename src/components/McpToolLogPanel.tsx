@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { useI18n } from '../i18n'
 import type { McpToolLogEntry } from '../services/mcpAgentBridge'
 
 interface McpToolLogPanelProps {
@@ -19,6 +20,7 @@ export function groupMcpEntriesByServer(entries: McpToolLogEntry[]): Record<stri
 }
 
 export function McpToolLogPanel({ entries }: McpToolLogPanelProps) {
+  const { t } = useI18n()
   const [collapsed, setCollapsed] = useState(false)
   const [onlyFailures, setOnlyFailures] = useState(false)
   const [groupByServer, setGroupByServer] = useState(true)
@@ -26,115 +28,47 @@ export function McpToolLogPanel({ entries }: McpToolLogPanelProps) {
 
   const visibleEntries = useMemo(() => filterMcpEntries(entries, onlyFailures), [entries, onlyFailures])
 
+  const renderEntry = (entry: McpToolLogEntry, index: number, showServer = false) => (
+    <div key={`${entry.serverId}-${entry.tool}-${index}`} className="mcp-log-entry">
+      <div className="mcp-log-entry__head">
+        [{entry.ok ? t('mcp.log.statusOk') : t('mcp.log.statusError')}]
+        {showServer ? ` ${entry.serverName} / ` : ' '}
+        {entry.tool}
+      </div>
+      <pre className="mcp-log-entry__pre">{entry.output}</pre>
+    </div>
+  )
+
   return (
-    <div
-      style={{
-        marginTop: '10px',
-        border: '1px solid var(--border-color)',
-        borderRadius: '10px',
-        background: 'color-mix(in srgb, var(--bg-primary) 92%, transparent)',
-      }}
-    >
-      <button
-        type="button"
-        onClick={() => setCollapsed((v) => !v)}
-        style={{
-          width: '100%',
-          padding: '8px 10px',
-          border: 'none',
-          background: 'none',
-          color: 'var(--text-primary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-          fontSize: '12px',
-          fontWeight: 600,
-        }}
-      >
-        <span>MCP 结构化结果（{entries.length}）</span>
+    <div className="mcp-log-panel">
+      <button type="button" className="mcp-log-panel__toggle" onClick={() => setCollapsed((v) => !v)}>
+        <span>{t('mcp.log.title', { count: entries.length })}</span>
         {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
       </button>
       {!collapsed ? (
-        <div style={{ padding: '0 10px 10px', display: 'grid', gap: '8px' }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
+        <div className="mcp-log-panel__body">
+          <div className="mcp-log-panel__filters">
+            <label className="mcp-log-panel__filter-label">
               <input type="checkbox" checked={onlyFailures} onChange={(e) => setOnlyFailures(e.target.checked)} />
-              仅失败
+              {t('mcp.log.onlyFailures')}
             </label>
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
+            <label className="mcp-log-panel__filter-label">
               <input type="checkbox" checked={groupByServer} onChange={(e) => setGroupByServer(e.target.checked)} />
-              按 Server 分组
+              {t('mcp.log.groupByServer')}
             </label>
           </div>
 
           {visibleEntries.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>无可显示条目。</div>
+            <div className="mcp-log-panel__empty">{t('mcp.log.empty')}</div>
           ) : groupByServer ? (
-            Object.entries(groupMcpEntriesByServer(visibleEntries)).map(([serverName, group]) => {
-              return (
-                <div key={serverName} style={{ display: 'grid', gap: 6 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{serverName}</div>
-                  {group.map((entry, index) => (
-                    <div
-                      key={`${entry.serverId}-${entry.tool}-${index}`}
-                      style={{
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '8px',
-                        padding: '8px',
-                        background: 'var(--bg-secondary)',
-                      }}
-                    >
-                      <div style={{ fontSize: '12px', marginBottom: '4px', color: 'var(--text-primary)' }}>
-                        [{entry.ok ? 'OK' : 'ERROR'}] {entry.tool}
-                      </div>
-                      <pre
-                        style={{
-                          margin: 0,
-                          fontSize: '11px',
-                          maxHeight: '100px',
-                          overflow: 'auto',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                          color: 'var(--text-secondary)',
-                        }}
-                      >
-                        {entry.output}
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-              )
-            })
-          ) : (
-            visibleEntries.map((entry, index) => (
-              <div
-                key={`${entry.serverId}-${entry.tool}-${index}`}
-                style={{
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '8px',
-                  padding: '8px',
-                  background: 'var(--bg-secondary)',
-                }}
-              >
-                <div style={{ fontSize: '12px', marginBottom: '4px', color: 'var(--text-primary)' }}>
-                  [{entry.ok ? 'OK' : 'ERROR'}] {entry.serverName} / {entry.tool}
-                </div>
-                <pre
-                  style={{
-                    margin: 0,
-                    fontSize: '11px',
-                    maxHeight: '100px',
-                    overflow: 'auto',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  {entry.output}
-                </pre>
+            Object.entries(groupMcpEntriesByServer(visibleEntries)).map(([serverName, group]) => (
+              <div key={serverName} className="mcp-log-group">
+                <div className="mcp-log-group__title">{serverName}</div>
+                {group.map((entry, index) => renderEntry(entry, index))}
               </div>
             ))
+          ) : (
+            visibleEntries.map((entry, index) => renderEntry(entry, index, true))
           )}
         </div>
       ) : null}

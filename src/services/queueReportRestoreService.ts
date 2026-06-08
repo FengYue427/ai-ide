@@ -1,4 +1,5 @@
 import { buildPlanExecutionPrompt, listPlanSteps } from './planExecutionService'
+import { buildSpecExecutionPrompt } from './planSpecWorkflowService'
 import { parseProjectTasks } from './projectTasksService'
 import type { QueuedPlanExecution, QueuedSpecExecution } from '../store/ideStore'
 
@@ -131,7 +132,7 @@ function findSpecTask(files: FileLike[], taskText: string): ReportRestoreHintSpe
 function buildSpecQueueItem(hint: ReportRestoreHintSpec): QueuedSpecExecution {
   const acceptancePath = hint.taskPath.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
   return {
-    prompt: `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${hint.taskPath}] ${hint.taskText}`,
+    prompt: buildSpecExecutionPrompt(hint.taskPath, hint.taskText),
     backfill: {
       taskPath: hint.taskPath,
       taskText: hint.taskText,

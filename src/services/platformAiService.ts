@@ -4,6 +4,7 @@ import { isPlatformCloudProvider } from '../lib/platformModelCatalog'
 import type { TabPlusPlusContext } from '../lib/tabPlusPlusContext'
 import { appendTabPlusPlusContextToPrompt } from '../lib/tabPlusPlusContext'
 import type { AIConfig } from './aiService'
+import { extractUserFacingStreamDelta, sanitizeChatAssistantOutput, type StreamDeltaFields } from './chatOutputSanitizer'
 
 export type PlatformChatMessage = {
   role: 'system' | 'user' | 'assistant'
@@ -65,7 +66,7 @@ export async function sendPlatformMessage(
     const data = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>
     }
-    return data.choices?.[0]?.message?.content ?? ''
+    return sanitizeChatAssistantOutput(data.choices?.[0]?.message?.content ?? '')
   }
 
   const reader = response.body.getReader()
@@ -89,9 +90,9 @@ export async function sendPlatformMessage(
       if (!line.startsWith('data: ')) continue
       try {
         const data = JSON.parse(line.slice(6)) as {
-          choices?: Array<{ delta?: { content?: string } }>
+          choices?: Array<{ delta?: StreamDeltaFields }>
         }
-        const content = data.choices?.[0]?.delta?.content ?? ''
+        const content = extractUserFacingStreamDelta(data.choices?.[0]?.delta)
         if (content) {
           fullContent += content
           onStream(content)
@@ -102,7 +103,7 @@ export async function sendPlatformMessage(
     }
   }
 
-  return fullContent
+  return sanitizeChatAssistantOutput(fullContent)
 }
 
 function buildPlatformTabPrompt(

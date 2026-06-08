@@ -1,6 +1,7 @@
 import git from 'isomorphic-git'
 import http from 'isomorphic-git/http/web'
 import { isValidBranchName } from '../lib/isValidBranchName'
+import { serviceText } from '../lib/serviceI18n'
 import {
   mapStatusMatrixRow,
   normalizeGitPath,
@@ -137,12 +138,12 @@ export async function createBranch(
 ): Promise<void> {
   const ref = branchName.trim()
   if (!isValidBranchName(ref)) {
-    throw new Error('Invalid branch name')
+    throw new Error(serviceText('git.branchNameInvalid'))
   }
 
   const existing = await listBranches(fs, dir)
   if (existing.includes(ref)) {
-    throw new Error('Branch already exists')
+    throw new Error(serviceText('git.branchExists'))
   }
 
   await git.branch({ fs, dir, ref, checkout })
@@ -311,7 +312,7 @@ export async function getStagedDiff(
   const matrix = (await git.statusMatrix({ fs, dir, filepaths: [normalized] })) as StatusMatrixRow[]
   const row = matrix.find(([path]) => path === normalized)
   if (!row || !rowHasStagedChange(row)) {
-    throw new Error(`Staged diff unavailable for ${normalized}`)
+    throw new Error(serviceText('git.error.stagedDiffUnavailable', { path: normalized }))
   }
 
   let result = { visited: false, oldContent: '', newContent: '' }
@@ -327,7 +328,7 @@ export async function getStagedDiff(
   }
 
   if (!result.visited) {
-    throw new Error(`Staged diff unavailable for ${normalized}`)
+    throw new Error(serviceText('git.error.stagedDiffUnavailable', { path: normalized }))
   }
 
   return { oldContent: result.oldContent, newContent: result.newContent }

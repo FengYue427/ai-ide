@@ -56,8 +56,10 @@ export function useWorkspacePersistence({
       ) {
         const file = files[activeFile]
         if (file && canFormatFile(file)) {
-          const formatted = await formatFileContent(file.content, file.language)
-          if (formatted !== file.content) {
+          const { code: formatted, error } = await formatFileContent(file.content, file.language)
+          if (error && notify) {
+            notify('error', t('format.error.failed'), error)
+          } else if (formatted !== file.content) {
             filesToSave = files.map((entry, index) =>
               index === activeFile ? { ...entry, content: formatted } : entry,
             )

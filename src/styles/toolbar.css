@@ -247,11 +247,11 @@
 .toolbar-welfare-badge {
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--color-success, #16a34a);
+  color: var(--success-color);
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(22, 163, 74, 0.35);
-  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid color-mix(in srgb, var(--success-color) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--success-color) 8%, transparent);
   white-space: nowrap;
 }
 
@@ -260,7 +260,7 @@
   align-items: center;
   gap: 4px;
   padding: 6px 10px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: var(--gradient-brand);
   border: none;
   border-radius: 8px;
   cursor: pointer;

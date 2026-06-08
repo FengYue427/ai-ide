@@ -123,7 +123,7 @@ export function PlansSection({
             style={{ minWidth: 280 }}
             value={targetSpecPath}
             onChange={(e) => setTargetSpecPath(e.target.value)}
-            title="映射目标 Spec tasks 文件"
+            title={t('plan.catalog.mapTargetTitle')}
           >
             <option value="">{t('plan.catalog.mapTargetDefault')}</option>
             {specTaskPaths.map((path) => (
@@ -138,7 +138,7 @@ export function PlansSection({
       {items.length > 0 ? (
         <div style={{ marginTop: 10, border: '1px solid var(--border-color)', borderRadius: 10, padding: 10 }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
-            已显示 {items.length} / {filtered.length} 条计划
+            {t('plan.catalog.shownCount', { shown: items.length, total: filtered.length })}
           </div>
           <div style={{ display: 'grid', gap: 6, maxHeight: 220, overflow: 'auto' }}>
             {items.map((plan) => (

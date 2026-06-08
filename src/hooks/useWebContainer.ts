@@ -75,7 +75,10 @@ export function useWebContainer(): UseWebContainerReturn {
       } catch (err) {
         if (mountedRef.current) {
           const t = createTranslator(getWorkspaceLocale())
-          const errorMessage = err instanceof Error ? err.message : t('runtime.webcontainer.bootFailed')
+          let errorMessage = err instanceof Error ? err.message : t('runtime.webcontainer.bootFailed')
+          if (typeof crossOriginIsolated !== 'undefined' && !crossOriginIsolated) {
+            errorMessage = `${errorMessage}\n\n${t('runtime.webcontainer.crossOriginHint')}`
+          }
           setError(new Error(errorMessage))
           console.error('[useWebContainer] Initialization failed:', err)
           initPromise = null

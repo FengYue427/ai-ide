@@ -1,3 +1,5 @@
+import { extractWorkflowSummary } from './planSpecWorkflowService'
+
 interface FileLike {
   name: string
   content: string
@@ -34,7 +36,7 @@ export function buildPlanExecutionBackfillMarkdown(input: PlanExecutionBackfill)
   const statusLine = `- Status: ${status}\n`
   const validationLine = input.validation ? `- Validation: ${input.validation}\n` : ''
   const filesLine = filesTouched.length > 0 ? `- Files touched: ${filesTouched.join(', ')}\n` : ''
-  const summary = trimmed.split(/\r?\n/)[0]?.slice(0, 200) || ''
+  const summary = extractWorkflowSummary(trimmed) || trimmed.split(/\r?\n/)[0]?.slice(0, 200) || ''
   const summaryLine = summary ? `- Summary: ${summary}\n` : ''
   return `\n\n---\n## Plan Step Execution (${date})\n- Step: ${input.stepText}\n${statusLine}${runLine}${providerLine}${modelLine}${validationLine}${filesLine}${summaryLine}\n### Assistant Output\n\n${trimmed}\n`
 }

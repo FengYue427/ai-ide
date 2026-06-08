@@ -177,7 +177,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
               ) : null}
               {plugin.builtin && <span className="status-pill">{t('plugin.builtin')}</span>}
               {isActive && (
-                <span className="status-pill" style={{ color: 'var(--success-color)' }}>
+                <span className="status-pill plugins-success-pill">
                   {t('plugin.running')}
                 </span>
               )}
@@ -187,7 +187,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
               <div className="plugins-card-meta">{t('plugin.author', { name: plugin.author })}</div>
             )}
             {plugin.manifest && (
-              <div className="plugins-card-meta" style={{ marginTop: 6 }}>
+              <div className="plugins-card-meta plugins-mt-md">
                 {t('plugin.permissions', { perms: plugin.manifest.permissions.join(' · ') })}
               </div>
             )}
@@ -230,8 +230,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
             href="https://github.com/FengYue427/ai-ide/blob/main/docs/PLUGIN_SDK_V2.md"
             target="_blank"
             rel="noopener noreferrer"
-            className="plugins-footer-note"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent-color)', textDecoration: 'none' }}
+            className="plugins-footer-note plugins-link-inline"
           >
             {t('plugin.sdkDoc')}
             <ExternalLink size={13} />
@@ -240,8 +239,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
             href="https://github.com/FengYue427/ai-ide"
             target="_blank"
             rel="noopener noreferrer"
-            className="plugins-footer-note"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent-color)', textDecoration: 'none' }}
+            className="plugins-footer-note plugins-link-inline"
           >
             {t('plugin.repo')}
             <ExternalLink size={13} />
@@ -291,7 +289,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       {tab === 'installed' && (
         <div className="plugins-grid">
           {plugins.length === 0 ? (
-            <div className="plugins-panel plugins-card-desc" style={{ textAlign: 'center' }}>
+            <div className="plugins-panel plugins-card-desc plugins-text-center">
               {t('plugin.empty')}
             </div>
           ) : (
@@ -302,11 +300,10 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
 
       {tab === 'market' && (
         <>
-          <div className="plugins-tag-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+          <div className="plugins-tag-filters">
             <button
               type="button"
-              className={`plugins-tab ${tagFilter === 'all' ? 'plugins-tab--active' : ''}`}
-              style={{ padding: '6px 12px', fontSize: '12px' }}
+              className={`plugins-tab plugins-tag-btn ${tagFilter === 'all' ? 'plugins-tab--active' : ''}`}
               onClick={() => setTagFilter('all')}
             >
               {t('plugin.filter.all')}
@@ -315,8 +312,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
               <button
                 key={tag}
                 type="button"
-                className={`plugins-tab ${tagFilter === tag ? 'plugins-tab--active' : ''}`}
-                style={{ padding: '6px 12px', fontSize: '12px' }}
+                className={`plugins-tab plugins-tag-btn ${tagFilter === tag ? 'plugins-tab--active' : ''}`}
                 onClick={() => setTagFilter(tag)}
               >
                 {catalogTagLabel(tag, t)}
@@ -326,7 +322,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
 
           <div className="plugins-grid">
           {filteredCatalog.length === 0 ? (
-            <div className="plugins-panel plugins-card-desc" style={{ textAlign: 'center' }}>
+            <div className="plugins-panel plugins-card-desc plugins-text-center">
               {t('plugin.filter.empty')}
             </div>
           ) : null}
@@ -351,11 +347,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                           {t('plugin.market.sdkBadge', { version: entry.sdkVersion })}
                         </span>
                       ) : null}
-                      <span
-                        className="status-pill"
-                        style={{ color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.35)' }}
-                        title={t('plugin.rating.title')}
-                      >
+                      <span className="status-pill plugins-rating-pill" title={t('plugin.rating.title')}>
                         ★ {entry.rating.toFixed(1)}
                       </span>
                     </div>
@@ -370,13 +362,13 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                         </span>
                       ))}
                     </div>
-                    <div className="plugins-card-meta" style={{ marginTop: 8 }}>
+                    <div className="plugins-card-meta plugins-mt-lg">
                       {t('plugin.permissions', { perms: entry.permissions.join(' · ') })}
                     </div>
                   </div>
                   <div className="plugins-card-actions">
                     {installed ? (
-                      <span className="status-pill" style={{ color: 'var(--success-color)' }}>
+                      <span className="status-pill plugins-success-pill">
                         {t('plugin.badge.installed')}
                       </span>
                     ) : needsCommunityConfirm ? (
@@ -409,10 +401,10 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
 
       {tab === 'manual' && (
         <div className="plugins-panel">
-          <p className="plugins-card-desc" style={{ marginBottom: 12 }}>
+          <p className="plugins-card-desc plugins-mt-lg">
             {t('plugin.manual.desc')}
           </p>
-          <p className="plugins-card-desc" style={{ marginBottom: 12, fontSize: 12, opacity: 0.85 }}>
+          <p className="plugins-card-desc plugins-subhint">
             {t('plugin.manual.i18nHint')}
           </p>
           <textarea
@@ -435,15 +427,14 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
               {t('plugin.manual.sample')}
             </button>
           </div>
-          <div className="plugins-panel" style={{ marginTop: 16 }} data-testid="plugin-publish-form">
+          <div className="plugins-panel plugins-nested-panel" data-testid="plugin-publish-form">
             <strong>{t('plugin.publish.title')}</strong>
-            <p className="plugins-card-desc" style={{ marginTop: 6 }}>
+            <p className="plugins-card-desc plugins-mt-sm">
               {t('plugin.publish.desc')}
             </p>
             <button
               type="button"
-              className="btn btn-secondary"
-              style={{ marginTop: 8 }}
+              className="btn btn-secondary plugins-publish-btn"
               disabled={publishBusy || !newPluginJson.trim() || !currentUser}
               onClick={() => {
                 setPublishBusy(true)
@@ -459,7 +450,7 @@ const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
               {t('plugin.publish.submit')}
             </button>
             {!currentUser ? (
-              <p className="plugins-card-desc" style={{ marginTop: 6, fontSize: 11 }}>
+              <p className="plugins-card-desc plugins-login-hint">
                 {t('plugin.publish.loginRequired')}
               </p>
             ) : null}

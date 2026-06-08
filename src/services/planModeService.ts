@@ -7,20 +7,7 @@ interface FileLike {
 export const PLAN_ROOT = '.aide/plans'
 export const PROJECT_TASKS_PATH = '.aide/tasks.md'
 
-export function buildPlanModeSystemPrompt(basePrompt: string): string {
-  return `${basePrompt}
-
-你当前处于 Plan 模式。不要直接输出最终代码补丁，先给出可执行计划。
-
-请使用以下结构输出：
-## 目标
-## 影响文件
-## 执行步骤（3-7 步）
-## 风险与回滚
-## 验证清单
-
-执行步骤和验证清单尽量使用 markdown checklist（- [ ]）。`
-}
+export { buildPlanModeSystemPrompt } from './planSpecWorkflowService'
 
 export function extractChecklistTasks(planText: string): string[] {
   const matches = planText.matchAll(/^\s*-\s*\[\s\]\s+(.+)\s*$/gm)

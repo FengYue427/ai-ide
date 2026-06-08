@@ -22,17 +22,22 @@ const defaultOptions: FormatOptions = {
   printWidth: 100
 }
 
+export interface FormatCodeResult {
+  code: string
+  error?: string
+}
+
 export const formatService = {
   // 格式化代码（模拟，实际使用 prettier）
-  async formatCode(code: string, language: string): Promise<string> {
+  async formatCode(code: string, language: string): Promise<FormatCodeResult> {
     const options = this.getOptionsForLanguage(language)
     
     try {
       // 这里简化实现，实际应该动态导入 prettier
-      return this.simpleFormat(code, options)
+      return { code: this.simpleFormat(code, options) }
     } catch (error) {
       console.error('格式化失败:', error)
-      return code
+      return { code, error: serviceText('format.error.failed') }
     }
   },
 

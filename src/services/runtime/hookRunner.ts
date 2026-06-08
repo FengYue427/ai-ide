@@ -1,5 +1,4 @@
-/** v1.5 F4 — execute hooks.yaml hooks (browser honest skip). */
-
+import { buildSpecExecutionPrompt } from '../planSpecWorkflowService'
 import { isDesktopApp, getDesktopApi } from '../desktopBridge'
 import type { HookOnEvent, HooksDocument, RuntimeHookDef } from './hooksSchema'
 import { parseHooksYaml, hooksPathFromTasksPath } from './hooksSchema'
@@ -100,7 +99,7 @@ function runEnqueueHook(hook: RuntimeHookDef, _ctx: HookRunContext): HookRunOutc
     enqueueIntent: {
       kind: 'spec',
       targetPath: tasksPath,
-      prompt: `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${tasksPath}] ${hook.task}`,
+      prompt: buildSpecExecutionPrompt(tasksPath, hook.task),
       backfill: {
         taskPath: tasksPath,
         taskText: hook.task,

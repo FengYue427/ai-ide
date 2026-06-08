@@ -10,6 +10,7 @@ import type { ChatCompletionResult, ChatMessage } from './agentChatTypes'
 import type { OpenAIToolDefinition } from './agentTools/types'
 import { shouldUsePlatformAi } from '../lib/aiPlatformMode'
 import { reserveAIUsageFromStore } from './usageService'
+import { sanitizeChatAssistantOutput } from './chatOutputSanitizer'
 
 const TOOL_PROVIDERS: AIModel[] = ['openai', 'deepseek', 'grok', 'zhipu', 'minimax']
 
@@ -160,7 +161,7 @@ async function sendPlatformAgentCompletionViaGateway(
   const message = choice?.message ?? {}
 
   return {
-    content: message.content ?? null,
+    content: sanitizeChatAssistantOutput(message.content ?? '') || null,
     tool_calls: message.tool_calls,
     reasoning_content: message.reasoning_content ?? null,
     finish_reason: choice?.finish_reason,
@@ -214,7 +215,7 @@ export async function sendChatCompletion(
   const message = choice?.message ?? {}
 
   return {
-    content: message.content ?? null,
+    content: sanitizeChatAssistantOutput(message.content ?? '') || null,
     tool_calls: message.tool_calls,
     reasoning_content: message.reasoning_content ?? null,
     finish_reason: choice?.finish_reason,

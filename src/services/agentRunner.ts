@@ -6,10 +6,18 @@ import type { AgentToolName } from './agentTools/types'
 import { sendChatCompletion } from './agentChatCompletion'
 import type { ChatMessage } from './agentChatTypes'
 import { loadAgentSettings } from './agentSettingsService'
+import { sanitizeChatAssistantOutput } from './chatOutputSanitizer'
 import { detectLanguageFromPath } from './projectIndexService'
 import { normalizeProjectPath } from './localProjectPaths'
 import { countDiffHunks } from './diffHunkService'
 import { workspaceContextService } from './workspaceContextService'
+import {
+  AGENT_SUMMARY_NUDGE,
+  AGENT_TOOLS_SYSTEM,
+  isRepeatedToolCall,
+  needsAgentFinalSummary,
+  toolCallSignature,
+} from './agentPromptShared'
 
 export type AgentActivityEntry = {
   round: number
@@ -35,17 +43,6 @@ export type AgentRunResult = {
   pendingChanges: AgentFileChange[]
   rounds: number
 }
-
-const AGENT_TOOLS_SYSTEM = `You are an autonomous coding agent in AI IDE with tools.
-- Use list_files and read_file to explore before editing.
-- Use search_repo for file paths and symbol names (fast index).
-- Use grep_repo to find text or regex matches inside file contents.
-- Use write_file with the FULL file content for each change (not a diff).
-- Use move_file to rename or relocate files; use delete_file to remove a file; use create_dir to create directories.
-- Use run_command for builds/tests (WebContainer in browser, native shell on desktop). Destructive commands are blocked.
-- Tool outputs may be truncated at ~32k chars; narrow grep/read scope if needed.
-- When done, reply briefly in plain text summarizing what you changed.
-- Do not output ### filename markdown blocks unless the user asks for a written report only.`
 
 function parseToolArguments(raw: string): Record<string, unknown> {
   try {
@@ -100,8 +97,12 @@ export async function runAgentLoop(
   const pendingPaths = new Set<string>()
   let finalContent = ''
   let rounds = 0
+  let lastToolSignature: string | null = null
+  let repeatToolCount = 0
+  let stopToolsForSummary = false
 
   for (let round = 0; round < maxRounds; round++) {
+    if (stopToolsForSummary) break
     if (callbacks?.shouldStop?.() || callbacks?.signal?.aborted) {
       break
     }
@@ -112,7 +113,7 @@ export async function runAgentLoop(
     })
 
     if (completion.content?.trim()) {
-      finalContent = completion.content
+      finalContent = sanitizeChatAssistantOutput(completion.content)
       callbacks?.onAssistantText?.(finalContent)
     }
 
@@ -162,8 +163,17 @@ export async function runAgentLoop(
       messages.push({
         role: 'tool',
         tool_call_id: call.id,
-        content: result.ok ? result.output : `ERROR: ${result.error ?? result.output}`,
+        content: result.ok ? result.output : `[tool failed] ${result.error ?? result.output}`,
       })
+
+      const signature = toolCallSignature(name, args)
+      const repeat = isRepeatedToolCall(signature, lastToolSignature, repeatToolCount)
+      lastToolSignature = signature
+      repeatToolCount = repeat.nextCount
+      if (repeat.repeated) {
+        stopToolsForSummary = true
+        break
+      }
     }
 
     if (completion.finish_reason === 'stop' && !completion.tool_calls?.length) {
@@ -171,7 +181,28 @@ export async function runAgentLoop(
     }
   }
 
+  if (needsAgentFinalSummary(activity.length, finalContent)) {
+    const summary = await requestAgentFinalSummary(config, messages, callbacks?.signal)
+    if (summary) {
+      finalContent = sanitizeChatAssistantOutput(summary)
+      callbacks?.onAssistantText?.(finalContent)
+    }
+  }
+
   return { finalContent, activity, pendingChanges, rounds }
+}
+
+async function requestAgentFinalSummary(
+  config: AIConfig,
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): Promise<string> {
+  messages.push({ role: 'user', content: AGENT_SUMMARY_NUDGE })
+  const completion = await sendChatCompletion(config, messages, {
+    signal,
+    tools: [],
+  })
+  return completion.content?.trim() ?? ''
 }
 
 export function buildAgentToolMessages(

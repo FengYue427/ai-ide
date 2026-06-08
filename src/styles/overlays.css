@@ -1,7 +1,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(5, 10, 20, 0.72);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -118,7 +118,7 @@
 .btn-primary {
   background: var(--accent-color);
   border: none;
-  color: var(--bg-primary);
+  color: var(--on-accent);
 }
 
 .btn-primary:hover {
@@ -249,7 +249,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(5, 10, 20, 0.68);
+  background: var(--overlay-bg-soft);
   backdrop-filter: blur(8px);
 }
 

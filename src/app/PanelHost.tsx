@@ -44,6 +44,7 @@ import {
 import { workspaceContextService } from '../services/workspaceContextService'
 import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
 import { buildPlanExecutionPrompt } from '../services/planExecutionService'
+import { buildSpecExecutionPrompt } from '../services/planSpecWorkflowService'
 import {
   preparePlanStepsForBackgroundJobs,
   queuePlanStepsAsBackgroundJobs,
@@ -694,7 +695,7 @@ export function PanelHost({
               notify('info', t('spec.host.noOpenTask.title'), t('spec.host.noOpenTask.detail'))
               return
             }
-            const prompt = `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${tasksPath}] ${first.text}`
+            const prompt = buildSpecExecutionPrompt(tasksPath, first.text, language)
             const acceptancePath = tasksPath.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
             void enqueueSpecTaskViaRuntime(
               {
@@ -815,7 +816,7 @@ export function PanelHost({
               if (!ok) return
 
               const queue = deduped.map((step) => ({
-                prompt: buildPlanExecutionPrompt(step.text),
+                prompt: buildPlanExecutionPrompt(step.text, language),
                 backfill: { planPath: path, stepText: step.text, stepLine: step.line },
               }))
               setQueuedPlanExecutions(queue.slice(1))
@@ -954,7 +955,7 @@ export function PanelHost({
             setFiles(nextFiles)
             const acceptancePath = targetSpecTasks.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
             const executionQueue = result.addedSteps.map((taskText) => ({
-              prompt: `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${targetSpecTasks}] ${taskText}`,
+              prompt: buildSpecExecutionPrompt(targetSpecTasks, taskText, language),
               backfill: {
                 taskPath: targetSpecTasks,
                 taskText,

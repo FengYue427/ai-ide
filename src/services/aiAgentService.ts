@@ -1,12 +1,5 @@
 import { sendMessage, type AIConfig } from './aiService'
-
-const AGENT_SYSTEM_PROMPT = `You are an autonomous coding agent inside a browser IDE.
-When the user asks for changes:
-1. Plan briefly in one short paragraph.
-2. For each file to create or modify, output a separate markdown section titled ### filename.ext
-3. Follow each heading with a fenced code block containing the full file content.
-4. Prefer minimal, working changes over large rewrites.
-5. Do not invent files outside the user's project unless they ask for scaffolding.`
+import { AGENT_MARKDOWN_SYSTEM } from './agentPromptShared'
 
 export const aiAgentService = {
   buildMessages(
@@ -17,7 +10,7 @@ export const aiAgentService = {
     return [
       {
         role: 'system' as const,
-        content: `${AGENT_SYSTEM_PROMPT}\n\nWorkspace:\n${workspaceSummary}`,
+        content: `${AGENT_MARKDOWN_SYSTEM}\n\nWorkspace:\n${workspaceSummary}`,
       },
       ...history.map((message) => ({
         role: message.role,

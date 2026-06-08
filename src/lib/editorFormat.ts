@@ -1,5 +1,5 @@
 import { collabRoleCanWrite } from './collabPermissions'
-import { formatService } from '../services/formatService'
+import { formatService, type FormatCodeResult } from '../services/formatService'
 import { useIDEStore } from '../store/ideStore'
 import type { FileItem } from '../types/file'
 
@@ -40,20 +40,23 @@ export function isEditorWritableForFormat(state: {
   return collabRoleCanWrite(state.collaborationMemberRole)
 }
 
-export async function formatFileContent(content: string, language: string): Promise<string> {
+export async function formatFileContent(content: string, language: string): Promise<FormatCodeResult> {
   return formatService.formatCode(content, language)
 }
 
+export type { FormatCodeResult }
+
 /** Format the active tab via formatService and sync store (fallback when Monaco format is unavailable). */
-export async function formatActiveFileInStore(): Promise<boolean> {
+export async function formatActiveFileInStore(): Promise<'ok' | 'unchanged' | 'failed'> {
   const state = useIDEStore.getState()
-  if (!isEditorWritableForFormat(state)) return false
+  if (!isEditorWritableForFormat(state)) return 'unchanged'
 
   const file = state.files[state.activeFile]
-  if (!file || !canFormatFile(file)) return false
+  if (!file || !canFormatFile(file)) return 'unchanged'
 
-  const formatted = await formatFileContent(file.content, file.language)
-  if (formatted === file.content) return false
+  const { code: formatted, error } = await formatFileContent(file.content, file.language)
+  if (error) return 'failed'
+  if (formatted === file.content) return 'unchanged'
 
   const activeIndex = state.activeFile
   state.setFiles((prev) => {
@@ -61,5 +64,5 @@ export async function formatActiveFileInStore(): Promise<boolean> {
     next[activeIndex] = { ...file, content: formatted }
     return next
   })
-  return true
+  return 'ok'
 }

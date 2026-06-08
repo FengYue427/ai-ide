@@ -157,6 +157,56 @@
   line-height: 1.55;
 }
 
+.welcome-dual-path {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  max-width: 520px;
+}
+
+@media (max-width: 720px) {
+  .welcome-dual-path {
+    grid-template-columns: 1fr;
+  }
+}
+
+.welcome-dual-path__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-secondary) 90%, transparent);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.welcome-dual-path__card strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.welcome-dual-path__card span {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.welcome-dual-path__card:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-tertiary);
+}
+
+.welcome-dual-path__card--cloud {
+  border-color: color-mix(in srgb, var(--accent-color) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-color) 8%, var(--bg-secondary));
+}
+
 .welcome-platform-cta-btn {
   display: inline-flex;
   align-items: center;
@@ -165,7 +215,7 @@
   border: none;
   border-radius: var(--radius-md);
   background: var(--accent-color);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

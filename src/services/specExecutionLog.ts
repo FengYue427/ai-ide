@@ -1,3 +1,5 @@
+import { extractWorkflowSummary } from './planSpecWorkflowService'
+
 export interface SpecExecutionLogMeta {
   runId?: string | null
   provider?: string
@@ -23,5 +25,7 @@ export function buildSpecExecutionLog(
     .filter(Boolean)
     .join('\n')
   const metaBlock = metaLines ? `${metaLines}\n` : ''
-  return `\n\n---\n## Spec Execution Log (${date})\n- Task: ${taskText}\n${metaBlock}\n### Assistant Output\n\n${snippet}\n`
+  const summaryLine = extractWorkflowSummary(trimmed)
+  const summaryBlock = summaryLine ? `- Summary: ${summaryLine}\n` : ''
+  return `\n\n---\n## Spec Execution Log (${date})\n- Task: ${taskText}\n${metaBlock}${summaryBlock}\n### Assistant Output\n\n${snippet}\n`
 }

@@ -17,6 +17,7 @@ import type { GitCommitFileChange, GitFileSyncUpdate } from '../services/gitServ
 import type { FileItem } from '../types/file'
 import { getLanguageFromExt } from '../app/getLanguageFromExt'
 import { formatGitRelativeTime } from '../lib/formatGitRelativeTime'
+import { formatUserError } from '../lib/formatUserError'
 import { getLogContinueRef, gitLogHasMore, mergeGitLogPages } from '../lib/gitLogPagination'
 import { isValidBranchName } from '../lib/isValidBranchName'
 import { shouldShowGitStatusPerfHint } from '../lib/gitStatusPerfHint'
@@ -125,7 +126,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
       setError(null)
     } catch (refreshError) {
       setIsInit(false)
-      setError(refreshError instanceof Error ? refreshError.message : t('git.statusReadFailed'))
+      setError(refreshError instanceof Error ? formatUserError(refreshError.message, t) : t('git.statusReadFailed'))
     }
   }, [fs, syncWorkspaceToFs, t])
 
@@ -149,7 +150,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
       setCommits(merged)
       setHistoryHasMore(gitLogHasMore(merged))
     } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : t('git.historyLoadFailed')
+      const message = loadError instanceof Error ? formatUserError(loadError.message, t) : t('git.historyLoadFailed')
       notify?.('error', t('git.historyLoadFailed'), message)
       setHistoryHasMore(false)
     } finally {
@@ -189,7 +190,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
       await action()
       await refresh()
     } catch (actionError) {
-      const message = actionError instanceof Error ? actionError.message : t('git.actionFailed')
+      const message = actionError instanceof Error ? formatUserError(actionError.message, t) : t('git.actionFailed')
       setError(message)
       notify?.('error', t('git.actionFailed'), message)
     } finally {
@@ -247,7 +248,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
         language: getLanguageFromExt(filepath),
       })
     } catch (diffError) {
-      const message = diffError instanceof Error ? diffError.message : t('git.diffReadFailed')
+      const message = diffError instanceof Error ? formatUserError(diffError.message, t) : t('git.diffReadFailed')
       setError(message)
       notify?.('error', t('git.diffViewFailed'), message)
     }
@@ -281,7 +282,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
       const changedFiles = await gitService.getCommitChangedFiles(fs, '/', commitOid)
       setCommitFilesByOid((prev) => ({ ...prev, [commitOid]: changedFiles }))
     } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : t('git.commitFilesFailed')
+      const message = loadError instanceof Error ? formatUserError(loadError.message, t) : t('git.commitFilesFailed')
       notify?.('error', t('git.commitFilesFailed'), message)
     } finally {
       setCommitFilesLoadingOid(null)

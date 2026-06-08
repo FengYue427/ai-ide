@@ -32,9 +32,10 @@ describe('planModeService', () => {
   })
 
   it('injects plan mode instructions into prompt', () => {
-    const out = buildPlanModeSystemPrompt('BASE')
+    const out = buildPlanModeSystemPrompt('BASE', 'zh-CN')
     expect(out).toContain('BASE')
     expect(out).toContain('Plan 模式')
     expect(out).toContain('## 执行步骤')
+    expect(out).toContain('## 小结')
   })
 })

@@ -122,4 +122,81 @@ describe('runAgentLoop', () => {
       { applyWrites: false },
     )
   })
+
+  it('requests a text summary when tools run without assistant text', async () => {
+    sendChatCompletion
+      .mockResolvedValueOnce({
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: { name: 'list_files', arguments: '{}' },
+          },
+        ],
+        finish_reason: 'tool_calls',
+      })
+      .mockResolvedValueOnce({
+        content: null,
+        tool_calls: undefined,
+        finish_reason: 'stop',
+      })
+      .mockResolvedValueOnce({
+        content: '工作区包含 src 与 docs 等目录。',
+        finish_reason: 'stop',
+      })
+
+    executeAgentTool.mockResolvedValueOnce({
+      ok: true,
+      output: 'src/a.ts\ndocs/readme.md',
+    })
+
+    const result = await runAgentLoop(
+      { provider: 'deepseek', apiKey: 'k', model: 'deepseek-chat' },
+      [{ role: 'user', content: '查看工作区' }],
+    )
+
+    expect(result.finalContent).toContain('工作区')
+    expect(sendChatCompletion).toHaveBeenCalledTimes(3)
+    expect(sendChatCompletion.mock.calls[2][2]).toEqual({ signal: undefined, tools: [] })
+  })
+
+  it('stops repeating the same tool and asks for summary', async () => {
+    sendChatCompletion
+      .mockResolvedValueOnce({
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: { name: 'list_files', arguments: '{}' },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_2',
+            type: 'function',
+            function: { name: 'list_files', arguments: '{}' },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: '已列出主要文件。',
+        finish_reason: 'stop',
+      })
+
+    executeAgentTool.mockResolvedValue({ ok: true, output: 'a.ts' })
+
+    const result = await runAgentLoop(
+      { provider: 'deepseek', apiKey: 'k', model: 'deepseek-chat' },
+      [{ role: 'user', content: '查看工作区' }],
+    )
+
+    expect(result.activity).toHaveLength(2)
+    expect(result.finalContent).toBe('已列出主要文件。')
+    expect(sendChatCompletion).toHaveBeenCalledTimes(3)
+  })
 })

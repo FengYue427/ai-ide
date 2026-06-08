@@ -111,7 +111,13 @@ import { appendToSpecAcceptanceFile } from '../services/specAcceptanceService'
 import { findRetryUserText } from '../services/chatRetry'
 import { buildMcpFollowUpMessages } from '../services/chatMcpFollowUp'
 import { removeTrailingUserMessage, upsertAssistantMessage } from '../services/chatMessageState'
+import { sanitizeChatAssistantOutput } from '../services/chatOutputSanitizer'
 import { applyPlanArtifactsWithResult, buildPlanModeSystemPrompt } from '../services/planModeService'
+import {
+  appendWorkflowSystemAddon,
+  buildSpecExecutionPrompt,
+} from '../services/planSpecWorkflowService'
+import { appendChatUserOutputRules } from '../services/agentPromptShared'
 import { buildPlanExecutionPrompt, getFirstPlanStep } from '../services/planExecutionService'
 import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
 import { createBackgroundJob } from '../services/backgroundJobsApiService'
@@ -318,11 +324,11 @@ ${t('ai.chat.prompt')}`
     return 'idle'
   }, [loading, queuedChatPrompt, queuedPlanExecutions.length, queuedSpecExecutions.length, sendQueue.length])
   const activeQueueTask = useMemo(() => {
-    if (queuedPlanBackfill) return `Plan：${queuedPlanBackfill.stepText}`
-    if (queuedSpecBackfill) return `Spec：${queuedSpecBackfill.taskText}`
-    if (loading) return '正在处理中...'
+    if (queuedPlanBackfill) return t('chat.queue.activePlan', { text: queuedPlanBackfill.stepText })
+    if (queuedSpecBackfill) return t('chat.queue.activeSpec', { text: queuedSpecBackfill.taskText })
+    if (loading) return t('chat.queue.processing')
     return null
-  }, [loading, queuedPlanBackfill, queuedSpecBackfill])
+  }, [loading, queuedPlanBackfill, queuedSpecBackfill, t])
 
   const [pendingAgentChanges, setPendingAgentChanges] = useState<AgentFileChange[] | null>(null)
   const [agentActivity, setAgentActivity] = useState<AgentActivityEntry[]>([])
@@ -809,14 +815,14 @@ ${t('ai.chat.prompt')}`
       activity: agentActivity,
       pendingChanges: pendingAgentChanges ?? [],
     })
-    notify?.('success', '已保存', '本次 Agent 运行记录已保存')
-  }, [agentActivity, lastRunRounds, messages, notify, pendingAgentChanges])
+    notify?.('success', t('chat.agentRun.savedTitle'), t('chat.agentRun.savedDetail'))
+  }, [agentActivity, lastRunRounds, messages, notify, pendingAgentChanges, t])
 
   const replayLastRun = useCallback(async () => {
     const history = await loadAgentRunHistory()
     const latest = history[0]
     if (!latest) {
-      notify?.('error', '无记录', '还没有已保存的 Agent 运行')
+      notify?.('error', t('chat.agentRun.noRecordTitle'), t('chat.agentRun.noRecordDetail'))
       return
     }
     setAgentActivity(latest.activity)
@@ -825,10 +831,13 @@ ${t('ai.chat.prompt')}`
       ...prev,
       {
         role: 'assistant',
-        content: `已回放最近一次运行（${latest.activity.length} 条工具活动，${latest.rounds} 轮）`,
+        content: t('chat.agentRun.replayContent', {
+          activity: latest.activity.length,
+          rounds: latest.rounds,
+        }),
       },
     ])
-  }, [notify])
+  }, [t])
 
   const exportRunMarkdown = useCallback(() => {
     if (agentActivity.length === 0) return
@@ -919,8 +928,8 @@ ${t('ai.chat.prompt')}`
   const exportQueueReport = useCallback(() => {
     const markdown = buildQueueExecutionReportMarkdown(buildQueueReportInput())
     void copyMessageText(markdown)
-    notify?.('success', '已复制', '队列执行报告已复制到剪贴板')
-  }, [buildQueueReportInput, copyMessageText, notify])
+    notify?.('success', t('chat.report.copiedTitle'), t('chat.report.copiedDetail'))
+  }, [buildQueueReportInput, copyMessageText, notify, t])
 
   const saveQueueReportToWorkspace = useCallback(() => {
     const markdown = buildQueueExecutionReportMarkdown(buildQueueReportInput())
@@ -930,29 +939,33 @@ ${t('ai.chat.prompt')}`
       setActiveFile(result.index)
       return result.files
     })
-    notify?.('success', '已保存', `报告已写入 ${path}`)
-  }, [buildQueueReportInput, notify, setActiveFile, setFiles])
+    notify?.('success', t('chat.report.savedTitle'), t('chat.report.savedDetail', { path }))
+  }, [buildQueueReportInput, notify, setActiveFile, setFiles, t])
 
   const openLatestQueueReport = useCallback(() => {
     const path = findLatestReportPath(editorFiles.map((f) => ({ name: f.name, content: f.content })))
     if (!path) {
-      notify?.('info', '暂无报告', '请先在任务队列中保存报告到 .aide/reports')
+      notify?.('info', t('chat.report.noReportTitle'), t('chat.report.noReportHint'))
       return
     }
     const index = editorFiles.findIndex((f) => f.name === path)
     if (index < 0) {
-      notify?.('error', '无法打开', `未找到报告文件：${path}`)
+      notify?.('error', t('chat.report.openFailedTitle'), t('chat.report.openFailedDetail', { path }))
       return
     }
     setActiveFile(index)
-  }, [editorFiles, notify, setActiveFile])
+  }, [editorFiles, notify, setActiveFile, t])
 
   const applyRestoreFromMarkdown = useCallback(
     (markdown: string) => {
       const fileLikes = editorFiles.map((f) => ({ name: f.name, content: f.content }))
       const result = buildQueueRestoreFromReport(markdown, fileLikes)
       if (result.planItems.length === 0 && result.specItems.length === 0) {
-        notify?.('info', '无可恢复项', result.unresolved.length ? result.unresolved.join('；') : '报告中没有可匹配的待执行项')
+        notify?.(
+          'info',
+          t('chat.report.restoreEmptyTitle'),
+          result.unresolved.length ? result.unresolved.join('；') : t('chat.report.restoreNoMatch'),
+        )
         return
       }
       setFailedPlanExecution(null)
@@ -975,13 +988,15 @@ ${t('ai.chat.prompt')}`
         setQueuedPlanExecutions(mergedPlan)
         setQueuedSpecExecutions(mergedSpec)
       }
-      const detail = [
-        `Plan ${result.planItems.length} · Spec ${result.specItems.length}`,
-        result.unresolved.length ? `未匹配 ${result.unresolved.length} 项` : '',
-      ]
-        .filter(Boolean)
-        .join(' · ')
-      notify?.('success', '已恢复队列', detail)
+      const extra = result.unresolved.length
+        ? t('chat.report.restoreUnresolved', { count: result.unresolved.length })
+        : ''
+      const detail = t('chat.report.restoreDetail', {
+        plan: result.planItems.length,
+        spec: result.specItems.length,
+        extra,
+      })
+      notify?.('success', t('chat.report.restoredTitle'), detail)
     },
     [
       editorFiles,
@@ -995,19 +1010,20 @@ ${t('ai.chat.prompt')}`
       setQueuedPlanExecutions,
       setQueuedSpecBackfill,
       setQueuedSpecExecutions,
+      t,
     ],
   )
 
   const restoreQueueFromLatestReport = useCallback(() => {
     const path = findLatestReportPath(editorFiles.map((f) => ({ name: f.name, content: f.content })))
     if (!path) {
-      notify?.('info', '暂无报告', '请先保存一份队列报告')
+      notify?.('info', t('chat.report.noReportTitle'), t('chat.report.noReportSaveFirst'))
       return
     }
     const file = editorFiles.find((f) => f.name === path)
     if (!file) return
     applyRestoreFromMarkdown(file.content)
-  }, [applyRestoreFromMarkdown, editorFiles, notify])
+  }, [applyRestoreFromMarkdown, editorFiles, notify, t])
 
   const lastQueueSnapshotRef = useRef<QueueExecutionReportInput | null>(null)
   const wasQueueBusyRef = useRef(false)
@@ -1054,14 +1070,14 @@ ${t('ai.chat.prompt')}`
           setActiveFile(result.index)
           return result.files
         })
-        notify?.('success', '已自动保存', `队列报告：${path}`)
+        notify?.('success', t('chat.report.autoSavedTitle'), t('chat.report.autoSavedDetail', { path }))
       }
       if (prefs.notifyOnComplete) {
-        notifyQueueComplete('AI IDE', '任务队列已执行完毕')
+        notifyQueueComplete('AI IDE', t('chat.queue.completeBody'))
       }
     }
     wasQueueBusyRef.current = isQueueBusy
-  }, [isQueueBusy, notify, setActiveFile, setFiles])
+  }, [isQueueBusy, notify, setActiveFile, setFiles, t])
 
   const appendExecutionToSpecAcceptance = useCallback(
     (specAcceptancePath: string, taskText: string, assistantOutput: string, executionRunId?: string | null) => {
@@ -1166,7 +1182,7 @@ ${t('ai.chat.prompt')}`
           { text: textToSend, action, options },
         ).queue,
       )
-      notify?.('info', '已加入队列', `待执行任务 +1（当前 ${sendQueue.length + 1}）`)
+      notify?.('info', t('chat.queue.enqueuedTitle'), t('chat.queue.enqueuedDetail', { count: sendQueue.length + 1 }))
       if (!customInput) setInput('')
       return
     }
@@ -1296,14 +1312,28 @@ ${t('ai.chat.prompt')}`
       let assistantContent = ''
 
       const useToolLoop =
-        agentMode && !planMode && agentSettings.useToolLoop && supportsAgentToolCalling(aiConfig.provider)
+        agentMode &&
+        !(planMode && !queuedPlanBackfill && !queuedSpecBackfill) &&
+        agentSettings.useToolLoop &&
+        supportsAgentToolCalling(aiConfig.provider)
+
+      const applyQueueWorkflowContext = (summary: string) => {
+        if (queuedPlanBackfill) {
+          return appendWorkflowSystemAddon(summary, 'plan-exec', language)
+        }
+        if (queuedSpecBackfill) {
+          return appendWorkflowSystemAddon(summary, 'spec-exec', language)
+        }
+        return summary
+      }
 
       if (agentMode && useToolLoop) {
-        const workspaceSummary = await buildAgentWorkspaceSummary(
+        let workspaceSummary = await buildAgentWorkspaceSummary(
           effectiveTextToSend,
           action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : undefined,
           forceSlim,
         )
+        workspaceSummary = applyQueueWorkflowContext(workspaceSummary)
         const toolMessages = buildAgentToolMessages(workspaceSummary, effectiveTextToSend, history)
         const builtPayloadWarning = evaluateBuiltMessagesPreflight({
           messages: toolMessages,
@@ -1368,6 +1398,7 @@ ${t('ai.chat.prompt')}`
             : log
         }
 
+        assistantContent = sanitizeChatAssistantOutput(assistantContent)
         setMessages((prev) => upsertAssistantMessage(prev, assistantContent))
 
         if (result.pendingChanges.length > 0) {
@@ -1446,12 +1477,15 @@ ${t('ai.chat.prompt')}`
       }
 
       if (agentMode) {
-        const workspaceSummary = await buildAgentWorkspaceSummary(
+        let workspaceSummary = await buildAgentWorkspaceSummary(
           effectiveTextToSend,
           action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : undefined,
           forceSlim,
         )
-        const finalSummary = planMode ? buildPlanModeSystemPrompt(workspaceSummary) : workspaceSummary
+        workspaceSummary = applyQueueWorkflowContext(workspaceSummary)
+        const finalSummary = planMode
+          ? buildPlanModeSystemPrompt(workspaceSummary, language)
+          : appendChatUserOutputRules(workspaceSummary)
         aiMessages = aiAgentService.buildMessages(effectiveTextToSend, finalSummary, history)
       } else {
         let systemPrompt: string
@@ -1478,7 +1512,9 @@ ${t('ai.chat.prompt')}`
             buildMentionContextSection(query, editorFiles, projectIndexManager.getIndex(), language),
         })
         if (planMode) {
-          systemPrompt = buildPlanModeSystemPrompt(systemPrompt)
+          systemPrompt = buildPlanModeSystemPrompt(systemPrompt, language)
+        } else {
+          systemPrompt = appendChatUserOutputRules(systemPrompt)
         }
 
         aiMessages = [
@@ -1537,6 +1573,7 @@ ${t('ai.chat.prompt')}`
 
       await sendMessage(aiConfig, aiMessages, (chunk) => {
         assistantContent += chunk
+        assistantContent = sanitizeChatAssistantOutput(assistantContent)
         setMessages((prev) => upsertAssistantMessage(prev, assistantContent))
       }, { signal: streamAbortRef.current?.signal })
 
@@ -1555,7 +1592,10 @@ ${t('ai.chat.prompt')}`
             )
             await sendMessage(aiConfig, followUpMessages, (chunk) => {
               followUpContent += chunk
-              setMessages((prev) => upsertAssistantMessage(prev, `${assistantSoFar}\n\n${followUpContent}`))
+              followUpContent = sanitizeChatAssistantOutput(followUpContent)
+              setMessages((prev) =>
+                upsertAssistantMessage(prev, `${assistantSoFar}\n\n${followUpContent}`),
+              )
             }, { signal: streamAbortRef.current?.signal })
             return followUpContent
           },
@@ -1565,6 +1605,7 @@ ${t('ai.chat.prompt')}`
         if (mcpTurn.toolLog.length > 0) {
           assistantContent = `${assistantContent}\n\n${t('chat.mcp.results')}\n${mcpTurn.toolLog.join('\n')}`
         }
+        assistantContent = sanitizeChatAssistantOutput(assistantContent)
         setMessages((prev) => upsertAssistantMessage(prev, assistantContent))
       }
 
@@ -1670,7 +1711,11 @@ ${t('ai.chat.prompt')}`
 
       if (queuedSpecBackfill) {
         setFailedSpecExecution({
-          prompt: `请执行这个规格任务，并说明改动文件与验证步骤：\n\n[${queuedSpecBackfill.taskPath}] ${queuedSpecBackfill.taskText}`,
+          prompt: buildSpecExecutionPrompt(
+            queuedSpecBackfill.taskPath,
+            queuedSpecBackfill.taskText,
+            language,
+          ),
           backfill: queuedSpecBackfill,
           error: message.split('\n')[0],
         })
@@ -2045,7 +2090,7 @@ ${t('ai.chat.prompt')}`
               <div className={`chat-msg-row ${isAssistant ? '' : 'chat-msg-row--user'}`}>
                 {isAssistant && (
                   <div className="chat-msg-avatar chat-msg-avatar--assistant">
-                    <Bot size={14} color="#c4b5fd" />
+                    <Bot size={14} />
                   </div>
                 )}
 
@@ -2061,7 +2106,7 @@ ${t('ai.chat.prompt')}`
 
                 {!isAssistant && (
                   <div className="chat-msg-avatar chat-msg-avatar--user">
-                    <User size={14} color="#5ee9b5" />
+                    <User size={14} />
                   </div>
                 )}
               </div>
@@ -2087,7 +2132,7 @@ ${t('ai.chat.prompt')}`
         {loading && (
           <div className="chat-loading-row">
             <div className="chat-msg-avatar chat-msg-avatar--assistant">
-              <Bot size={14} color="#c4b5fd" />
+              <Bot size={14} />
             </div>
             <div className="chat-loading-bubble">
               <div className="chat-loading-bubble__inner">
@@ -2181,9 +2226,9 @@ ${t('ai.chat.prompt')}`
             className="chat-quick-btn"
             onClick={runFirstPlanStep}
             disabled={loading}
-            title="执行计划中的第一步"
+            title={t('chat.plan.runFirstStepTitle')}
           >
-            执行第一步
+            {t('chat.plan.runFirstStep')}
           </button>
         ) : null}
       </div>
@@ -2302,8 +2347,7 @@ ${t('ai.chat.prompt')}`
             countUnresolvedMentions(mentionPreflight) === 0 ? (
               <button
                 type="button"
-                className="chat-btn-primary-sm"
-                style={{ marginTop: 8 }}
+                className="chat-btn-primary-sm chat-mention-preflight__retry"
                 onClick={() => {
                   trackEvent('chat.mention_slim_retry', {
                     ambiguousCount: countAmbiguousMentions(mentionPreflight),
@@ -2349,19 +2393,7 @@ ${t('ai.chat.prompt')}`
         ) : null}
 
         {activeMentionQuery !== null && mentionBlockedByIndexBuild ? (
-          <div
-            className="chat-mention-list"
-            style={{
-              padding: '10px 12px',
-              fontSize: '12px',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.5,
-              border: '1px solid var(--border-color)',
-              borderRadius: '12px',
-              marginBottom: '8px',
-            }}
-            role="status"
-          >
+          <div className="chat-mention-blocked" role="status">
             {t('chat.mentionBuildingBlocked')}
           </div>
         ) : null}
@@ -2375,10 +2407,10 @@ ${t('ai.chat.prompt')}`
                 className={`chat-mention-item ${index === mentionIndex ? 'chat-mention-item--active' : ''}`}
                 onClick={() => pickMention(hit)}
               >
-                <span style={{ opacity: 0.7 }}>{hit.type === 'symbol' ? '◎' : '📄'}</span>
+                <span className="chat-mention-item__kind">{hit.type === 'symbol' ? '◎' : '📄'}</span>
                 <span>{hit.type === 'symbol' ? hit.name : hit.path}</span>
                 {hit.line ? (
-                  <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontSize: '11px' }}>
+                  <span className="chat-mention-item__meta">
                     {hit.path}:{hit.line}
                   </span>
                 ) : null}
@@ -2392,24 +2424,14 @@ ${t('ai.chat.prompt')}`
         indexStats.indexedFiles >= 10 &&
         mentionHits.length === 0 &&
         indexBuildState.status === 'ready' ? (
-          <div
-            style={{
-              marginBottom: '10px',
-              padding: '10px 12px',
-              borderRadius: '12px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-secondary)',
-              color: 'var(--text-primary)',
-            }}
-          >
-            <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>{t('chat.mentionOnboardingTitle')}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '10px' }}>
+          <div className="chat-mention-onboarding">
+            <div className="chat-mention-onboarding__title">{t('chat.mentionOnboardingTitle')}</div>
+            <div className="chat-mention-onboarding__body">
               {t('chat.mentionOnboardingBody')}
             </div>
             <button
               type="button"
-              className="btn btn-secondary"
-              style={{ padding: '6px 10px' }}
+              className="btn btn-secondary chat-mention-onboarding__btn"
               onClick={() => {
                 setMentionOnboardingDismissed(true)
                 try {

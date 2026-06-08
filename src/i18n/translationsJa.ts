@@ -157,6 +157,15 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'subscription.pricing.liveStripe': '{methods} 対応；Pro $9.99/月、Team $19.99/月',
   'subscription.pricing.publicWelfare':
     '公益無料 IDE：サブスクリプション料は永久無料。プラットフォーム AI の日次クォータは緩和済み。BYOK の利用を推奨します。',
+  'subscription.unit.workspaces': ' 件',
+  'subscription.checkout.paddle': 'Paddle でアップグレード',
+  'subscription.checkout.paddleHint': 'Paddle の安全なチェックアウトにリダイレクト（海外 MoR）',
+  'subscription.payMethod.paddle': 'Paddle',
+  'subscription.checkout.overseasSoon': '海外決済は近日公開',
+  'subscription.overseasComingSoon':
+    '海外 Pro/Team サブスクは近日公開。現在は無料版 + プラットフォーム AI、または設定で BYOK をご利用ください。',
+  'subscription.pricing.cnWithOverseasSoon':
+    '国内は {methods} 対応。海外 Pro/Team 決済は v1.6.1 で公開予定。現在は無料版 + BYOK をご利用ください。',
 
   'collab.title': 'ライブコラボ',
   'collab.hero.title': '同じワークスペースで一緒に作業',
@@ -233,6 +242,8 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'git.branchNameRequired': 'ブランチ名を入力',
   'git.branchNameInvalid': 'ブランチ名が無効',
   'git.branchExists': 'ブランチは既に存在',
+  'git.error.noHunksSelected': 'diff hunk が選択されていません',
+  'git.error.stagedDiffUnavailable': '{path} のステージ済み差分を読み取れません',
   'git.createBranch': '作成',
   'git.createBranchTitle': '新規ブランチ',
   'git.newBranchPlaceholder': 'feature/my-branch',
@@ -315,4 +326,82 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'git.historyFilterPathHint':
     'パス絞り込みは展開済みでファイル一覧を読み込んだコミットのみ対象です。コミットを展開するか、履歴を追加読み込みしてください。',
   'git.tab.historyFiltered': '履歴 {shown}/{total}',
+
+  'settings.ai.platformNotConfiguredPlatformOnly':
+    'プラットフォーム AI キー未設定のため、ログインユーザーの Chat / Agent は利用不可。管理者に PLATFORM_* 環境変数の設定を依頼してください。',
+  'settings.ai.platformFreeEconomyHint':
+    '無料版は経済モデル（Flash / Lite 等）のみ。リクエストごとに加重クォータを消費。Pro で標準 / 高度 / 最先端モデルを解放。',
+  'settings.ai.usageDashboardDescPlatform':
+    '読み取り専用：プラットフォームゲートウェイのリクエスト、日次加重クォータ、推定コスト（正式請求ではありません）。',
+  'settings.ai.usageOtherTodayPlatform': '今日その他（同期）',
+  'settings.v16.title': 'v1.6 ローンチ準備',
+  'settings.v16.desc': 'GA スプリント状態（クライアント機能 + 運用は V1.6_GA_EXECUTION.md）。',
+  'settings.v16.platformAi': 'プラットフォーム AI ゲートウェイ（ログイン即利用）',
+  'settings.v16.tabPlusPlus': 'Tab++ 本番',
+  'settings.v16.overseasBilling': '海外 MoR サブスク',
+  'settings.v16.overseasDeferred': 'v1.6.0：海外 Pro/Team 延期 · Free+BYOK',
+  'settings.v16.overseasLive': 'Paddle/Stripe live',
+  'settings.tabCompletion.tabPlusPlusPocOn': 'Tab++ POC：複数行ゴースト補完 ON（v1.4.3 実験）',
+  'settings.tabCompletion.tabPlusPlusPocTargets': 'Tab++ POC 目標：P95 < {p95} ms · debounce {debounce} ms',
+
+  'mcp.browser.title': 'MCP ツールブラウザ',
+  'mcp.browser.desc': 'Schema に沿って MCP ツールを手動呼び出し、接続と応答構造を検証。',
+  'mcp.browser.loading': '読み込み中…',
+  'mcp.browser.empty': '有効な MCP サーバーがありません。',
+  'mcp.browser.call': 'ツールを呼び出す',
+  'mcp.log.title': 'MCP 構造化結果（{count}）',
+  'mcp.log.onlyFailures': '失敗のみ',
+  'mcp.log.groupByServer': 'サーバー別にグループ',
+  'mcp.log.empty': '表示する項目がありません。',
+  'mcp.log.statusOk': 'OK',
+  'mcp.log.statusError': 'ERROR',
+
+  'format.error.failed': 'フォーマットに失敗しました。原文を保持しました',
+  'runtime.webcontainer.crossOriginHint':
+    'Cross-Origin Isolation が無効です。WebContainer が起動しない場合があります。HTTPS またはデスクトップ版と COOP/COEP ヘッダーをご利用ください。',
+
+  'chat.preflight.indexTrimmed': 'Agent インデックス要約を簡略化（予算内に自動トリム）',
+  'chat.quotaExceeded':
+    '本日の AI クォータを使い切りました（{used}/{limit}）。\n\n無料版は日次制限です。後でもう一度試すか、アップグレードしてください。',
+  'chat.needSignInForPlatform':
+    'プラットフォーム AI にはサインインが必要です。登録してログインするか、設定で BYOK に切り替えてください。',
+  'chat.pendingPlatformSignIn': 'サインイン待ち',
+  'chat.queue.processing': '処理中…',
+  'chat.queue.activePlan': 'Plan：{text}',
+  'chat.queue.activeSpec': 'Spec：{text}',
+  'chat.agentRun.savedTitle': '保存済み',
+  'chat.agentRun.savedDetail': 'この Agent 実行記録を保存しました',
+  'chat.agentRun.noRecordTitle': '記録なし',
+  'chat.agentRun.noRecordDetail': '保存された Agent 実行はまだありません',
+  'chat.agentRun.replayContent': '最新実行を再生（ツール {activity} 件 · {rounds} ラウンド）',
+  'chat.report.copiedTitle': 'コピー済み',
+  'chat.report.copiedDetail': 'キューレポートをクリップボードにコピーしました',
+  'chat.report.savedTitle': '保存済み',
+  'chat.report.savedDetail': 'レポートを {path} に書き込みました',
+  'chat.report.noReportTitle': 'レポートなし',
+  'chat.report.noReportHint': '先に .aide/reports にキューレポートを保存してください',
+  'chat.report.noReportSaveFirst': '先にキューレポートを保存してください',
+  'chat.report.openFailedTitle': '開けません',
+  'chat.report.openFailedDetail': 'レポートファイルが見つかりません：{path}',
+  'chat.report.restoreEmptyTitle': '復元する項目なし',
+  'chat.report.restoreNoMatch': 'レポートに一致する未実行項目がありません',
+  'chat.report.restoredTitle': 'キューを復元',
+  'chat.report.restoreDetail': 'Plan {plan} · Spec {spec}{extra}',
+  'chat.report.restoreUnresolved': ' · 未一致 {count} 件',
+  'chat.report.autoSavedTitle': '自動保存',
+  'chat.report.autoSavedDetail': 'キューレポート：{path}',
+  'chat.queue.completeBody': 'タスクキューの実行が完了しました',
+  'chat.queue.enqueuedTitle': 'キューに追加',
+  'chat.queue.enqueuedDetail': '未実行タスク +1（現在 {count}）',
+  'chat.plan.runFirstStep': '最初のステップを実行',
+  'chat.plan.runFirstStepTitle': 'プランの最初のステップを実行',
+
+  'welcome.cloudDegradedPlatform':
+    'クラウド DB が一時利用不可：登録 / クラウドワークスペースが失敗する場合があります。ローカル編集は利用可能。管理者は DATABASE_URL と AUTH_SECRET を確認してください。',
+  'welcome.platformQuotaHint':
+    '無料版：日次 200 加重クォータ、デフォルトは経済モデル（DeepSeek Flash 等）。Pro で全モデルと 2000 クォータ。',
+  'welcome.pathLocalTitle': 'ローカルで開始',
+  'welcome.pathLocalDesc': 'ログイン不要 · BYOK とローカル編集',
+  'welcome.pathCloudTitle': 'クラウドアカウントでログイン',
+  'welcome.pathCloudDesc': 'ワークスペース同期とプラットフォーム AI クォータ',
 }

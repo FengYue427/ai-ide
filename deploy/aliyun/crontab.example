@@ -1,0 +1,11 @@
+# AI IDE — 阿里云 ECS crontab（crontab -e）
+# 将 YOUR_DOMAIN、CRON_SECRET 替换为实际值
+
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# 每日 03:00 订阅到期（替代 Vercel Cron）
+0 3 * * * curl -fsS -X POST -H "Authorization: Bearer YOUR_CRON_SECRET" "https://YOUR_DOMAIN/api/billing/expire-subscriptions" >> /var/log/ai-ide-cron.log 2>&1
+
+# 每日 04:00 后台任务队列
+0 4 * * * curl -fsS -X POST -H "Authorization: Bearer YOUR_CRON_SECRET" "https://YOUR_DOMAIN/api/jobs/process" >> /var/log/ai-ide-cron.log 2>&1

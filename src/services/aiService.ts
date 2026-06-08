@@ -18,6 +18,7 @@ export interface AIConfig {
 import { createTranslator, type Language, type TranslationKey } from '../i18n'
 import { getApiLanguage } from '../lib/apiLanguage'
 import { checkAIQuotaLocal, reserveAIUsageFromStore } from './usageService'
+import { extractUserFacingStreamDelta, sanitizeChatAssistantOutput } from './chatOutputSanitizer'
 
 export interface QuotaCheck {
   allowed: boolean
@@ -352,18 +353,23 @@ async function sendOpenAICompatible(
   onStream?: (chunk: string) => void,
   signal?: AbortSignal
 ): Promise<string> {
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+    temperature: 0.7,
+    stream: !!onStream,
+  }
+  if (/deepseek\.com/i.test(endpoint)) {
+    body.thinking = { type: 'disabled' }
+  }
+
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.7,
-      stream: !!onStream
-    }),
+    body: JSON.stringify(body),
     signal
   })
   
@@ -394,9 +400,11 @@ async function sendOpenAICompatible(
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6))
-              const content = data.choices?.[0]?.delta?.content || ''
-              fullContent += content
-              onStream(content)
+              const content = extractUserFacingStreamDelta(data.choices?.[0]?.delta)
+              if (content) {
+                fullContent += content
+                onStream(content)
+              }
             } catch {
               // Ignore parse errors
             }
@@ -409,11 +417,11 @@ async function sendOpenAICompatible(
       }
       throw err
     }
-    return fullContent
+    return sanitizeChatAssistantOutput(fullContent)
   }
   
   const data = await response.json()
-  return data.choices[0].message.content
+  return sanitizeChatAssistantOutput(data.choices[0].message.content ?? '')
 }
 
 async function sendClaude(

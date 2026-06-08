@@ -237,7 +237,11 @@ export const createBuiltinPlugins = (locale = getWorkspaceLocale()): Plugin[] =>
               const active = context.files.getActive()
               const content = context.editor.getValue()
               const language = active?.language ?? 'javascript'
-              const formatted = await formatService.formatCode(content, language)
+              const { code: formatted, error } = await formatService.formatCode(content, language)
+              if (error) {
+                context.ui.showNotification(error, 'error')
+                return
+              }
               context.editor.setValue(formatted)
               context.ui.showNotification(
                 createTranslator(getWorkspaceLocale())('plugin.builtin.format.done'),

@@ -1,3 +1,6 @@
+import { buildPlanExecutionPrompt as buildPlanExecutionPromptWorkflow } from './planSpecWorkflowService'
+import type { Language } from '../i18n'
+
 export interface PlanStepItem {
   text: string
   line: number
@@ -19,8 +22,8 @@ export function getFirstPlanStep(planText: string): string | null {
   return first?.text ?? null
 }
 
-export function buildPlanExecutionPrompt(step: string): string {
-  return `请执行这个计划步骤，并给出改动文件与验证结果：\n\n- [ ] ${step}`
+export function buildPlanExecutionPrompt(step: string, locale?: Language): string {
+  return buildPlanExecutionPromptWorkflow(step, locale ?? 'zh-CN')
 }
 
 export function buildPlanBackgroundJobPrompt(planPath: string, step: string): string {
