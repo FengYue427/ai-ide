@@ -7,6 +7,9 @@ import { openSettingsTab, prepareE2EStorage, prepareLoggedInUser, waitForShellRe
 test.describe('spec catalog UI (v1.5.7)', () => {
   test.beforeEach(async ({ page }) => {
     await prepareLoggedInUser(page)
+    await page.addInitScript(() => {
+      localStorage.removeItem('ai-ide:spec-hooks-guide-v157')
+    })
     await prepareE2EStorage(page)
     await page.goto('/')
     await waitForShellReady(page)

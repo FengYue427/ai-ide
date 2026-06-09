@@ -72,6 +72,14 @@ export async function preparePluginReviewSeed(page: Page): Promise<void> {
   }, E2E_PLUGIN_REVIEW_SEED)
 }
 
+/** Ensure guest session for quota / auth UI tests (no mocked login). */
+export async function prepareGuestUser(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    localStorage.removeItem('ai-ide:user')
+    sessionStorage.removeItem('ai-quota-server-cache')
+  })
+}
+
 export async function prepareLoggedInUser(page: Page): Promise<void> {
   await page.addInitScript((session) => {
     localStorage.setItem('ai-ide:user', JSON.stringify(session))

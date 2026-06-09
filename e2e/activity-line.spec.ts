@@ -30,7 +30,8 @@ test.describe('v1.4.8 activity line stub', () => {
     const line = page.getByTestId('aide-activity-line')
     await expect(line).toBeVisible({ timeout: 10_000 })
     await expect(page.getByTestId('aide-activity-line-body')).toHaveCount(0)
-    await expect(line).toContainText(/点击展开|Click to expand/i)
+    await expect(page.getByTestId('aide-activity-line-toggle')).toBeVisible()
+    await expect(line).toContainText(/点击展开|Click to expand|\d+\s*条事件|\d+\s*events/i)
   })
 
   test('chat panel shows activity line and displays published event', async ({ page }) => {

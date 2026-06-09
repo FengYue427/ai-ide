@@ -34,7 +34,7 @@
     "test:local": "tsc --noEmit && npm run test:unit",
     "test:api:local": "npm run wait:api && npm run test:integration:offline",
     "test:e2e": "playwright test --project=ui",
-    "test:e2e:local": "npm run build && playwright test --project=ui",
+    "test:e2e:local": "npm run test:e2e",
     "test:e2e:stack": "node scripts/run-e2e-stack.mjs",
     "test:e2e:collab": "node scripts/run-e2e-collab.mjs",
     "test:e2e:install": "playwright install chromium",

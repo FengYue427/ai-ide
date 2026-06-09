@@ -7,20 +7,22 @@ const isCi = !!process.env.CI
 const e2eTarget = (process.env.E2E_TARGET || '').toLowerCase()
 
 /** Always preview production build — matches CI and avoids dev-server flake on Windows. */
-const uiWebServerCommand = `npx vite preview --host 127.0.0.1 --port ${uiPort} --strictPort`
+const uiPreviewCommand = `npx vite preview --host 127.0.0.1 --port ${uiPort} --strictPort`
+/** Local runs rebuild so stale dist cannot satisfy E2E; CI job runs `npm run build` first. */
+const uiWebServerCommand = isCi ? uiPreviewCommand : `npm run build && ${uiPreviewCommand}`
 
 /** UI E2E hits /api/* via Vite preview proxy — API must listen on 3001 (see vite.config preview.proxy). */
 const uiWebServers = [
   {
     command: 'npm run dev:api',
     url: `http://127.0.0.1:${apiPort}/api/auth/session`,
-    reuseExistingServer: !isCi,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   {
     command: uiWebServerCommand,
     url: `http://127.0.0.1:${uiPort}`,
-    reuseExistingServer: !isCi,
+    reuseExistingServer: false,
     timeout: 180_000,
   },
 ] as const
@@ -39,7 +41,7 @@ export default defineConfig({
           command:
             e2eTarget === 'collab' ? 'npm run dev:stack:collab' : 'npm run dev:stack',
           url: `http://127.0.0.1:${stackPort}`,
-          reuseExistingServer: !isCi,
+          reuseExistingServer: false,
           timeout: 180_000,
         }
       : uiWebServers,

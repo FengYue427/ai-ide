@@ -10,7 +10,9 @@ test.describe('billing skeleton (no real payment)', () => {
     await expect(page.getByText('专业版').first()).toBeVisible()
     await expect(page.getByText('$9.99').first()).toBeVisible()
     await expect(page.getByText('$19.99').first()).toBeVisible()
-    await expect(page.getByText(/经济模型|economy models/i).first()).toBeVisible()
+    await expect(
+      page.getByText(/经济模型|economy models|Flash.*Lite|Platform AI/i).first(),
+    ).toBeVisible()
     // Beta note, or live Stripe/CN pricing once billing Path B is enabled.
     await expect(page.getByText(/(公测期|支持.*\$9\.99|Stripe)/)).toBeVisible()
   })
