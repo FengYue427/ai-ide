@@ -14,7 +14,9 @@ test.describe('Auth & quota UI', () => {
     await gotoApp(page)
     await page.getByRole('button', { name: /AI 助手|AI assistant/i }).click()
 
-    await expect(page.getByText('今日用量')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText(/\d+\/200/)).toBeVisible()
+    const quota = page.locator('.quota-indicator')
+    await expect(quota).toBeVisible({ timeout: 15_000 })
+    await expect(quota).toContainText(/今日.*用量|AI usage today/i)
+    await expect(quota).toContainText(/\d+\/200/)
   })
 })

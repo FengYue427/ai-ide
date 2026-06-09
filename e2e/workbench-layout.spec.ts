@@ -94,7 +94,7 @@ test.describe('workbench shell layout', () => {
     await page.getByRole('button', { name: /AI 助手|AI assistant/i }).click()
     await expect(page.locator('.right-panel')).toBeVisible({ timeout: 8_000 })
 
-    await page.setViewportSize({ width: 800, height: 700 })
+    await page.setViewportSize({ width: 700, height: 700 })
     await expect(page.locator('.workspace-main')).toHaveClass(/workspace-main--no-sidebar/, {
       timeout: 8_000,
     })
