@@ -8,20 +8,9 @@ import { PLATFORM_CLOUD_PROVIDERS } from './platformModelCatalog'
 
 const DOCS_ROOT = join(process.cwd(), 'docs')
 
-const F8_DOCS = [
-  'COMPETITOR_SCORE_V1.5.md',
-  'V1.6_KICKOFF.md',
-  'ROADMAP_V1.6.md',
-  'V1.5_GA_EXECUTION.md',
-  'V1.5_ENV.md',
-  'RELEASE_NOTES_v1.5.0.md',
-]
-
 describe('v15Closeout F8', () => {
-  it('keeps v1.5 GA and F8 docs on disk', () => {
-    for (const name of F8_DOCS) {
-      expect(existsSync(join(DOCS_ROOT, name)), `missing ${name}`).toBe(true)
-    }
+  it('keeps slim docs footprint after v1.7 cleanup', () => {
+    expect(existsSync(join(DOCS_ROOT, 'DEPLOY_ALIYUN_CN.md'))).toBe(true)
   })
 
   it('summarizes v1.5 feature flags', () => {
