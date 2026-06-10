@@ -1,4 +1,4 @@
-/** OAuth buttons only when explicitly enabled (backend AUTH_* must also be set). */
+/** Optional client flag; live providers come from /api/auth/oauth/providers. */
 export function isOAuthEnabled(): boolean {
   return import.meta.env.VITE_ENABLE_OAUTH === 'true'
 }

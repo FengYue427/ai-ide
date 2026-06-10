@@ -111,6 +111,20 @@ export async function prepareLoggedInUser(page: Page): Promise<void> {
   }, E2E_LOGGED_IN_SESSION)
 }
 
+export async function prepareDesktopCrossOriginShell(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    localStorage.setItem('ai-ide:e2e-desktop-shell', '1')
+    ;(window as Window & { __desktopReloadCalled?: boolean }).__desktopReloadCalled = false
+    window.aiIdeDesktop = {
+      isDesktop: true,
+      reloadLocalShell: async () => {
+        ;(window as Window & { __desktopReloadCalled?: boolean }).__desktopReloadCalled = true
+        return { ok: true, mode: 'local-dist' as const }
+      },
+    } as Window['aiIdeDesktop']
+  })
+}
+
 export async function prepareE2EStorage(page: Page, files: E2ESeedFile[] = E2E_DEFAULT_FILES): Promise<void> {
   await page.addInitScript((seedFiles) => {
     localStorage.setItem('ai-ide:e2e-harness', '1')

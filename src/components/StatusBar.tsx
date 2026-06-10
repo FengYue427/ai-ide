@@ -1,8 +1,24 @@
 import React from 'react'
-import { Activity, AlertCircle, Bot, CheckCircle2, CircleDot, Globe, Radio, Save, Settings2, Shield, Sparkles, Zap } from 'lucide-react'
+import {
+  Activity,
+  AlertCircle,
+  Bot,
+  CheckCircle2,
+  CircleDot,
+  Globe,
+  Monitor,
+  Radio,
+  Save,
+  Settings2,
+  Shield,
+  Sparkles,
+  Zap,
+  CheckSquare,
+} from 'lucide-react'
 import { useI18n } from '../i18n'
 import { collabRoleLabel } from '../lib/collabPermissions'
 import { normalizeLanguage } from '../lib/language'
+import { getPlatformSurface, resolveRuntimeStatusKind } from '../lib/platformParity'
 import { shouldShowWorkspacePerformanceHint } from '../lib/welcomeOnboarding'
 import { useCollabSignalingDisplay } from '../hooks/useCollabSignalingDisplay'
 import { useIDEStore } from '../store/ideStore'
@@ -36,27 +52,13 @@ interface StatusBarProps {
   onOpenAISettings?: () => void
   onToggleAutoSave?: () => void
   onOpenSettings?: () => void
+  specCount?: number
+  specOpenTaskCount?: number
+  onOpenSpecStudio?: () => void
+  onRunFirstSpecTask?: () => void
 }
 
-const pillStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '6px',
-  padding: '5px 10px',
-  borderRadius: '999px',
-  border: '1px solid var(--border-color)',
-  background: 'color-mix(in srgb, var(--bg-tertiary) 88%, transparent)',
-  color: 'var(--text-secondary)',
-  fontSize: '11px',
-  fontWeight: 700,
-  minHeight: '26px',
-}
-
-const actionButtonStyle: React.CSSProperties = {
-  ...pillStyle,
-  background: 'transparent',
-  cursor: 'pointer',
-}
+const pillClass = (extra = '') => ['status-pill', extra].filter(Boolean).join(' ')
 
 const StatusBar: React.FC<StatusBarProps> = ({
   currentFileName,
@@ -83,6 +85,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
   onOpenAISettings,
   onToggleAutoSave,
   onOpenSettings,
+  specCount = 0,
+  specOpenTaskCount = 0,
+  onOpenSpecStudio,
+  onRunFirstSpecTask,
 }) => {
   const { t } = useI18n()
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
@@ -98,11 +104,16 @@ const StatusBar: React.FC<StatusBarProps> = ({
       : uiLocale === 'en-US'
         ? t('status.locale.en')
         : t('status.locale.zh')
+
   const getLanguageLabel = () => {
     const map: Record<string, string> = {
       javascript: 'JavaScript',
       typescript: 'TypeScript',
       python: 'Python',
+      java: 'Java',
+      cpp: 'C++',
+      go: 'Go',
+      rust: 'Rust',
       html: 'HTML',
       css: 'CSS',
       json: 'JSON',
@@ -119,49 +130,49 @@ const StatusBar: React.FC<StatusBarProps> = ({
         ? t('collab.m1.signaling.webrtc')
         : ''
 
+  const platformSurface = getPlatformSurface()
+  const runtimeKind = resolveRuntimeStatusKind(isWebContainerReady)
+  const runtimeReady = runtimeKind === 'desktopReady' || runtimeKind === 'webReady'
+  const runtimeLabel =
+    runtimeKind === 'desktopReady'
+      ? t('platform.runtime.desktopReady')
+      : runtimeKind === 'webReady'
+        ? t('status.runtime.ready')
+        : runtimeKind === 'desktopIdle'
+          ? t('platform.runtime.desktopIdle')
+          : t('status.runtime.loading')
+
+  const diagnosticTone =
+    diagnosticErrors > 0
+      ? 'status-pill--danger'
+      : diagnosticWarnings > 0
+        ? 'status-pill--warning'
+        : 'status-pill--success'
+
   return (
-    <div
-      className="app-status-bar"
-      style={{
-        minHeight: '36px',
-        borderTop: '1px solid var(--border-color)',
-        background: 'color-mix(in srgb, var(--bg-secondary) 92%, transparent)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '16px',
-        padding: '6px 12px',
-        flexWrap: 'wrap',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-        <div style={{ ...pillStyle, color: 'var(--text-primary)', background: 'transparent' }}>
-          {isModified ? <CircleDot size={12} color="var(--warning-color)" /> : <CheckCircle2 size={12} color="var(--success-color)" />}
+    <div className="app-status-bar">
+      <div className="app-status-bar__cluster">
+        <div className={pillClass('status-pill--ghost')}>
+          {isModified ? (
+            <CircleDot size={12} color="var(--warning-color)" />
+          ) : (
+            <CheckCircle2 size={12} color="var(--success-color)" />
+          )}
           <span>{currentFileName}</span>
         </div>
 
-        <div style={pillStyle}>
+        <div className={pillClass()}>
           <Sparkles size={12} />
           <span>{getLanguageLabel()}</span>
         </div>
 
-        <div style={pillStyle}>
+        <div className={pillClass()}>
           <span>{t('editor.meta.lines', { count: lineCount })}</span>
           <span>·</span>
           <span>{t('editor.meta.chars', { count: charCount })}</span>
         </div>
 
-        <div
-          style={{
-            ...pillStyle,
-            color:
-              diagnosticErrors > 0
-                ? 'var(--danger-color)'
-                : diagnosticWarnings > 0
-                  ? 'var(--warning-color)'
-                  : 'var(--success-color)',
-          }}
-        >
+        <div className={pillClass(diagnosticTone)}>
           <AlertCircle size={12} />
           <span>
             {diagnosticCount > 0
@@ -175,35 +186,36 @@ const StatusBar: React.FC<StatusBarProps> = ({
           </span>
         </div>
 
-        {showPerformanceHint && (
-          <div style={{ ...pillStyle, color: 'var(--warning-color)' }} title={t('status.performance.hint')}>
+        {showPerformanceHint ? (
+          <div className={pillClass('status-pill--warning')} title={t('status.performance.hint')}>
             <Activity size={12} />
             <span>{t('status.performance.hint')}</span>
           </div>
-        )}
+        ) : null}
 
-        {activeFeatures.codeReview && (
-          <div style={{ ...pillStyle, color: '#60a5fa' }}>
+        {activeFeatures.codeReview ? (
+          <div className={pillClass('status-pill--accent')}>
             <Shield size={12} />
             <span>{t('status.feature.review')}</span>
           </div>
-        )}
-        {activeFeatures.performance && (
-          <div style={{ ...pillStyle, color: 'var(--success-color)' }}>
+        ) : null}
+
+        {activeFeatures.performance ? (
+          <div className={pillClass('status-pill--success')}>
             <Activity size={12} />
             <span>{t('status.feature.performance')}</span>
           </div>
-        )}
+        ) : null}
 
         {collaborationRoomId && collaborationMemberRole ? (
-          <div style={{ ...pillStyle, color: 'var(--accent-color)' }} data-testid="collab-role-badge">
+          <div className={pillClass('status-pill--accent')} data-testid="collab-role-badge">
             <span>{collabRoleLabel(collaborationMemberRole, t)}</span>
           </div>
         ) : null}
 
         {collaborationRoomId && signalingMode ? (
           <div
-            style={{ ...pillStyle, color: 'var(--text-secondary)' }}
+            className={pillClass()}
             data-testid="collab-signaling-badge"
             title={t('collab.m1.signaling.label')}
           >
@@ -218,37 +230,86 @@ const StatusBar: React.FC<StatusBarProps> = ({
         ) : null}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-        <div style={{ ...pillStyle, color: isWebContainerReady ? 'var(--success-color)' : 'var(--warning-color)' }}>
-          <Zap size={12} />
-          <span>{isWebContainerReady ? t('status.runtime.ready') : t('status.runtime.loading')}</span>
+      <div className="app-status-bar__cluster">
+        <div
+          className={pillClass('status-pill--platform')}
+          data-testid="status-platform-surface"
+          title={t('platform.parity.desc')}
+        >
+          {platformSurface === 'desktop' ? <Monitor size={12} /> : <Globe size={12} />}
+          <span>
+            {platformSurface === 'desktop' ? t('status.platform.desktop') : t('status.platform.browser')}
+          </span>
         </div>
 
-        <button onClick={onToggleAutoSave} style={{ ...actionButtonStyle, color: autoSaveEnabled ? 'var(--success-color)' : 'var(--text-secondary)' }} title={t('status.autosaveTitle')}>
+        <div
+          className={pillClass(runtimeReady ? 'status-pill--success' : 'status-pill--warning')}
+          data-testid="status-runtime-ready"
+          title={runtimeLabel}
+        >
+          <Zap size={12} />
+          <span>{runtimeLabel}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggleAutoSave}
+          className={pillClass(`status-pill--action ${autoSaveEnabled ? 'status-pill--success' : ''}`)}
+          title={t('status.autosaveTitle')}
+        >
           <Save size={12} />
           <span>{autoSaveEnabled ? t('status.autosave.on') : t('status.autosave.off')}</span>
         </button>
 
-        {gitBranch && (
+        {specCount > 0 && onOpenSpecStudio ? (
           <>
             <button
+              type="button"
+              onClick={onOpenSpecStudio}
+              className={pillClass('status-pill--action status-pill--accent')}
+              data-testid="status-spec-studio"
+              title={t('status.spec.studioTitle')}
+            >
+              <Sparkles size={12} />
+              <span>{t('status.spec.count', { count: specCount, open: specOpenTaskCount })}</span>
+            </button>
+            {specOpenTaskCount > 0 && onRunFirstSpecTask ? (
+              <button
+                type="button"
+                onClick={onRunFirstSpecTask}
+                className={pillClass('status-pill--action status-pill--success')}
+                data-testid="status-spec-run"
+                title={t('status.spec.runTitle')}
+              >
+                <CheckSquare size={12} />
+                <span>{t('status.spec.run')}</span>
+              </button>
+            ) : null}
+          </>
+        ) : null}
+
+        {gitBranch ? (
+          <>
+            <button
+              type="button"
               onClick={onOpenGitPanel}
-              style={{
-                ...actionButtonStyle,
-                color: gitModified > 0 ? 'var(--warning-color)' : 'var(--text-secondary)',
-              }}
+              className={pillClass(
+                `status-pill--action ${gitModified > 0 ? 'status-pill--warning' : ''}`,
+              )}
               title={t('status.gitTitle')}
             >
               <span>{gitBranch}</span>
-              {gitModified > 0 && <span>({gitModified})</span>}
+              {gitModified > 0 ? <span>({gitModified})</span> : null}
             </button>
             {gitUnstaged > 0 && onStageAll ? (
               <button
+                type="button"
                 onClick={onStageAll}
                 disabled={gitStageAllDisabled}
+                className={pillClass(
+                  `status-pill--action ${gitStageAllDisabled ? '' : 'status-pill--success'}`,
+                )}
                 style={{
-                  ...actionButtonStyle,
-                  color: gitStageAllDisabled ? 'var(--text-secondary)' : 'var(--success-color)',
                   opacity: gitStageAllDisabled ? 0.55 : 1,
                   cursor: gitStageAllDisabled ? 'not-allowed' : 'pointer',
                 }}
@@ -258,20 +319,25 @@ const StatusBar: React.FC<StatusBarProps> = ({
               </button>
             ) : null}
           </>
-        )}
+        ) : null}
 
-        <button onClick={onOpenAISettings} style={{ ...actionButtonStyle, color: isAIConnected ? 'var(--accent-color)' : 'var(--text-secondary)' }} title={t('status.aiTitle')}>
+        <button
+          type="button"
+          onClick={onOpenAISettings}
+          className={pillClass(`status-pill--action ${isAIConnected ? 'status-pill--accent' : ''}`)}
+          title={t('status.aiTitle')}
+        >
           <Bot size={12} />
-          <span>{isAIConnected ? aiProvider ?? t('status.ai.connected') : t('status.ai.configure')}</span>
+          <span>{isAIConnected ? (aiProvider ?? t('status.ai.connected')) : t('status.ai.configure')}</span>
           {isAIConnected ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
         </button>
 
-        <div style={pillStyle}>
+        <div className={pillClass()}>
           <Globe size={12} />
           <span>{localeLabel}</span>
         </div>
 
-        <button onClick={onOpenSettings} style={actionButtonStyle} title={t('status.settingsTitle')}>
+        <button type="button" onClick={onOpenSettings} className={pillClass('status-pill--action')} title={t('status.settingsTitle')}>
           <Settings2 size={12} />
           <span>{t('status.settings')}</span>
         </button>

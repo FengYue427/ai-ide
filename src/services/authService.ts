@@ -6,6 +6,7 @@ import {
 } from '../../lib/api/workspacePayload'
 import { unifiedStorage, StorageLayer } from './unifiedStorage'
 import { readJsonResponse, apiFetch } from './apiUtils'
+import { persistAuthToken, clearAuthToken } from '../lib/desktopAuthToken'
 import { trackEvent } from '../lib/observability'
 import { pickApiResponseMessage } from '../lib/apiUserMessage'
 import { getWorkspaceLocale } from './workspaceErrors'
@@ -97,14 +98,21 @@ class AuthService {
     localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users))
   }
 
+  private async captureAuthToken(data: { token?: string } | null | undefined): Promise<void> {
+    if (data?.token) {
+      await persistAuthToken(data.token)
+    }
+  }
+
   // 获取当前会话
   async getSession(): Promise<Session | null> {
     try {
       const res = await apiFetch('/api/auth/session', { credentials: 'include' })
       if (res.ok) {
-        const session = await readJsonResponse<Session>(res)
-        if (session?.user) {
-          return this.persistSession(session.user)
+        const data = await readJsonResponse<{ user?: User; token?: string }>(res)
+        if (data?.user) {
+          await this.captureAuthToken(data)
+          return this.persistSession(data.user)
         }
       }
     } catch {
@@ -157,7 +165,8 @@ class AuthService {
       })
       
       if (res.ok) {
-        const data = await readJsonResponse<{ user?: User }>(res)
+        const data = await readJsonResponse<{ user?: User; token?: string }>(res)
+        await this.captureAuthToken(data)
         const session = data?.user ? await this.persistSession(data.user) : await this.getSession()
         if (session?.user) {
           trackEvent('auth.login.success', { userId: session.user.id })
@@ -204,8 +213,9 @@ class AuthService {
       })
       
       if (res.ok) {
-        const data = await readJsonResponse<{ user?: User }>(res)
+        const data = await readJsonResponse<{ user?: User; token?: string }>(res)
         if (data?.user) {
+          await this.captureAuthToken(data)
           await this.persistSession(data.user)
           trackEvent('auth.register.success', { userId: data.user.id })
           return { success: true, user: data.user }
@@ -272,21 +282,31 @@ class AuthService {
   }
 
   /** After GitHub/Google redirect, bridge Auth.js session → auth-token cookie. */
-  async syncOAuthSession(): Promise<{ success: boolean; error?: string; user?: User }> {
+  async syncOAuthSession(): Promise<{ success: boolean; error?: string; user?: User; token?: string }> {
     try {
       const res = await apiFetch('/api/auth/oauth/sync', {
         method: 'POST',
         credentials: 'include',
       })
-      const data = await readJsonResponse<{ user?: User; error?: string }>(res)
+      const data = await readJsonResponse<{ user?: User; token?: string; error?: string }>(res)
       if (res.ok && data?.user) {
+        await this.captureAuthToken(data)
         await this.persistSession(data.user)
-        return { success: true, user: data.user }
+        return { success: true, user: data.user, token: data.token }
       }
       return { success: false, error: data?.error || at()('auth.api.oauthSyncFailed') }
     } catch {
       return { success: false, error: at()('auth.error.network') }
     }
+  }
+
+  /** Desktop deep link hands off JWT from browser OAuth completion. */
+  async applyBearerTokenFromDeepLink(token: string): Promise<User | null> {
+    const trimmed = token.trim()
+    if (!trimmed) return null
+    await persistAuthToken(trimmed)
+    const session = await this.getSession()
+    return session?.user ?? null
   }
 
   onSessionExpired(handler: (() => void) | null): void {
@@ -304,6 +324,7 @@ class AuthService {
       }
       this.currentUser = null
       await unifiedStorage.set(USER_KEY, null, { layer: StorageLayer.LOCAL })
+      await clearAuthToken()
       this.notifyListeners()
       this.sessionExpiredHandler?.()
     } finally {
@@ -318,6 +339,7 @@ class AuthService {
     } finally {
       this.currentUser = null
       await unifiedStorage.set(USER_KEY, null, { layer: StorageLayer.LOCAL })
+      await clearAuthToken()
       this.notifyListeners()
     }
   }

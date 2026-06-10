@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Radio, Share2, Users } from 'lucide-react'
+import { getShareableAppOrigin } from '../lib/appOrigin'
 import { useI18n } from '../i18n'
 import { isCollabM1Enabled } from '../lib/collabM1Features'
 import { applyCollabRoomSnapshot, endCollabSession } from '../lib/collabRoomState'
@@ -272,9 +273,11 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
     }
   }
 
+  const shareOrigin = getShareableAppOrigin()
+  const roomLink = shareOrigin ? `${shareOrigin}?room=${encodeURIComponent(roomId)}` : ''
+
   const copyRoomLink = async () => {
-    const link = `${window.location.origin}?room=${roomId}`
-    await navigator.clipboard.writeText(link)
+    await navigator.clipboard.writeText(roomLink)
     setCopied(true)
     if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
     copiedTimerRef.current = setTimeout(() => {
@@ -422,7 +425,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
             <div className="collab-copy-row">
               <input
                 className="form-input"
-                value={`${window.location.origin}?room=${roomId}`}
+                value={roomLink}
                 readOnly
               />
               <button type="button" className="btn btn-primary" onClick={copyRoomLink}>

@@ -5,7 +5,11 @@
 import { createServer, type Server } from 'node:http'
 import { dispatchApiRequest } from '../lib/api/dispatch'
 import { prisma } from '../src/lib/prisma'
-import { loadEnvLocal } from './load-env-local.mjs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+import { loadEnvLocal, loadProductionEnv } from './load-env-local.mjs'
+
+const scriptRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const PORT = Number(process.env.API_PORT || 3001)
 
@@ -63,7 +67,16 @@ async function handleNodeRequest(
   nodeRes.end(buffer)
 }
 
-loadEnvLocal()
+if (process.env.NODE_ENV === 'production') {
+  if (!loadProductionEnv()) {
+    console.error(
+      `❌ Missing production env — create ${join(scriptRoot, '.env.production')} (see deploy/aliyun/env.production.example)`,
+    )
+    process.exit(1)
+  }
+} else {
+  loadEnvLocal()
+}
 
 const server: Server = createServer((req, res) => {
   handleNodeRequest(req, res).catch((err) => {

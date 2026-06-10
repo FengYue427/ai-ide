@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import { getStripePriceId } from './plans'
+import { buildAppReturnUrl } from './returnUrl'
 
 export function isStripeConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY?.trim())
@@ -27,6 +28,7 @@ export async function createStripeCheckoutSession(params: {
   email: string
   planName: string
   stripeCustomerId?: string | null
+  desktopShell?: boolean
 }): Promise<string> {
   const priceId = getStripePriceId(params.planName)
   if (!priceId) {
@@ -44,8 +46,12 @@ export async function createStripeCheckoutSession(params: {
     mode: 'subscription',
     ...customerField,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/?subscription=success&plan=${params.planName}`,
-    cancel_url: `${origin}/?subscription=canceled`,
+    success_url: buildAppReturnUrl(
+      origin,
+      { subscription: 'success', plan: params.planName },
+      { desktopShell: params.desktopShell },
+    ),
+    cancel_url: buildAppReturnUrl(origin, { subscription: 'canceled' }, { desktopShell: params.desktopShell }),
     metadata: {
       userId: params.userId,
       planName: params.planName,
@@ -87,12 +93,17 @@ export async function cancelStripeSubscriptionImmediately(stripeSubscriptionId: 
 export async function createStripeBillingPortalSession(params: {
   req: Request
   customerId: string
+  desktopShell?: boolean
 }): Promise<string> {
   const stripe = getStripeClient()
   const origin = resolveAppOrigin(params.req)
   const session = await stripe.billingPortal.sessions.create({
     customer: params.customerId,
-    return_url: `${origin}/?subscription=portal_return`,
+    return_url: buildAppReturnUrl(
+      origin,
+      { subscription: 'portal_return' },
+      { desktopShell: params.desktopShell },
+    ),
   })
   if (!session.url) {
     throw new Error('Stripe 未返回客户门户 URL')

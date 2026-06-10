@@ -1,0 +1,24 @@
+.sidebar-header__icon-btn--spec {
+  color: var(--accent-color);
+}
+
+.sidebar-header__icon-btn--spec:hover {
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+}
+
+.sidebar-context-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.sidebar-context-item:hover {
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}

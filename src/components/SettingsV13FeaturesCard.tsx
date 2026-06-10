@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useI18n } from '../i18n'
 import { getIndexBuildTelemetry } from '../lib/indexBuildTelemetry'
 import {
@@ -8,6 +8,7 @@ import {
   isIndexBuildTelemetryEnabled,
 } from '../lib/v13Features'
 import { getEmbeddingPersistMetrics } from '../services/embeddingPersistCache'
+import { SettingsFeatureCardShell } from './settings/SettingsFeatureCardShell'
 
 export function SettingsV13FeaturesCard() {
   const { t } = useI18n()
@@ -24,47 +25,45 @@ export function SettingsV13FeaturesCard() {
   }, [])
 
   return (
-    <div className="settings-card settings-card--grid" data-testid="settings-v13-features">
-      <div className="settings-privacy-row">
-        <Sparkles size={16} color="var(--accent-color)" />
-        <strong>{t('settings.v13.title')}</strong>
-      </div>
-      <p className="settings-privacy-text">{t('settings.v13.desc')}</p>
-      <ul className="settings-v12-status-list" style={{ margin: '10px 0 0', paddingLeft: '18px', fontSize: '12px', lineHeight: 1.7 }}>
+    <SettingsFeatureCardShell
+      testId="settings-v13-features"
+      icon={<Sparkles size={16} color="var(--accent-color)" />}
+      title={t('settings.v13.title')}
+      description={t('settings.v13.desc')}
+    >
+      <li>
+        {t('settings.v13.pythonNav')}:{' '}
+        {status.pythonNavigation ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+      </li>
+      <li>
+        {t('settings.v13.embeddingPersist')}:{' '}
+        {status.embeddingPersistCache ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+      </li>
+      <li>
+        {t('settings.v13.indexTelemetry')}:{' '}
+        {status.indexBuildTelemetry ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+      </li>
+      <li>
+        {t('settings.v13.backgroundAgent')}:{' '}
+        {status.backgroundAgent ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+      </li>
+      {isEmbeddingPersistCacheEnabled() ? (
         <li>
-          {t('settings.v13.pythonNav')}:{' '}
-          {status.pythonNavigation ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+          {t('settings.v13.embeddingMetrics', {
+            hits: embeddingMetrics.hits,
+            misses: embeddingMetrics.misses,
+            expired: embeddingMetrics.expired,
+          })}
         </li>
+      ) : null}
+      {isIndexBuildTelemetryEnabled() && indexTelemetry.lastMode ? (
         <li>
-          {t('settings.v13.embeddingPersist')}:{' '}
-          {status.embeddingPersistCache ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
+          {t('settings.v13.indexBuildMode', {
+            mode: indexTelemetry.lastMode,
+            ms: indexTelemetry.lastDurationMs ?? '—',
+          })}
         </li>
-        <li>
-          {t('settings.v13.indexTelemetry')}:{' '}
-          {status.indexBuildTelemetry ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
-        </li>
-        <li>
-          {t('settings.v13.backgroundAgent')}:{' '}
-          {status.backgroundAgent ? t('settings.v12.statusOn') : t('settings.v12.statusOff')}
-        </li>
-        {isEmbeddingPersistCacheEnabled() ? (
-          <li>
-            {t('settings.v13.embeddingMetrics', {
-              hits: embeddingMetrics.hits,
-              misses: embeddingMetrics.misses,
-              expired: embeddingMetrics.expired,
-            })}
-          </li>
-        ) : null}
-        {isIndexBuildTelemetryEnabled() && indexTelemetry.lastMode ? (
-          <li>
-            {t('settings.v13.indexBuildMode', {
-              mode: indexTelemetry.lastMode,
-              ms: indexTelemetry.lastDurationMs ?? '—',
-            })}
-          </li>
-        ) : null}
-      </ul>
-    </div>
+      ) : null}
+    </SettingsFeatureCardShell>
   )
 }

@@ -11,14 +11,16 @@ import { buildRuntimeStatePreview } from '../services/runtime/runtimeStatePrevie
 import { formatRuntimeStateDisplayLines } from '../services/runtime/runtimeStateDisplay'
 import { useIDEStore } from '../store/ideStore'
 
+/** Runtime + Activity Line status (production or legacy preview). */
 export function SettingsAideRuntimeStubCard() {
   const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
 
-  if (!isAideRuntimeUiEnabled()) return null
-
   const runtimeProduction = isAideRuntimeProductionEnabled()
   const activityProduction = isActivityLineProductionEnabled()
+  const legacyStubOnly = isAideRuntimeUiEnabled() && !runtimeProduction && !activityProduction
+
+  if (!isAideRuntimeUiEnabled()) return null
 
   const runtimeStatePreview = useMemo(() => buildRuntimeStatePreview(files), [files])
   const runtimeStateLines =
@@ -28,6 +30,12 @@ export function SettingsAideRuntimeStubCard() {
         )
       : []
 
+  const title = runtimeProduction
+    ? t('settings.aideRuntime.engineProductionCardTitle')
+    : activityProduction
+      ? t('settings.aideRuntime.productionCardTitle')
+      : t('settings.aideRuntime.stubCardTitle')
+
   const description = runtimeProduction
     ? t('settings.aideRuntime.engineProductionCardDesc', { mode: getOrchestratorMode() })
     : activityProduction
@@ -35,10 +43,13 @@ export function SettingsAideRuntimeStubCard() {
       : t('settings.aideRuntime.stubCardDesc', { mode: getOrchestratorMode() })
 
   return (
-    <div className="settings-card settings-card--grid" data-testid="settings-aide-runtime-stub">
+    <div
+      className="settings-card settings-card--grid"
+      data-testid={legacyStubOnly ? 'settings-aide-runtime-stub' : 'settings-aide-runtime-card'}
+    >
       <div className="settings-privacy-row">
         <Activity size={16} color="var(--accent-color)" />
-        <strong>{t('settings.aideRuntime.stubCardTitle')}</strong>
+        <strong>{title}</strong>
         {runtimeProduction ? (
           <span className="settings-badge settings-badge--enabled" style={{ marginLeft: 8 }}>
             F4
@@ -50,26 +61,13 @@ export function SettingsAideRuntimeStubCard() {
           </span>
         ) : null}
       </div>
-      <p className="settings-privacy-text" style={{ marginTop: 8, fontSize: 12, lineHeight: 1.6 }}>
-        {description}
-      </p>
+      <p className="settings-privacy-text settings-runtime-card-desc">{description}</p>
       {runtimeProduction && runtimeStatePreview.exists ? (
         <div
-          className="settings-privacy-text"
+          className="settings-privacy-text settings-runtime-state-summary"
           data-testid="settings-runtime-state-summary"
-          style={{
-            marginTop: 8,
-            padding: 10,
-            borderRadius: 8,
-            border: '1px solid var(--border-color)',
-            fontSize: 11,
-            lineHeight: 1.6,
-            color: runtimeStatePreview.parse.ok ? 'var(--text-secondary)' : 'var(--danger-color, #c44)',
-          }}
         >
-          <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>
-            {t('runtime.state.cardTitle')}
-          </div>
+          <div className="settings-runtime-state-summary__title">{t('runtime.state.cardTitle')}</div>
           {runtimeStatePreview.parse.ok ? (
             runtimeStateLines.map((line) => <div key={line}>{line}</div>)
           ) : (

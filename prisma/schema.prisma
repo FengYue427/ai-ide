@@ -57,6 +57,7 @@ model User {
   collabRoomsHosted CollaborationRoom[] @relation("CollabRoomHost")
   collabMemberships CollaborationMember[]
   pluginPublishReviews PluginPublishReview[]
+  projectShares       ProjectShare[]
 }
 
 // Plugin publish manual review queue (v1.2.8 F3)
@@ -210,6 +211,21 @@ model CollaborationMember {
 
   @@unique([roomId, userId])
   @@index([userId])
+}
+
+// 工作区快照分享（跨设备只读链接，30 天过期）
+model ProjectShare {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  userId    String?
+  files     String   @db.Text
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
 }
 
 // AI 使用量记录

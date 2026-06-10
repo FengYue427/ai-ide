@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { ALIPAY_PENDING_KEY, BILLING_SUCCESS_KEY, syncBillingFromServer } from '../services/billingSync'
-import { readJsonResponse } from '../services/apiUtils'
+import { readJsonResponse, apiFetch } from '../services/apiUtils'
+import { markDesktopShellReturn, returnToLocalDesktopShell, shouldReturnToDesktopShell } from '../lib/externalNavigation'
+import { isDesktopApp } from '../services/desktopBridge'
+import { markDesktopReturnPending, triggerDesktopReturnFromBrowser } from '../lib/desktopDeepLink'
 import { useIDEStore } from '../store/ideStore'
 import type { ToastKind } from '../components/FeedbackCenter'
 import type { TranslateFn } from '../i18n'
@@ -43,10 +46,24 @@ export function useBillingReturn(
     }
 
     void (async () => {
+      const returnToDesktopShell = shouldReturnToDesktopShell(params)
+
+      const finishDesktopReturn = async () => {
+        cleanUrl()
+        if (!returnToDesktopShell) return
+        if (isDesktopApp()) {
+          markDesktopShellReturn('billing')
+          await returnToLocalDesktopShell()
+          return
+        }
+        markDesktopReturnPending('billing')
+        triggerDesktopReturnFromBrowser('billing', { searchParams: params })
+      }
+
       if (alipayReturn) {
         sessionStorage.removeItem(ALIPAY_PENDING_KEY)
         try {
-          const res = await fetch('/api/payment/alipay/return', {
+          const res = await apiFetch('/api/payment/alipay/return', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -84,7 +101,7 @@ export function useBillingReturn(
           const sub = await syncBillingFromServer(plan || 'pro')
           if (sub.plan !== 'free') markPaySuccess(sub.plan)
         }
-        cleanUrl()
+        await finishDesktopReturn()
         return
       }
 
@@ -103,7 +120,7 @@ export function useBillingReturn(
         await syncBillingFromServer()
         notify('success', t('notify.subscriptionUpdated'))
       }
-      cleanUrl()
+      await finishDesktopReturn()
     })()
   }, [notify, t])
 }

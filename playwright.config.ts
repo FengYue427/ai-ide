@@ -5,11 +5,14 @@ const stackPort = 3000
 const apiPort = 3001
 const isCi = !!process.env.CI
 const e2eTarget = (process.env.E2E_TARGET || '').toLowerCase()
+/** Separate from Electron `dist/` to avoid Windows EBUSY when the desktop shell holds assets open. */
+const e2eDistDir = process.env.E2E_DIST_DIR || 'dist-e2e'
 
 /** Always preview production build — matches CI and avoids dev-server flake on Windows. */
-const uiPreviewCommand = `npx vite preview --host 127.0.0.1 --port ${uiPort} --strictPort`
+const uiPreviewCommand = `npx vite preview --host 127.0.0.1 --port ${uiPort} --strictPort --outDir ${e2eDistDir}`
 /** Local runs rebuild so stale dist cannot satisfy E2E; CI job runs `npm run build` first. */
-const uiWebServerCommand = isCi ? uiPreviewCommand : `npm run build && ${uiPreviewCommand}`
+const uiBuildCommand = `npm run build -- --outDir ${e2eDistDir}`
+const uiWebServerCommand = isCi ? uiPreviewCommand : `${uiBuildCommand} && ${uiPreviewCommand}`
 
 /** UI E2E hits /api/* via Vite preview proxy — API must listen on 3001 (see vite.config preview.proxy). */
 const uiWebServers = [

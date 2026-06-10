@@ -190,6 +190,11 @@
   margin-bottom: var(--space-3);
 }
 
+.share-hint--muted {
+  opacity: 0.75;
+  font-size: 12px;
+}
+
 .btn-icon-gap {
   margin-right: 6px;
 }

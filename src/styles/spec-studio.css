@@ -1,0 +1,113 @@
+.modal--spec-studio .modal-body {
+  max-width: 720px;
+}
+
+.spec-studio-lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.spec-studio-fields {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.spec-studio-label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.spec-studio-goal {
+  min-height: 56px;
+  resize: vertical;
+}
+
+.spec-studio-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.spec-studio-filter {
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.spec-studio-filter--active {
+  border-color: color-mix(in srgb, var(--accent-color) 45%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  color: var(--text-primary);
+}
+
+.spec-studio-grid {
+  margin-top: 4px;
+}
+
+.spec-studio-card--selected {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-color) 35%, transparent);
+}
+
+.spec-studio-badge {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+  color: var(--accent-color);
+  vertical-align: middle;
+}
+
+.spec-studio-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.spec-studio-footer .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spec-studio-created {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 720px) {
+  .modal--spec-studio .modal {
+    width: calc(100vw - 24px);
+    max-width: none;
+  }
+
+  .modal--spec-studio .spec-studio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .spec-studio-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .spec-studio-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

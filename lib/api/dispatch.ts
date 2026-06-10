@@ -242,6 +242,26 @@ const routes: RouteEntry[] = [
   },
   { method: 'GET', match: (p) => (p === '/api/collab/rooms' ? {} : null), load: () => import('./handlers/collab/rooms/index'), export: 'GET' },
   { method: 'POST', match: (p) => (p === '/api/collab/rooms' ? {} : null), load: () => import('./handlers/collab/rooms/index'), export: 'POST' },
+  { method: 'GET', match: (p) => (p === '/api/shares' ? {} : null), load: () => import('./handlers/shares/index'), export: 'GET' },
+  { method: 'POST', match: (p) => (p === '/api/shares' ? {} : null), load: () => import('./handlers/shares/index'), export: 'POST' },
+  {
+    method: 'GET',
+    match: (p) => {
+      const m = p.match(/^\/api\/shares\/([^/]+)$/)
+      return m ? { slug: decodeURIComponent(m[1]) } : null
+    },
+    load: () => import('./handlers/shares/bySlug'),
+    export: 'GET',
+  },
+  {
+    method: 'DELETE',
+    match: (p) => {
+      const m = p.match(/^\/api\/shares\/([^/]+)$/)
+      return m ? { slug: decodeURIComponent(m[1]) } : null
+    },
+    load: () => import('./handlers/shares/bySlug'),
+    export: 'DELETE',
+  },
   {
     method: 'GET',
     match: (p) => {

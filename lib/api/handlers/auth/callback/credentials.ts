@@ -48,6 +48,7 @@ export async function POST(req: Request) {
       JSON.stringify(
         appendApiMessage(req, 'api.auth.loginOk', {
           success: true,
+          token,
           user: {
             id: user.id,
             email: user.email,

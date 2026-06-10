@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     return localizedSuccessResponse(
       request,
       'api.auth.oauthSyncOk',
-      { success: true, user },
+      { success: true, token, user },
       200,
       undefined,
       { 'Set-Cookie': buildAuthSetCookie(token) },

@@ -120,14 +120,58 @@ export function getPlanAmountCents(planName: string): number {
   return Math.round(yuan * 100)
 }
 
-export function formatPlanPrice(plan: PlanDefinition): string {
-  if (plan.price === 0) return '免费'
-  if (plan.currency === 'CNY') return `¥${plan.price}`
-  if (plan.currency === 'USD') {
-    const n = plan.price
-    return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`
+export type PlanPriceLike = Pick<PlanDefinition, 'name' | 'price' | 'currency'> & { priceCny?: number }
+
+export type PlanDisplayQuote = {
+  amount: number
+  currency: 'CNY' | 'USD'
+  symbol: '¥' | '$'
+  formatted: string
+}
+
+/** Merge API/DB plan rows with static catalog CNY pricing (¥39 / ¥79). */
+export function mergePlanCatalogPricing<T extends PlanPriceLike>(plan: T): T & { priceCny?: number } {
+  const catalog = findPlanByName(plan.name)
+  return { ...plan, priceCny: plan.priceCny ?? catalog?.priceCny }
+}
+
+/** UI quote — prefer CNY when mainland checkout (Alipay/WeChat) is active. */
+export function getPlanDisplayQuote(
+  plan: PlanPriceLike,
+  options?: { preferCny?: boolean; freeLabel?: string },
+): PlanDisplayQuote {
+  const merged = mergePlanCatalogPricing(plan)
+  const freeLabel = options?.freeLabel ?? '免费'
+
+  if (merged.price === 0 && getPlanPriceCny(merged as PlanDefinition) <= 0) {
+    return { amount: 0, currency: 'CNY', symbol: '¥', formatted: freeLabel }
   }
-  return `${plan.price} ${plan.currency}`
+
+  const preferCny = options?.preferCny ?? false
+  const cny = getPlanPriceCny(merged as PlanDefinition)
+  if (preferCny && cny > 0) {
+    return { amount: cny, currency: 'CNY', symbol: '¥', formatted: `¥${cny}` }
+  }
+
+  if (merged.currency === 'CNY' && merged.price > 0) {
+    return {
+      amount: merged.price,
+      currency: 'CNY',
+      symbol: '¥',
+      formatted: `¥${merged.price}`,
+    }
+  }
+
+  const n = merged.price
+  const formatted = Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`
+  return { amount: n, currency: 'USD', symbol: '$', formatted }
+}
+
+export function formatPlanPrice(
+  plan: PlanDefinition,
+  options?: { preferCny?: boolean; freeLabel?: string },
+): string {
+  return getPlanDisplayQuote(plan, options).formatted
 }
 
 /** Build { planName: limits } map for client services. */

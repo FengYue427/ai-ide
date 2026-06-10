@@ -986,3 +986,25 @@
   word-break: break-word;
   color: var(--text-secondary);
 }
+
+.settings-runtime-card-desc {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.settings-runtime-state-summary {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.settings-runtime-state-summary__title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}

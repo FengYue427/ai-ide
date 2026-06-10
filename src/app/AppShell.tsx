@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { FeedbackCenter } from '../components/FeedbackCenter'
+import { DesktopReturnPrompt } from '../components/DesktopReturnPrompt'
 import { PluginModal } from '../components/PluginModal'
 import { PanelResizeHandle } from '../components/PanelResizeHandle'
 import { useBillingReturn } from '../hooks/useBillingReturn'
+import { useDesktopShellReturn } from '../hooks/useDesktopShellReturn'
+import { useDesktopDeepLink } from '../hooks/useDesktopDeepLink'
 import { useBillingSync } from '../hooks/useBillingSync'
 import { usePluginHost } from '../hooks/usePluginHost'
 import { useAppBootstrap } from '../hooks/useAppBootstrap'
@@ -52,6 +55,7 @@ import { loadWorkspaceByRef } from '../services/workspaceLoader'
 import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { stageAllInWorkspace } from '../lib/gitQuickActions'
+import { useSpecTaskActions } from '../hooks/useSpecTaskActions'
 import type { EditorTheme } from '../store/ideStore'
 
 export function AppShell() {
@@ -87,6 +91,7 @@ export function AppShell() {
   const { toasts, confirmRequest, dismissToast, notify, requestConfirm, resolveConfirm } = useAppFeedback()
   useBackgroundJobsTracker(notify)
   const ui = useUIActions()
+  const { runFirstOpenSpecTask } = useSpecTaskActions(notify)
 
   const handleOpenRecentWorkspace = async (workspaceId: string) => {
     setShowWelcome(false)
@@ -164,6 +169,8 @@ export function AppShell() {
   useCollaborationSync()
   useCollabRoleSync(notify, t)
   useBillingReturn(notify, t)
+  useDesktopShellReturn(notify, t)
+  useDesktopDeepLink(notify, t)
 
   usePluginHost({ notify })
 
@@ -311,6 +318,7 @@ export function AppShell() {
 
   return (
     <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
+      <DesktopReturnPrompt />
       <AppToolbar
         isRunning={runtimeBusy}
         runtimeError={runtimeError}
@@ -363,6 +371,8 @@ export function AppShell() {
                 onCreateFile={handleCreateFile}
                 onDeleteFile={handleDeleteFile}
                 onOpenDropZone={ui.openDropZone}
+                onOpenSpecStudio={ui.openSpecStudio}
+                onRunFirstOpenSpecTask={runFirstOpenSpecTask}
               />
               <PanelResizeHandle
                 edge="right"
@@ -548,6 +558,7 @@ export function AppShell() {
         openWorkspaceManagerModal={ui.openWorkspaceManagerModal}
         openWorkspacePanelModal={ui.openWorkspacePanelModal}
         openTemplateModal={ui.openTemplateModal}
+        openSpecStudio={ui.openSpecStudio}
         openThemeSelector={ui.openThemeSelector}
         openWelcomeScreen={ui.openWelcomeScreen}
         openRegisterDialog={ui.openRegisterDialog}

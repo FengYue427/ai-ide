@@ -3,10 +3,12 @@ import { Building2, Check, Crown, Loader2, Zap } from 'lucide-react'
 import { hasCheckoutPayment } from '../../lib/billing/checkout'
 import { preferCnBillingCheckout } from '../../lib/billing/billingRegion'
 import { isOverseasCheckoutDeferred } from '../../lib/billing/overseasCheckout'
+import { getPlanDisplayQuote } from '../../lib/billing/plans'
 import { localizePlans } from '../lib/localizePlan'
 import { pickApiResponseMessage } from '../lib/apiUserMessage'
 import { buildSubscriptionPricingNote } from '../lib/subscriptionPricingNote'
-import { readJsonResponse } from '../services/apiUtils'
+import { readJsonResponse, apiFetch } from '../services/apiUtils'
+import { navigateToExternalUrl, appendDesktopCheckoutFields, resolveAppUrl } from '../lib/externalNavigation'
 import { BILLING_SUCCESS_KEY } from '../services/billingSync'
 import { authService } from '../services/authService'
 import { subscriptionService } from '../services/subscriptionService'
@@ -23,6 +25,7 @@ interface Plan {
   description: string
   price: number
   currency: string
+  priceCny?: number
   features: string[]
   limits: {
     aiRequestsPerDay: number
@@ -176,7 +179,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
   )
 
   const loadSubscription = () => {
-    return fetch('/api/subscription', { credentials: 'include' })
+    return apiFetch('/api/subscription', { credentials: 'include' })
       .then((response) => readJsonResponse<{ subscription?: SubscriptionStatus }>(response))
       .then((data) => {
         if (data?.subscription) {
@@ -201,7 +204,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
     void loadSubscription()
 
-    fetch('/api/subscription/payment-methods', { credentials: 'include' })
+    apiFetch('/api/subscription/payment-methods', { credentials: 'include' })
       .then((r) =>
         readJsonResponse<{
           alipay?: boolean
@@ -226,7 +229,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
       })
       .catch(() => {})
 
-    fetch('/api/subscription/plans', { credentials: 'include' })
+    apiFetch('/api/subscription/plans', { credentials: 'include' })
       .then((response) => readJsonResponse<{ plans?: Plan[] }>(response))
       .then((data) => {
         if (cancelled) return
@@ -285,11 +288,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
       setProcessingPlanId(planId)
       try {
         const channel = paymentMethods.paddle ? 'paddle' : 'stripe'
-        const response = await fetch('/api/subscription/checkout', {
+        const response = await apiFetch('/api/subscription/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ planId: planName, channel }),
+          body: JSON.stringify(appendDesktopCheckoutFields({ planId: planName, channel })),
         })
         const data = await readJsonResponse<{ mode?: string; url?: string; error?: string }>(response)
         if (
@@ -298,7 +301,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
           data.url &&
           /^https?:\/\//i.test(data.url)
         ) {
-          window.location.href = data.url
+          void navigateToExternalUrl(data.url)
           return
         }
         setError(data?.error || t('subscription.payFailed'))
@@ -313,11 +316,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     if (paymentMethods.devMock) {
       setProcessingPlanId(planId)
       try {
-        const response = await fetch('/api/subscription/checkout', {
+        const response = await apiFetch('/api/subscription/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ planId: planName }),
+          body: JSON.stringify(appendDesktopCheckoutFields({ planId: planName })),
         })
         const data = await readJsonResponse<{
           mode?: string
@@ -360,7 +363,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     setError('')
     setSuccess('')
     try {
-      const response = await fetch('/api/subscription/cancel', {
+      const response = await apiFetch('/api/subscription/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -394,7 +397,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     setError('')
     setSuccess('')
     try {
-      const response = await fetch('/api/subscription/resume', {
+      const response = await apiFetch('/api/subscription/resume', {
         method: 'POST',
         credentials: 'include',
       })
@@ -425,13 +428,15 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     setProcessingPlanId('portal')
     setError('')
     try {
-      const response = await fetch('/api/subscription/portal', {
+      const response = await apiFetch('/api/subscription/portal', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify(appendDesktopCheckoutFields({})),
       })
       const data = await readJsonResponse<{ url?: string; error?: string }>(response)
       if (data?.url && /^https?:\/\//i.test(data.url)) {
-        window.location.href = data.url
+        void navigateToExternalUrl(data.url)
         return
       }
       setError(data?.error || t('subscription.portalFailed'))
@@ -478,7 +483,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
           <p className="subscription-legal">
             <a
-              href={language === 'en-US' ? '/legal/payment-en.html' : '/legal/payment.html'}
+              href={resolveAppUrl(language === 'en-US' ? '/legal/payment-en.html' : '/legal/payment.html')}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -588,6 +593,10 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                 const isProcessing = processingPlanId === plan.id
 
                 const isPopular = plan.name === 'pro'
+                const priceQuote = getPlanDisplayQuote(plan, {
+                  preferCny: useCnCheckout,
+                  freeLabel: t('subscription.checkout.free'),
+                })
 
                 return (
                   <div
@@ -615,11 +624,17 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
                     <div className="subscription-plan-body">
                       <div className="subscription-plan-price-row">
-                        <span className="subscription-plan-currency">
-                          {plan.currency === 'CNY' ? '¥' : '$'}
-                        </span>
-                        <span className="subscription-plan-price">{plan.price}</span>
-                        <span className="subscription-plan-period">{t('subscription.perMonth')}</span>
+                        {priceQuote.amount > 0 ? (
+                          <>
+                            <span className="subscription-plan-currency">{priceQuote.symbol}</span>
+                            <span className="subscription-plan-price">{priceQuote.amount}</span>
+                            <span className="subscription-plan-period">{t('subscription.perMonth')}</span>
+                          </>
+                        ) : (
+                          <span className="subscription-plan-price subscription-plan-price--free">
+                            {priceQuote.formatted}
+                          </span>
+                        )}
                       </div>
 
                       <div className="subscription-limits-grid">

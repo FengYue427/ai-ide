@@ -56,14 +56,27 @@ export function parseEnvLocalContent(content) {
   return entries
 }
 
-export function loadEnvLocal() {
-  const envPath = join(root, '.env.local')
+export function loadEnvFromFile(envPath, { onlyIfUnset = true } = {}) {
   if (!existsSync(envPath)) return false
 
   for (const [key, val] of parseEnvLocalContent(readFileSync(envPath, 'utf8'))) {
-    if (!process.env[key]) process.env[key] = val
+    if (!onlyIfUnset && process.env[key] !== undefined) {
+      delete process.env[key]
+    }
+    if (!onlyIfUnset || !process.env[key]) process.env[key] = val
   }
   return true
+}
+
+export function loadEnvLocal() {
+  return loadEnvFromFile(join(root, '.env.local'))
+}
+
+/** Production on Aliyun ECS — reads `.env.production` or AI_IDE_ENV_FILE. */
+export function loadProductionEnv() {
+  const custom = process.env.AI_IDE_ENV_FILE?.trim()
+  if (custom) return loadEnvFromFile(custom)
+  return loadEnvFromFile(join(root, '.env.production'))
 }
 
 /** Call at script entry when run directly. */

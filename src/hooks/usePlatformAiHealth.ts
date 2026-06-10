@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiFetch } from '../services/apiUtils'
 
 export type PluginOpsHealth = {
   publishEnabled: boolean
@@ -19,7 +20,7 @@ export async function fetchPlatformAiHealth(): Promise<
   Exclude<PlatformAiHealthState, { status: 'loading' }>
 > {
   try {
-    const res = await fetch('/api/health', { signal: AbortSignal.timeout(12_000) })
+    const res = await apiFetch('/api/health', { signal: AbortSignal.timeout(12_000) })
     const json = (await res.json()) as {
       platformAi?: { configured?: boolean; provider?: string }
       plugins?: { publishEnabled?: boolean; officialKeyConfigured?: boolean }

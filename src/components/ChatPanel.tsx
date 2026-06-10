@@ -1,52 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { ChatPanelHeader } from './ChatPanelHeader'
 import {
-  Bot,
-  CheckSquare,
-  ChevronDown,
-  ChevronUp,
   Code2,
   FilePlus,
-  FolderOpen,
-  ListTodo,
-  Pause,
-  Send,
-  Server,
   Sparkles,
-  User,
   Wand2,
-  Zap,
 } from 'lucide-react'
-import { AgentToolPanel } from './AgentToolPanel'
-import { aiAgentService } from '../services/aiAgentService'
 import {
   appendMcpToolsToPrompt,
   buildMcpToolsPromptSection,
-  processAgentMcpTurn,
 } from '../services/mcpAgentBridge'
-import { getEnabledMcpServers, getMcpServersSync, getMcpToolCountEstimateSync, loadMcpServers, loadMcpSettings, refreshMcpToolCountEstimate } from '../services/mcpConfigService'
-import { parseAgentFileChanges, type AgentFileChange } from '../services/agentApplyService'
-import { getOldContentForPath } from '../services/fileApplyService'
+import type { AgentFileChange } from '../services/agentApplyService'
 import {
-  extractCodeBlocks,
-  generateCodePrompt,
-  sendMessage,
   type AIConfig,
   type QuotaCheck,
 } from '../services/aiService'
-import { supportsAgentToolCalling } from '../services/agentChatCompletion'
 import { appendAgentContextSections } from '../services/agentContextService'
-import { DEFAULT_AGENT_SETTINGS, loadAgentSettings } from '../services/agentSettingsService'
-import {
-  buildAgentToolMessages,
-  formatActivityForChat,
-  runAgentLoop,
-  type AgentActivityEntry,
-} from '../services/agentRunner'
+import { loadAgentSettings } from '../services/agentSettingsService'
+import type { AgentActivityEntry } from '../services/agentRunner'
 import { BILLING_SYNC_EVENT } from '../hooks/useBillingSync'
 import { fetchAIQuota } from '../services/usageService'
 import { workspaceContextService } from '../services/workspaceContextService'
-import { QuotaIndicator } from './ui/QuotaIndicator'
-import { getActiveMentionQuery, insertMention } from '../lib/mentionQuery'
 import { buildMentionContextSection } from '../services/mentionContextService'
 import {
   appendProjectRules,
@@ -60,137 +34,45 @@ import {
 } from '../services/projectTasksService'
 import type { ToastKind } from './FeedbackCenter'
 import { projectIndexManager } from '../services/projectIndexManager'
-import type { IndexSearchHit } from '../services/projectIndexService'
 import { canUseEmbeddings } from '../services/embeddingService'
 import { isSemanticSearchEnabled } from '../lib/semanticSearchPrefs'
 import { buildSemanticContextSection } from '../services/semanticSearchService'
 import { collectSearchableFiles } from '../services/searchService'
-import { ChatMessageBody } from './ChatMessageBody'
-import { ChatMessageActions } from './ChatMessageActions'
 import { McpToolLogPanel } from './McpToolLogPanel'
-import { formatChatErrorMessage } from '../services/chatErrorMessages'
 import { useI18n } from '../i18n'
-import { trackEvent } from '../lib/observability'
-import { ChatPayloadBudgetMeter } from './ChatPayloadBudgetMeter'
-import { estimateChatPayload, measureAiMessagesPayload } from '../services/chatPayloadEstimate'
-import {
-  applyPayloadMeterReserve,
-  comparePayloadEstimateToSend,
-  evaluateSendMentionGate,
-} from '../services/chatSendPreflight'
-import { getLargeRepoContextHint, shouldShowLargeRepoHint } from '../services/largeRepoContextHint'
-import {
-  countAmbiguousMentions,
-  countUnresolvedMentions,
-  runMentionPreflight,
-} from '../services/mentionPreflight'
-import { getPayloadBudget, toKb } from '../services/payloadBudget'
 import { isAiConfigured, isAiGatewayEnabled } from '../lib/aiPlatformMode'
 import { useIDEStore } from '../store/ideStore'
 import { appendSpecsContext, collectSpecSources } from '../services/specsService'
-import { loadAgentRunHistory, saveAgentRunHistoryItem } from '../services/agentRunHistoryService'
 import type { McpToolLogEntry } from '../services/mcpAgentBridge'
-import {
-  createInitialChatSessionState,
-  enqueueSend,
-  shiftQueue,
-  startRun,
-  type ChatSessionStatus,
-  type PendingSend,
-} from '../services/chatSessionOrchestrator'
-import { buildSpecExecutionLog } from '../services/specExecutionLog'
+import type { ChatSessionStatus, PendingSend } from '../services/chatSessionOrchestrator'
 import { buildPromptWithSharedContext } from '../services/chatPromptPipeline'
-import { buildChatHistory } from '../services/chatHistory'
-import { getPayloadWarningData } from '../services/chatPayloadPreflight'
-import {
-  buildAgentSendSlimPlan,
-  evaluateAgentSendPreflight,
-  evaluateBuiltMessagesPreflight,
-} from '../services/agentSendPreflight'
-import { appendToSpecAcceptanceFile } from '../services/specAcceptanceService'
-import { findRetryUserText } from '../services/chatRetry'
-import { buildMcpFollowUpMessages } from '../services/chatMcpFollowUp'
-import { removeTrailingUserMessage, upsertAssistantMessage } from '../services/chatMessageState'
-import { sanitizeChatAssistantOutput } from '../services/chatOutputSanitizer'
-import { applyPlanArtifactsWithResult, buildPlanModeSystemPrompt } from '../services/planModeService'
-import {
-  appendWorkflowSystemAddon,
-  buildSpecExecutionPrompt,
-} from '../services/planSpecWorkflowService'
-import { appendChatUserOutputRules } from '../services/agentPromptShared'
 import { buildPlanExecutionPrompt, getFirstPlanStep } from '../services/planExecutionService'
 import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
 import { createBackgroundJob } from '../services/backgroundJobsApiService'
-import { appendPlanExecutionBackfill } from '../services/planBackfillService'
-import { markPlanStepDone } from '../services/planStepCompletionService'
-import {
-  loadQueuedPlanExecutionsDetailed,
-  saveQueuedPlanExecutions,
-} from '../services/planQueuePersistenceService'
-import {
-  loadQueuedSpecExecutionsDetailed,
-  saveQueuedSpecExecutions,
-} from '../services/specQueuePersistenceService'
-import { TaskQueuePanel } from './TaskQueuePanel'
-import {
-  buildQueueExecutionReportMarkdown,
-  buildQueueReportPath,
-  upsertQueueReportFile,
-  type QueueExecutionReportInput,
-} from '../services/queueExecutionReportService'
-import { findLatestReportPath } from '../services/reportCatalogService'
-import {
-  buildQueueRestoreFromReport,
-  mergePlanRestoreItems,
-  mergeSpecRestoreItems,
-} from '../services/queueReportRestoreService'
-import {
-  loadQueueAutoReportPrefs,
-  notifyQueueComplete,
-} from '../services/queueAutoReportPrefsService'
+import { ChatRuntimeQueueSection } from './chat/ChatRuntimeQueueSection'
+import { ChatInputComposer } from './chat/ChatInputComposer'
+import { ChatQuickActionsBar } from './chat/ChatQuickActionsBar'
+import { ChatPendingAgentBar } from './chat/ChatPendingAgentBar'
+import { ChatMessagesList } from './chat/ChatMessagesList'
 import {
   loadQueueSessionStats,
   saveQueueSessionStats,
 } from '../services/queueSessionStatsPersistenceService'
 import {
-  buildIdeSpecQueueCoordinatorDeps,
-  onSpecQueueItemSucceeded,
-} from '../services/runtime/runtimeQueueCoordinator'
+  useChatSendOrchestrator,
+  type ChatMessage,
+  type ChatPayloadWarning,
+} from '../hooks/useChatSendOrchestrator'
+import { useChatQueueReport } from '../hooks/useChatQueueReport'
+import { useChatAgentRunHistory } from '../hooks/useChatAgentRunHistory'
+import { useChatPayloadEstimate } from '../hooks/useChatPayloadEstimate'
+import { useChatMentionComposer } from '../hooks/useChatMentionComposer'
 import {
   clearRuntimeQueuePause,
   getRuntimeQueuePause,
   subscribeRuntimeQueuePause,
 } from '../services/runtime/runtimeQueuePause'
-import type { QueuedSpecBackfill } from '../store/ideStore'
-
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-  isError?: boolean
-}
-
-type SendAction = 'explain' | 'refactor' | 'fix' | 'generate'
-
-type SendOptions = {
-  forceSlim?: boolean
-}
-
-type FailedPlanExecution = {
-  prompt: string
-  backfill: { planPath: string; stepText: string; stepLine?: number }
-  error: string
-}
-
-type FailedSpecExecution = {
-  prompt: string
-  backfill: { taskPath: string; taskText: string; specAcceptancePath: string }
-  error: string
-}
-
-type QueueDoneItem = {
-  kind: 'plan' | 'spec'
-  text: string
-}
+import type { FailedPlanExecution, FailedSpecExecution, RecentDoneQueueItem } from './TaskQueuePanel'
 
 const CHAT_MESSAGES_STORAGE_KEY = 'ai-ide:chat-messages'
 const CHAT_INPUT_STORAGE_KEY = 'ai-ide:chat-input'
@@ -296,11 +178,11 @@ ${t('ai.chat.prompt')}`
   })
   const lastPlanPathRef = useRef<string | null>(null)
   const [workspaceStats, setWorkspaceStats] = useState(workspaceContextService.getStats())
-  const [messages, setMessages] = useState<Message[]>(() => {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const raw = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY)
       if (raw) {
-        const parsed = JSON.parse(raw) as Message[]
+        const parsed = JSON.parse(raw) as ChatMessage[]
         if (Array.isArray(parsed) && parsed.length > 0) return parsed
       }
     } catch {
@@ -335,46 +217,18 @@ ${t('ai.chat.prompt')}`
   const [lastRunRounds, setLastRunRounds] = useState(0)
   const [mcpToolEntries, setMcpToolEntries] = useState<McpToolLogEntry[]>([])
   const [subscriptionExpiredBanner, setSubscriptionExpiredBanner] = useState<string | null>(null)
-  const [mentionHits, setMentionHits] = useState<IndexSearchHit[]>([])
-  const [recentMentionHits, setRecentMentionHits] = useState<IndexSearchHit[]>([])
-  const [mentionIndex, setMentionIndex] = useState(0)
-  const [payloadWarning, setPayloadWarning] = useState<{
-    estimatedBytes: number
-    budgetBytes: number
-    text: string
-    action?: SendAction
-    slimPlan: string[]
-  } | null>(null)
+  const [payloadWarning, setPayloadWarning] = useState<ChatPayloadWarning | null>(null)
   const [failedPlanExecution, setFailedPlanExecution] = useState<FailedPlanExecution | null>(null)
   const [failedSpecExecution, setFailedSpecExecution] = useState<FailedSpecExecution | null>(null)
   const [queueFailureStats, setQueueFailureStats] = useState({ plan: 0, spec: 0 })
   const [queueSuccessStats, setQueueSuccessStats] = useState({ plan: 0, spec: 0 })
-  const [recentDoneQueueItems, setRecentDoneQueueItems] = useState<QueueDoneItem[]>([])
+  const [recentDoneQueueItems, setRecentDoneQueueItems] = useState<RecentDoneQueueItem[]>([])
   const [queueSessionStatsHydrated, setQueueSessionStatsHydrated] = useState(false)
-  const [activeMentionQuery, setActiveMentionQuery] = useState<string | null>(null)
-  const [mentionOnboardingDismissed, setMentionOnboardingDismissed] = useState(() => {
-    try {
-      return typeof localStorage !== 'undefined' && localStorage.getItem('ai-ide:mention-onboarding-dismissed') === 'true'
-    } catch {
-      return false
-    }
-  })
   const [indexVersion, setIndexVersion] = useState(() => projectIndexManager.getVersion())
   const indexStats = useMemo(() => projectIndexManager.getIndexStats(), [indexVersion])
   const indexBuildState = useMemo(() => projectIndexManager.getBuildState(), [indexVersion])
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const streamAbortRef = useRef<AbortController | null>(null)
-  const stopRequestedRef = useRef(false)
-  const stopGeneration = useCallback(() => {
-    trackEvent('chat.abort', {
-      provider: aiConfig.provider,
-      agentMode,
-      workspaceContext: useWorkspaceContext,
-      messageCount: messages.length,
-    })
-    stopRequestedRef.current = true
-    streamAbortRef.current?.abort()
-  }, [agentMode, aiConfig.provider, messages.length, useWorkspaceContext])
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const [quota, setQuota] = useState<QuotaCheck>({
     allowed: true,
@@ -383,7 +237,6 @@ ${t('ai.chat.prompt')}`
     remaining: 50,
     plan: currentPlan,
   })
-  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const loaded = loadQueueSessionStats()
@@ -450,28 +303,6 @@ ${t('ai.chat.prompt')}`
 
   const mentionBlockedByIndexBuild = indexBuildState.status === 'building'
 
-  const refreshMentionHits = useCallback(
-    (text: string, cursor: number) => {
-      const query = getActiveMentionQuery(text, cursor)
-      if (query === null) {
-        setActiveMentionQuery(null)
-        setMentionHits([])
-        return
-      }
-      setActiveMentionQuery(query)
-      if (mentionBlockedByIndexBuild) {
-        setMentionHits(recentMentionHits)
-        setMentionIndex(0)
-        return
-      }
-      const hits = projectIndexManager.search(query, 8)
-      setMentionHits(hits)
-      if (hits.length > 0) setRecentMentionHits(hits)
-      setMentionIndex(0)
-    },
-    [indexVersion, mentionBlockedByIndexBuild, recentMentionHits],
-  )
-
   const activeFilePath = editorFiles[activeFileIndex]?.name ?? null
 
   const applyProjectRules = useCallback(
@@ -499,104 +330,31 @@ ${t('ai.chat.prompt')}`
     [messages],
   )
 
-  const [mcpToolsEnabled, setMcpToolsEnabled] = useState(
-    () => getMcpServersSync().filter((s) => s.enabled && s.url.trim()).length > 0,
-  )
-  const [mcpToolCount, setMcpToolCount] = useState<number | undefined>(() =>
-    getMcpToolCountEstimateSync(),
-  )
-
-  useEffect(() => {
-    let cancelled = false
-    void loadMcpServers().then(() =>
-      getEnabledMcpServers().then((servers) => {
-        if (!cancelled) setMcpToolsEnabled(servers.length > 0)
-      }),
-    )
-    void refreshMcpToolCountEstimate().then((count) => {
-      if (!cancelled) setMcpToolCount(count > 0 ? count : undefined)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const payloadEstimate = useMemo(() => {
-    if (!isConfigured) return null
-    const hasDraft = Boolean(input.trim())
-    const hasSession = messages.length > 2
-    if (!hasDraft && !useWorkspaceContext && !hasSession) return null
-
-    const semanticSearchEnabled =
-      useWorkspaceContext && isSemanticSearchEnabled() && canUseEmbeddings(aiConfig)
-    const agentToolLoopEnabled =
-      agentMode &&
-      !planMode &&
-      DEFAULT_AGENT_SETTINGS.useToolLoop &&
-      supportsAgentToolCalling(aiConfig.provider)
-    const mcpReserveOn = agentMode && mcpToolsEnabled
-
-    return estimateChatPayload({
-      draftText: input,
-      messages: chatHistoryMessages,
-      provider: aiConfig.provider,
-      language,
-      agentMode,
-      useWorkspaceContext,
-      workspaceSelectedFiles: workspaceStats.selectedFiles,
-      currentCode,
-      editorFiles,
-      index: projectIndexManager.getIndex(),
-      activeFilePath,
-      applyProjectRules,
-      defaultSystemPrompt: t('chat.system.default', { code: currentCode }),
-      semanticSearchEnabled,
-      agentToolLoopEnabled,
-      mcpToolsEnabled: mcpReserveOn,
-      mcpToolCount: mcpReserveOn ? mcpToolCount : undefined,
-    })
-  }, [
-    agentMode,
-    mcpToolsEnabled,
-    mcpToolCount,
-    aiConfig.apiKey,
-    aiConfig.provider,
-    applyProjectRules,
+  const {
+    payloadEstimate,
+    payloadMeterEstimate,
+    mentionPreflight,
+    largeRepoHint,
+    showLargeRepoHint,
+  } = useChatPayloadEstimate({
+    aiConfig,
+    isConfigured,
+    input,
+    messagesLength: messages.length,
     chatHistoryMessages,
+    agentMode,
+    planMode,
+    useWorkspaceContext,
+    workspaceSelectedFiles: workspaceStats.selectedFiles,
     currentCode,
     editorFiles,
     indexVersion,
-    input,
-    isConfigured,
-    language,
-    messages.length,
-    t,
-    useWorkspaceContext,
-    workspaceStats.selectedFiles,
+    indexStats,
     activeFilePath,
-    planMode,
-  ])
-
-  const payloadMeterEstimate = useMemo(
-    () => (payloadEstimate ? applyPayloadMeterReserve(payloadEstimate) : null),
-    [payloadEstimate],
-  )
-
-  const mentionPreflight = useMemo(() => {
-    if (!input.includes('@')) return null
-    return runMentionPreflight(input, editorFiles, projectIndexManager.getIndex())
-  }, [editorFiles, indexVersion, input])
-
-  const largeRepoHint = useMemo(() => getLargeRepoContextHint(indexStats), [indexStats])
-
-  const showLargeRepoHint = useMemo(
-    () =>
-      shouldShowLargeRepoHint(largeRepoHint, {
-        useWorkspaceContext,
-        mentionTokenCount: mentionPreflight?.tokens.length ?? 0,
-      }),
-    [largeRepoHint, mentionPreflight?.tokens.length, useWorkspaceContext],
-  )
+    applyProjectRules,
+    language,
+    t,
+  })
 
   const augmentWithSemanticContext = useCallback(
     async (basePrompt: string, query: string) => {
@@ -732,6 +490,75 @@ ${t('ai.chat.prompt')}`
     return () => window.removeEventListener(BILLING_SYNC_EVENT, onBillingSync)
   }, [refreshQuota, t])
 
+  const { handleSend, stopGeneration, retryFromMessageIndex } = useChatSendOrchestrator({
+    aiConfig,
+    messages,
+    setMessages,
+    input,
+    setInput,
+    loading,
+    setLoading,
+    sendQueue,
+    setSendQueue,
+    runId,
+    setRunId,
+    agentActivity,
+    setAgentActivity,
+    mcpToolEntries,
+    setMcpToolEntries,
+    payloadWarning,
+    setPayloadWarning,
+    pendingAgentChanges,
+    setPendingAgentChanges,
+    lastRunRounds,
+    setLastRunRounds,
+    failedPlanExecution,
+    setFailedPlanExecution,
+    failedSpecExecution,
+    setFailedSpecExecution,
+    setQueueFailureStats,
+    setQueueSuccessStats,
+    setRecentDoneQueueItems,
+    agentMode,
+    planMode,
+    useWorkspaceContext,
+    workspaceStats,
+    currentCode,
+    currentPlan,
+    currentUser,
+    isConfigured,
+    chatConfigHint,
+    quickActionLabels,
+    payloadMeterEstimate,
+    editorFiles,
+    language,
+    t,
+    notify,
+    onGenerateFiles,
+    buildAgentWorkspaceSummary,
+    refreshQuota,
+    setQuota,
+    indexStats,
+    lastPlanPathRef,
+    applyProjectRules,
+    augmentWithSemanticContext,
+    applyAgentContext,
+    queuedChatPrompt,
+    setQueuedChatPrompt,
+    queuedSpecBackfill,
+    setQueuedSpecBackfill,
+    queuedSpecExecutions,
+    setQueuedSpecExecutions,
+    shiftQueuedSpecExecution,
+    queuedPlanBackfill,
+    setQueuedPlanBackfill,
+    queuedPlanExecutions,
+    setQueuedPlanExecutions,
+    shiftQueuedPlanExecution,
+    setFiles,
+    sessionStatus,
+  })
+
   const refreshWorkspaceStats = useCallback(() => {
     setWorkspaceStats(workspaceContextService.getStats())
   }, [])
@@ -790,1027 +617,53 @@ ${t('ai.chat.prompt')}`
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  const appendError = (content: string) => {
-    setMessages((prev) => [...prev, { role: 'assistant', content, isError: true }])
-  }
+  const { copyMessageText, saveCurrentRun, replayLastRun, exportRunMarkdown } = useChatAgentRunHistory({
+    messages,
+    setMessages,
+    agentActivity,
+    lastRunRounds,
+    pendingAgentChanges,
+    setAgentActivity,
+    setPendingAgentChanges,
+    notify,
+    t,
+  })
 
-  const copyMessageText = useCallback(
-    async (text: string) => {
-      try {
-        await navigator.clipboard.writeText(text)
-        notify?.('success', t('chat.action.copied'), t('chat.action.copyDetail'))
-      } catch {
-        notify?.('error', t('chat.action.copyFailed'))
-      }
-    },
-    [notify, t],
-  )
-
-  const saveCurrentRun = useCallback(async () => {
-    if (agentActivity.length === 0) return
-    const summary = messages[messages.length - 1]?.content?.slice(0, 120) || 'Agent run'
-    await saveAgentRunHistoryItem({
-      summary,
-      rounds: lastRunRounds,
-      activity: agentActivity,
-      pendingChanges: pendingAgentChanges ?? [],
-    })
-    notify?.('success', t('chat.agentRun.savedTitle'), t('chat.agentRun.savedDetail'))
-  }, [agentActivity, lastRunRounds, messages, notify, pendingAgentChanges, t])
-
-  const replayLastRun = useCallback(async () => {
-    const history = await loadAgentRunHistory()
-    const latest = history[0]
-    if (!latest) {
-      notify?.('error', t('chat.agentRun.noRecordTitle'), t('chat.agentRun.noRecordDetail'))
-      return
-    }
-    setAgentActivity(latest.activity)
-    setPendingAgentChanges(latest.pendingChanges)
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'assistant',
-        content: t('chat.agentRun.replayContent', {
-          activity: latest.activity.length,
-          rounds: latest.rounds,
-        }),
-      },
-    ])
-  }, [t])
-
-  const exportRunMarkdown = useCallback(() => {
-    if (agentActivity.length === 0) return
-    const lines = [
-      '# Agent Run',
-      '',
-      `- Rounds: ${lastRunRounds}`,
-      `- Activities: ${agentActivity.length}`,
-      '',
-      '## Activity',
-      ...agentActivity.map((entry, idx) => `- ${idx + 1}. [${entry.ok ? 'OK' : 'FAIL'}] ${entry.tool} - ${entry.detail}`),
-    ]
-    void copyMessageText(lines.join('\n'))
-  }, [agentActivity, copyMessageText, lastRunRounds])
-
-  const buildQueueReportInput = useCallback((): QueueExecutionReportInput => {
-    const planHints = [
-      ...(failedPlanExecution
-        ? [
-            {
-              planPath: failedPlanExecution.backfill.planPath,
-              stepText: failedPlanExecution.backfill.stepText,
-              stepLine: failedPlanExecution.backfill.stepLine,
-            },
-          ]
-        : []),
-      ...(queuedPlanBackfill
-        ? [
-            {
-              planPath: queuedPlanBackfill.planPath,
-              stepText: queuedPlanBackfill.stepText,
-              stepLine: queuedPlanBackfill.stepLine,
-            },
-          ]
-        : []),
-      ...queuedPlanExecutions.map((item) => item.backfill),
-    ]
-    const specHints = [
-      ...(failedSpecExecution
-        ? [{ taskPath: failedSpecExecution.backfill.taskPath, taskText: failedSpecExecution.backfill.taskText }]
-        : []),
-      ...(queuedSpecBackfill
-        ? [{ taskPath: queuedSpecBackfill.taskPath, taskText: queuedSpecBackfill.taskText }]
-        : []),
-      ...queuedSpecExecutions.map((item) => ({
-        taskPath: item.backfill.taskPath,
-        taskText: item.backfill.taskText,
-      })),
-    ]
-    return {
-      sessionStatus,
-      runId,
-      activeTask: activeQueueTask,
-      success: queueSuccessStats,
-      failure: queueFailureStats,
-      recentDone: recentDoneQueueItems,
-      pending: {
-        planQueue: queuedPlanExecutions.length,
-        specQueue: queuedSpecExecutions.length,
-        sendQueue: sendQueue.length,
-        planPreview: queuedPlanExecutions.slice(0, 8).map((item) => item.backfill.stepText),
-        specPreview: queuedSpecExecutions.slice(0, 8).map((item) => item.backfill.taskText),
-      },
-      failedPlan: failedPlanExecution
-        ? { stepText: failedPlanExecution.backfill.stepText, error: failedPlanExecution.error }
-        : null,
-      failedSpec: failedSpecExecution
-        ? { taskText: failedSpecExecution.backfill.taskText, error: failedSpecExecution.error }
-        : null,
-      restoreHints: { plan: planHints, spec: specHints },
-    }
-  }, [
+  const {
+    exportQueueReport,
+    saveQueueReportToWorkspace,
+    openLatestQueueReport,
+    restoreQueueFromLatestReport,
+  } = useChatQueueReport({
+    sessionStatus,
+    runId,
     activeQueueTask,
+    loading,
+    sendQueue,
+    queuedChatPrompt,
+    queuedSpecBackfill,
+    queuedSpecExecutions,
+    queuedPlanBackfill,
+    queuedPlanExecutions,
     failedPlanExecution,
     failedSpecExecution,
     queueFailureStats,
     queueSuccessStats,
-    queuedPlanBackfill,
-    queuedPlanExecutions,
-    queuedSpecBackfill,
-    queuedSpecExecutions,
     recentDoneQueueItems,
-    runId,
-    sendQueue.length,
-    sessionStatus,
-  ])
-
-  const exportQueueReport = useCallback(() => {
-    const markdown = buildQueueExecutionReportMarkdown(buildQueueReportInput())
-    void copyMessageText(markdown)
-    notify?.('success', t('chat.report.copiedTitle'), t('chat.report.copiedDetail'))
-  }, [buildQueueReportInput, copyMessageText, notify, t])
-
-  const saveQueueReportToWorkspace = useCallback(() => {
-    const markdown = buildQueueExecutionReportMarkdown(buildQueueReportInput())
-    const path = buildQueueReportPath()
-    setFiles((prev) => {
-      const result = upsertQueueReportFile(prev, markdown, path)
-      setActiveFile(result.index)
-      return result.files
-    })
-    notify?.('success', t('chat.report.savedTitle'), t('chat.report.savedDetail', { path }))
-  }, [buildQueueReportInput, notify, setActiveFile, setFiles, t])
-
-  const openLatestQueueReport = useCallback(() => {
-    const path = findLatestReportPath(editorFiles.map((f) => ({ name: f.name, content: f.content })))
-    if (!path) {
-      notify?.('info', t('chat.report.noReportTitle'), t('chat.report.noReportHint'))
-      return
-    }
-    const index = editorFiles.findIndex((f) => f.name === path)
-    if (index < 0) {
-      notify?.('error', t('chat.report.openFailedTitle'), t('chat.report.openFailedDetail', { path }))
-      return
-    }
-    setActiveFile(index)
-  }, [editorFiles, notify, setActiveFile, t])
-
-  const applyRestoreFromMarkdown = useCallback(
-    (markdown: string) => {
-      const fileLikes = editorFiles.map((f) => ({ name: f.name, content: f.content }))
-      const result = buildQueueRestoreFromReport(markdown, fileLikes)
-      if (result.planItems.length === 0 && result.specItems.length === 0) {
-        notify?.(
-          'info',
-          t('chat.report.restoreEmptyTitle'),
-          result.unresolved.length ? result.unresolved.join('；') : t('chat.report.restoreNoMatch'),
-        )
-        return
-      }
-      setFailedPlanExecution(null)
-      setFailedSpecExecution(null)
-      const mergedPlan = mergePlanRestoreItems(queuedPlanExecutions, result.planItems, queuedPlanBackfill)
-      const mergedSpec = mergeSpecRestoreItems(queuedSpecExecutions, result.specItems, queuedSpecBackfill)
-      if (mergedSpec.length > 0) {
-        const [first, ...rest] = mergedSpec
-        setQueuedSpecExecutions(rest)
-        setQueuedPlanExecutions(mergedPlan)
-        setQueuedSpecBackfill(first.backfill)
-        setQueuedChatPrompt(first.prompt)
-      } else if (mergedPlan.length > 0) {
-        const [first, ...rest] = mergedPlan
-        setQueuedPlanExecutions(rest)
-        setQueuedSpecExecutions([])
-        setQueuedPlanBackfill(first.backfill)
-        setQueuedChatPrompt(first.prompt)
-      } else {
-        setQueuedPlanExecutions(mergedPlan)
-        setQueuedSpecExecutions(mergedSpec)
-      }
-      const extra = result.unresolved.length
-        ? t('chat.report.restoreUnresolved', { count: result.unresolved.length })
-        : ''
-      const detail = t('chat.report.restoreDetail', {
-        plan: result.planItems.length,
-        spec: result.specItems.length,
-        extra,
-      })
-      notify?.('success', t('chat.report.restoredTitle'), detail)
-    },
-    [
-      editorFiles,
-      notify,
-      queuedPlanBackfill,
-      queuedPlanExecutions,
-      queuedSpecBackfill,
-      queuedSpecExecutions,
-      setQueuedChatPrompt,
-      setQueuedPlanBackfill,
-      setQueuedPlanExecutions,
-      setQueuedSpecBackfill,
-      setQueuedSpecExecutions,
-      t,
-    ],
-  )
-
-  const restoreQueueFromLatestReport = useCallback(() => {
-    const path = findLatestReportPath(editorFiles.map((f) => ({ name: f.name, content: f.content })))
-    if (!path) {
-      notify?.('info', t('chat.report.noReportTitle'), t('chat.report.noReportSaveFirst'))
-      return
-    }
-    const file = editorFiles.find((f) => f.name === path)
-    if (!file) return
-    applyRestoreFromMarkdown(file.content)
-  }, [applyRestoreFromMarkdown, editorFiles, notify, t])
-
-  const lastQueueSnapshotRef = useRef<QueueExecutionReportInput | null>(null)
-  const wasQueueBusyRef = useRef(false)
-
-  const isQueueBusy = useMemo(() => {
-    return !!(
-      loading ||
-      queuedChatPrompt ||
-      queuedSpecBackfill ||
-      queuedSpecExecutions.length > 0 ||
-      queuedPlanBackfill ||
-      queuedPlanExecutions.length > 0 ||
-      sendQueue.length > 0 ||
-      failedPlanExecution ||
-      failedSpecExecution
-    )
-  }, [
-    failedPlanExecution,
-    failedSpecExecution,
-    loading,
-    queuedChatPrompt,
-    queuedPlanBackfill,
-    queuedPlanExecutions.length,
-    queuedSpecBackfill,
-    queuedSpecExecutions.length,
-    sendQueue.length,
-  ])
-
-  useEffect(() => {
-    if (isQueueBusy) {
-      lastQueueSnapshotRef.current = buildQueueReportInput()
-    }
-  }, [buildQueueReportInput, isQueueBusy])
-
-  useEffect(() => {
-    if (wasQueueBusyRef.current && !isQueueBusy) {
-      const prefs = loadQueueAutoReportPrefs()
-      const snapshot = lastQueueSnapshotRef.current
-      if (prefs.autoSaveOnComplete && snapshot) {
-        const markdown = buildQueueExecutionReportMarkdown(snapshot)
-        const path = buildQueueReportPath()
-        setFiles((prev) => {
-          const result = upsertQueueReportFile(prev, markdown, path)
-          setActiveFile(result.index)
-          return result.files
-        })
-        notify?.('success', t('chat.report.autoSavedTitle'), t('chat.report.autoSavedDetail', { path }))
-      }
-      if (prefs.notifyOnComplete) {
-        notifyQueueComplete('AI IDE', t('chat.queue.completeBody'))
-      }
-    }
-    wasQueueBusyRef.current = isQueueBusy
-  }, [isQueueBusy, notify, setActiveFile, setFiles, t])
-
-  const appendExecutionToSpecAcceptance = useCallback(
-    (specAcceptancePath: string, taskText: string, assistantOutput: string, executionRunId?: string | null) => {
-      const file = editorFiles.find((f) => f.name === specAcceptancePath)
-      if (!file) return
-
-      const addition = buildSpecExecutionLog(taskText, assistantOutput, new Date(), {
-        runId: executionRunId ?? null,
-        provider: aiConfig.provider,
-        model: aiConfig.model || undefined,
-      })
-      if (!addition) return
-
-      setFiles((prev) => appendToSpecAcceptanceFile(prev, specAcceptancePath, addition))
-    },
-    [aiConfig.model, aiConfig.provider, editorFiles, setFiles],
-  )
-
-  const specQueueCoordinatorDeps = useCallback(
-    () =>
-      buildIdeSpecQueueCoordinatorDeps({
-        setFiles,
-        setQueuedChatPrompt,
-        setQueuedSpecBackfill,
-        setQueuedSpecExecutions,
-      }),
-    [setFiles, setQueuedChatPrompt, setQueuedSpecBackfill, setQueuedSpecExecutions],
-  )
-
-  const finishSpecQueueItem = useCallback(
-    async (backfill: QueuedSpecBackfill) => {
-      const result = await onSpecQueueItemSucceeded(backfill, specQueueCoordinatorDeps())
-      if (!result.verifyOk) {
-        notify?.(
-          'error',
-          t('runtime.verifyFail.title'),
-          result.verifyDetail ?? t('runtime.verifyFail.detail'),
-        )
-      }
-    },
-    [notify, specQueueCoordinatorDeps, t],
-  )
-
-  const generateFilesFromResponse = useCallback(
-    (assistantContent: string) => {
-      if (!onGenerateFiles) return
-
-      const codeBlocks = extractCodeBlocks(assistantContent)
-      const files: { name: string; content: string; language: string }[] = []
-
-      codeBlocks.forEach((block, index) => {
-        if (!block.language || block.language === 'text') return
-
-        const blockStart = assistantContent.indexOf(`\`\`\`${block.language}`)
-        const contextBefore = assistantContent.slice(0, blockStart).split('\n').slice(-5)
-        let filename: string | null = null
-
-        const patterns = [
-          /###\s+([\w\-./]+\.[\w]+)/,
-          /`([\w\-./]+\.[\w]+)`/,
-          /文件名[:\s]+([\w\-./]+\.[\w]+)/i,
-          /文件[:\s]+([\w\-./]+\.[\w]+)/i,
-          /filename[:\s]+([\w\-./]+\.[\w]+)/i,
-          /file[:\s]+([\w\-./]+\.[\w]+)/i,
-          /([\w\-./]+\.(?:js|ts|jsx|tsx|py|html|css|scss|json|md|vue|java|go|rs|php|rb|swift|kt|sql))/i,
-        ]
-
-        for (const line of [...contextBefore].reverse()) {
-          for (const pattern of patterns) {
-            const match = line.match(pattern)
-            if (match) {
-              filename = match[1]
-              break
-            }
-          }
-          if (filename) break
-        }
-
-        if (!filename) {
-          filename = `generated-${index + 1}.${block.language === 'typescript' ? 'ts' : block.language === 'javascript' ? 'js' : block.language}`
-        }
-
-        files.push({
-          name: filename,
-          content: block.code,
-          language: block.language,
-        })
-      })
-
-      if (files.length > 0) onGenerateFiles(files)
-    },
-    [onGenerateFiles],
-  )
-
-  const handleSend = async (customInput?: string, action?: SendAction, options?: SendOptions) => {
-    const textToSend = customInput || input
-    if (!textToSend.trim()) return
-    if (loading) {
-      setSendQueue((prev) =>
-        enqueueSend(
-          { status: 'running', runId, queue: prev },
-          { text: textToSend, action, options },
-        ).queue,
-      )
-      notify?.('info', t('chat.queue.enqueuedTitle'), t('chat.queue.enqueuedDetail', { count: sendQueue.length + 1 }))
-      if (!customInput) setInput('')
-      return
-    }
-
-    const currentQuota = await fetchAIQuota(currentPlan, !!currentUser)
-    setQuota(currentQuota)
-
-    if (!currentQuota.allowed) {
-      notify?.('error', t('notify.quotaExceeded'), t('notify.quotaExceededDetail', {
-        used: currentQuota.used,
-        limit: currentQuota.limit,
-      }))
-      appendError(
-        t('chat.quotaExceeded', { used: currentQuota.used, limit: currentQuota.limit }),
-      )
-      return
-    }
-
-    if (!isConfigured) {
-      appendError(chatConfigHint)
-      return
-    }
-    const forceSlim = !!options?.forceSlim
-    const effectiveTextToSend = forceSlim ? textToSend.slice(0, 1200) : textToSend
-    const effectiveWorkspaceContext = forceSlim ? false : useWorkspaceContext
-    const historyLimit = forceSlim ? 6 : 20
-
-    const userMessage: Message = { role: 'user', content: effectiveTextToSend }
-    setMessages((prev) => [...prev, userMessage])
-    if (!customInput) setInput('')
-    setPayloadWarning(null)
-    setLoading(true)
-    const started = startRun(createInitialChatSessionState())
-    const executionRunId = started.runId
-    setRunId(executionRunId)
-    stopRequestedRef.current = false
-    streamAbortRef.current?.abort()
-    streamAbortRef.current = new AbortController()
-    setAgentActivity([])
-    setMcpToolEntries([])
-
-    try {
-      const mentionCheck = runMentionPreflight(
-        effectiveTextToSend,
-        editorFiles,
-        projectIndexManager.getIndex(),
-      )
-      const mentionGate = evaluateSendMentionGate(mentionCheck, forceSlim)
-      if (mentionGate.unresolvedCount > 0 && !forceSlim) {
-        trackEvent('chat.mention_preflight_unresolved', {
-          count: mentionGate.unresolvedCount,
-          tokens: mentionCheck.tokens.length,
-        })
-      }
-      if (mentionGate.ambiguousCount > 0 && !forceSlim) {
-        trackEvent('chat.mention_preflight_ambiguous', {
-          count: mentionGate.ambiguousCount,
-          tokens: mentionCheck.tokens.length,
-        })
-      }
-      if (mentionGate.blocked) {
-        setMessages((prev) => removeTrailingUserMessage(prev, effectiveTextToSend))
-        setLoading(false)
-        const ambiguousBlocked = mentionGate.blockReason === 'ambiguous'
-        notify?.(
-          'info',
-          ambiguousBlocked
-            ? t('chat.mention.blockSendAmbiguousTitle')
-            : t('chat.mention.blockSendTitle'),
-          ambiguousBlocked
-            ? t('chat.mention.blockSendAmbiguousDetail', { count: mentionGate.ambiguousCount })
-            : t('chat.mention.blockSendDetail', { count: mentionGate.unresolvedCount }),
-        )
-        return
-      }
-
-      const slimPlan = buildAgentSendSlimPlan(
-        (key, params) => t(key, params),
-        historyLimit,
-        { agentMode },
-      )
-      const sendPreflight = evaluateAgentSendPreflight({
-        mentionGate,
-        meterEstimate: payloadMeterEstimate,
-        draftText: textToSend,
-        slimPlan,
-        forceSlim,
-      })
-      if (sendPreflight.payloadWarning) {
-        const warning = sendPreflight.payloadWarning
-        trackEvent('chat.payload_preflight_warn', {
-          estimatedBytes: warning.estimatedBytes,
-          budgetBytes: warning.budgetBytes,
-          provider: aiConfig.provider,
-          agentMode,
-          workspaceContext: effectiveWorkspaceContext,
-          phase: 'meter',
-        })
-        setPayloadWarning({
-          estimatedBytes: warning.estimatedBytes,
-          budgetBytes: warning.budgetBytes,
-          text: warning.text,
-          action,
-          slimPlan: warning.slimPlan,
-        })
-        if (!customInput) setInput(textToSend)
-        setMessages((prev) => removeTrailingUserMessage(prev, effectiveTextToSend))
-        setLoading(false)
-        notify?.(
-          'info',
-          t('chat.payload.preflightWarnTitle'),
-          t('chat.payload.preflightWarnDetail', {
-            estimatedKb: toKb(warning.estimatedBytes),
-            budgetKb: toKb(warning.budgetBytes),
-          }),
-        )
-        return
-      }
-
-      const agentSettings = await loadAgentSettings()
-      const history = buildChatHistory(
-        messages.map((message) => ({ role: message.role, content: message.content })),
-        historyLimit,
-      )
-
-      let aiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = []
-      let assistantContent = ''
-
-      const useToolLoop =
-        agentMode &&
-        !(planMode && !queuedPlanBackfill && !queuedSpecBackfill) &&
-        agentSettings.useToolLoop &&
-        supportsAgentToolCalling(aiConfig.provider)
-
-      const applyQueueWorkflowContext = (summary: string) => {
-        if (queuedPlanBackfill) {
-          return appendWorkflowSystemAddon(summary, 'plan-exec', language)
-        }
-        if (queuedSpecBackfill) {
-          return appendWorkflowSystemAddon(summary, 'spec-exec', language)
-        }
-        return summary
-      }
-
-      if (agentMode && useToolLoop) {
-        let workspaceSummary = await buildAgentWorkspaceSummary(
-          effectiveTextToSend,
-          action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : undefined,
-          forceSlim,
-        )
-        workspaceSummary = applyQueueWorkflowContext(workspaceSummary)
-        const toolMessages = buildAgentToolMessages(workspaceSummary, effectiveTextToSend, history)
-        const builtPayloadWarning = evaluateBuiltMessagesPreflight({
-          messages: toolMessages,
-          provider: aiConfig.provider,
-          draftText: textToSend,
-          slimPlan,
-          forceSlim,
-        })
-        if (builtPayloadWarning) {
-          trackEvent('chat.payload_preflight_warn', {
-            estimatedBytes: builtPayloadWarning.estimatedBytes,
-            budgetBytes: builtPayloadWarning.budgetBytes,
-            provider: aiConfig.provider,
-            agentMode,
-            workspaceContext: effectiveWorkspaceContext,
-            phase: 'tool_loop',
-          })
-          setPayloadWarning({
-            estimatedBytes: builtPayloadWarning.estimatedBytes,
-            budgetBytes: builtPayloadWarning.budgetBytes,
-            text: builtPayloadWarning.text,
-            action,
-            slimPlan: builtPayloadWarning.slimPlan,
-          })
-          if (!customInput) setInput(textToSend)
-          setMessages((prev) => removeTrailingUserMessage(prev, effectiveTextToSend))
-          setLoading(false)
-          notify?.(
-            'info',
-            t('chat.payload.preflightWarnTitle'),
-            t('chat.payload.preflightWarnDetail', {
-              estimatedKb: toKb(builtPayloadWarning.estimatedBytes),
-              budgetKb: toKb(builtPayloadWarning.budgetBytes),
-            }),
-          )
-          return
-        }
-
-        const labelActivity = (tool: AgentActivityEntry['tool'], detail: string, ok: boolean) => {
-          const toolLabel = t(`agent.tool.${tool}` as 'agent.tool.read_file')
-          return t(ok ? 'agent.tool.lineOk' : 'agent.tool.lineFail', { tool: toolLabel, detail })
-        }
-
-        const result = await runAgentLoop(aiConfig, toolMessages, {
-          onActivity: (entry) => {
-            setAgentActivity((prev) => [...prev, entry])
-          },
-          onAssistantText: (text) => {
-            assistantContent = text
-            setMessages((prev) => upsertAssistantMessage(prev, text))
-          },
-          shouldStop: () => stopRequestedRef.current,
-          signal: streamAbortRef.current?.signal,
-        })
-
-        assistantContent = result.finalContent
-        setLastRunRounds(result.rounds)
-        if (result.activity.length > 0) {
-          const log = formatActivityForChat(result.activity, labelActivity)
-          assistantContent = assistantContent
-            ? `${assistantContent}\n\n---\n${log}`
-            : log
-        }
-
-        assistantContent = sanitizeChatAssistantOutput(assistantContent)
-        setMessages((prev) => upsertAssistantMessage(prev, assistantContent))
-
-        if (result.pendingChanges.length > 0) {
-          setPendingAgentChanges(result.pendingChanges)
-        } else {
-          const agentChanges = parseAgentFileChanges(assistantContent)
-          if (agentChanges.length > 0) {
-            setPendingAgentChanges(agentChanges)
-          } else {
-            setPendingAgentChanges(null)
-            generateFilesFromResponse(assistantContent)
-          }
-        }
-
-        if (agentSettings.autoApplyWrites && onGenerateFiles) {
-          const writtenPaths = result.activity
-            .filter((a) => a.tool === 'write_file' && a.ok && a.detail)
-            .map((a) => a.detail)
-          if (writtenPaths.length > 0) {
-            const payload = writtenPaths
-              .map((path) => workspaceContextService.getFile(path))
-              .filter((f): f is NonNullable<typeof f> => !!f)
-              .map((f) => ({
-                name: f.path,
-                content: f.content,
-                language: f.language,
-              }))
-            if (payload.length > 0) onGenerateFiles(payload)
-          }
-        }
-
-        if (queuedSpecBackfill) {
-          const specBackfill = queuedSpecBackfill
-          appendExecutionToSpecAcceptance(
-            specBackfill.specAcceptancePath,
-            specBackfill.taskText,
-            assistantContent,
-            executionRunId,
-          )
-          setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
-          setRecentDoneQueueItems((prev) => [
-            { kind: 'spec' as const, text: specBackfill.taskText },
-            ...prev,
-          ].slice(0, 5))
-          setFailedSpecExecution(null)
-          void finishSpecQueueItem(specBackfill)
-        }
-
-        if (queuedPlanBackfill) {
-          setFiles((prev) =>
-            markPlanStepDone(
-              appendPlanExecutionBackfill(prev, {
-                planPath: queuedPlanBackfill.planPath,
-                stepText: queuedPlanBackfill.stepText,
-                status: 'success',
-                validation: 'completed',
-                runId: executionRunId,
-                provider: aiConfig.provider,
-                model: aiConfig.model || undefined,
-                assistantOutput: assistantContent,
-              }),
-              queuedPlanBackfill.planPath,
-              { text: queuedPlanBackfill.stepText, line: queuedPlanBackfill.stepLine },
-            ),
-          )
-          setQueuedPlanBackfill(null)
-          setQueueSuccessStats((prev) => ({ ...prev, plan: prev.plan + 1 }))
-          setRecentDoneQueueItems((prev) => [
-            { kind: 'plan' as const, text: queuedPlanBackfill.stepText },
-            ...prev,
-          ].slice(0, 5))
-          setFailedPlanExecution(null)
-        }
-        refreshQuota()
-        return
-      }
-
-      if (agentMode) {
-        let workspaceSummary = await buildAgentWorkspaceSummary(
-          effectiveTextToSend,
-          action ? t('chat.prompt.userRequest', { action: quickActionLabels[action] }) : undefined,
-          forceSlim,
-        )
-        workspaceSummary = applyQueueWorkflowContext(workspaceSummary)
-        const finalSummary = planMode
-          ? buildPlanModeSystemPrompt(workspaceSummary, language)
-          : appendChatUserOutputRules(workspaceSummary)
-        aiMessages = aiAgentService.buildMessages(effectiveTextToSend, finalSummary, history)
-      } else {
-        let systemPrompt: string
-
-        if (effectiveWorkspaceContext && workspaceStats.selectedFiles > 0) {
-          const additionalContext = action
-            ? t('chat.prompt.userRequest', { action: quickActionLabels[action] })
-            : ''
-          systemPrompt = workspaceContextService.generateSystemPrompt(additionalContext, language)
-        } else {
-          systemPrompt = action
-            ? generateCodePrompt(action, currentCode, language)
-            : t('chat.system.default', { code: currentCode })
-        }
-
-        systemPrompt = await buildPromptWithSharedContext({
-          basePrompt: systemPrompt,
-          query: effectiveTextToSend,
-          forceSlim,
-          applyProjectRules,
-          augmentWithSemanticContext,
-          applyAgentContext: (prompt) => applyAgentContext(prompt, agentSettings),
-          buildMentionSection: (query) =>
-            buildMentionContextSection(query, editorFiles, projectIndexManager.getIndex(), language),
-        })
-        if (planMode) {
-          systemPrompt = buildPlanModeSystemPrompt(systemPrompt, language)
-        } else {
-          systemPrompt = appendChatUserOutputRules(systemPrompt)
-        }
-
-        aiMessages = [
-          { role: 'system' as const, content: systemPrompt },
-          ...history,
-          { role: 'user' as const, content: effectiveTextToSend },
-        ]
-      }
-
-      const estimatedBytes = measureAiMessagesPayload(aiMessages)
-      if (payloadMeterEstimate) {
-        const parity = comparePayloadEstimateToSend(payloadMeterEstimate.estimatedBytes, estimatedBytes)
-        if (!parity.withinTolerance) {
-          trackEvent('chat.payload_estimate_drift', {
-            meterBytes: payloadMeterEstimate.estimatedBytes,
-            sendBytes: estimatedBytes,
-            deltaBytes: parity.deltaBytes,
-            deltaRatio: Math.round(parity.deltaRatio * 1000) / 1000,
-          })
-        }
-      }
-      const budgetBytes = getPayloadBudget(aiConfig.provider)
-      const warning = getPayloadWarningData(estimatedBytes, budgetBytes, textToSend, slimPlan)
-      if (warning) {
-        if (!forceSlim) {
-          trackEvent('chat.payload_preflight_warn', {
-            estimatedBytes,
-            budgetBytes,
-            provider: aiConfig.provider,
-            agentMode,
-            workspaceContext: effectiveWorkspaceContext,
-          })
-          setPayloadWarning({
-            estimatedBytes: warning.estimatedBytes,
-            budgetBytes: warning.budgetBytes,
-            text: warning.text,
-            action,
-            slimPlan: warning.slimPlan,
-          })
-          if (!customInput) setInput(textToSend)
-          setMessages((prev) => removeTrailingUserMessage(prev, effectiveTextToSend))
-          notify?.(
-            'info',
-            t('chat.payload.preflightWarnTitle'),
-            t('chat.payload.preflightWarnDetail', { estimatedKb: toKb(estimatedBytes), budgetKb: toKb(budgetBytes) }),
-          )
-          return
-        }
-        throw new Error(
-          t('chat.payload.stillTooLarge', {
-            estimatedKb: toKb(estimatedBytes),
-            budgetKb: toKb(budgetBytes),
-          }),
-        )
-      }
-
-      await sendMessage(aiConfig, aiMessages, (chunk) => {
-        assistantContent += chunk
-        assistantContent = sanitizeChatAssistantOutput(assistantContent)
-        setMessages((prev) => upsertAssistantMessage(prev, assistantContent))
-      }, { signal: streamAbortRef.current?.signal })
-
-      if (agentMode) {
-        const mcpSettings = await loadMcpSettings()
-        const mcpTurn = await processAgentMcpTurn({
-          content: assistantContent,
-          autoFollowUp: mcpSettings.autoFollowUp,
-          maxFollowUpRounds: mcpSettings.maxFollowUpRounds,
-          sendFollowUp: async ({ assistantSoFar, toolLog }) => {
-            let followUpContent = ''
-            const followUpMessages = buildMcpFollowUpMessages(
-              aiMessages,
-              assistantSoFar,
-              t('chat.mcp.followUp', { log: toolLog.join('\n') }),
-            )
-            await sendMessage(aiConfig, followUpMessages, (chunk) => {
-              followUpContent += chunk
-              followUpContent = sanitizeChatAssistantOutput(followUpContent)
-              setMessages((prev) =>
-                upsertAssistantMessage(prev, `${assistantSoFar}\n\n${followUpContent}`),
-              )
-            }, { signal: streamAbortRef.current?.signal })
-            return followUpContent
-          },
-        })
-        assistantContent = mcpTurn.content
-        setMcpToolEntries(mcpTurn.toolEntries)
-        if (mcpTurn.toolLog.length > 0) {
-          assistantContent = `${assistantContent}\n\n${t('chat.mcp.results')}\n${mcpTurn.toolLog.join('\n')}`
-        }
-        assistantContent = sanitizeChatAssistantOutput(assistantContent)
-        setMessages((prev) => upsertAssistantMessage(prev, assistantContent))
-      }
-
-      const agentChanges = parseAgentFileChanges(assistantContent)
-      if (planMode) {
-        setFiles((prev) => {
-          const result = applyPlanArtifactsWithResult(prev, effectiveTextToSend, assistantContent)
-          lastPlanPathRef.current = result.planPath
-          return result.files
-        })
-      } else if (agentChanges.length > 0) {
-        setPendingAgentChanges(agentChanges)
-      } else {
-        setPendingAgentChanges(null)
-        generateFilesFromResponse(assistantContent)
-      }
-
-      if (queuedSpecBackfill) {
-        const specBackfill = queuedSpecBackfill
-        appendExecutionToSpecAcceptance(
-          specBackfill.specAcceptancePath,
-          specBackfill.taskText,
-          assistantContent,
-          executionRunId,
-        )
-        setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
-        setRecentDoneQueueItems((prev) => [
-          { kind: 'spec' as const, text: specBackfill.taskText },
-          ...prev,
-        ].slice(0, 5))
-        setFailedSpecExecution(null)
-        void finishSpecQueueItem(specBackfill)
-      }
-
-      if (queuedPlanBackfill) {
-        setFiles((prev) =>
-          markPlanStepDone(
-            appendPlanExecutionBackfill(prev, {
-              planPath: queuedPlanBackfill.planPath,
-              stepText: queuedPlanBackfill.stepText,
-              status: 'success',
-              validation: 'completed',
-              runId: executionRunId,
-              provider: aiConfig.provider,
-              model: aiConfig.model || undefined,
-              assistantOutput: assistantContent,
-            }),
-            queuedPlanBackfill.planPath,
-            { text: queuedPlanBackfill.stepText, line: queuedPlanBackfill.stepLine },
-          ),
-        )
-        setQueuedPlanBackfill(null)
-        setQueueSuccessStats((prev) => ({ ...prev, plan: prev.plan + 1 }))
-        setRecentDoneQueueItems((prev) => [
-          { kind: 'plan' as const, text: queuedPlanBackfill.stepText },
-          ...prev,
-        ].slice(0, 5))
-        setFailedPlanExecution(null)
-      }
-      refreshQuota()
-    } catch (error: any) {
-      const message = error.message || t('chat.unknownError')
-      const formatted = formatChatErrorMessage(t, message)
-
-      if (formatted.kind === 'payload') {
-        trackEvent('chat.payload_too_large', {
-          provider: aiConfig.provider,
-          agentMode,
-          workspaceContext: useWorkspaceContext,
-          indexFiles: indexStats.indexedFiles,
-          selectedWorkspaceFiles: workspaceStats.selectedFiles,
-          messageCount: messages.length,
-        })
-      }
-
-      if (formatted.kind !== 'aborted') {
-        notify?.('error', t(formatted.kind === 'payload' ? 'chat.error.payloadTooLarge' : 'chat.requestFailed', {
-          message: message.split('\n')[0],
-        }), message)
-      }
-
-      if (queuedPlanBackfill) {
-        setFiles((prev) =>
-          appendPlanExecutionBackfill(prev, {
-            planPath: queuedPlanBackfill.planPath,
-            stepText: queuedPlanBackfill.stepText,
-            status: 'failed',
-            validation: 'error',
-            runId,
-            provider: aiConfig.provider,
-            model: aiConfig.model || undefined,
-            assistantOutput: message,
-          }),
-        )
-        setFailedPlanExecution({
-          prompt: buildPlanExecutionPrompt(queuedPlanBackfill.stepText),
-          backfill: queuedPlanBackfill,
-          error: message.split('\n')[0],
-        })
-        setQueueFailureStats((prev) => ({ ...prev, plan: prev.plan + 1 }))
-        setQueuedPlanBackfill(null)
-      }
-
-      if (queuedSpecBackfill) {
-        setFailedSpecExecution({
-          prompt: buildSpecExecutionPrompt(
-            queuedSpecBackfill.taskPath,
-            queuedSpecBackfill.taskText,
-            language,
-          ),
-          backfill: queuedSpecBackfill,
-          error: message.split('\n')[0],
-        })
-        setQueueFailureStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
-        setQueuedSpecBackfill(null)
-      }
-
-      appendError(formatted.content)
-    } finally {
-      setLoading(false)
-      setRunId(null)
-      streamAbortRef.current = null
-    }
-  }
-
-  useEffect(() => {
-    if (!queuedChatPrompt || loading) return
-    void (async () => {
-      await handleSend(queuedChatPrompt)
-      setQueuedChatPrompt(null)
-      setQueuedSpecBackfill(null)
-    })()
-  }, [queuedChatPrompt, loading, setQueuedChatPrompt, setQueuedSpecBackfill])
-
-  useEffect(() => {
-    if (loading || failedSpecExecution || queuedChatPrompt || queuedSpecBackfill || queuedSpecExecutions.length === 0) return
-    const next = shiftQueuedSpecExecution()
-    if (!next) return
-    setQueuedSpecBackfill(next.backfill)
-    setQueuedChatPrompt(next.prompt)
-  }, [
-    failedSpecExecution,
-    loading,
-    queuedChatPrompt,
-    queuedSpecBackfill,
-    queuedSpecExecutions.length,
+    editorFiles,
+    setFiles,
+    setActiveFile,
+    setFailedPlanExecution,
+    setFailedSpecExecution,
     setQueuedChatPrompt,
+    setQueuedPlanBackfill,
     setQueuedSpecBackfill,
-    shiftQueuedSpecExecution,
-  ])
-
-  useEffect(() => {
-    if (queuedSpecExecutions.length > 0) return
-    const restored = loadQueuedSpecExecutionsDetailed()
-    if (restored.corrupted) {
-      notify?.('info', t('queue.persist.corruptedTitle'), t('queue.persist.corruptedDetail'))
-    }
-    if (restored.items.length > 0) setQueuedSpecExecutions(restored.items)
-  }, [notify, queuedSpecExecutions.length, setQueuedSpecExecutions, t])
-
-  useEffect(() => {
-    saveQueuedSpecExecutions(queuedSpecExecutions)
-  }, [queuedSpecExecutions])
-
-  useEffect(() => {
-    if (queuedPlanExecutions.length > 0) return
-    const restored = loadQueuedPlanExecutionsDetailed()
-    if (restored.corrupted) {
-      notify?.('info', t('queue.persist.corruptedTitle'), t('queue.persist.corruptedDetail'))
-    }
-    if (restored.items.length > 0) setQueuedPlanExecutions(restored.items)
-  }, [notify, queuedPlanExecutions.length, setQueuedPlanExecutions, t])
-
-  useEffect(() => {
-    saveQueuedPlanExecutions(queuedPlanExecutions)
-  }, [queuedPlanExecutions])
-
-  useEffect(() => {
-    if (loading || failedPlanExecution || queuedPlanExecutions.length === 0) return
-    const next = shiftQueuedPlanExecution()
-    if (!next) return
-    setQueuedPlanBackfill(next.backfill)
-    void handleSend(next.prompt)
-  }, [failedPlanExecution, handleSend, loading, queuedPlanExecutions.length, setQueuedPlanBackfill, shiftQueuedPlanExecution])
-
-  useEffect(() => {
-    if (loading || sendQueue.length === 0) return
-    const shifted = shiftQueue({ status: sessionStatus, runId, queue: sendQueue })
-    if (!shifted.next) return
-    setSendQueue(shifted.state.queue)
-    void handleSend(shifted.next.text, shifted.next.action, shifted.next.options)
-  }, [loading, sendQueue])
-
-  const retryFromMessageIndex = useCallback(
-    (messageIndex: number) => {
-      const userText = findRetryUserText(
-        messages.map((message) => ({ role: message.role, content: message.content })),
-        messageIndex,
-      )
-      if (!userText || loading) return
-      setMessages((prev) => prev.slice(0, messageIndex))
-      void handleSend(userText)
-    },
-    [handleSend, loading, messages],
-  )
+    setQueuedPlanExecutions,
+    setQueuedSpecExecutions,
+    copyMessageText,
+    notify,
+    t,
+  })
 
   const quickActions = useMemo(
     () => [
@@ -1843,229 +696,73 @@ ${t('ai.chat.prompt')}`
     void handleSend(prompt)
   }, [handleSend, loading, messages, setQueuedPlanBackfill])
 
-  const pickMention = (hit: IndexSearchHit) => {
-    const label =
-      hit.type === 'symbol' && hit.path
-        ? `${hit.path}#${hit.name}`
-        : hit.path || hit.name
-    const cursor = inputRef.current?.selectionStart ?? input.length
-    const next = insertMention(input, cursor, label)
-    setInput(next.text)
-    setMentionHits([])
-    requestAnimationFrame(() => {
-      inputRef.current?.focus()
-      inputRef.current?.setSelectionRange(next.cursor, next.cursor)
-    })
-  }
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (mentionHits.length > 0) {
-      if (event.key === 'ArrowDown') {
-        event.preventDefault()
-        setMentionIndex((prev) => Math.min(prev + 1, mentionHits.length - 1))
-        return
-      }
-      if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        setMentionIndex((prev) => Math.max(prev - 1, 0))
-        return
-      }
-      if (event.key === 'Tab' || (event.key === 'Enter' && mentionHits[mentionIndex])) {
-        event.preventDefault()
-        pickMention(mentionHits[mentionIndex])
-        return
-      }
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        setMentionHits([])
-        return
-      }
-    }
-
-    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-      event.preventDefault()
-      handleSend()
-    }
-  }
-
-  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const next = event.target.value
-    setInput(next)
-    refreshMentionHits(next, event.target.selectionStart ?? next.length)
-  }
+  const {
+    mentionHits,
+    mentionIndex,
+    activeMentionQuery,
+    mentionOnboardingDismissed,
+    dismissMentionOnboarding,
+    pickMention,
+    handleKeyDown,
+    handleInputChange,
+  } = useChatMentionComposer({
+    input,
+    setInput,
+    inputRef,
+    indexVersion,
+    mentionBlockedByIndexBuild,
+    onSend: () => handleSend(),
+  })
 
   return (
     <div
       className={`chat-container chat-panel chat-panel--v2 ${embeddedInRightPanel ? 'chat-panel--embedded' : ''} ${mounted ? 'chat-panel--mounted' : ''}`}
     >
-      <div
-        className={`chat-panel-header chat-panel-header--dense ${embeddedInRightPanel ? 'chat-panel-header--embedded' : ''}`}
-      >
-        <div className="chat-header-grid">
-          <div className="chat-header-grid__meta">
-            <div className="chat-control-strip__chips" title={t('chat.sessionTitle')}>
-              <span
-                className="chat-chip chat-chip--model chat-chip--model-combo"
-                title={`${aiConfig.provider}${aiConfig.model ? ` / ${aiConfig.model}` : ''}`}
-              >
-                {aiConfig.model ? `${aiConfig.provider} · ${aiConfig.model}` : aiConfig.provider}
-              </span>
-              <span
-                className={`chat-chip ${isConfigured ? 'chat-chip--success' : 'chat-chip--warning'}`}
-                title={
-                  isConfigured
-                    ? t('chat.configured')
-                    : needsPlatformSignIn
-                      ? t('chat.pendingPlatformSignIn')
-                      : t('chat.pendingConfig')
-                }
-              >
-                {isConfigured
-                  ? t('chat.configuredShort')
-                  : needsPlatformSignIn
-                    ? t('chat.pendingPlatformSignInShort')
-                    : t('chat.pendingConfigShort')}
-              </span>
-            </div>
-
-            <QuotaIndicator quota={quota} inline planDisplayName={planDisplayName} />
-
-            <button
-              type="button"
-              className="chat-controls-toggle"
-              onClick={() => {
-                setControlsExpanded((prev) => {
-                  const next = !prev
-                  try {
-                    localStorage.setItem('ai-ide:chat-controls-expanded', String(next))
-                  } catch {
-                    // ignore
-                  }
-                  return next
-                })
-              }}
-              aria-expanded={controlsExpanded}
-              title={controlsExpanded ? t('chat.controlsCollapse') : t('chat.controlsExpand')}
-            >
-              {controlsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </button>
-          </div>
-
-          <div className="chat-mode-segment" role="group" aria-label={t('chat.modesGroup')}>
-            <button
-              type="button"
-              className="chat-mode-segment__btn chat-mode-segment__btn--active"
-              title={
-                agentMode && supportsAgentToolCalling(aiConfig.provider)
-                  ? `${t('chat.agentModeTitle')} · ${t('chat.agentToolsActive')}`
-                  : t('chat.agentModeTitle')
+      <ChatPanelHeader
+        aiConfig={aiConfig}
+        quota={quota}
+        planDisplayName={planDisplayName}
+        isConfigured={isConfigured}
+        needsPlatformSignIn={needsPlatformSignIn}
+        controlsExpanded={controlsExpanded}
+        onToggleControlsExpanded={() => {
+          setControlsExpanded((prev) => {
+            const next = !prev
+            try {
+              localStorage.setItem('ai-ide:chat-controls-expanded', String(next))
+            } catch {
+              // ignore
+            }
+            return next
+          })
+        }}
+        planMode={planMode}
+        onTogglePlanMode={() => {
+          setPlanMode((value) => {
+            const next = !value
+            try {
+              localStorage.setItem('ai-ide:chat-plan-mode', String(next))
+            } catch {
+              // ignore
+            }
+            if (next) {
+              try {
+                localStorage.setItem('ai-ide:chat-agent-mode', 'true')
+              } catch {
+                // ignore
               }
-              aria-pressed="true"
-            >
-              <Zap size={13} aria-hidden />
-              <span>{t('chat.agent')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setPlanMode((value) => {
-                  const next = !value
-                  try {
-                    localStorage.setItem('ai-ide:chat-plan-mode', String(next))
-                  } catch {
-                    // ignore
-                  }
-                  if (next) {
-                    try {
-                      localStorage.setItem('ai-ide:chat-agent-mode', 'true')
-                    } catch {
-                      // ignore
-                    }
-                  }
-                  return next
-                })
-              }}
-              className={`chat-mode-segment__btn ${planMode ? 'chat-mode-segment__btn--active' : ''}`}
-              title={planMode ? t('chat.planModeOn') : t('chat.planModeOff')}
-              aria-pressed={planMode}
-            >
-              <ListTodo size={13} aria-hidden />
-              <span>{t('chat.planShort')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setUseWorkspaceContext((value) => !value)}
-              disabled={workspaceStats.selectedFiles === 0}
-              className={`chat-mode-segment__btn ${useWorkspaceContext ? 'chat-mode-segment__btn--active' : ''}`}
-              title={
-                workspaceStats.selectedFiles === 0
-                  ? t('chat.workspaceEmpty')
-                  : t('chat.workspaceSelected', { count: workspaceStats.selectedFiles })
-              }
-              aria-pressed={useWorkspaceContext}
-            >
-              <FolderOpen size={13} aria-hidden />
-              <span>
-                {t('chat.workspaceShort')}
-                {workspaceStats.selectedFiles > 0 ? ` (${workspaceStats.selectedFiles})` : ''}
-              </span>
-              {useWorkspaceContext ? <CheckSquare size={11} className="chat-mode-segment__badge" aria-hidden /> : null}
-            </button>
-          </div>
-        </div>
-
-        {controlsExpanded ? (
-          <div className="chat-panel-header__details">
-            {!embeddedInRightPanel ? (
-              <div className="chat-session-card__title chat-session-card__title--inline">
-                <Bot size={14} color="var(--accent-color)" />
-                <strong>{t('chat.sessionTitle')}</strong>
-              </div>
-            ) : null}
-            {(indexStats.indexedFiles > 0 ||
-              indexBuildState.status === 'building' ||
-              indexBuildState.status === 'error') && (
-              <p className="chat-index-hint" title={t('chat.indexHintTitle')}>
-                {indexBuildState.status === 'building' ? (
-                  indexBuildState.progress
-                    ? t('chat.indexBuildingProgress', {
-                        indexed: indexBuildState.progress.indexed,
-                        total: indexBuildState.progress.total,
-                      })
-                    : t('chat.indexBuilding')
-                ) : indexBuildState.status === 'error' ? (
-                  <>
-                    {t('chat.indexError', { message: indexBuildState.lastError ?? '' })}{' '}
-                    <button
-                      type="button"
-                      className="chat-index-retry"
-                      onClick={() => {
-                        const files = editorFiles.map((f) => ({
-                          name: f.name,
-                          content: f.content,
-                          language: f.language,
-                        }))
-                        projectIndexManager.forceRebuildFromWorkspace(files)
-                      }}
-                    >
-                      {t('chat.indexRetry')}
-                    </button>
-                  </>
-                ) : indexStats.capped ? (
-                  t('chat.indexCapped', {
-                    indexed: indexStats.indexedFiles,
-                    eligible: indexStats.eligibleFiles,
-                  })
-                ) : (
-                  t('chat.indexOk', { count: indexStats.indexedFiles })
-                )}
-              </p>
-            )}
-          </div>
-        ) : null}
-      </div>
+            }
+            return next
+          })
+        }}
+        useWorkspaceContext={useWorkspaceContext}
+        onToggleWorkspaceContext={() => setUseWorkspaceContext((value) => !value)}
+        workspaceSelectedCount={workspaceStats.selectedFiles}
+        embeddedInRightPanel={embeddedInRightPanel}
+        indexStats={indexStats}
+        indexBuildState={indexBuildState}
+        editorFiles={editorFiles}
+      />
 
       {subscriptionExpiredBanner && (
         <div className="chat-subscription-expired" role="status">
@@ -2073,414 +770,121 @@ ${t('ai.chat.prompt')}`
         </div>
       )}
 
-      <div className="chat-messages">
-        {messages.map((message, index) => {
-          const isAssistant = message.role === 'assistant'
-          const isWelcome = index === 0 && isAssistant && !message.isError
-          const lastAssistantIndex = messages.reduce(
-            (last, item, itemIndex) => (item.role === 'assistant' ? itemIndex : last),
-            -1,
-          )
-          const canRetry = isAssistant && !isWelcome && !message.isError && index > 0
-          const canContinue =
-            isAssistant && !isWelcome && !message.isError && index === lastAssistantIndex && !loading
-
-          return (
-            <div key={index} className={`chat-msg-stack ${isAssistant ? '' : 'chat-msg-stack--user'}`}>
-              <div className={`chat-msg-row ${isAssistant ? '' : 'chat-msg-row--user'}`}>
-                {isAssistant && (
-                  <div className="chat-msg-avatar chat-msg-avatar--assistant">
-                    <Bot size={14} />
-                  </div>
-                )}
-
-                <div
-                  className={`chat-msg-bubble ${isAssistant ? 'chat-msg-bubble--assistant' : 'chat-msg-bubble--user'} ${message.isError ? 'chat-msg-bubble--error' : ''}`}
-                >
-                  <ChatMessageBody
-                    content={message.content}
-                    variant={message.role}
-                    isError={message.isError}
-                  />
-                </div>
-
-                {!isAssistant && (
-                  <div className="chat-msg-avatar chat-msg-avatar--user">
-                    <User size={14} />
-                  </div>
-                )}
-              </div>
-
-              {!isWelcome ? (
-                <ChatMessageActions
-                  role={message.role}
-                  canRetry={canRetry}
-                  canContinue={canContinue}
-                  onCopy={() => void copyMessageText(message.content)}
-                  onRetry={canRetry ? () => retryFromMessageIndex(index) : undefined}
-                  onContinue={
-                    canContinue
-                      ? () => void handleSend(t('chat.action.continuePrompt'))
-                      : undefined
-                  }
-                />
-              ) : null}
-            </div>
-          )
-        })}
-
-        {loading && (
-          <div className="chat-loading-row">
-            <div className="chat-msg-avatar chat-msg-avatar--assistant">
-              <Bot size={14} />
-            </div>
-            <div className="chat-loading-bubble">
-              <div className="chat-loading-bubble__inner">
-                <span>{t('chat.thinking')}</span>
-                <span className="typing-dots">
-                  <span className="dot" />
-                  <span className="dot" />
-                  <span className="dot" />
-                </span>
-              </div>
-              <AgentToolPanel
-                activity={agentActivity}
-                defaultCollapsed={false}
-                onSaveRun={() => void saveCurrentRun()}
-                onReplayLastRun={() => void replayLastRun()}
-                onExportMarkdown={exportRunMarkdown}
-              />
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
+      <ChatMessagesList
+        messages={messages}
+        loading={loading}
+        agentActivity={agentActivity}
+        messagesEndRef={messagesEndRef}
+        onCopyMessage={copyMessageText}
+        onRetryFromIndex={retryFromMessageIndex}
+        onContinueConversation={() => void handleSend(t('chat.action.continuePrompt'))}
+        onSaveRun={() => void saveCurrentRun()}
+        onReplayLastRun={() => void replayLastRun()}
+        onExportRunMarkdown={exportRunMarkdown}
+      />
 
       {pendingAgentChanges && pendingAgentChanges.length > 0 && onGenerateFiles ? (
-        <div className="chat-agent-bar">
-          <span className="chat-agent-bar__text">
-            {t('chat.agentChanges', {
-              count: pendingAgentChanges.length,
-              paths: pendingAgentChanges.map((c) => c.path).join('、'),
-            })}
-          </span>
-          <div className="chat-agent-bar__actions">
-            <button type="button" className="chat-btn-ghost" onClick={() => setPendingAgentChanges(null)}>
-              {t('chat.ignore')}
-            </button>
-            <button
-              type="button"
-              className="chat-btn-ghost"
-              onClick={() => {
-                setAgentApplyQueue(
-                  pendingAgentChanges.map((change) => ({
-                    path: change.path,
-                    oldContent: getOldContentForPath(editorFiles, change.path),
-                    newContent: change.content,
-                    language: change.language,
-                  })),
-                )
-                setShowAgentApplyModal(true)
-                setPendingAgentChanges(null)
-              }}
-            >
-              {t('chat.preview')}
-            </button>
-            <button
-              type="button"
-              className="chat-btn-primary-sm"
-              onClick={() => {
-                onGenerateFiles(
-                  pendingAgentChanges.map((change) => ({
-                    name: change.path,
-                    content: change.content,
-                    language: change.language,
-                  })),
-                )
-                setPendingAgentChanges(null)
-              }}
-            >
-              {t('chat.apply')}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="chat-quick-actions">
-        {quickActions.map((action) => (
-          <button
-            key={action.label}
-            type="button"
-            className="chat-quick-btn"
-            onClick={action.action}
-            disabled={loading || !isConfigured}
-          >
-            <action.icon size={14} />
-            {action.label}
-          </button>
-        ))}
-        {planMode ? (
-          <button
-            type="button"
-            className="chat-quick-btn"
-            onClick={runFirstPlanStep}
-            disabled={loading}
-            title={t('chat.plan.runFirstStepTitle')}
-          >
-            {t('chat.plan.runFirstStep')}
-          </button>
-        ) : null}
-      </div>
-
-      <McpToolLogPanel entries={mcpToolEntries} />
-
-      {(!loading && (runtimeQueuePause || queuedChatPrompt || queuedPlanExecutions.length > 0 || queuedSpecExecutions.length > 0 || sendQueue.length > 0)) || (loading && sendQueue.length > 0) ? (
-        <TaskQueuePanel
-          sessionStatus={sessionStatus}
-          runId={runId}
-          activeQueueTask={activeQueueTask}
-          queuedChatPrompt={queuedChatPrompt}
-          queuedPlanExecutions={queuedPlanExecutions}
-          queuedSpecExecutions={queuedSpecExecutions}
-          sendQueue={sendQueue}
-          queueFailureStats={queueFailureStats}
-          queueSuccessStats={queueSuccessStats}
-          recentDoneQueueItems={recentDoneQueueItems}
-          failedPlanExecution={failedPlanExecution}
-          failedSpecExecution={failedSpecExecution}
-          runtimeQueuePause={runtimeQueuePause}
-          onResumeRuntimeQueue={() => {
-            clearRuntimeQueuePause()
-            notify?.('success', t('runtime.queuePaused.resumedTitle'), t('runtime.queuePaused.resumedDetail'))
+        <ChatPendingAgentBar
+          changes={pendingAgentChanges}
+          editorFiles={editorFiles}
+          onIgnore={() => setPendingAgentChanges(null)}
+          onPreview={(queue) => {
+            setAgentApplyQueue(queue)
+            setShowAgentApplyModal(true)
+            setPendingAgentChanges(null)
           }}
-          onExportReport={exportQueueReport}
-          onSaveReport={saveQueueReportToWorkspace}
-          onOpenLatestReport={openLatestQueueReport}
-          onRestoreFromLatestReport={restoreQueueFromLatestReport}
-          onResetFailureStats={() => setQueueFailureStats({ plan: 0, spec: 0 })}
-          onResetSuccessStats={() => setQueueSuccessStats({ plan: 0, spec: 0 })}
-          onClearSpecQueue={() => setQueuedSpecExecutions([])}
-          onClearPlanQueue={() => setQueuedPlanExecutions([])}
-          onRetryFailedPlan={() => {
-            if (!failedPlanExecution) return
-            setQueuedPlanBackfill(failedPlanExecution.backfill)
-            setFailedPlanExecution(null)
-            void handleSend(failedPlanExecution.prompt)
+          onApply={(files) => {
+            onGenerateFiles(files)
+            setPendingAgentChanges(null)
           }}
-          onSkipFailedPlan={() => setFailedPlanExecution(null)}
-          onRetryFailedSpec={() => {
-            if (!failedSpecExecution) return
-            setQueuedSpecBackfill(failedSpecExecution.backfill)
-            setFailedSpecExecution(null)
-            void handleSend(failedSpecExecution.prompt)
-          }}
-          onSkipFailedSpec={() => setFailedSpecExecution(null)}
         />
       ) : null}
 
-      <div className="chat-input-area chat-input-area--stacked">
-        {payloadMeterEstimate ? (
-          <ChatPayloadBudgetMeter
-            estimatedBytes={payloadMeterEstimate.estimatedBytes}
-            budgetBytes={payloadMeterEstimate.budgetBytes}
-            usagePercent={payloadMeterEstimate.usagePercent}
-            level={payloadMeterEstimate.level}
-            footnote={[
-              payloadEstimate?.semanticReserveBytes ? t('chat.payload.meterSemanticNote') : null,
-              payloadEstimate?.toolLoopReserveBytes ? t('chat.payload.meterToolLoopNote') : null,
-              payloadEstimate?.mcpReserveBytes ? t('chat.payload.meterMcpNote') : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          />
-        ) : null}
+      <ChatQuickActionsBar
+        actions={quickActions}
+        planMode={planMode}
+        actionsDisabled={loading || !isConfigured}
+        planDisabled={loading}
+        onRunFirstPlanStep={runFirstPlanStep}
+      />
 
-        {showLargeRepoHint && largeRepoHint ? (
-          <div className="chat-large-repo-hint" role="status">
-            <strong>{t('chat.indexHintTitle')}</strong>
-            {largeRepoHint.kind === 'capped'
-              ? t('chat.largeRepo.capped', {
-                  indexed: largeRepoHint.indexedFiles,
-                  eligible: largeRepoHint.eligibleFiles,
-                })
-              : t('chat.largeRepo.nearCap', {
-                  indexed: largeRepoHint.indexedFiles,
-                  eligible: largeRepoHint.eligibleFiles,
-                  max: largeRepoHint.maxFiles,
-                })}
-          </div>
-        ) : null}
+      <McpToolLogPanel entries={mcpToolEntries} />
 
-        {mentionPreflight && mentionPreflight.issues.length > 0 ? (
-          <div className="chat-mention-preflight" role="status">
-            <strong>{t('chat.mention.preflightBannerTitle')}</strong>
-            <ul>
-              {mentionPreflight.issues.map((issue) => {
-                if (issue.kind === 'too_many') {
-                  return (
-                    <li key="too-many">
-                      {t('chat.mention.preflightTooMany', { count: issue.count, max: issue.max })}
-                    </li>
-                  )
-                }
-                if (issue.kind === 'unresolved') {
-                  return <li key={`unresolved-${issue.token}`}>{t('chat.mention.preflightUnresolved', { tokens: issue.token })}</li>
-                }
-                return (
-                  <li key={`ambiguous-${issue.token}`}>
-                    {t('chat.mention.preflightAmbiguous', {
-                      token: issue.token,
-                      paths: issue.paths.join(', '),
-                    })}
-                  </li>
-                )
-              })}
-            </ul>
-            {countUnresolvedMentions(mentionPreflight) > 0 ? (
-              <span>{t('chat.mention.preflightBlockHint')}</span>
-            ) : null}
-            {countAmbiguousMentions(mentionPreflight) > 0 ? (
-              <span>{t('chat.mention.preflightAmbiguousBlockHint')}</span>
-            ) : null}
-            {countAmbiguousMentions(mentionPreflight) > 0 &&
-            countUnresolvedMentions(mentionPreflight) === 0 ? (
-              <button
-                type="button"
-                className="chat-btn-primary-sm chat-mention-preflight__retry"
-                onClick={() => {
-                  trackEvent('chat.mention_slim_retry', {
-                    ambiguousCount: countAmbiguousMentions(mentionPreflight),
-                  })
-                  handleSend(input, undefined, { forceSlim: true })
-                }}
-              >
-                {t('chat.mention.slimPastAmbiguous')}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+      <ChatRuntimeQueueSection
+        loading={loading}
+        sessionStatus={sessionStatus}
+        runId={runId}
+        activeQueueTask={activeQueueTask}
+        queuedChatPrompt={queuedChatPrompt}
+        queuedPlanExecutions={queuedPlanExecutions}
+        queuedSpecExecutions={queuedSpecExecutions}
+        sendQueue={sendQueue}
+        queueFailureStats={queueFailureStats}
+        queueSuccessStats={queueSuccessStats}
+        recentDoneQueueItems={recentDoneQueueItems}
+        failedPlanExecution={failedPlanExecution}
+        failedSpecExecution={failedSpecExecution}
+        runtimeQueuePause={runtimeQueuePause}
+        onResumeRuntimeQueue={() => {
+          clearRuntimeQueuePause()
+          notify?.('success', t('runtime.queuePaused.resumedTitle'), t('runtime.queuePaused.resumedDetail'))
+        }}
+        onExportReport={exportQueueReport}
+        onSaveReport={saveQueueReportToWorkspace}
+        onOpenLatestReport={openLatestQueueReport}
+        onRestoreFromLatestReport={restoreQueueFromLatestReport}
+        onResetFailureStats={() => setQueueFailureStats({ plan: 0, spec: 0 })}
+        onResetSuccessStats={() => setQueueSuccessStats({ plan: 0, spec: 0 })}
+        onClearSpecQueue={() => setQueuedSpecExecutions([])}
+        onClearPlanQueue={() => setQueuedPlanExecutions([])}
+        onRetryFailedPlan={() => {
+          if (!failedPlanExecution) return
+          setQueuedPlanBackfill(failedPlanExecution.backfill)
+          setFailedPlanExecution(null)
+          void handleSend(failedPlanExecution.prompt)
+        }}
+        onSkipFailedPlan={() => setFailedPlanExecution(null)}
+        onRetryFailedSpec={() => {
+          if (!failedSpecExecution) return
+          setQueuedSpecBackfill(failedSpecExecution.backfill)
+          setFailedSpecExecution(null)
+          void handleSend(failedSpecExecution.prompt)
+        }}
+        onSkipFailedSpec={() => setFailedSpecExecution(null)}
+      />
 
-        {payloadWarning ? (
-          <div className="chat-payload-warning" role="status">
-            <div className="chat-payload-warning__text">
-              <strong>{t('chat.payload.preflightWarnTitle')}</strong>
-              <span>
-                {t('chat.payload.preflightWarnDetail', {
-                  estimatedKb: toKb(payloadWarning.estimatedBytes),
-                  budgetKb: toKb(payloadWarning.budgetBytes),
-                })}
-              </span>
-              <span className="chat-payload-warning__plan">
-                {payloadWarning.slimPlan.join(' · ')}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="chat-btn-primary-sm"
-              onClick={() => {
-                trackEvent('chat.payload_slim_retry', {
-                  estimatedBytes: payloadWarning.estimatedBytes,
-                  budgetBytes: payloadWarning.budgetBytes,
-                  provider: aiConfig.provider,
-                })
-                handleSend(payloadWarning.text, payloadWarning.action, { forceSlim: true })
-              }}
-            >
-              {t('chat.payload.slimAndSend')}
-            </button>
-          </div>
-        ) : null}
-
-        {activeMentionQuery !== null && mentionBlockedByIndexBuild ? (
-          <div className="chat-mention-blocked" role="status">
-            {t('chat.mentionBuildingBlocked')}
-          </div>
-        ) : null}
-
-        {mentionHits.length > 0 && (
-          <div className="chat-mention-list">
-            {mentionHits.map((hit, index) => (
-              <button
-                key={`${hit.type}-${hit.path}-${hit.name}-${hit.line ?? 0}`}
-                type="button"
-                className={`chat-mention-item ${index === mentionIndex ? 'chat-mention-item--active' : ''}`}
-                onClick={() => pickMention(hit)}
-              >
-                <span className="chat-mention-item__kind">{hit.type === 'symbol' ? '◎' : '📄'}</span>
-                <span>{hit.type === 'symbol' ? hit.name : hit.path}</span>
-                {hit.line ? (
-                  <span className="chat-mention-item__meta">
-                    {hit.path}:{hit.line}
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {activeMentionQuery !== null &&
-        !mentionOnboardingDismissed &&
-        indexStats.indexedFiles >= 10 &&
-        mentionHits.length === 0 &&
-        indexBuildState.status === 'ready' ? (
-          <div className="chat-mention-onboarding">
-            <div className="chat-mention-onboarding__title">{t('chat.mentionOnboardingTitle')}</div>
-            <div className="chat-mention-onboarding__body">
-              {t('chat.mentionOnboardingBody')}
-            </div>
-            <button
-              type="button"
-              className="btn btn-secondary chat-mention-onboarding__btn"
-              onClick={() => {
-                setMentionOnboardingDismissed(true)
-                try {
-                  localStorage.setItem('ai-ide:mention-onboarding-dismissed', 'true')
-                } catch {
-                  // ignore
-                }
-              }}
-            >
-              {t('chat.mentionOnboardingDismiss')}
-            </button>
-          </div>
-        ) : null}
-
-        <div className="chat-input-row">
-          <textarea
-            ref={inputRef}
-            className="chat-input chat-input--composer"
-            placeholder={
-              isConfigured ? t('chat.inputPlaceholder') : t('chat.inputPlaceholderNoConfig')
-            }
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            disabled={!isConfigured || loading}
-            rows={1}
-          />
-          {backgroundAgentOn && agentMode && !planMode && currentUser ? (
-            <button
-              type="button"
-              className="chat-send chat-send--square"
-              onClick={() => void handleBackgroundRun()}
-              disabled={!isConfigured || loading || backgroundSubmitting || !input.trim()}
-              title={t('chat.backgroundRun.button')}
-            >
-              <Server size={16} />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="chat-send chat-send--square"
-            onClick={loading ? stopGeneration : () => handleSend()}
-            disabled={!isConfigured || (!loading && !input.trim())}
-            title={loading ? t('chat.stop') : t('chat.sendButton')}
-          >
-            {loading ? <Pause size={16} /> : <Send size={16} />}
-          </button>
-        </div>
-      </div>
+      <ChatInputComposer
+        inputRef={inputRef}
+        input={input}
+        isConfigured={isConfigured}
+        loading={loading}
+        aiConfig={aiConfig}
+        payloadMeterEstimate={payloadMeterEstimate}
+        payloadEstimate={payloadEstimate}
+        showLargeRepoHint={showLargeRepoHint}
+        largeRepoHint={largeRepoHint}
+        mentionPreflight={mentionPreflight}
+        payloadWarning={payloadWarning}
+        activeMentionQuery={activeMentionQuery}
+        mentionBlockedByIndexBuild={mentionBlockedByIndexBuild}
+        mentionHits={mentionHits}
+        mentionIndex={mentionIndex}
+        mentionOnboardingDismissed={mentionOnboardingDismissed}
+        indexStats={indexStats}
+        indexBuildState={indexBuildState}
+        backgroundAgentOn={backgroundAgentOn}
+        agentMode={agentMode}
+        planMode={planMode}
+        currentUser={currentUser}
+        backgroundSubmitting={backgroundSubmitting}
+        onInputChange={handleInputChange}
+        onKeyDown={handleKeyDown}
+        onPickMention={pickMention}
+        onDismissMentionOnboarding={dismissMentionOnboarding}
+        onSend={handleSend}
+        onStop={stopGeneration}
+        onBackgroundRun={() => void handleBackgroundRun()}
+      />
 
     </div>
   )

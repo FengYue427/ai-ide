@@ -25,4 +25,4 @@ run('node', [
   'never',
 ])
 console.log('\n✅ Output: release/AI-IDE-*-win-portable.exe')
-console.log('   API origin: see .env.electron VITE_API_BASE_URL (change for HK mirror when ready)')
+console.log('   API: .env.electron VITE_API_BASE_URL · billing Pro ¥39 / Team ¥79 (rebuild after env change)')

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiFetch } from '../services/apiUtils'
 
 const SLOW_MS = 6_000
 
@@ -17,7 +18,7 @@ export function useCloudHealth(): CloudHealthState {
 
     void (async () => {
       try {
-        const res = await fetch('/api/health', { signal: AbortSignal.timeout(12_000) })
+        const res = await apiFetch('/api/health', { signal: AbortSignal.timeout(12_000) })
         const elapsed = performance.now() - started
         const slow = elapsed >= SLOW_MS
         const json = (await res.json()) as { status?: string; database?: string }

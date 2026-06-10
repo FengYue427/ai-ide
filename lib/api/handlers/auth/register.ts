@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     trackServerEvent(req, 'auth.register.success', { userId: user.id })
 
     return new Response(
-      JSON.stringify(appendApiMessage(req, 'api.auth.registerOk', { success: true, user })),
+      JSON.stringify(appendApiMessage(req, 'api.auth.registerOk', { success: true, token, user })),
       {
         status: 200,
         headers: {

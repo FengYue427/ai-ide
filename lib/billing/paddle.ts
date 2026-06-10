@@ -1,4 +1,5 @@
 import { getPaddlePriceId } from './plans'
+import { buildAppReturnUrl } from './returnUrl'
 import { resolveAppOrigin } from './stripe'
 
 export type PaddleApiMode = 'sandbox' | 'live'
@@ -62,6 +63,7 @@ export async function createPaddleCheckoutSession(params: {
   userId: string
   email: string
   planName: string
+  desktopShell?: boolean
 }): Promise<string> {
   const priceId = getPaddlePriceId(params.planName)
   if (!priceId) {
@@ -69,7 +71,11 @@ export async function createPaddleCheckoutSession(params: {
   }
 
   const origin = resolveAppOrigin(params.req)
-  const successUrl = `${origin}/?subscription=success&plan=${encodeURIComponent(params.planName)}`
+  const successUrl = buildAppReturnUrl(
+    origin,
+    { subscription: 'success', plan: params.planName },
+    { desktopShell: params.desktopShell },
+  )
 
   const data = await paddleRequest<{ checkout?: { url?: string } }>('/transactions', {
     method: 'POST',
@@ -110,10 +116,11 @@ export async function createPaddleCustomerPortalSession(params: {
   req: Request
   customerId: string
   subscriptionId?: string | null
+  desktopShell?: boolean
 }): Promise<string> {
   const origin = resolveAppOrigin(params.req)
   const body: Record<string, unknown> = {
-    return_url: `${origin}/?subscription=portal`,
+    return_url: buildAppReturnUrl(origin, { subscription: 'portal' }, { desktopShell: params.desktopShell }),
   }
   if (params.subscriptionId) {
     body.subscription_ids = [params.subscriptionId]

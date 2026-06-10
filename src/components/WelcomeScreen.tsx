@@ -16,7 +16,8 @@ import {
 } from 'lucide-react'
 import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
 import { shouldShowNetworkTips, useCloudHealth } from '../hooks/useCloudHealth'
-import { getPublicAppOrigin } from '../lib/appOrigin'
+import { getPublicAppOrigin, resolveAppLogo } from '../lib/appOrigin'
+import { resolveAppUrl } from '../lib/externalNavigation'
 import { dismissWelcomeOnboarding, shouldShowWelcomeOnboarding } from '../lib/welcomeOnboarding'
 import { useI18n } from '../i18n'
 import { isDesktopApp } from '../services/desktopBridge'
@@ -43,6 +44,7 @@ interface WelcomeScreenProps {
   onOpenGit?: () => void
   onOpenCollaboration?: () => void
   onRegister?: () => void
+  onOpenSpecStudio?: () => void
   shortcuts?: { key: string; action: string }[]
 }
 
@@ -75,6 +77,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onOpenGit,
   onOpenCollaboration,
   onRegister,
+  onOpenSpecStudio,
   shortcuts: shortcutsProp,
 }) => {
   const { t, locale } = useI18n()
@@ -82,8 +85,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const cloudHealth = useCloudHealth()
   const showNetworkTips = shouldShowNetworkTips(cloudHealth, isDesktopApp())
   const appOrigin = getPublicAppOrigin()
-  const legalPrivacy = locale === 'en-US' ? '/legal/privacy-en.html' : '/legal/privacy.html'
-  const legalTerms = locale === 'en-US' ? '/legal/terms-en.html' : '/legal/terms.html'
+  const legalPrivacy = resolveAppUrl(
+    locale === 'en-US' ? '/legal/privacy-en.html' : '/legal/privacy.html',
+  )
+  const legalTerms = resolveAppUrl(locale === 'en-US' ? '/legal/terms-en.html' : '/legal/terms.html')
+  const browserLimitsHelp = resolveAppUrl('/help/browser-limits.html')
+  const signupPageUrl = resolveAppUrl('/signup')
+  const logoUrl = resolveAppLogo()
 
   const shortcuts = useMemo(() => {
     if (shortcutsProp) return shortcutsProp
@@ -129,8 +137,20 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           actionKey: 'ai' as const,
           cta: t('welcome.cta.ai'),
         },
+        ...(onOpenSpecStudio
+          ? [
+              {
+                title: t('welcome.quick.specStudio.title'),
+                description: t('welcome.quick.specStudio.desc'),
+                icon: Sparkles,
+                accent: 'var(--accent-color)',
+                actionKey: 'spec' as const,
+                cta: t('welcome.cta.specStudio'),
+              },
+            ]
+          : []),
       ] as const,
-    [t],
+    [onOpenSpecStudio, t],
   )
 
   const featureCards = useMemo(
@@ -212,7 +232,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <div className="welcome-hero">
             <div className="welcome-brand-row">
               <div className="welcome-logo">
-                <img src="/logo-ai-ide.png" alt="" width={56} height={56} decoding="async" />
+                <img src={logoUrl} alt="" width={56} height={56} decoding="async" />
               </div>
               <div>
                 <div className="welcome-badge-row">
@@ -256,7 +276,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   {t('welcome.platformCtaButton')}
                   <ArrowRight size={16} />
                 </button>
-                <a className="welcome-platform-cta-link" href="/signup">
+                <a className="welcome-platform-cta-link" href={signupPageUrl}>
                   {t('welcome.platformCtaSignupPage')}
                 </a>
               </div>
@@ -320,7 +340,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               {quickActions.map((item) => {
                 const ActionIcon = item.icon
                 const onClick =
-                  item.actionKey === 'new' ? onNewProject : item.actionKey === 'open' ? onOpenProject : onOpenAIChat
+                  item.actionKey === 'new'
+                    ? onNewProject
+                    : item.actionKey === 'open'
+                      ? onOpenProject
+                      : item.actionKey === 'spec'
+                        ? () => onOpenSpecStudio?.()
+                        : onOpenAIChat
 
                 return (
                   <button
@@ -465,7 +491,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <a href={legalTerms} target="_blank" rel="noreferrer">
             {t('welcome.footer.terms')}
           </a>
-          <a href="/help/browser-limits.html" target="_blank" rel="noreferrer">
+          <a href={browserLimitsHelp} target="_blank" rel="noreferrer">
             {t('welcome.footer.browser')}
           </a>
           <span>{t('welcome.footer.aiNote')}</span>

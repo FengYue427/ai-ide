@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isPublicWelfareClient } from '../lib/publicWelfare'
-import { readJsonResponse } from '../services/apiUtils'
+import { readJsonResponse, apiFetch } from '../services/apiUtils'
 
 /** Build-time flag or live /api/subscription/payment-methods.publicWelfare */
 export function usePublicWelfare(): boolean {
@@ -9,7 +9,7 @@ export function usePublicWelfare(): boolean {
   useEffect(() => {
     if (isPublicWelfareClient()) return
     let cancelled = false
-    fetch('/api/subscription/payment-methods', { credentials: 'include' })
+    apiFetch('/api/subscription/payment-methods', { credentials: 'include' })
       .then((r) => readJsonResponse<{ publicWelfare?: boolean }>(r))
       .then((data) => {
         if (!cancelled && data?.publicWelfare) setFromServer(true)

@@ -7,6 +7,13 @@ import {
   executeBackgroundAgentTool,
   type BackgroundAgentToolName,
 } from './backgroundAgentTools'
+import {
+  AGENT_BACKGROUND_SYSTEM,
+  AGENT_SUMMARY_NUDGE,
+  isRepeatedToolCall,
+  needsAgentFinalSummary,
+  toolCallSignature,
+} from '../../src/services/agentPromptShared'
 
 export type BackgroundAgentLoopCallbacks = {
   onRound?: (round: number) => void | Promise<void>
@@ -19,12 +26,7 @@ export type BackgroundAgentLoopResult = {
   toolCalls: number
 }
 
-const AGENT_SYSTEM = `You are an autonomous coding agent running as a cloud background job in AI IDE.
-- Use list_files and read_file to explore before editing.
-- Use search_repo for file paths; grep_repo for content search.
-- Use write_file with the FULL file content for each change (not a diff).
-- run_command, move_file, delete_file are NOT available in this environment.
-- When done, reply briefly summarizing what you changed.`
+const AGENT_SYSTEM = AGENT_BACKGROUND_SYSTEM
 
 function parseToolArguments(raw: string): Record<string, unknown> {
   try {
@@ -60,8 +62,12 @@ export async function runBackgroundAgentLoop(
   let finalContent = ''
   let rounds = 0
   let toolCalls = 0
+  let lastToolSignature: string | null = null
+  let repeatToolCount = 0
+  let stopToolsForSummary = false
 
   for (let round = 0; round < maxRounds; round++) {
+    if (stopToolsForSummary) break
     if (await callbacks?.shouldStop?.()) break
 
     rounds = round + 1
@@ -95,10 +101,29 @@ export async function runBackgroundAgentLoop(
         tool_call_id: call.id,
         content: result.ok ? result.output : `ERROR: ${result.error ?? result.output}`,
       })
+
+      const signature = toolCallSignature(name, args)
+      const repeat = isRepeatedToolCall(signature, lastToolSignature, repeatToolCount)
+      lastToolSignature = signature
+      repeatToolCount = repeat.nextCount
+      if (repeat.repeated) {
+        stopToolsForSummary = true
+        break
+      }
     }
 
     if (completion.finish_reason === 'stop' && !completion.tool_calls?.length) {
       break
+    }
+  }
+
+  if (needsAgentFinalSummary(toolCalls, finalContent)) {
+    messages.push({ role: 'user', content: AGENT_SUMMARY_NUDGE })
+    const summaryCompletion = await sendBackgroundAgentCompletion(userId, config, messages, {
+      tools: [],
+    })
+    if (summaryCompletion.content?.trim()) {
+      finalContent = summaryCompletion.content
     }
   }
 

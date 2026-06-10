@@ -6,6 +6,7 @@ import {
   formatPlanPrice,
   getBillablePlanNames,
   getPlanAmountCents,
+  getPlanDisplayQuote,
 } from './plans'
 
 describe('billing plans', () => {
@@ -26,5 +27,23 @@ describe('billing plans', () => {
     expect(getPlanAmountCents('enterprise')).toBe(7900)
     expect(findPlanByName('enterprise')?.price).toBe(STRIPE_USD_ENTERPRISE)
     expect(formatPlanPrice(findPlanByName('enterprise')!)).toBe('$19.99')
+  })
+
+  it('shows CNY in UI when preferCny even if catalog currency is USD', () => {
+    const pro = findPlanByName('pro')!
+    expect(getPlanDisplayQuote(pro, { preferCny: true }).formatted).toBe('¥39')
+    expect(getPlanDisplayQuote(findPlanByName('enterprise')!, { preferCny: true }).formatted).toBe(
+      '¥79',
+    )
+    expect(formatPlanPrice(pro, { preferCny: true })).toBe('¥39')
+  })
+
+  it('merges priceCny from catalog for API plan rows without priceCny', () => {
+    const quote = getPlanDisplayQuote(
+      { name: 'pro', price: 9.99, currency: 'USD' },
+      { preferCny: true },
+    )
+    expect(quote.amount).toBe(39)
+    expect(quote.symbol).toBe('¥')
   })
 })

@@ -103,7 +103,13 @@ console.log('[migrate-if-db] Target:', maskUrl(url))
 
 try {
   if (await collaborationRoomExists()) {
-    console.log('[migrate-if-db] CollaborationRoom already exists — done')
+    console.log('[migrate-if-db] CollaborationRoom exists — applying pending migrations')
+    const pending = runMigrateDeploy()
+    if (pending.status !== 0) {
+      console.error('[migrate-if-db] migrate deploy failed on existing database')
+      process.exit(pending.status ?? 1)
+    }
+    console.log('[migrate-if-db] Pending migrations applied')
     process.exit(0)
   }
 

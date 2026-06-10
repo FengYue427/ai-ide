@@ -13,6 +13,9 @@ export async function POST(request: Request) {
     const auth = await requireAuth(request)
     if (!auth.ok) return auth.response
 
+    const body = (await request.json().catch(() => ({}))) as { desktopShell?: boolean }
+    const desktopShell = body.desktopShell === true
+
     const record = await getUserSubscription(auth.user.id)
     if (!record) {
       return localizedErrorResponse(request, 'api.subscription.noStripeCustomer', 400)
@@ -23,6 +26,7 @@ export async function POST(request: Request) {
         req: request,
         customerId: record.paddleCustomerId,
         subscriptionId: record.paddleSubscriptionId,
+        desktopShell,
       })
       return jsonResponse({ mode: 'paddle', url })
     }
@@ -38,6 +42,7 @@ export async function POST(request: Request) {
     const url = await createStripeBillingPortalSession({
       req: request,
       customerId: record.stripeCustomerId,
+      desktopShell,
     })
 
     return jsonResponse({ mode: 'stripe', url })

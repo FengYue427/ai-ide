@@ -1,5 +1,5 @@
 import { planLimitsByName } from '../../lib/billing/plans'
-import { readJsonResponse } from './apiUtils'
+import { readJsonResponse, apiFetch } from './apiUtils'
 
 export interface Plan {
   id: string
@@ -73,7 +73,7 @@ class SubscriptionService {
       cancelAtPeriodEnd: false,
     }
     try {
-      const res = await fetch('/api/subscription', { credentials: 'include' })
+      const res = await apiFetch('/api/subscription', { credentials: 'include' })
       if (res.ok) {
         const data = await readJsonResponse<{
           subscription?: Subscription

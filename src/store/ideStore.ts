@@ -231,6 +231,8 @@ export interface IDEState {
   gitManualRefreshOnly: boolean
   gitStatusRefreshNonce: number
   showTemplateModal: boolean
+  showSpecStudio: boolean
+  specStudioPrefill: { specName?: string; templateId?: string } | null
   showShareModal: boolean
   showGitPanel: boolean
   showAISettings: boolean
@@ -326,6 +328,8 @@ export interface IDEState {
   setGitManualRefreshOnly: (enabled: boolean) => void
   bumpGitStatusRefresh: () => void
   setShowTemplateModal: (show: boolean) => void
+  setShowSpecStudio: (show: boolean) => void
+  setSpecStudioPrefill: (prefill: { specName?: string; templateId?: string } | null) => void
   setShowShareModal: (show: boolean) => void
   setShowGitPanel: (show: BooleanUpdater) => void
   setShowAISettings: (show: boolean) => void
@@ -428,6 +432,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
   gitManualRefreshOnly: loadGitStatusRefreshPrefs().manualRefreshOnly,
   gitStatusRefreshNonce: 0,
   showTemplateModal: false,
+  showSpecStudio: false,
+  specStudioPrefill: null,
   showShareModal: false,
   showGitPanel: false,
   showAISettings: false,
@@ -694,6 +700,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
   bumpGitStatusRefresh: () =>
     set((state) => ({ gitStatusRefreshNonce: state.gitStatusRefreshNonce + 1 })),
   setShowTemplateModal: (showTemplateModal) => set({ showTemplateModal }),
+  setShowSpecStudio: (showSpecStudio) => set({ showSpecStudio }),
+  setSpecStudioPrefill: (specStudioPrefill) => set({ specStudioPrefill }),
   setShowShareModal: (showShareModal) => set({ showShareModal }),
   setShowGitPanel: (value) =>
     set((state) => ({ showGitPanel: resolveBoolean(value, state.showGitPanel) })),

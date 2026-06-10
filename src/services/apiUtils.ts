@@ -70,13 +70,18 @@ export function getApiBaseUrl(): string {
   return ''
 }
 
+export function buildApiUrl(path: string): string {
+  const resolved = resolveApiUrl(path)
+  return typeof resolved === 'string' ? resolved : resolved.toString()
+}
+
 function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
   if (typeof input !== 'string' || !input.startsWith('/')) return input
   const base = getApiBaseUrl()
   return base ? `${base}${input}` : input
 }
 
-export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (!headers.has('X-Request-Id')) {
     headers.set('X-Request-Id', createClientRequestId())
@@ -84,9 +89,18 @@ export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   if (!headers.has('X-App-Language')) {
     headers.set('X-App-Language', getApiLanguage())
   }
+
+  const { needsCrossOriginAuth, getStoredAuthToken } = await import('../lib/desktopAuthToken')
+  if (needsCrossOriginAuth()) {
+    const token = await getStoredAuthToken()
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+  }
+
   const path = requestPath(input)
   const url = resolveApiUrl(input)
-  return fetch(url, { ...init, headers }).then((response) => {
+  return fetch(url, { ...init, headers, credentials: init?.credentials ?? 'include' }).then((response) => {
     if (response.status === 401 && shouldNotifyUnauthorized(input)) {
       unauthorizedHandler?.()
     }

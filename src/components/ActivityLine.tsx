@@ -80,19 +80,11 @@ export function ActivityLine() {
   }, [events])
 
   return (
-    <div
-      data-testid="aide-activity-line"
-      className="aide-activity-line"
-      style={{
-        borderBottom: '1px solid var(--border-color)',
-        background: 'var(--bg-secondary, rgba(0,0,0,0.12))',
-        fontSize: 11,
-        lineHeight: 1.5,
-      }}
-    >
+    <div data-testid="aide-activity-line" className="aide-activity-line">
       <button
         type="button"
         data-testid="aide-activity-line-toggle"
+        className="aide-activity-line__toggle"
         onClick={() => {
           setCollapsed((value) => {
             const next = !value
@@ -100,41 +92,21 @@ export function ActivityLine() {
             return next
           })
         }}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '6px 10px',
-          border: 'none',
-          background: 'transparent',
-          color: 'var(--text-secondary)',
-          cursor: 'pointer',
-          textAlign: 'left',
-        }}
       >
         {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
         <Activity size={14} color="var(--accent-color)" />
-        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('activityLine.title')}</span>
-        <span style={{ marginLeft: 8, opacity: 0.75, fontSize: 10 }}>
+        <span className="aide-activity-line__title">{t('activityLine.title')}</span>
+        <span className="aide-activity-line__counts">
           {Object.entries(typeCounts)
             .map(([type, count]) => `${type.split('.')[0]}:${count}`)
             .join(' · ')}
         </span>
-        <span style={{ marginLeft: 'auto', opacity: 0.8 }}>
+        <span className="aide-activity-line__hint">
           {collapsed ? t('activityLine.expandHint') : t('activityLine.eventCount', { count: String(events.length) })}
         </span>
       </button>
       {!collapsed ? (
-        <div
-          data-testid="aide-activity-line-body"
-          style={{
-            maxHeight: 160,
-            overflow: 'auto',
-            padding: '0 10px 8px',
-            color: 'var(--text-secondary)',
-          }}
-        >
+        <div data-testid="aide-activity-line-body" className="aide-activity-line__body">
           {events.length === 0 ? (
             <div>{t('activityLine.empty')}</div>
           ) : (
@@ -145,11 +117,11 @@ export function ActivityLine() {
                 <div
                   key={`${event.at}-${event.type}-${event.message}`}
                   data-testid={`aide-activity-event-${event.type}`}
-                  style={{ display: 'flex', gap: 6, alignItems: 'flex-start', padding: '2px 0' }}
+                  className="aide-activity-line__row"
                 >
-                  <span style={{ marginTop: 2, opacity: 0.85 }}>{eventIcon(event.type)}</span>
-                  <span style={{ flex: 1 }}>{eventLabel(event, t)}</span>
-                  <span style={{ opacity: 0.6, whiteSpace: 'nowrap' }}>{formatEventTime(event.at)}</span>
+                  <span className="aide-activity-line__icon">{eventIcon(event.type)}</span>
+                  <span className="aide-activity-line__message">{eventLabel(event, t)}</span>
+                  <span className="aide-activity-line__time">{formatEventTime(event.at)}</span>
                 </div>
               ))
           )}

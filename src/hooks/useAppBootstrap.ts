@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { modelOptions } from '../services/aiService'
 import { authService } from '../services/authService'
 import { recentFilesService } from '../services/recentFilesService'
-import { getShare } from '../services/shareService'
+import { loadShareById } from '../services/shareService'
 import { loadLocalAutosaveFiles } from '../services/workspaceAutosave'
 import { loadWorkspaceRootsForBootstrap } from '../services/workspaceRootsService'
 import { markWorkspaceHydrated, pickRicherFileSet } from '../services/workspaceSession'
@@ -11,6 +11,14 @@ import { isMultiRootWorkspaceEnabled } from '../lib/v12Features'
 import { unifiedStorage } from '../services/unifiedStorage'
 import { loadBottomPanelPrefs } from '../services/bottomPanelPrefsService'
 import type { FileItem } from '../types/file'
+import {
+  DESKTOP_SHELL_RETURN_PARAM,
+  markDesktopShellReturn,
+  returnToLocalDesktopShell,
+  shouldReturnToDesktopShell,
+} from '../lib/externalNavigation'
+import { isDesktopApp } from '../services/desktopBridge'
+import { markDesktopReturnPending, triggerDesktopReturnFromBrowser } from '../lib/desktopDeepLink'
 
 export function useAppBootstrap() {
   const authChecked = useIDEStore((s) => s.authChecked)
@@ -62,12 +70,13 @@ export function useAppBootstrap() {
     const { setFiles, setShowCollaboration } = useIDEStore.getState()
 
     if (shareId) {
-      const shareData = getShare(shareId)
-      if (shareData) {
-        setFiles(shareData.files)
-        markWorkspaceHydrated()
-      }
-      window.history.replaceState({}, '', window.location.pathname)
+      void loadShareById(shareId).then((shareData) => {
+        if (shareData) {
+          setFiles(shareData.files)
+          markWorkspaceHydrated()
+        }
+        window.history.replaceState({}, '', window.location.pathname)
+      })
     }
 
     if (roomId) {
@@ -92,6 +101,7 @@ export function useAppBootstrap() {
     const needsOAuthSync = params.get('oauth_sync') === '1'
 
     const finishAuth = async () => {
+      const returnToDesktopShell = shouldReturnToDesktopShell(params)
       if (needsOAuthSync) {
         const synced = await authService.syncOAuthSession()
         if (synced.user) {
@@ -101,8 +111,20 @@ export function useAppBootstrap() {
           setCurrentUser(session?.user || null)
         }
         params.delete('oauth_sync')
+        params.delete(DESKTOP_SHELL_RETURN_PARAM)
         const query = params.toString()
         window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`)
+
+        if (returnToDesktopShell && useIDEStore.getState().currentUser) {
+          if (isDesktopApp()) {
+            markDesktopShellReturn('oauth')
+            const reloaded = await returnToLocalDesktopShell()
+            if (reloaded) return
+          } else {
+            markDesktopReturnPending('oauth')
+            triggerDesktopReturnFromBrowser('oauth', { token: synced.token })
+          }
+        }
       } else {
         const session = await authService.getSession()
         setCurrentUser(session?.user || null)

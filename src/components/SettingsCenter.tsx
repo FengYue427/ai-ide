@@ -70,15 +70,10 @@ import {
 } from '../lib/indexBuildPrefs'
 import { isIndexBuildTelemetryEnabled } from '../lib/v13Features'
 import { isIndex2kProductionEnabled } from '../lib/v14Features'
-import { SettingsBackgroundAgentCard } from './SettingsBackgroundAgentCard'
-import { SettingsPluginOpsCard } from './SettingsPluginOpsCard'
 import { formatTabCompletionMetricsLine } from '../lib/formatTabCompletionMetrics'
-import { SettingsTabCompletionCard } from './SettingsTabCompletionCard'
-import { SettingsV14FeaturesCard } from './SettingsV14FeaturesCard'
-import { SettingsV15FeaturesCard } from './SettingsV15FeaturesCard'
-import { SettingsV16FeaturesCard } from './SettingsV16FeaturesCard'
-import { SettingsAideRuntimeStubCard } from './SettingsAideRuntimeStubCard'
-import { SettingsV13FeaturesCard } from './SettingsV13FeaturesCard'
+import { SettingsFeaturesStack } from './settings/SettingsFeaturesStack'
+import { SettingsPlatformParityCard } from './settings/SettingsPlatformParityCard'
+import { getWebContainerInstance } from '../hooks/useWebContainer'
 import { usePlatformAiHealth } from '../hooks/usePlatformAiHealth'
 import { usePlatformUsageDashboard } from '../hooks/usePlatformUsageDashboard'
 import { useIDEStore, type AIConfigState, type AiKeyMode } from '../store/ideStore'
@@ -128,6 +123,7 @@ interface SettingsCenterProps {
   onOpenSpecHooks?: (tasksPath: string) => void
   onCreateSpecHooks?: (tasksPath: string, specName: string) => void
   onRunFirstOpenSpecTask?: (tasksPath: string) => void
+  onOpenSpecStudio?: () => void
   planItems?: PlanCatalogItem[]
   planLinkCounts?: Record<string, number>
   planTemplates?: PlanTemplateItem[]
@@ -198,6 +194,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onOpenSpecHooks,
   onCreateSpecHooks,
   onRunFirstOpenSpecTask,
+  onOpenSpecStudio,
   planItems = [],
   planLinkCounts = {},
   planTemplates = [],
@@ -736,6 +733,11 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   />
                 </div>
 
+                <div className="settings-card settings-card--grid">
+                  <div className="settings-row-title">{t('settings.formatLanguages.title')}</div>
+                  <div className="settings-row-desc">{t('settings.formatLanguages.desc')}</div>
+                </div>
+
                 <div className="settings-card settings-card--row">
                   <div>
                     <div className="settings-row-title">{t('settings.tabCompletion.title')}</div>
@@ -876,30 +878,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     </li>
                   </ul>
                 </div>
-                <SettingsV13FeaturesCard />
-                <SettingsV14FeaturesCard />
-                <SettingsV16FeaturesCard />
-                <SettingsV15FeaturesCard />
-                <SettingsTabCompletionCard />
-                <SettingsAideRuntimeStubCard />
-                <SettingsBackgroundAgentCard />
-                <SettingsPluginOpsCard
-                  plugins={
-                    platformAiHealth.status === 'ready'
-                      ? platformAiHealth.plugins
-                      : platformAiHealth.status === 'unreachable'
-                        ? platformAiHealth.plugins
-                        : { publishEnabled: false, officialKeyConfigured: false }
-                  }
-                  healthStatus={
-                    platformAiHealth.status === 'loading'
-                      ? 'loading'
-                      : platformAiHealth.status === 'unreachable'
-                        ? 'unreachable'
-                        : 'ready'
-                  }
-                  showReviews
-                />
+                <SettingsPlatformParityCard webContainerReady={Boolean(getWebContainerInstance())} />
+                <SettingsFeaturesStack platformAiHealth={platformAiHealth} />
                 <div className="settings-card settings-card--row">
                   <div>
                     <div className="settings-row-title">{t('settings.feature.semantic.title')}</div>
@@ -1054,6 +1034,7 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     onOpenSpecHooks={onOpenSpecHooks}
                     onCreateSpecHooks={onCreateSpecHooks}
                     onRunFirstOpenTask={onRunFirstOpenSpecTask}
+                    onOpenSpecStudio={onOpenSpecStudio}
                   />
                 ) : null}
                 {planOverview ? (

@@ -75,6 +75,8 @@
     "db:migrate:status": "node scripts/migrate-status.mjs",
     "db:neon": "npm run db:check && npm run prod:db",
     "smoke:production": "node scripts/smoke-production.mjs",
+    "smoke:desktop-api": "node scripts/desktop-api-smoke.mjs",
+    "smoke:desktop-billing": "node scripts/desktop-billing-smoke.mjs",
     "smoke:report": "node scripts/smoke-report.mjs https://ai-ide-flame.vercel.app",
     "launch:v1.2:smoke": "node scripts/smoke-production.mjs https://ai-ide-flame.vercel.app && node scripts/smoke-report.mjs https://ai-ide-flame.vercel.app",
     "go-live:preflight": "npm run test:local && npm run smoke:report",

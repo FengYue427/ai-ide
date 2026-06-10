@@ -29,6 +29,7 @@ import {
 } from './nodeInspect.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const DESKTOP_DEEP_LINK_SCHEME = 'ai-ide'
 const PRODUCTION_APP_URL =
   process.env.AI_IDE_APP_URL?.trim() || 'https://ai-ide-flame.vercel.app'
 const LAST_PROJECT_FILE = () => path.join(app.getPath('userData'), 'last-desktop-project.json')
@@ -37,6 +38,53 @@ let mainWindow = null
 let projectRoot = null
 let lastTerminalOutput = ''
 let shellMode = 'remote'
+/** @type {{ kind: 'oauth' | 'billing'; params: Record<string, string> } | null} */
+let pendingDeepLink = null
+
+function parseDeepLinkArg(argv) {
+  return argv.find((arg) => typeof arg === 'string' && arg.startsWith(`${DESKTOP_DEEP_LINK_SCHEME}://`))
+}
+
+function dispatchDeepLink(url) {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== `${DESKTOP_DEEP_LINK_SCHEME}:`) return
+    const params = {}
+    parsed.searchParams.forEach((value, key) => {
+      params[key] = value
+    })
+    const kind = params.kind === 'billing' ? 'billing' : 'oauth'
+    const payload = { kind, params }
+    if (mainWindow?.webContents) {
+      mainWindow.webContents.send('desktop:deep-link', payload)
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    } else {
+      pendingDeepLink = payload
+    }
+  } catch {
+    // ignore malformed deep links
+  }
+}
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv) => {
+    const link = parseDeepLinkArg(argv)
+    if (link) dispatchDeepLink(link)
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+}
+
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  if (url.startsWith(`${DESKTOP_DEEP_LINK_SCHEME}://`)) dispatchDeepLink(url)
+})
 
 function devServerUrl() {
   return process.env.ELECTRON_VITE_DEV_SERVER_URL?.trim() || 'http://127.0.0.1:3000'
@@ -114,6 +162,13 @@ function createWindow() {
   })
 
   void loadUrl(target)
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (pendingDeepLink) {
+      mainWindow.webContents.send('desktop:deep-link', pendingDeepLink)
+      pendingDeepLink = null
+    }
+  })
 
   if (shellMode === 'local-dev') {
     mainWindow.webContents.openDevTools({ mode: 'detach' })
@@ -269,6 +324,21 @@ function registerIpc() {
 
   ipcMain.handle('desktop:check-updates', async () => checkForUpdates(true))
 
+  ipcMain.handle('desktop:open-external', async (_e, { url }) => {
+    const target = String(url ?? '').trim()
+    if (!/^https?:\/\//i.test(target)) return { ok: false, reason: 'invalid_url' }
+    await shell.openExternal(target)
+    return { ok: true }
+  })
+
+  ipcMain.handle('desktop:reload-local-shell', async () => {
+    if (shellMode === 'remote') return { ok: false, reason: 'remote_shell' }
+    const target =
+      shellMode === 'local-dev' ? devServerUrl() : localDistIndexUrl()
+    await loadUrl(target)
+    return { ok: true, mode: shellMode }
+  })
+
   ipcMain.handle('desktop:pick-folder', async () => {
     const payload = await pickAndScanFolder()
     return payload
@@ -358,6 +428,33 @@ function registerIpc() {
 }
 
 app.whenReady().then(() => {
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient(DESKTOP_DEEP_LINK_SCHEME, process.execPath, [
+        path.resolve(process.argv[1]),
+      ])
+    }
+  } else {
+    app.setAsDefaultProtocolClient(DESKTOP_DEEP_LINK_SCHEME)
+  }
+
+  const startupLink = parseDeepLinkArg(process.argv)
+  if (startupLink) {
+    try {
+      const parsed = new URL(startupLink)
+      const params = {}
+      parsed.searchParams.forEach((value, key) => {
+        params[key] = value
+      })
+      pendingDeepLink = {
+        kind: params.kind === 'billing' ? 'billing' : 'oauth',
+        params,
+      }
+    } catch {
+      pendingDeepLink = null
+    }
+  }
+
   installDesktopCrashLog()
   shellMode = resolveShellMode()
   patchSessionHeaders(shellMode)

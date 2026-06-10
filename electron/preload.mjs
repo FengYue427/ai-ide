@@ -38,6 +38,13 @@ contextBridge.exposeInMainWorld('aiIdeDesktop', {
     return () => ipcRenderer.removeListener('desktop:node-inspect-exit', listener)
   },
   checkForUpdates: () => ipcRenderer.invoke('desktop:check-updates'),
+  openExternal: (url) => ipcRenderer.invoke('desktop:open-external', { url }),
+  reloadLocalShell: () => ipcRenderer.invoke('desktop:reload-local-shell'),
+  onDeepLink: (callback) => {
+    const listener = (_event, payload) => callback(payload)
+    ipcRenderer.on('desktop:deep-link', listener)
+    return () => ipcRenderer.removeListener('desktop:deep-link', listener)
+  },
   onUpdateStatus: (callback) => {
     const listener = (_event, payload) => callback(payload)
     ipcRenderer.on('desktop:update-status', listener)

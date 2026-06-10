@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect } from 'react'
 import { X, Mail, Lock, Github, Chrome, Eye, EyeOff, Sparkles, ArrowLeft, Check, AlertCircle } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { localizeAuthApiError } from '../lib/authApiErrors'
-import { isForgotPasswordEnabled, isOAuthEnabled } from '../lib/authFeatures'
+import { isForgotPasswordEnabled } from '../lib/authFeatures'
+import { useOAuthProviders } from '../hooks/useOAuthProviders'
+import { navigateToOAuthSignIn } from '../lib/externalNavigation'
 import { authService, type User } from '../services/authService'
 
 interface AuthModalProps {
@@ -21,6 +23,7 @@ interface ValidationState {
 
 const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'login', onClose, onAuthenticated }) => {
   const { t } = useI18n()
+  const oauth = useOAuthProviders()
   const [activeTab, setActiveTab] = useState<AuthTab>(initialTab)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -150,7 +153,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'login', onClose, on
   }
 
   const handleOAuthLogin = (provider: 'github' | 'google') => {
-    window.location.href = `/api/auth/oauth/signin/${provider}`
+    void navigateToOAuthSignIn(provider)
   }
 
   const switchTab = (tab: AuthTab) => {
@@ -219,16 +222,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'login', onClose, on
           </div>
         )}
 
-        {activeTab === 'login' && isOAuthEnabled() && (
+        {activeTab === 'login' && oauth.showSection && (
           <div className="auth-oauth-section">
-            <button className="auth-oauth-btn auth-oauth-github" onClick={() => handleOAuthLogin('github')}>
-              <Github size={18} />
-              <span>{t('auth.oauth.github')}</span>
-            </button>
-            <button className="auth-oauth-btn auth-oauth-google" onClick={() => handleOAuthLogin('google')}>
-              <Chrome size={18} />
-              <span>{t('auth.oauth.google')}</span>
-            </button>
+            {oauth.showGithub && (
+              <button className="auth-oauth-btn auth-oauth-github" onClick={() => handleOAuthLogin('github')}>
+                <Github size={18} />
+                <span>{t('auth.oauth.github')}</span>
+              </button>
+            )}
+            {oauth.showGoogle && (
+              <button className="auth-oauth-btn auth-oauth-google" onClick={() => handleOAuthLogin('google')}>
+                <Chrome size={18} />
+                <span>{t('auth.oauth.google')}</span>
+              </button>
+            )}
 
             <div className="auth-divider">
               <span>{t('auth.oauth.divider')}</span>

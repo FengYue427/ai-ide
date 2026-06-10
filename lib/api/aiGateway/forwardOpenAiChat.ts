@@ -14,18 +14,24 @@ export async function forwardOpenAiChat(
   options?: { stream?: boolean; signal?: AbortSignal },
 ): Promise<Response> {
   const stream = options?.stream !== false
+  const body: Record<string, unknown> = {
+    model: route.model,
+    messages,
+    temperature: 0.7,
+    stream,
+  }
+
+  if (route.provider === 'deepseek') {
+    body.thinking = { type: 'disabled' }
+  }
+
   const upstream = await fetch(route.endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${route.apiKey}`,
     },
-    body: JSON.stringify({
-      model: route.model,
-      messages,
-      temperature: 0.7,
-      stream,
-    }),
+    body: JSON.stringify(body),
     signal: options?.signal,
   })
 

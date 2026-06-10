@@ -1,0 +1,69 @@
+.aide-activity-line {
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary, rgba(0, 0, 0, 0.12));
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.aide-activity-line__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.aide-activity-line__toggle:hover {
+  background: color-mix(in srgb, var(--accent-color) 6%, transparent);
+}
+
+.aide-activity-line__title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.aide-activity-line__counts {
+  margin-left: 8px;
+  opacity: 0.75;
+  font-size: 10px;
+}
+
+.aide-activity-line__hint {
+  margin-left: auto;
+  opacity: 0.8;
+}
+
+.aide-activity-line__body {
+  max-height: 160px;
+  overflow: auto;
+  padding: 0 10px 8px;
+  color: var(--text-secondary);
+}
+
+.aide-activity-line__row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 2px 0;
+}
+
+.aide-activity-line__icon {
+  margin-top: 2px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.aide-activity-line__message {
+  flex: 1;
+}
+
+.aide-activity-line__time {
+  opacity: 0.6;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

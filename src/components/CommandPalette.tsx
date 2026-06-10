@@ -34,6 +34,7 @@ import {
   Settings,
   Share2,
   Shield,
+  Sparkles,
   Sun,
   Terminal,
   Users,
@@ -82,6 +83,8 @@ interface CommandPaletteProps {
   onOpenImport: () => void
   onOpenSearch: () => void
   onOpenTemplate: () => void
+  onOpenSpecStudio?: () => void
+  onRunFirstRunnableSpecTask?: () => void
   onOpenWorkspaceImport: () => void
   onOpenThemeSelector: () => void
   onOpenWelcome: () => void
@@ -129,6 +132,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   onOpenImport,
   onOpenSearch,
   onOpenTemplate,
+  onOpenSpecStudio,
+  onRunFirstRunnableSpecTask,
   onOpenWorkspaceImport,
   onOpenThemeSelector,
   onOpenWelcome,
@@ -481,6 +486,40 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           onClose()
         },
       },
+      ...(onOpenSpecStudio || onRunFirstRunnableSpecTask
+        ? [
+            ...(onOpenSpecStudio
+              ? [
+                  {
+                    id: 'spec-studio',
+                    title: t('command.specStudio'),
+                    subtitle: t('command.specStudio.sub'),
+                    icon: <Sparkles size={18} />,
+                    category: t('command.cat.spec'),
+                    action: () => {
+                      onOpenSpecStudio()
+                      onClose()
+                    },
+                  } satisfies Command,
+                ]
+              : []),
+            ...(onRunFirstRunnableSpecTask
+              ? [
+                  {
+                    id: 'run-first-spec-task',
+                    title: t('command.runFirstSpecTask'),
+                    subtitle: t('command.runFirstSpecTask.sub'),
+                    icon: <CheckSquare size={18} />,
+                    category: t('command.cat.spec'),
+                    action: () => {
+                      onRunFirstRunnableSpecTask()
+                      onClose()
+                    },
+                  } satisfies Command,
+                ]
+              : []),
+          ]
+        : []),
       {
         id: 'code-review',
         title: t('command.review'),
@@ -670,6 +709,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       onToggleAutoSave,
       onToggleTheme,
       onOpenTemplate,
+      onOpenSpecStudio,
+      onRunFirstRunnableSpecTask,
       onOpenWorkspaceImport,
       onOpenThemeSelector,
       onOpenWelcome,

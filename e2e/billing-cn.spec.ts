@@ -65,4 +65,73 @@ test.describe('CN billing UI (v1.5.6)', () => {
     await expect(page.getByText('¥79').first()).toBeVisible()
     await expect(page.getByText(/支付宝|Alipay/i).first()).toBeVisible()
   })
+
+  test('maps production USD catalog to ¥39/¥79 for zh-CN + Alipay', async ({ page }) => {
+    await page.addInitScript(() => {
+      const originalFetch = window.fetch.bind(window)
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+        if (url.includes('/api/subscription/payment-methods')) {
+          return new Response(
+            JSON.stringify({
+              alipay: true,
+              wechat: false,
+              stripe: false,
+              devMock: false,
+              publicWelfare: false,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )
+        }
+        if (url.includes('/api/subscription/plans')) {
+          return new Response(
+            JSON.stringify({
+              plans: [
+                {
+                  id: 'free',
+                  name: 'free',
+                  displayName: '免费版',
+                  description: '免费',
+                  price: 0,
+                  currency: 'USD',
+                  features: [],
+                  limits: { aiRequestsPerDay: 200, workspaces: -1, storageGB: 30 },
+                },
+                {
+                  id: 'pro',
+                  name: 'pro',
+                  displayName: '专业版',
+                  description: 'Pro',
+                  price: 9.99,
+                  currency: 'USD',
+                  features: ['平台 AI'],
+                  limits: { aiRequestsPerDay: 2000, workspaces: -1, storageGB: 30 },
+                },
+                {
+                  id: 'enterprise',
+                  name: 'enterprise',
+                  displayName: '团队版',
+                  description: 'Team',
+                  price: 19.99,
+                  currency: 'USD',
+                  features: ['不限配额'],
+                  limits: { aiRequestsPerDay: -1, workspaces: -1, storageGB: 100 },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )
+        }
+        return originalFetch(input, init)
+      }
+    })
+
+    await gotoApp(page)
+    await page.getByRole('button', { name: /查看套餐|升级|¥39/ }).click()
+    await expect(page.getByText('订阅计划')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('¥39').first()).toBeVisible()
+    await expect(page.getByText('¥79').first()).toBeVisible()
+    await expect(page.getByText('$9.99')).toHaveCount(0)
+  })
 })

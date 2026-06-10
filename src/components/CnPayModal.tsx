@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react'
 import { ExternalLink, Loader2, Smartphone } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { ALIPAY_PENDING_KEY, syncBillingFromServer } from '../services/billingSync'
-import { readJsonResponse } from '../services/apiUtils'
+import { findPlanByName, getPlanPriceCny } from '../../lib/billing/plans'
+import { readJsonResponse, apiFetch } from '../services/apiUtils'
+import { navigateToExternalUrl, appendDesktopCheckoutFields } from '../lib/externalNavigation'
 import { AlertBanner } from './ui/AlertBanner'
 import { ModalShell } from './ui/ModalShell'
 
@@ -24,8 +26,14 @@ interface CnPayModalProps {
 
 function formatPrice(plan: CnPayPlan, freeLabel: string): string {
   if (plan.price === 0) return freeLabel
+  const catalog = findPlanByName(plan.name)
+  if (catalog) {
+    const cny = getPlanPriceCny(catalog)
+    if (cny > 0) return `¥${cny}`
+  }
   if (plan.currency === 'CNY') return `¥${plan.price}`
-  return `$${plan.price}`
+  const n = plan.price
+  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`
 }
 
 type PayChannel = 'alipay' | 'wechat'
@@ -61,7 +69,7 @@ const CnPayModal: React.FC<CnPayModalProps> = ({
     if (pollRef.current) clearInterval(pollRef.current)
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/payment/orders/${orderId}`, { credentials: 'include' })
+        const res = await apiFetch(`/api/payment/orders/${orderId}`, { credentials: 'include' })
         const data = await readJsonResponse<{ order?: { status?: string } }>(res)
         if (data?.order?.status === 'paid') {
           if (pollRef.current) clearInterval(pollRef.current)
@@ -90,11 +98,11 @@ const CnPayModal: React.FC<CnPayModalProps> = ({
     if (pollRef.current) clearInterval(pollRef.current)
 
     try {
-      const res = await fetch('/api/subscription/checkout', {
+      const res = await apiFetch('/api/subscription/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ planId: plan.name, channel }),
+        body: JSON.stringify(appendDesktopCheckoutFields({ planId: plan.name, channel })),
       })
 
       const data = await readJsonResponse<{
@@ -133,7 +141,7 @@ const CnPayModal: React.FC<CnPayModalProps> = ({
 
       if (data?.mode === 'alipay' && data.url) {
         markAlipayRedirect()
-        window.location.href = data.url
+        void navigateToExternalUrl(data.url)
         return
       }
 

@@ -1,7 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, Download, Link2, Trash2, Upload } from 'lucide-react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Copy, Download, Link2, Loader2, Trash2, Upload } from 'lucide-react'
 import { useI18n } from '../i18n'
-import { deleteShare, exportAsJson, generateShareUrl, getAllShares, importFromJson, saveShare } from '../services/shareService'
+import {
+  createShare,
+  exportAsJson,
+  getShareFileCount,
+  importFromJson,
+  listShareHistory,
+  loadShareById,
+  removeShare,
+  type ShareHistoryEntry,
+} from '../services/shareService'
 import { ModalShell } from './ui/ModalShell'
 
 interface ShareModalProps {
@@ -14,11 +23,25 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'share' | 'history' | 'import'>('share')
   const [shareUrl, setShareUrl] = useState('')
+  const [shareCloud, setShareCloud] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [loadingShareId, setLoadingShareId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [importText, setImportText] = useState('')
   const [error, setError] = useState('')
-  const [shares, setShares] = useState(() => Object.values(getAllShares()).sort((a, b) => b.createdAt - a.createdAt))
+  const [shares, setShares] = useState<ShareHistoryEntry[]>([])
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const refreshShares = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const next = await listShareHistory()
+      setShares(next)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -26,16 +49,29 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
     }
   }, [])
 
+  useEffect(() => {
+    if (activeTab === 'history') {
+      void refreshShares()
+    }
+  }, [activeTab, refreshShares])
+
   const totalChars = useMemo(() => files.reduce((sum, file) => sum + file.content.length, 0), [files])
 
-  const refreshShares = () => {
-    setShares(Object.values(getAllShares()).sort((a, b) => b.createdAt - a.createdAt))
-  }
-
   const handleShare = () => {
-    const id = saveShare({ files })
-    setShareUrl(generateShareUrl(id))
-    refreshShares()
+    setCreating(true)
+    setError('')
+    void createShare(files)
+      .then((result) => {
+        setShareUrl(result.url)
+        setShareCloud(result.cloud)
+        void refreshShares()
+      })
+      .catch(() => {
+        setError(t('share.createFailed'))
+      })
+      .finally(() => {
+        setCreating(false)
+      })
   }
 
   const handleCopy = async () => {
@@ -71,14 +107,39 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
     onClose()
   }
 
-  const handleDelete = (id: string) => {
-    deleteShare(id)
-    refreshShares()
+  const handleDelete = (share: ShareHistoryEntry) => {
+    void removeShare(share.id, share.cloud).finally(() => {
+      void refreshShares()
+    })
   }
 
-  const handleLoad = (shareFiles: { name: string; content: string }[]) => {
-    onImport(shareFiles.map((file) => ({ ...file, language: 'javascript' })))
-    onClose()
+  const handleLoad = (share: ShareHistoryEntry) => {
+    const applyFiles = (loaded: ShareHistoryEntry['files']) => {
+      onImport(loaded.map((file) => ({ ...file, language: file.language || 'javascript' })))
+      onClose()
+    }
+
+    if (share.files.length > 0) {
+      applyFiles(share.files)
+      return
+    }
+
+    setLoadingShareId(share.id)
+    setError('')
+    void loadShareById(share.id)
+      .then((data) => {
+        if (!data?.files.length) {
+          setError(t('share.loadFailed'))
+          return
+        }
+        applyFiles(data.files)
+      })
+      .catch(() => {
+        setError(t('share.loadFailed'))
+      })
+      .finally(() => {
+        setLoadingShareId(null)
+      })
   }
 
   return (
@@ -137,27 +198,49 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
               <div className="import-stack">
                 <p className="share-hint">{t('share.createHint')}</p>
                 <div className="share-actions-row">
-                  <button type="button" className="btn btn-primary" onClick={handleShare}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    data-testid="share-generate-btn"
+                    disabled={creating}
+                    onClick={handleShare}
+                  >
                     <Link2 size={14} className="btn-icon-gap" />
-                    {t('share.generateLink')}
+                    {creating ? t('share.generating') : t('share.generateLink')}
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={handleExport}>
                     <Download size={14} className="btn-icon-gap" />
                     {t('share.exportJson')}
                   </button>
                 </div>
+                {error ? <div className="alert-banner alert-banner--error">{error}</div> : null}
               </div>
             ) : (
               <div className="import-stack">
                 <p className="share-hint">{t('share.linkReady')}</p>
+                {shareCloud ? (
+                  <p className="share-hint share-hint--muted" data-testid="share-cloud-hint">
+                    {t('share.cloudHint')}
+                  </p>
+                ) : (
+                  <p className="share-hint share-hint--muted" data-testid="share-local-hint">
+                    {t('share.localHint')}
+                  </p>
+                )}
                 <div className="share-copy-row">
-                  <input type="text" className="form-input" value={shareUrl} readOnly />
+                  <input
+                    type="text"
+                    className="form-input"
+                    data-testid="share-link-input"
+                    value={shareUrl}
+                    readOnly
+                  />
                   <button type="button" className="btn btn-primary" onClick={handleCopy}>
                     {copied ? <Check size={14} /> : <Copy size={14} />}
                     <span className="btn-icon-gap">{copied ? t('collab.copied') : t('share.copy')}</span>
                   </button>
                 </div>
-                <button type="button" className="btn btn-secondary" onClick={handleShare}>
+                <button type="button" className="btn btn-secondary" disabled={creating} onClick={handleShare}>
                   {t('share.regenerate')}
                 </button>
               </div>
@@ -168,23 +251,38 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
 
       {activeTab === 'history' && (
         <div className="share-history-list">
-          {shares.length === 0 ? (
+          {historyLoading ? (
+            <div className="modal-surface share-empty" data-testid="share-history-loading">
+              <Loader2 size={18} className="spin" aria-hidden />
+              <span>{t('share.historyLoading')}</span>
+            </div>
+          ) : shares.length === 0 ? (
             <div className="modal-surface share-empty">{t('share.empty')}</div>
           ) : (
             shares.map((share) => (
-              <div key={share.id} className="modal-surface share-history-item">
+              <div key={share.id} className="modal-surface share-history-item" data-testid="share-history-item">
                 <div>
-                  <div className="share-history-title">{t('share.historyFiles', { count: share.files.length })}</div>
-                  <div className="share-history-time">{new Date(share.createdAt).toLocaleString()}</div>
+                  <div className="share-history-title">
+                    {t('share.historyFiles', { count: getShareFileCount(share) })}
+                  </div>
+                  <div className="share-history-time">
+                    {new Date(share.createdAt).toLocaleString()}
+                    {share.cloud ? ` · ${t('share.cloudBadge')}` : ` · ${t('share.localBadge')}`}
+                  </div>
                 </div>
                 <div className="share-history-actions">
-                  <button type="button" className="btn btn-secondary" onClick={() => handleLoad(share.files)}>
-                    {t('share.load')}
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={loadingShareId === share.id}
+                    onClick={() => handleLoad(share)}
+                  >
+                    {loadingShareId === share.id ? t('share.loading') : t('share.load')}
                   </button>
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => handleDelete(share.id)}
+                    onClick={() => handleDelete(share)}
                     title={t('share.deleteTitle')}
                   >
                     <Trash2 size={14} />
@@ -193,6 +291,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose }) => 
               </div>
             ))
           )}
+          {error ? <div className="alert-banner alert-banner--error">{error}</div> : null}
         </div>
       )}
 

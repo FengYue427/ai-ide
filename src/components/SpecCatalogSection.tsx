@@ -29,6 +29,7 @@ interface SpecCatalogSectionProps {
   onOpenSpecHooks?: (tasksPath: string) => void
   onCreateSpecHooks?: (tasksPath: string, specName: string) => void
   onRunFirstOpenTask: (tasksPath: string) => void
+  onOpenSpecStudio?: () => void
 }
 
 export function SpecCatalogSection({
@@ -47,6 +48,7 @@ export function SpecCatalogSection({
   onOpenSpecHooks,
   onCreateSpecHooks,
   onRunFirstOpenTask,
+  onOpenSpecStudio,
 }: SpecCatalogSectionProps) {
   const { t } = useI18n()
   const [specName, setSpecName] = useState('')
@@ -131,6 +133,16 @@ export function SpecCatalogSection({
         <button type="button" className="btn btn-secondary" onClick={onOpenSpecsRoot}>
           {t('spec.catalog.openRoot')}
         </button>
+        {onOpenSpecStudio ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            data-testid="spec-catalog-open-studio"
+            onClick={onOpenSpecStudio}
+          >
+            {t('spec.catalog.openStudio')}
+          </button>
+        ) : null}
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         <input

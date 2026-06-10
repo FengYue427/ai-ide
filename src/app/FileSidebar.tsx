@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 
-import { ChevronDown, ChevronRight, FileText, Folder, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText, Folder, Plus, Sparkles, Trash2 } from 'lucide-react'
 
 import { EmptyState } from '../components/EmptyState'
 
@@ -25,6 +25,12 @@ import {
 } from '../lib/fileTreeModel'
 
 import { trackEvent } from '../lib/observability'
+import {
+  isSpecRelatedPath,
+  specNameFromSlug,
+  specSlugFromPath,
+  tasksPathFromSpecPath,
+} from '../lib/specStudioPaths'
 
 import { shouldUseVirtualFileTree } from '../lib/v12Features'
 
@@ -54,11 +60,21 @@ interface FileSidebarProps {
 
   onOpenDropZone: () => void
 
+  onOpenSpecStudio?: (prefill?: { specName?: string }) => void
+
+  onRunFirstOpenSpecTask?: (tasksPath: string) => void
+
 }
 
 
 
-export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: FileSidebarProps) {
+export function FileSidebar({
+  onCreateFile,
+  onDeleteFile,
+  onOpenDropZone,
+  onOpenSpecStudio,
+  onRunFirstOpenSpecTask,
+}: FileSidebarProps) {
 
   const { t } = useI18n()
 
@@ -67,6 +83,8 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
 
   const [fileFilterQuery, setFileFilterQuery] = useState('')
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string } | null>(null)
 
   const lastLimitTierRef = useRef<'ok' | 'warn' | 'full'>('ok')
 
@@ -196,7 +214,27 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
 
   }, [limitSnapshot.current, limitSnapshot.max, limitSnapshot.tier])
 
+  useEffect(() => {
+    if (!contextMenu) return
+    const close = () => setContextMenu(null)
+    window.addEventListener('click', close)
+    window.addEventListener('scroll', close, true)
+    return () => {
+      window.removeEventListener('click', close)
+      window.removeEventListener('scroll', close, true)
+    }
+  }, [contextMenu])
 
+  const openSpecContextMenu = useCallback(
+    (event: MouseEvent, path: string) => {
+      if (!onOpenSpecStudio && !onRunFirstOpenSpecTask) return
+      if (!isSpecRelatedPath(path)) return
+      event.preventDefault()
+      event.stopPropagation()
+      setContextMenu({ x: event.clientX, y: event.clientY, path })
+    },
+    [onOpenSpecStudio, onRunFirstOpenSpecTask],
+  )
 
   const expandAllFolders = () => {
 
@@ -250,6 +288,8 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
 
             onClick={() => toggleFolder(row.path)}
 
+            onContextMenu={(event) => openSpecContextMenu(event, row.path)}
+
           >
 
             {row.expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -277,6 +317,8 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
           className={`sidebar-file-item ${idx === activeFile ? 'active' : ''}`}
 
           onClick={() => setActiveFile(idx)}
+
+          onContextMenu={(event) => openSpecContextMenu(event, row.path)}
 
           style={{ marginLeft: `${row.depth * 14}px`, height: '100%', boxSizing: 'border-box' }}
 
@@ -336,7 +378,7 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
 
     },
 
-    [activeFile, files, onDeleteFile, setActiveFile, t, toggleFolder],
+    [activeFile, files, onDeleteFile, openSpecContextMenu, setActiveFile, t, toggleFolder],
 
   )
 
@@ -404,6 +446,19 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
 
             </>
 
+          ) : null}
+
+          {onOpenSpecStudio ? (
+            <button
+              type="button"
+              className="sidebar-header__icon-btn sidebar-header__icon-btn--spec"
+              data-testid="sidebar-new-spec"
+              title={t('sidebar.newSpec')}
+              aria-label={t('sidebar.newSpec')}
+              onClick={() => onOpenSpecStudio()}
+            >
+              <Sparkles size={14} />
+            </button>
           ) : null}
 
           <button
@@ -575,6 +630,47 @@ export function FileSidebar({ onCreateFile, onDeleteFile, onOpenDropZone }: File
         />
 
       )}
+
+      {contextMenu ? (
+        <div
+          role="menu"
+          className="shell-dropdown"
+          data-testid="sidebar-spec-context-menu"
+          style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, zIndex: 1200 }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {onOpenSpecStudio ? (
+            <button
+              type="button"
+              role="menuitem"
+              data-testid="sidebar-open-spec-studio"
+              className="sidebar-context-item"
+              onClick={() => {
+                const slug = specSlugFromPath(contextMenu.path)
+                onOpenSpecStudio(slug ? { specName: specNameFromSlug(slug) } : undefined)
+                setContextMenu(null)
+              }}
+            >
+              {t('sidebar.ctx.openSpecStudio')}
+            </button>
+          ) : null}
+          {onRunFirstOpenSpecTask && tasksPathFromSpecPath(contextMenu.path) ? (
+            <button
+              type="button"
+              role="menuitem"
+              data-testid="sidebar-run-first-spec-task"
+              className="sidebar-context-item"
+              onClick={() => {
+                const tasksPath = tasksPathFromSpecPath(contextMenu.path)
+                if (tasksPath) onRunFirstOpenSpecTask(tasksPath)
+                setContextMenu(null)
+              }}
+            >
+              {t('sidebar.ctx.runFirstSpecTask')}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
     </div>
 

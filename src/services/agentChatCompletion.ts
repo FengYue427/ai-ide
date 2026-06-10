@@ -127,7 +127,8 @@ async function sendPlatformAgentCompletionViaGateway(
   },
 ): Promise<ChatCompletionResult> {
   const { parsePlatformError } = await import('./platformAiService')
-  const response = await fetch('/api/ai/chat', {
+  const { apiFetch } = await import('./apiUtils')
+  const response = await apiFetch('/api/ai/chat', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },

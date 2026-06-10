@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiUtils'
 import { createTranslator } from '../i18n'
 import { getApiLanguage } from '../lib/apiLanguage'
 import { isPlatformCloudProvider } from '../lib/platformModelCatalog'
@@ -45,7 +46,7 @@ export async function sendPlatformMessage(
   onStream?: (chunk: string) => void,
   signal?: AbortSignal,
 ): Promise<string> {
-  const response = await fetch('/api/ai/chat', {
+  const response = await apiFetch('/api/ai/chat', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },

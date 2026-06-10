@@ -5,6 +5,7 @@ import { findPlanByName, getPlanAmountCents } from './plans'
 import { createPaymentOrder, type PaymentChannel } from './paymentOrders'
 import { createAlipayPageFormHtml } from './alipayPay'
 import { createWechatNativePay } from './wechatPay'
+import { buildAppReturnUrl } from './returnUrl'
 
 export function isAlipayConfigured(): boolean {
   return Boolean(
@@ -54,6 +55,7 @@ export async function createCnCheckout(params: {
   userId: string
   planName: string
   channel: PaymentChannel
+  desktopShell?: boolean
 }) {
   const plan = findPlanByName(params.planName)
   if (!plan) throw new Error('无效的计划')
@@ -80,7 +82,11 @@ export async function createCnCheckout(params: {
       outTradeNo: order.outTradeNo,
       totalAmountYuan: (amountCents / 100).toFixed(2),
       subject,
-      returnUrl: `${returnOrigin}/?subscription=success&plan=${params.planName}`,
+      returnUrl: buildAppReturnUrl(
+        returnOrigin,
+        { subscription: 'success', plan: params.planName },
+        { desktopShell: params.desktopShell },
+      ),
       notifyUrl: `${notifyOrigin}/api/payment/alipay/notify`,
     })
     return { mode: 'alipay' as const, orderId: order.id, outTradeNo: order.outTradeNo, formHtml }

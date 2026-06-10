@@ -2,6 +2,7 @@ import { lazy } from 'react'
 
 export const ChatPanel = lazy(() => import('../components/ChatPanel'))
 export const TemplateModal = lazy(() => import('../components/TemplateModal'))
+export const SpecStudioPanel = lazy(() => import('../components/SpecStudioPanel'))
 export const ShareModal = lazy(() => import('../components/ShareModal'))
 export const GitPanel = lazy(() => import('../components/GitPanel'))
 export const AISettingsModal = lazy(() => import('../components/AISettingsModal'))

@@ -32,6 +32,8 @@ export function useUIActions() {
   const setShowWorkspaceManager = useIDEStore((s) => s.setShowWorkspaceManager)
   const setShowWorkspacePanel = useIDEStore((s) => s.setShowWorkspacePanel)
   const setShowTemplateModal = useIDEStore((s) => s.setShowTemplateModal)
+  const setShowSpecStudio = useIDEStore((s) => s.setShowSpecStudio)
+  const setSpecStudioPrefill = useIDEStore((s) => s.setSpecStudioPrefill)
   const setShowThemeSelector = useIDEStore((s) => s.setShowThemeSelector)
 
   const showSearchPanel = useIDEStore((s) => s.showSearchPanel)
@@ -119,6 +121,13 @@ export function useUIActions() {
   const openWorkspaceManagerModal = useCallback(() => setShowWorkspaceManager(true), [setShowWorkspaceManager])
   const openWorkspacePanelModal = useCallback(() => setShowWorkspacePanel(true), [setShowWorkspacePanel])
   const openTemplateModal = useCallback(() => setShowTemplateModal(true), [setShowTemplateModal])
+  const openSpecStudio = useCallback(
+    (prefill?: { specName?: string; templateId?: string }) => {
+      setSpecStudioPrefill(prefill ?? null)
+      setShowSpecStudio(true)
+    },
+    [setShowSpecStudio, setSpecStudioPrefill],
+  )
   const openThemeSelector = useCallback(() => setShowThemeSelector(true), [setShowThemeSelector])
   const openWelcomeScreen = useCallback(() => setShowWelcome(true), [setShowWelcome])
 
@@ -161,6 +170,7 @@ export function useUIActions() {
     openWorkspaceManagerModal,
     openWorkspacePanelModal,
     openTemplateModal,
+    openSpecStudio,
     openThemeSelector,
     openWelcomeScreen,
     toggleGitPanel,

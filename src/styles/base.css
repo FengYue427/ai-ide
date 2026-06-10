@@ -30,3 +30,37 @@ select {
   height: 100vh;
   background: var(--bg-primary);
 }
+
+.desktop-return-prompt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-secondary));
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.desktop-return-prompt__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.desktop-return-prompt__btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.desktop-return-prompt__btn:hover {
+  filter: brightness(1.05);
+}

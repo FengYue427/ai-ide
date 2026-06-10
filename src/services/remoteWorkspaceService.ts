@@ -1,4 +1,5 @@
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../lib/language'
+import { apiFetch } from './apiUtils'
 import { serviceText } from '../lib/serviceI18n'
 import { authService, type WorkspaceCloudSaveResult } from './authService'
 import type { WorkspaceBackup } from './cloudSyncService'
@@ -52,7 +53,7 @@ function metaToEntry(meta: RemoteWorkspaceMeta): WorkspaceEntry {
 export const remoteWorkspaceService = {
   async listMetadata(): Promise<WorkspaceEntry[]> {
     try {
-      const res = await fetch('/api/workspaces', { credentials: 'include' })
+      const res = await apiFetch('/api/workspaces', { credentials: 'include' })
       if (res.status === 401 || res.status === 403) return []
       if (!res.ok) return []
       const data = (await res.json()) as { workspaces?: RemoteWorkspaceMeta[] }
@@ -123,7 +124,7 @@ export const remoteWorkspaceService = {
     }
 
     try {
-      const res = await fetch(`/api/workspaces/${encodeURIComponent(name)}`, {
+      const res = await apiFetch(`/api/workspaces/${encodeURIComponent(name)}`, {
         method: 'DELETE',
         credentials: 'include',
       })

@@ -125,6 +125,11 @@ export interface AiIdeDesktopApi {
     ptyReason?: string
   }>
   checkForUpdates: () => Promise<{ ok: boolean; reason?: string; error?: string }>
+  openExternal: (url: string) => Promise<{ ok: boolean; reason?: string }>
+  reloadLocalShell: () => Promise<{ ok: boolean; reason?: string; mode?: DesktopShellMode }>
+  onDeepLink?: (
+    callback: (payload: { kind: 'oauth' | 'billing'; params: Record<string, string> }) => void,
+  ) => () => void
   onUpdateStatus: (callback: (status: DesktopUpdateStatus) => void) => () => void
   onProjectOpened: (callback: (result: DesktopOpenResult) => void) => () => void
 }

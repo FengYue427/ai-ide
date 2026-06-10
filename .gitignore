@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+dist-e2e/
 release/
 api/index.js.map
 
@@ -21,6 +22,7 @@ Thumbs.db
 .env.local
 .env.production
 .env.*.local
+.env.electron.billing
 secrets/
 scripts/.plugin-signing-key.json
 

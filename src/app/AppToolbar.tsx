@@ -10,11 +10,13 @@ import {
   User,
   Zap,
 } from 'lucide-react'
+import { resolveAppLogo } from '../lib/appOrigin'
 import { useI18n } from '../i18n'
 import { usePublicWelfare } from '../hooks/usePublicWelfare'
 import { authService } from '../services/authService'
 import { useIDEStore } from '../store/ideStore'
 import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
+import { preferCnBillingCheckout } from '../../lib/billing/billingRegion'
 import { findPlanByName, formatPlanPrice } from '../../lib/billing/plans'
 import type { ConfirmRequest, ToastKind } from '../components/FeedbackCenter'
 
@@ -45,8 +47,10 @@ export function AppToolbar({
   requestConfirm,
   notify,
 }: AppToolbarProps) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
+  const logoUrl = resolveAppLogo()
   const publicWelfare = usePublicWelfare()
+  const preferCny = preferCnBillingCheckout(language)
   const files = useIDEStore((s) => s.files)
   const fileLimit = getWorkspaceLimitSnapshot(files.length)
   const currentUser = useIDEStore((s) => s.currentUser)
@@ -54,7 +58,11 @@ export function AppToolbar({
   const setCurrentUser = useIDEStore((s) => s.setCurrentUser)
   const pluginToolbarButtons = useIDEStore((s) => s.pluginToolbarButtons)
   const proPlan = findPlanByName('pro')
-  const proStartingPrice = proPlan ? formatPlanPrice(proPlan) : '$9.99'
+  const proStartingPrice = proPlan
+    ? formatPlanPrice(proPlan, { preferCny })
+    : preferCny
+      ? '¥39'
+      : '$9.99'
 
   const renderPluginIcon = (icon: string) => {
     if (icon === 'bar-chart') return <BarChart2 size={14} />
@@ -66,7 +74,7 @@ export function AppToolbar({
     <header className="toolbar toolbar--compact">
       <div className="toolbar-brand toolbar-brand--compact">
         <div className="toolbar-brand-mark">
-          <img src="/logo-ai-ide.png" alt="" width={32} height={32} decoding="async" />
+          <img src={logoUrl} alt="" width={32} height={32} decoding="async" />
         </div>
         <div className="toolbar-brand-text">
           <span className="toolbar-title">{t('app.name')}</span>

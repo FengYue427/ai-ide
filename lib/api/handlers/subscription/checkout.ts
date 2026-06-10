@@ -25,9 +25,10 @@ export async function POST(request: Request) {
     const auth = await requireAuth(request)
     if (!auth.ok) return auth.response
 
-    const body = (await request.json()) as { planId?: string; channel?: CheckoutChannel }
+    const body = (await request.json()) as { planId?: string; channel?: CheckoutChannel; desktopShell?: boolean }
     const planId = body.planId?.trim()
     const channel = body.channel
+    const desktopShell = body.desktopShell === true
 
     if (!planId) {
       return localizedErrorResponse(request, 'api.checkout.missingPlanId', 400)
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
         userId: auth.user.id,
         planName: plan.name,
         channel,
+        desktopShell,
       })
       trackServerEvent(request, 'billing.checkout.created', {
         userId: auth.user.id,
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
         userId: auth.user.id,
         email: auth.user.email,
         planName: plan.name,
+        desktopShell,
       })
       trackServerEvent(request, 'billing.checkout.created', {
         userId: auth.user.id,
@@ -104,6 +107,7 @@ export async function POST(request: Request) {
         email: auth.user.email,
         planName: plan.name,
         stripeCustomerId: existing?.stripeCustomerId,
+        desktopShell,
       })
       trackServerEvent(request, 'billing.checkout.created', {
         userId: auth.user.id,
@@ -124,6 +128,7 @@ export async function POST(request: Request) {
         userId: auth.user.id,
         email: auth.user.email,
         planName: plan.name,
+        desktopShell,
       })
       trackServerEvent(request, 'billing.checkout.created', {
         userId: auth.user.id,
@@ -142,6 +147,7 @@ export async function POST(request: Request) {
         email: auth.user.email,
         planName: plan.name,
         stripeCustomerId: existing?.stripeCustomerId,
+        desktopShell,
       })
       trackServerEvent(request, 'billing.checkout.created', {
         userId: auth.user.id,

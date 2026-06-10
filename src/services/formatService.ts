@@ -1,8 +1,26 @@
-// 代码格式化服务 - 使用 Prettier
+// 代码格式化服务 — Prettier 目标；当前为按语言缩进的 fallback formatter
 
 import type { Language } from '../i18n'
 import { serviceText } from '../lib/serviceI18n'
 import { unifiedStorage } from './unifiedStorage'
+
+/** Languages with brace-based indent formatting (basic, not full Prettier). */
+export const BRACE_FORMAT_LANGUAGES = new Set(['java', 'cpp', 'c', 'go', 'kotlin', 'rust', 'javascript', 'typescript'])
+
+export const FORMAT_ON_SAVE_LANGUAGES = [
+  'javascript',
+  'typescript',
+  'json',
+  'css',
+  'html',
+  'markdown',
+  'java',
+  'cpp',
+  'c',
+  'go',
+  'kotlin',
+  'rust',
+] as const
 
 interface FormatOptions {
   parser: 'babel' | 'typescript' | 'css' | 'json' | 'markdown' | 'html'
@@ -44,18 +62,26 @@ export const formatService = {
   // 根据语言获取格式化选项
   getOptionsForLanguage(language: string): FormatOptions {
     const map: Record<string, FormatOptions['parser']> = {
-      'javascript': 'babel',
-      'typescript': 'typescript',
-      'css': 'css',
-      'json': 'json',
-      'markdown': 'markdown',
-      'html': 'html'
+      javascript: 'babel',
+      typescript: 'typescript',
+      css: 'css',
+      json: 'json',
+      markdown: 'markdown',
+      html: 'html',
     }
 
+    const braceLang = BRACE_FORMAT_LANGUAGES.has(language)
     return {
       ...defaultOptions,
-      parser: map[language] || 'babel'
+      parser: map[language] || 'babel',
+      tabWidth: braceLang && (language === 'java' || language === 'cpp' || language === 'c' || language === 'kotlin')
+        ? 4
+        : defaultOptions.tabWidth,
     }
+  },
+
+  usesBraceFormatter(language: string): boolean {
+    return BRACE_FORMAT_LANGUAGES.has(language)
   },
 
   // 简单的格式化实现（作为 fallback）
@@ -75,7 +101,7 @@ export const formatService = {
       }
 
       // 减少缩进的情况（行首是闭合符号）
-      if (/^[\]})]/.test(line) || /^(end|else|elif|catch|finally)/.test(line)) {
+      if (/^[\]})]/.test(line) || /^(end|else|elif|catch|finally)\b/.test(line)) {
         indentLevel = Math.max(0, indentLevel - 1)
       }
 
@@ -83,7 +109,7 @@ export const formatService = {
       formatted.push(indent.repeat(indentLevel) + line)
 
       // 增加缩进的情况（行尾是开启符号）
-      if (/[\[{(:]$/.test(line) || /^(if|else|for|while|function|class|try|catch)/.test(line)) {
+      if (/[\[{(:]$/.test(line) || /^(if|else|for|while|function|class|try|catch|public|private|protected|interface|enum|switch|case)\b/.test(line)) {
         // 但如果下一行是闭合，则不增加
         const nextLine = lines[i + 1]?.trim()
         if (nextLine && !/^[\]})]/.test(nextLine)) {

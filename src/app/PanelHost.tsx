@@ -21,6 +21,7 @@ import {
   SubscriptionModal,
   AgentApplyModal,
   TemplateModal,
+  SpecStudioPanel,
   ThemeSelector,
   WelcomeScreen,
   WorkspaceManager,
@@ -38,11 +39,15 @@ import {
   collectTasksSources,
   extractProjectTasks,
   getDefaultProjectTasksTemplate,
-  parseProjectTasks,
   PROJECT_TASKS_PATH,
 } from '../services/projectTasksService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
+import {
+  createSpecStudioBundle,
+} from '../services/specStudioService'
+import { useSpecTaskActions } from '../hooks/useSpecTaskActions'
+import { buildSpecStatusSummary } from '../lib/specStatusSummary'
 import { buildPlanExecutionPrompt } from '../services/planExecutionService'
 import { buildSpecExecutionPrompt } from '../services/planSpecWorkflowService'
 import {
@@ -64,10 +69,6 @@ import { buildSpecHooksPreview } from '../services/runtime/specHooksPreview'
 import { buildDefaultHooksYaml, upsertHooksFileInWorkspace } from '../services/runtime/specArtifactsService'
 import { hooksPathFromTasksPath } from '../services/runtime/hooksSchema'
 import { getRecentRuntimeEvents } from '../services/runtime/runtimeEventBus'
-import {
-  buildIdeSpecQueueCoordinatorDeps,
-  enqueueSpecTaskViaRuntime,
-} from '../services/runtime/runtimeQueueCoordinator'
 import { buildRuntimeStatePreview } from '../services/runtime/runtimeStatePreview'
 import {
   buildPlanLinkCountMap,
@@ -85,6 +86,7 @@ import {
   mergeSpecRestoreItems,
 } from '../services/queueReportRestoreService'
 import { appendPlanStepsToSpecTasks, findLatestSpecTasksPath, listSpecTasksPaths } from '../services/planSpecsBridgeService'
+import { createLinkedPlanForSpec } from '../services/specPlanBridgeService'
 import { duplicatePlanFile } from '../services/planDuplicateService'
 import { createPlanFromTemplate, listPlanTemplates } from '../services/planTemplateService'
 import {
@@ -135,6 +137,7 @@ interface PanelHostProps {
   openWorkspaceManagerModal: () => void
   openWorkspacePanelModal: () => void
   openTemplateModal: () => void
+  openSpecStudio: () => void
   openThemeSelector: () => void
   openWelcomeScreen: () => void
   openRegisterDialog: () => void
@@ -191,6 +194,7 @@ export function PanelHost({
   openWorkspaceManagerModal,
   openWorkspacePanelModal,
   openTemplateModal,
+  openSpecStudio,
   openThemeSelector,
   openWelcomeScreen,
   openRegisterDialog,
@@ -230,6 +234,7 @@ export function PanelHost({
   const currentPlan = useIDEStore((s) => s.currentPlan)
   const currentUser = useIDEStore((s) => s.currentUser)
   const showTemplateModal = useIDEStore((s) => s.showTemplateModal)
+  const showSpecStudio = useIDEStore((s) => s.showSpecStudio)
   const showShareModal = useIDEStore((s) => s.showShareModal)
   const showAISettings = useIDEStore((s) => s.showAISettings)
   const showAuthModal = useIDEStore((s) => s.showAuthModal)
@@ -262,6 +267,9 @@ export function PanelHost({
   const queuedPlanExecutions = useIDEStore((s) => s.queuedPlanExecutions)
   const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
   const queuedChatPrompt = useIDEStore((s) => s.queuedChatPrompt)
+
+  const { runFirstOpenSpecTask, runFirstRunnableSpecTask } = useSpecTaskActions(notify)
+  const specStatus = useMemo(() => buildSpecStatusSummary(files), [files])
 
   const projectRulesPreview = extractProjectRules(
     collectRulesSources(
@@ -333,6 +341,7 @@ export function PanelHost({
   const setShowAISettings = useIDEStore((s) => s.setShowAISettings)
 
   const setShowTemplateModal = useIDEStore((s) => s.setShowTemplateModal)
+  const setShowSpecStudio = useIDEStore((s) => s.setShowSpecStudio)
   const setShowShareModal = useIDEStore((s) => s.setShowShareModal)
   const setShowAuthModal = useIDEStore((s) => s.setShowAuthModal)
   const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
@@ -346,11 +355,66 @@ export function PanelHost({
   const setShowWorkspacePanel = useIDEStore((s) => s.setShowWorkspacePanel)
   const setShowThemeSelector = useIDEStore((s) => s.setShowThemeSelector)
 
+  const applySpecStudioBundle = useCallback(
+    (bundle: ReturnType<typeof createSpecStudioBundle>) => {
+      const nextFiles = [...files]
+      for (const item of bundle.files) {
+        const existingIndex = nextFiles.findIndex((file) => file.name === item.path)
+        if (existingIndex >= 0) {
+          nextFiles[existingIndex] = { ...nextFiles[existingIndex], content: item.content, language: 'markdown' }
+        } else {
+          nextFiles.push({ name: item.path, content: item.content, language: 'markdown' })
+        }
+      }
+      setFiles(nextFiles)
+      const firstSpecIndex = nextFiles.findIndex((file) => file.name === bundle.files[0]?.path)
+      if (firstSpecIndex >= 0) setActiveFile(firstSpecIndex)
+      setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+      notify('success', t('specStudio.createdToast'), bundle.tasksPath)
+    },
+    [files, notify, setActiveFile, setEditorTarget, setFiles, t],
+  )
+
+  const createLinkedPlanFromSpec = useCallback(
+    (ctx: { specSlug: string; tasksPath: string }) => {
+      const result = createLinkedPlanForSpec(files, ctx, language)
+      if (!result) {
+        notify('error', t('specStudio.linkedPlanFailed'))
+        return
+      }
+      setFiles(result.files)
+      setActiveFile(result.index)
+      setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+      notify('success', t('specStudio.linkedPlanToast'), result.planPath)
+    },
+    [files, language, notify, setActiveFile, setEditorTarget, setFiles, t],
+  )
+
   const registryPanels = [
     {
       id: 'template',
       show: showTemplateModal,
       render: () => <TemplateModal onSelect={onApplyTemplate} onClose={() => setShowTemplateModal(false)} />,
+    },
+    {
+      id: 'spec-studio',
+      show: showSpecStudio,
+      render: () => (
+        <SpecStudioPanel
+          files={files}
+          onClose={() => setShowSpecStudio(false)}
+          onApplySpec={applySpecStudioBundle}
+          onRefineWithAi={(prompt) => {
+            setQueuedChatPrompt(prompt)
+            setShowSpecStudio(false)
+            openChatPanel()
+          }}
+          onExecuteFirstTask={(tasksPath) =>
+            runFirstOpenSpecTask(tasksPath, { onBeforeOpenChat: () => setShowSpecStudio(false) })
+          }
+          onCreateLinkedPlan={createLinkedPlanFromSpec}
+        />
+      ),
     },
     {
       id: 'share',
@@ -464,6 +528,8 @@ export function PanelHost({
         onOpenImport={openImportDialog}
         onOpenSearch={openSearchPanel}
         onOpenTemplate={openTemplateModal}
+        onOpenSpecStudio={openSpecStudio}
+        onRunFirstRunnableSpecTask={() => runFirstRunnableSpecTask()}
         onOpenWorkspaceImport={openWorkspacePanelModal}
         onOpenThemeSelector={openThemeSelector}
         onOpenWelcome={openWelcomeScreen}
@@ -687,41 +753,12 @@ export function PanelHost({
             notify('success', t('spec.catalog.createHooks'), hooksPath)
             closeSettingsPanel()
           }}
-          onRunFirstOpenSpecTask={(tasksPath) => {
-            const file = files.find((f) => f.name === tasksPath)
-            if (!file) return
-            const first = parseProjectTasks(file.content).find((t) => !t.done)
-            if (!first) {
-              notify('info', t('spec.host.noOpenTask.title'), t('spec.host.noOpenTask.detail'))
-              return
-            }
-            const prompt = buildSpecExecutionPrompt(tasksPath, first.text, language)
-            const acceptancePath = tasksPath.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
-            void enqueueSpecTaskViaRuntime(
-              {
-                tasksPath,
-                taskText: first.text,
-                specAcceptancePath: acceptancePath,
-                prompt,
-              },
-              buildIdeSpecQueueCoordinatorDeps({
-                setFiles,
-                setQueuedChatPrompt,
-                setQueuedSpecBackfill,
-                setQueuedSpecExecutions,
-              }),
-            ).then((result) => {
-              if (!result.accepted) {
-                notify(
-                  'error',
-                  t('runtime.queuePaused.title'),
-                  result.pauseReason ?? t('runtime.queuePaused.detail'),
-                )
-                return
-              }
-              closeSettingsPanel()
-              openChatPanel()
-            })
+          onRunFirstOpenSpecTask={(tasksPath) =>
+            runFirstOpenSpecTask(tasksPath, { onBeforeOpenChat: closeSettingsPanel })
+          }
+          onOpenSpecStudio={() => {
+            closeSettingsPanel()
+            openSpecStudio()
           }}
           planItems={planItems}
           planLinkCounts={planLinkCounts}
@@ -1245,6 +1282,12 @@ export function PanelHost({
         gitStageAllDisabled={gitStageAllDisabled}
         onOpenGitPanel={openGitPanel}
         onStageAll={onStageAll ? () => void onStageAll() : undefined}
+        specCount={specStatus.specCount}
+        specOpenTaskCount={specStatus.openTaskCount}
+        onOpenSpecStudio={openSpecStudio}
+        onRunFirstSpecTask={
+          specStatus.runnableTasksPath ? () => runFirstRunnableSpecTask() : undefined
+        }
       />
 
       {showWelcome && (
@@ -1261,6 +1304,7 @@ export function PanelHost({
           onOpenGit={() => closeWelcomeAnd(openGitPanel)}
           onOpenCollaboration={() => closeWelcomeAnd(openCollaborationDialog)}
           onRegister={() => closeWelcomeAnd(openRegisterDialog)}
+          onOpenSpecStudio={() => closeWelcomeAnd(openSpecStudio)}
         />
       )}
     </>

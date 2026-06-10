@@ -95,51 +95,152 @@ var init_backgroundAgentConfig = __esm({
   }
 });
 
-// lib/api/aiGateway/platformConfig.ts
-function parseProvider2(raw) {
-  const v = raw?.trim().toLowerCase();
-  return v === "openai" ? "openai" : "deepseek";
+// lib/api/aiGateway/platformCatalog.ts
+function parsePlatformProviderId(raw) {
+  const value = raw?.trim().toLowerCase();
+  if (!value) return null;
+  return CATALOG_BY_ID.has(value) ? value : null;
 }
-function resolveApiKey(provider) {
-  if (provider === "openai") {
-    return process.env.PLATFORM_OPENAI_API_KEY?.trim() || null;
+function listConfiguredPlatformProviders() {
+  return PLATFORM_CATALOG.filter((entry) => resolveCatalogApiKey(entry)).map((entry) => entry.id);
+}
+function resolveCatalogApiKey(entry) {
+  const primary = process.env[entry.envKey]?.trim();
+  if (primary) return primary;
+  for (const fallbackKey of entry.fallbackEnvKeys ?? []) {
+    const fallback = process.env[fallbackKey]?.trim();
+    if (fallback) return fallback;
   }
-  return process.env.PLATFORM_DEEPSEEK_API_KEY?.trim() || process.env.BACKGROUND_AGENT_API_KEY?.trim() || null;
+  return null;
 }
-function resolvePlatformAiRoute(requested) {
-  const provider = parseProvider2(requested?.provider ?? process.env.PLATFORM_AI_PROVIDER);
-  const apiKey = resolveApiKey(provider);
+function resolveCatalogModel(entry, requested) {
+  const modelRaw = requested?.trim() || process.env.PLATFORM_AI_MODEL?.trim() || entry.defaultModel;
+  if (entry.id === "deepseek") return resolveDeepSeekModelId(modelRaw);
+  if (entry.models.includes(modelRaw)) return modelRaw;
+  return entry.defaultModel;
+}
+function resolvePlatformCatalogRoute(requested) {
+  const provider = parsePlatformProviderId(requested?.provider) ?? parsePlatformProviderId(process.env.PLATFORM_AI_PROVIDER) ?? "deepseek";
+  const entry = CATALOG_BY_ID.get(provider);
+  if (!entry) {
+    return { ok: false, reason: "PLATFORM_AI_PROVIDER_UNSUPPORTED" };
+  }
+  const apiKey = resolveCatalogApiKey(entry);
   if (!apiKey) {
     return { ok: false, reason: "PLATFORM_AI_KEY_MISSING" };
   }
-  const modelRaw = requested?.model?.trim() || process.env.PLATFORM_AI_MODEL?.trim() || DEFAULT_MODELS2[provider];
-  const model = provider === "deepseek" ? resolveDeepSeekModelId(modelRaw) : modelRaw;
   return {
     ok: true,
     route: {
-      provider,
+      provider: entry.id,
+      adapter: entry.adapter,
       apiKey,
-      endpoint: ENDPOINTS[provider],
-      model
+      endpoint: entry.endpoint,
+      model: resolveCatalogModel(entry, requested?.model)
     }
   };
 }
-function isPlatformAiConfigured() {
-  return resolvePlatformAiRoute().ok;
+var PLATFORM_CATALOG, CATALOG_BY_ID;
+var init_platformCatalog = __esm({
+  "lib/api/aiGateway/platformCatalog.ts"() {
+    "use strict";
+    init_backgroundAgentConfig();
+    PLATFORM_CATALOG = [
+      {
+        id: "deepseek",
+        adapter: "openai-chat",
+        endpoint: "https://api.deepseek.com/v1/chat/completions",
+        envKey: "PLATFORM_DEEPSEEK_API_KEY",
+        fallbackEnvKeys: ["BACKGROUND_AGENT_API_KEY"],
+        defaultModel: "deepseek-v4-flash",
+        models: [
+          "deepseek-v4-pro",
+          "deepseek-v4-flash",
+          "deepseek-v3.2",
+          "deepseek-r1",
+          "deepseek-chat",
+          "deepseek-coder"
+        ]
+      },
+      {
+        id: "openai",
+        adapter: "openai-chat",
+        endpoint: "https://api.openai.com/v1/chat/completions",
+        envKey: "PLATFORM_OPENAI_API_KEY",
+        defaultModel: "gpt-4o-mini",
+        models: ["gpt-5.4", "gpt-5.4-thinking", "gpt-5.4-pro", "gpt-5", "gpt-4o", "gpt-4o-mini", "o3-mini"]
+      },
+      {
+        id: "claude",
+        adapter: "anthropic-messages",
+        endpoint: "https://api.anthropic.com/v1/messages",
+        envKey: "PLATFORM_ANTHROPIC_API_KEY",
+        defaultModel: "claude-sonnet-4.6",
+        models: ["claude-opus-4.7", "claude-opus-4.6", "claude-sonnet-4.6", "claude-sonnet-4.5", "claude-haiku-4"]
+      },
+      {
+        id: "google",
+        adapter: "gemini-generate",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
+        envKey: "PLATFORM_GOOGLE_API_KEY",
+        defaultModel: "gemini-2.5-flash",
+        models: [
+          "gemini-3.1-pro",
+          "gemini-3-flash",
+          "gemini-3.1-flash-lite",
+          "gemini-2.5-pro",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        id: "qwen",
+        adapter: "openai-chat",
+        endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+        envKey: "PLATFORM_QWEN_API_KEY",
+        defaultModel: "qwen-3.5-plus",
+        models: ["qwen-3.5-max", "qwen-3.5-plus", "qwen-3.5-9b", "qwen-3.5-4b", "qwen-3.5-2b"]
+      },
+      {
+        id: "zhipu",
+        adapter: "openai-chat",
+        endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+        envKey: "PLATFORM_ZHIPU_API_KEY",
+        defaultModel: "glm-4-flash",
+        models: ["glm-5", "glm-5.1", "glm-4-plus", "glm-4-flash"]
+      },
+      {
+        id: "minimax",
+        adapter: "openai-chat",
+        endpoint: "https://api.minimax.chat/v1/text/chatcompletion_v2",
+        envKey: "PLATFORM_MINIMAX_API_KEY",
+        defaultModel: "minimax-m2.5-lightning",
+        models: ["minimax-m2.5", "minimax-m2.5-lightning"]
+      },
+      {
+        id: "grok",
+        adapter: "openai-chat",
+        endpoint: "https://api.x.ai/v1/chat/completions",
+        envKey: "PLATFORM_GROK_API_KEY",
+        defaultModel: "grok-4.20",
+        models: ["grok-4.20", "grok-4.20-reasoning"]
+      }
+    ];
+    CATALOG_BY_ID = new Map(PLATFORM_CATALOG.map((entry) => [entry.id, entry]));
+  }
+});
+
+// lib/api/aiGateway/platformConfig.ts
+function resolvePlatformAiRoute(requested) {
+  return resolvePlatformCatalogRoute(requested);
 }
-var ENDPOINTS, DEFAULT_MODELS2;
+function isPlatformAiConfigured() {
+  return listConfiguredPlatformProviders().length > 0;
+}
 var init_platformConfig = __esm({
   "lib/api/aiGateway/platformConfig.ts"() {
     "use strict";
-    init_backgroundAgentConfig();
-    ENDPOINTS = {
-      deepseek: "https://api.deepseek.com/v1/chat/completions",
-      openai: "https://api.openai.com/v1/chat/completions"
-    };
-    DEFAULT_MODELS2 = {
-      deepseek: "deepseek-v4-flash",
-      openai: "gpt-4o-mini"
-    };
+    init_platformCatalog();
+    init_platformCatalog();
   }
 });
 
@@ -232,7 +333,7 @@ var FALLBACK, cached;
 var init_releaseVersion = __esm({
   "lib/api/releaseVersion.ts"() {
     "use strict";
-    FALLBACK = "1.2.0";
+    FALLBACK = "1.5.9";
     cached = null;
   }
 });
@@ -283,6 +384,11 @@ function getStripePriceId(planName) {
   if (planName === "enterprise") return process.env.STRIPE_PRICE_ENTERPRISE;
   return void 0;
 }
+function getPaddlePriceId(planName) {
+  if (planName === "pro") return process.env.PADDLE_PRICE_PRO?.trim();
+  if (planName === "enterprise") return process.env.PADDLE_PRICE_ENTERPRISE?.trim();
+  return void 0;
+}
 function getPlanPriceCny(plan) {
   if (plan.priceCny != null && plan.priceCny > 0) return plan.priceCny;
   if (plan.currency === "CNY" && plan.price > 0) return plan.price;
@@ -295,54 +401,74 @@ function getPlanAmountCents(planName) {
   if (yuan <= 0) return 0;
   return Math.round(yuan * 100);
 }
-function formatPlanPrice(plan) {
-  if (plan.price === 0) return "\u514D\u8D39";
-  if (plan.currency === "CNY") return `\xA5${plan.price}`;
-  if (plan.currency === "USD") {
-    const n = plan.price;
-    return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
+function mergePlanCatalogPricing(plan) {
+  const catalog = findPlanByName(plan.name);
+  return { ...plan, priceCny: plan.priceCny ?? catalog?.priceCny };
+}
+function getPlanDisplayQuote(plan, options) {
+  const merged = mergePlanCatalogPricing(plan);
+  const freeLabel = options?.freeLabel ?? "\u514D\u8D39";
+  if (merged.price === 0 && getPlanPriceCny(merged) <= 0) {
+    return { amount: 0, currency: "CNY", symbol: "\xA5", formatted: freeLabel };
   }
-  return `${plan.price} ${plan.currency}`;
+  const preferCny = options?.preferCny ?? false;
+  const cny = getPlanPriceCny(merged);
+  if (preferCny && cny > 0) {
+    return { amount: cny, currency: "CNY", symbol: "\xA5", formatted: `\xA5${cny}` };
+  }
+  if (merged.currency === "CNY" && merged.price > 0) {
+    return {
+      amount: merged.price,
+      currency: "CNY",
+      symbol: "\xA5",
+      formatted: `\xA5${merged.price}`
+    };
+  }
+  const n = merged.price;
+  const formatted = Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
+  return { amount: n, currency: "USD", symbol: "$", formatted };
+}
+function formatPlanPrice(plan, options) {
+  return getPlanDisplayQuote(plan, options).formatted;
 }
 var STRIPE_USD_PRO, STRIPE_USD_ENTERPRISE, BILLING_PLANS;
 var init_plans = __esm({
   "lib/billing/plans.ts"() {
     "use strict";
-    STRIPE_USD_PRO = 4.99;
-    STRIPE_USD_ENTERPRISE = 12.99;
+    STRIPE_USD_PRO = 9.99;
+    STRIPE_USD_ENTERPRISE = 19.99;
     BILLING_PLANS = [
       {
         id: "free",
         name: "free",
         displayName: "\u514D\u8D39\u7248",
-        description: "\u4E2A\u4EBA\u5B66\u4E60\u4E0E\u65E5\u5E38\u5C0F\u9879\u76EE\uFF0C\u914D\u989D\u5DF2\u653E\u5BBD",
+        description: "\u4E2A\u4EBA\u5B66\u4E60\u4E0E\u65E5\u5E38\u5C0F\u9879\u76EE",
         price: 0,
         currency: "USD",
         features: [
-          "\u5E73\u53F0 AI \u5BF9\u8BDD\uFF08\u767B\u5F55\u5373\u7528\uFF0C\u6BCF\u65E5 200 \u6B21\uFF09",
-          "\u53EF\u9009\u81EA\u5E26 API Key\uFF08BYOK\uFF09",
-          "\u6700\u591A 10 \u4E2A\u4E91\u5DE5\u4F5C\u533A",
-          "3GB \u4E91\u5B58\u50A8\u989D\u5EA6\uFF08\u89C4\u5212\uFF09"
+          "\u5E73\u53F0 AI \u5BF9\u8BDD\uFF08\u767B\u5F55\u5373\u7528\uFF0C\u7ECF\u6D4E\u6A21\u578B\uFF09",
+          "\u6BCF\u65E5 200 \u52A0\u6743\u914D\u989D\u5355\u4F4D",
+          "\u65E0\u9650\u4E91\u5DE5\u4F5C\u533A",
+          "30GB \u4E91\u5B58\u50A8\u989D\u5EA6\uFF08\u89C4\u5212\uFF09"
         ],
-        limits: { aiRequestsPerDay: 5e3, workspaces: -1, storageGB: 30 }
+        limits: { aiRequestsPerDay: 200, workspaces: -1, storageGB: 30 }
       },
       {
         id: "pro",
         name: "pro",
         displayName: "\u4E13\u4E1A\u7248",
-        description: "\u9AD8\u9891\u4E2A\u4EBA\u5F00\u53D1\u8005\uFF0C\u9AD8\u6027\u4EF7\u6BD4",
+        description: "\u9AD8\u9891\u4E2A\u4EBA\u5F00\u53D1\u8005\uFF0C\u5168\u6A21\u578B\u5E73\u53F0 AI",
         price: STRIPE_USD_PRO,
         currency: "USD",
-        priceCny: 19,
+        priceCny: 39,
         features: [
-          "\u5E73\u53F0 AI + Agent\uFF08\u9AD8\u914D\u989D\uFF09",
-          "\u5168\u90E8\u6A21\u578B\u4E0E BYOK",
+          "\u5E73\u53F0 AI + Agent\uFF08\u5168\u6863\u6A21\u578B\uFF09",
+          "\u6BCF\u65E5 2000 \u52A0\u6743\u914D\u989D\u5355\u4F4D",
           "\u65E0\u9650\u4E91\u5DE5\u4F5C\u533A",
-          "\u6BCF\u65E5 5000 \u6B21\u914D\u989D\uFF08\u5BBD\u677E\uFF09",
           "30GB \u4E91\u5B58\u50A8\u989D\u5EA6\uFF08\u89C4\u5212\uFF09",
           "Stripe \u8BA2\u9605"
         ],
-        limits: { aiRequestsPerDay: 5e3, workspaces: -1, storageGB: 30 }
+        limits: { aiRequestsPerDay: 2e3, workspaces: -1, storageGB: 30 }
       },
       {
         id: "enterprise",
@@ -351,7 +477,7 @@ var init_plans = __esm({
         description: "\u5C0F\u56E2\u961F\u4E0E\u91CD\u5EA6\u7528\u6237\uFF0C\u914D\u989D\u51E0\u4E4E\u4E0D\u9650",
         price: STRIPE_USD_ENTERPRISE,
         currency: "USD",
-        priceCny: 49,
+        priceCny: 79,
         features: [
           "\u4E13\u4E1A\u7248\u5168\u90E8\u80FD\u529B",
           "AI \u914D\u989D\u4E0D\u9650\uFF08-1\uFF09",
@@ -362,6 +488,23 @@ var init_plans = __esm({
         limits: { aiRequestsPerDay: -1, workspaces: -1, storageGB: 100 }
       }
     ];
+  }
+});
+
+// lib/billing/returnUrl.ts
+function buildAppReturnUrl(origin, query, options) {
+  const params = new URLSearchParams(query);
+  if (options?.desktopShell) {
+    params.set(DESKTOP_SHELL_QUERY, "1");
+  }
+  const qs = params.toString();
+  return `${origin.replace(/\/$/, "")}/${qs ? `?${qs}` : ""}`;
+}
+var DESKTOP_SHELL_QUERY;
+var init_returnUrl = __esm({
+  "lib/billing/returnUrl.ts"() {
+    "use strict";
+    DESKTOP_SHELL_QUERY = "desktop_shell";
   }
 });
 
@@ -396,8 +539,12 @@ async function createStripeCheckoutSession(params) {
     mode: "subscription",
     ...customerField,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/?subscription=success&plan=${params.planName}`,
-    cancel_url: `${origin}/?subscription=canceled`,
+    success_url: buildAppReturnUrl(
+      origin,
+      { subscription: "success", plan: params.planName },
+      { desktopShell: params.desktopShell }
+    ),
+    cancel_url: buildAppReturnUrl(origin, { subscription: "canceled" }, { desktopShell: params.desktopShell }),
     metadata: {
       userId: params.userId,
       planName: params.planName
@@ -435,7 +582,11 @@ async function createStripeBillingPortalSession(params) {
   const origin = resolveAppOrigin(params.req);
   const session = await stripe.billingPortal.sessions.create({
     customer: params.customerId,
-    return_url: `${origin}/?subscription=portal_return`
+    return_url: buildAppReturnUrl(
+      origin,
+      { subscription: "portal_return" },
+      { desktopShell: params.desktopShell }
+    )
   });
   if (!session.url) {
     throw new Error("Stripe \u672A\u8FD4\u56DE\u5BA2\u6237\u95E8\u6237 URL");
@@ -454,6 +605,7 @@ var init_stripe = __esm({
   "lib/billing/stripe.ts"() {
     "use strict";
     init_plans();
+    init_returnUrl();
   }
 });
 
@@ -813,7 +965,11 @@ async function createCnCheckout(params) {
       outTradeNo: order.outTradeNo,
       totalAmountYuan: (amountCents / 100).toFixed(2),
       subject,
-      returnUrl: `${returnOrigin}/?subscription=success&plan=${params.planName}`,
+      returnUrl: buildAppReturnUrl(
+        returnOrigin,
+        { subscription: "success", plan: params.planName },
+        { desktopShell: params.desktopShell }
+      ),
       notifyUrl: `${notifyOrigin}/api/payment/alipay/notify`
     });
     return { mode: "alipay", orderId: order.id, outTradeNo: order.outTradeNo, formHtml };
@@ -843,6 +999,115 @@ var init_cnPayment = __esm({
     init_paymentOrders();
     init_alipayPay();
     init_wechatPay();
+    init_returnUrl();
+  }
+});
+
+// lib/billing/paddle.ts
+function isPaddleConfigured() {
+  return Boolean(process.env.PADDLE_API_KEY?.trim());
+}
+function resolvePaddleApiMode() {
+  const explicit = process.env.PADDLE_ENV?.trim().toLowerCase();
+  if (explicit === "sandbox" || explicit === "sdbx") return "sandbox";
+  if (explicit === "live" || explicit === "production") return "live";
+  const key = process.env.PADDLE_API_KEY?.trim() ?? "";
+  if (key.includes("_sdbx_") || key.startsWith("pdl_sdbx")) return "sandbox";
+  return "live";
+}
+function resolvePaddleApiBase() {
+  return resolvePaddleApiMode() === "sandbox" ? "https://sandbox-api.paddle.com" : "https://api.paddle.com";
+}
+function getPaddleApiKey() {
+  const key = process.env.PADDLE_API_KEY?.trim();
+  if (!key) throw new Error("PADDLE_API_KEY is not configured");
+  return key;
+}
+async function paddleRequest(path, init) {
+  const response = await fetch(`${resolvePaddleApiBase()}${path}`, {
+    method: init?.method ?? "GET",
+    headers: {
+      Authorization: `Bearer ${getPaddleApiKey()}`,
+      "Content-Type": "application/json"
+    },
+    body: init?.body != null ? JSON.stringify(init.body) : void 0
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = json.error?.detail ?? json.error?.type ?? response.statusText;
+    throw new Error(`Paddle API ${response.status}: ${detail}`);
+  }
+  if (json.data == null) {
+    throw new Error("Paddle API returned empty data");
+  }
+  return json.data;
+}
+async function createPaddleCheckoutSession(params) {
+  const priceId = getPaddlePriceId(params.planName);
+  if (!priceId) {
+    throw new Error(`\u672A\u914D\u7F6E Paddle Price ID\uFF08PADDLE_PRICE_${params.planName.toUpperCase()}\uFF09`);
+  }
+  const origin = resolveAppOrigin(params.req);
+  const successUrl = buildAppReturnUrl(
+    origin,
+    { subscription: "success", plan: params.planName },
+    { desktopShell: params.desktopShell }
+  );
+  const data = await paddleRequest("/transactions", {
+    method: "POST",
+    body: {
+      items: [{ price_id: priceId, quantity: 1 }],
+      custom_data: {
+        userId: params.userId,
+        planName: params.planName
+      },
+      customer: { email: params.email },
+      collection_mode: "automatic",
+      checkout: { url: successUrl }
+    }
+  });
+  const url = data.checkout?.url;
+  if (!url || !/^https?:\/\//i.test(url)) {
+    throw new Error("Paddle \u672A\u8FD4\u56DE checkout URL");
+  }
+  return url;
+}
+async function cancelPaddleSubscriptionAtPeriodEnd(subscriptionId) {
+  await paddleRequest(`/subscriptions/${subscriptionId}/cancel`, {
+    method: "POST",
+    body: { effective_from: "next_billing_period" }
+  });
+}
+async function cancelPaddleSubscriptionImmediately(subscriptionId) {
+  await paddleRequest(`/subscriptions/${subscriptionId}/cancel`, {
+    method: "POST",
+    body: { effective_from: "immediately" }
+  });
+}
+async function createPaddleCustomerPortalSession(params) {
+  const origin = resolveAppOrigin(params.req);
+  const body = {
+    return_url: buildAppReturnUrl(origin, { subscription: "portal" }, { desktopShell: params.desktopShell })
+  };
+  if (params.subscriptionId) {
+    body.subscription_ids = [params.subscriptionId];
+  }
+  const data = await paddleRequest(
+    `/customers/${params.customerId}/portal-sessions`,
+    { method: "POST", body }
+  );
+  const url = data.urls?.general?.overview;
+  if (!url || !/^https?:\/\//i.test(url)) {
+    throw new Error("Paddle \u672A\u8FD4\u56DE\u5BA2\u6237\u95E8\u6237 URL");
+  }
+  return url;
+}
+var init_paddle = __esm({
+  "lib/billing/paddle.ts"() {
+    "use strict";
+    init_plans();
+    init_returnUrl();
+    init_stripe();
   }
 });
 
@@ -871,7 +1136,7 @@ function isDevBillingAllowed() {
   if (isPublicWelfareMode()) return false;
   if (process.env.VERCEL_ENV === "production") return false;
   if (process.env.NODE_ENV === "production") return false;
-  if (isCnPaymentConfigured() || isStripeConfigured()) return false;
+  if (isCnPaymentConfigured() || isStripeConfigured() || isPaddleConfigured()) return false;
   if (process.env.ALLOW_DEV_BILLING === "true") return true;
   return true;
 }
@@ -889,6 +1154,7 @@ function getBillingCapabilities() {
     alipay: welfare ? false : isAlipayConfigured(),
     wechat: welfare ? false : isWechatPayConfigured(),
     stripe: welfare ? false : isStripeConfigured(),
+    paddle: welfare ? false : isPaddleConfigured(),
     devMock: welfare ? false : isDevBillingAllowed(),
     devSimulate: welfare ? false : isDevPaymentSimulateAllowed(),
     publicWelfare: welfare
@@ -898,6 +1164,7 @@ var init_billingMode = __esm({
   "lib/billing/billingMode.ts"() {
     "use strict";
     init_cnPayment();
+    init_paddle();
     init_publicWelfare();
     init_stripe();
   }
@@ -931,12 +1198,14 @@ async function GET(_req) {
   const billing = getBillingCapabilities();
   const dbUrl = process.env.DATABASE_URL?.trim();
   const platformRoute = resolvePlatformAiRoute();
+  const configuredProviders = listConfiguredPlatformProviders();
   const { payload, statusCode } = await buildHealthCheck({
     version: getReleaseVersion(),
     hasDatabaseUrl: Boolean(dbUrl),
     platformAi: {
       configured: isPlatformAiConfigured(),
-      provider: platformRoute.ok ? platformRoute.route.provider : void 0
+      provider: platformRoute.ok ? platformRoute.route.provider : void 0,
+      providers: configuredProviders
     },
     pingDatabase: async () => {
       if (!dbUrl) throw new Error("DATABASE_URL not set");
@@ -1140,6 +1409,7 @@ function resolveRateLimitOptions(kind) {
     "usage:ai": { key: "usage:ai", limit: 120, windowMs: 6e4 },
     "ai:chat": { key: "ai:chat", limit: 60, windowMs: 6e4 },
     "workspaces:write": { key: "workspaces:write", limit: 60, windowMs: 6e4 },
+    "shares:create": { key: "shares:create", limit: 20, windowMs: 60 * 6e4 },
     "plugins:publish": { key: "plugins:publish", limit: 10, windowMs: 60 * 6e4 }
   };
   return defaults[kind];
@@ -1240,6 +1510,10 @@ var init_apiMessagesJa_generated = __esm({
   "lib/i18n/apiMessagesJa.generated.ts"() {
     "use strict";
     API_MESSAGES_JA = {
+      "api.ai.chatFailed": "Platform AI \u30EA\u30AF\u30A8\u30B9\u30C8 \u5931\u6557",
+      "api.ai.invalidMessage": "Invalid \u30E1\u30C3\u30BB\u30FC\u30B8 format",
+      "api.ai.messagesRequired": "\u30E1\u30C3\u30BB\u30FC\u30B8s are required",
+      "api.ai.platformUnavailable": "Platform AI is not configured. Use your own API key or try again later.",
       "api.auth.credentialsProvider": "\u30E1\u30FC\u30EB & password",
       "api.auth.emailRequired": "\u30E1\u30FC\u30EB is required",
       "api.auth.emailTaken": "\u30E1\u30FC\u30EB already registered",
@@ -1267,15 +1541,17 @@ var init_apiMessagesJa_generated = __esm({
       "api.body.invalidJson": "\u30EA\u30AF\u30A8\u30B9\u30C8 body is not valid JSON",
       "api.body.tooLarge": "\u30EA\u30AF\u30A8\u30B9\u30C8 body is too large",
       "api.checkout.alipayNotConfigured": "Alipay is not configured on the \u30B5\u30FC\u30D0\u30FC",
-      "api.checkout.channelRequired": "Choose a \u652F\u6255\u3044 channel: alipay or we\u30C1\u30E3\u30C3\u30C8",
+      "api.checkout.channelRequired": "Choose a \u652F\u6255\u3044 channel: alipay, we\u30C1\u30E3\u30C3\u30C8, or paddle",
       "api.checkout.devUpgraded": "Dev mode: \u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9d to {plan}",
       "api.checkout.freeNoCheckout": "\u7121\u6599 \u30D7\u30E9\u30F3 does not require checkout",
       "api.checkout.invalidPlan": "Invalid \u30D7\u30E9\u30F3",
       "api.checkout.missingPlanId": "Missing \u30D7\u30E9\u30F3Id",
       "api.checkout.noPaymentNeeded": "This \u30D7\u30E9\u30F3 does not require \u652F\u6255\u3044",
       "api.checkout.notConfigured": "\u652F\u6255\u3044s are not configured. Contact an administrator.",
-      "api.checkout.publicWelfare": "Public-welfare IDE \u2014 no subscription checkout.",
+      "api.checkout.paddleNotConfigured": "Paddle is not configured on the \u30B5\u30FC\u30D0\u30FC",
+      "api.checkout.publicWelfare": "This is a \u7121\u6599 public-welfare IDE \u2014 no \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 checkout.",
       "api.checkout.sessionFailed": "\u5931\u6557 to create checkout session",
+      "api.checkout.stripeNotConfigured": "Stripe is not configured on the \u30B5\u30FC\u30D0\u30FC",
       "api.checkout.wechatNotConfigured": "We\u30C1\u30E3\u30C3\u30C8 Pay is not configured on the \u30B5\u30FC\u30D0\u30FC",
       "api.collab.codeRequired": "\u30EB\u30FC\u30E0 invite \u30B3\u30FC\u30C9 is required",
       "api.collab.createFailed": "\u5931\u6557 to create \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 \u30EB\u30FC\u30E0",
@@ -1285,6 +1561,19 @@ var init_apiMessagesJa_generated = __esm({
       "api.collab.joinForbidden": "Cannot join with that role",
       "api.collab.joined": "\u53C2\u52A0ed \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 \u30EB\u30FC\u30E0",
       "api.collab.kickFailed": "\u5931\u6557 to remove member",
+      "api.share.created": "Share link created",
+      "api.share.deleted": "Share deleted",
+      "api.share.listFailed": "\u5931\u6557 to list shares",
+      "api.share.createFailed": "\u5931\u6557 to create share",
+      "api.share.loadFailed": "\u5931\u6557 to load share",
+      "api.share.deleteFailed": "\u5931\u6557 to delete share",
+      "api.share.notFound": "Share not found or expired",
+      "api.share.slugRequired": "Share ID is required",
+      "api.share.filesRequired": "Files are required",
+      "api.share.invalidFile": "Invalid share file entry",
+      "api.share.tooManyFiles": "Too many files in share",
+      "api.share.payloadTooLarge": "Share payload is too large",
+      "api.share.limitReached": "Share limit reached ({limit})",
       "api.collab.leaveFailed": "\u5931\u6557 to leave \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 \u30EB\u30FC\u30E0",
       "api.collab.left": "Left \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 \u30EB\u30FC\u30E0",
       "api.collab.listFailed": "\u5931\u6557 to list \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 \u30EB\u30FC\u30E0s",
@@ -1326,6 +1615,19 @@ var init_apiMessagesJa_generated = __esm({
       "api.payment.orderNotFound": "Order not found",
       "api.payment.simulateFailed": "\u652F\u6255\u3044 simulation \u5931\u6557",
       "api.payment.simulateOk": "\u652F\u6255\u3044 simulated; \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 updated",
+      "api.plugin.publishAccepted": "\u30D7\u30E9\u30B0\u30A4\u30F3 submitted for review; await manual catalog merge",
+      "api.plugin.publishDisabled": "\u30D7\u30E9\u30B0\u30A4\u30F3 publish API is disabled",
+      "api.plugin.publishEntryRequired": "manifest.entry is required",
+      "api.plugin.publishFailed": "\u30D7\u30E9\u30B0\u30A4\u30F3 publish \u5931\u6557",
+      "api.plugin.publishInvalidId": "\u30D7\u30E9\u30B0\u30A4\u30F3 id must be lowercase letters, digits, or hyphens, starting with a letter",
+      "api.plugin.publishInvalidPackage": "Invalid \u30D7\u30E9\u30B0\u30A4\u30F3 package (manifest + source required)",
+      "api.plugin.publishNameRequired": "\u30D7\u30E9\u30B0\u30A4\u30F3 name is required",
+      "api.plugin.publishPermissionsInvalid": "\u6A29\u9650s must be a non-empty string array",
+      "api.plugin.publishPermissionsRequired": "Declare at least one \u6A29\u9650",
+      "api.plugin.publishSourceRequired": "\u30D7\u30E9\u30B0\u30A4\u30F3 source \u30B3\u30FC\u30C9 is required",
+      "api.plugin.publishSourceTooLarge": "\u30D7\u30E9\u30B0\u30A4\u30F3 \u30B3\u30FC\u30C9 exceeds the {maxKb}KB limit",
+      "api.plugin.publishVersionRequired": "\u30D7\u30E9\u30B0\u30A4\u30F3 version is required",
+      "api.plugin.reviewNotFound": "Review record not found",
       "api.rateLimit.exceeded": "Too many \u30EA\u30AF\u30A8\u30B9\u30C8s. \u518D\u8A66\u884C later.",
       "api.subscription.cancelDoneNow": "Downgraded to \u7121\u6599 immediately",
       "api.subscription.cancelEndOfPeriod": "\u30AD\u30E3\u30F3\u30BB\u30EBlation scheduled for period end; \u73FE\u5728 \u30D7\u30E9\u30F3 remains active until then",
@@ -1336,18 +1638,16 @@ var init_apiMessagesJa_generated = __esm({
       "api.subscription.freeNoCancel": "\u7121\u6599 \u30D7\u30E9\u30F3 does not need cancellation",
       "api.subscription.noResume": "No paid \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 to resume",
       "api.subscription.noStripeCustomer": "No Stripe customer found. Complete a paid \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 first.",
+      "api.subscription.paddleNotConfigured": "Paddle is not configured",
       "api.subscription.portalFailed": "Could not open customer portal",
       "api.subscription.portalNotConfigured": "Stripe customer portal is not configured",
+      "api.subscription.readFailed": "Could not load \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 status. \u518D\u8A66\u884C later.",
       "api.subscription.resumeActive": "\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 is still active",
       "api.subscription.resumeFailed": "\u5931\u6557 to resume \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3",
       "api.subscription.resumeOk": "\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 resumed; renewal continues next period",
       "api.subscription.stripeNotConfigured": "Stripe is not configured",
       "api.subscription.webhookFailed": "Webhook verification \u5931\u6557",
       "api.usage.quotaExceeded": "Daily AI \u30AF\u30A9\u30FC\u30BF exceeded",
-      "api.ai.platformUnavailable": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u306F\u672A\u8A2D\u5B9A\u3067\u3059\u3002BYOK \u306B\u5207\u308A\u66FF\u3048\u308B\u304B\u5F8C\u3067\u304A\u8A66\u3057\u304F\u3060\u3055\u3044",
-      "api.ai.messagesRequired": "\u30E1\u30C3\u30BB\u30FC\u30B8\u304C\u5FC5\u8981\u3067\u3059",
-      "api.ai.invalidMessage": "\u30E1\u30C3\u30BB\u30FC\u30B8\u5F62\u5F0F\u304C\u7121\u52B9\u3067\u3059",
-      "api.ai.chatFailed": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u30EA\u30AF\u30A8\u30B9\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F",
       "api.usage.readFailed": "Could not read usage",
       "api.usage.writeFailed": "Could not record usage",
       "api.workspace.createFailed": "\u5931\u6557 to create \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
@@ -1369,19 +1669,7 @@ var init_apiMessagesJa_generated = __esm({
       "api.workspace.saveFailed": "\u5931\u6557 to save \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
       "api.workspace.saved": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 saved",
       "api.workspace.settingsFieldTooLarge": "The settings field is too large",
-      "api.workspace.settingsInvalid": "Invalid settings format",
-      "api.plugin.publishDisabled": "\u30D7\u30E9\u30B0\u30A4\u30F3 publish API is disabled",
-      "api.plugin.publishAccepted": "\u30D7\u30E9\u30B0\u30A4\u30F3 submitted for review",
-      "api.plugin.publishFailed": "\u30D7\u30E9\u30B0\u30A4\u30F3 publish failed",
-      "api.plugin.publishInvalidPackage": "Invalid \u30D7\u30E9\u30B0\u30A4\u30F3 package",
-      "api.plugin.publishSourceRequired": "\u30D7\u30E9\u30B0\u30A4\u30F3 source is required",
-      "api.plugin.publishSourceTooLarge": "\u30D7\u30E9\u30B0\u30A4\u30F3 code exceeds {maxKb}KB",
-      "api.plugin.publishInvalidId": "Invalid \u30D7\u30E9\u30B0\u30A4\u30F3 id",
-      "api.plugin.publishNameRequired": "\u30D7\u30E9\u30B0\u30A4\u30F3 name is required",
-      "api.plugin.publishVersionRequired": "\u30D7\u30E9\u30B0\u30A4\u30F3 version is required",
-      "api.plugin.publishEntryRequired": "manifest.entry is required",
-      "api.plugin.publishPermissionsRequired": "Declare at least one permission",
-      "api.plugin.publishPermissionsInvalid": "Invalid permissions array"
+      "api.workspace.settingsInvalid": "Invalid settings format"
     };
   }
 });
@@ -1468,12 +1756,15 @@ var init_apiMessages = __esm({
         "api.checkout.alipayNotConfigured": "\u652F\u4ED8\u5B9D\u672A\u914D\u7F6E\uFF0C\u8BF7\u7A0D\u540E\u5728\u670D\u52A1\u7AEF\u914D\u7F6E\u5546\u6237\u53C2\u6570",
         "api.checkout.wechatNotConfigured": "\u5FAE\u4FE1\u652F\u4ED8\u672A\u914D\u7F6E\uFF0C\u8BF7\u7A0D\u540E\u5728\u670D\u52A1\u7AEF\u914D\u7F6E\u5546\u6237\u53C2\u6570",
         "api.checkout.noPaymentNeeded": "\u8BE5\u8BA1\u5212\u65E0\u9700\u652F\u4ED8",
-        "api.checkout.channelRequired": "\u8BF7\u9009\u62E9\u652F\u4ED8\u65B9\u5F0F\uFF1Aalipay \u6216 wechat",
+        "api.checkout.channelRequired": "\u8BF7\u9009\u62E9\u652F\u4ED8\u65B9\u5F0F\uFF1Aalipay\u3001wechat \u6216 paddle",
+        "api.checkout.paddleNotConfigured": "Paddle \u672A\u914D\u7F6E\uFF0C\u8BF7\u5728\u670D\u52A1\u7AEF\u8BBE\u7F6E PADDLE_* \u73AF\u5883\u53D8\u91CF",
+        "api.checkout.stripeNotConfigured": "Stripe \u672A\u914D\u7F6E",
         "api.checkout.notConfigured": "\u652F\u4ED8\u529F\u80FD\u5C1A\u672A\u914D\u7F6E\uFF0C\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458",
         "api.checkout.publicWelfare": "\u516C\u76CA\u514D\u8D39 IDE \u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\uFF0C\u65E0\u9700\u7ED3\u8D26",
         "api.checkout.sessionFailed": "\u521B\u5EFA\u652F\u4ED8\u4F1A\u8BDD\u5931\u8D25",
         "api.checkout.devUpgraded": "\u5F00\u53D1\u6A21\u5F0F\uFF1A\u5DF2\u5347\u7EA7\u4E3A {plan}",
         "api.subscription.stripeNotConfigured": "Stripe \u672A\u914D\u7F6E",
+        "api.subscription.paddleNotConfigured": "Paddle \u672A\u914D\u7F6E",
         "api.subscription.webhookFailed": "Webhook \u6821\u9A8C\u5931\u8D25",
         "api.subscription.noResume": "\u5F53\u524D\u6CA1\u6709\u53EF\u6062\u590D\u7684\u4ED8\u8D39\u8BA2\u9605",
         "api.subscription.resumeFailed": "\u6062\u590D\u8BA2\u9605\u5931\u8D25",
@@ -1489,6 +1780,7 @@ var init_apiMessages = __esm({
         "api.subscription.resumeActive": "\u8BA2\u9605\u4ECD\u5728\u751F\u6548\u4E2D\uFF0C\u65E0\u9700\u6062\u590D",
         "api.subscription.resumeOk": "\u5DF2\u6062\u590D\u8BA2\u9605\uFF0C\u4E0B\u4E2A\u5468\u671F\u5C06\u6B63\u5E38\u7EED\u8D39",
         "api.subscription.expired": "\u8BA2\u9605\u5DF2\u5230\u671F\uFF0C\u5DF2\u6062\u590D\u4E3A\u514D\u8D39\u7248\u914D\u989D",
+        "api.subscription.readFailed": "\u8BFB\u53D6\u8BA2\u9605\u72B6\u6001\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
         "api.billing.expireCronOk": "\u5DF2\u5904\u7406\u5230\u671F\u8BA2\u9605\uFF08{expired}/{scanned}\uFF09",
         "api.payment.orderIdRequired": "\u7F3A\u5C11\u8BA2\u5355 ID",
         "api.payment.orderNotFound": "\u8BA2\u5355\u4E0D\u5B58\u5728",
@@ -1536,6 +1828,19 @@ var init_apiMessages = __esm({
         "api.collab.roleUpdateFailed": "\u66F4\u65B0\u6210\u5458\u89D2\u8272\u5931\u8D25",
         "api.collab.memberKicked": "\u5DF2\u79FB\u51FA\u6210\u5458",
         "api.collab.kickFailed": "\u79FB\u51FA\u6210\u5458\u5931\u8D25",
+        "api.share.created": "\u5206\u4EAB\u94FE\u63A5\u5DF2\u521B\u5EFA",
+        "api.share.deleted": "\u5206\u4EAB\u5DF2\u5220\u9664",
+        "api.share.listFailed": "\u83B7\u53D6\u5206\u4EAB\u5217\u8868\u5931\u8D25",
+        "api.share.createFailed": "\u521B\u5EFA\u5206\u4EAB\u5931\u8D25",
+        "api.share.loadFailed": "\u52A0\u8F7D\u5206\u4EAB\u5931\u8D25",
+        "api.share.deleteFailed": "\u5220\u9664\u5206\u4EAB\u5931\u8D25",
+        "api.share.notFound": "\u5206\u4EAB\u4E0D\u5B58\u5728\u6216\u5DF2\u8FC7\u671F",
+        "api.share.slugRequired": "\u7F3A\u5C11\u5206\u4EAB ID",
+        "api.share.filesRequired": "\u8BF7\u63D0\u4F9B\u8981\u5206\u4EAB\u7684\u6587\u4EF6",
+        "api.share.invalidFile": "\u5206\u4EAB\u6587\u4EF6\u683C\u5F0F\u65E0\u6548",
+        "api.share.tooManyFiles": "\u5206\u4EAB\u6587\u4EF6\u6570\u91CF\u8FC7\u591A",
+        "api.share.payloadTooLarge": "\u5206\u4EAB\u5185\u5BB9\u8FC7\u5927",
+        "api.share.limitReached": "\u5206\u4EAB\u6570\u91CF\u5DF2\u8FBE\u4E0A\u9650\uFF08{limit}\uFF09",
         "api.plugin.publishDisabled": "\u63D2\u4EF6\u53D1\u5E03\u63A5\u53E3\u672A\u542F\u7528",
         "api.plugin.publishAccepted": "\u63D2\u4EF6\u5DF2\u63D0\u4EA4\u5BA1\u6838\uFF0C\u8BF7\u7B49\u5F85\u4EBA\u5DE5\u5408\u5E76\u5230\u5B98\u65B9\u76EE\u5F55",
         "api.plugin.publishFailed": "\u63D2\u4EF6\u53D1\u5E03\u5931\u8D25",
@@ -1547,7 +1852,8 @@ var init_apiMessages = __esm({
         "api.plugin.publishVersionRequired": "\u7F3A\u5C11\u63D2\u4EF6\u7248\u672C",
         "api.plugin.publishEntryRequired": "\u7F3A\u5C11 manifest.entry",
         "api.plugin.publishPermissionsRequired": "\u81F3\u5C11\u58F0\u660E\u4E00\u9879\u6743\u9650",
-        "api.plugin.publishPermissionsInvalid": "permissions \u987B\u4E3A\u975E\u7A7A\u5B57\u7B26\u4E32\u6570\u7EC4"
+        "api.plugin.publishPermissionsInvalid": "permissions \u987B\u4E3A\u975E\u7A7A\u5B57\u7B26\u4E32\u6570\u7EC4",
+        "api.plugin.reviewNotFound": "\u672A\u627E\u5230\u8BE5\u5BA1\u6838\u8BB0\u5F55"
       },
       "en-US": {
         "api.auth.required": "Email and password are required",
@@ -1612,12 +1918,15 @@ var init_apiMessages = __esm({
         "api.checkout.alipayNotConfigured": "Alipay is not configured on the server",
         "api.checkout.wechatNotConfigured": "WeChat Pay is not configured on the server",
         "api.checkout.noPaymentNeeded": "This plan does not require payment",
-        "api.checkout.channelRequired": "Choose a payment channel: alipay or wechat",
+        "api.checkout.channelRequired": "Choose a payment channel: alipay, wechat, or paddle",
+        "api.checkout.paddleNotConfigured": "Paddle is not configured on the server",
+        "api.checkout.stripeNotConfigured": "Stripe is not configured on the server",
         "api.checkout.notConfigured": "Payments are not configured. Contact an administrator.",
         "api.checkout.publicWelfare": "This is a free public-welfare IDE \u2014 no subscription checkout.",
         "api.checkout.sessionFailed": "Failed to create checkout session",
         "api.checkout.devUpgraded": "Dev mode: upgraded to {plan}",
         "api.subscription.stripeNotConfigured": "Stripe is not configured",
+        "api.subscription.paddleNotConfigured": "Paddle is not configured",
         "api.subscription.webhookFailed": "Webhook verification failed",
         "api.subscription.noResume": "No paid subscription to resume",
         "api.subscription.resumeFailed": "Failed to resume subscription",
@@ -1633,6 +1942,7 @@ var init_apiMessages = __esm({
         "api.subscription.resumeActive": "Subscription is still active",
         "api.subscription.resumeOk": "Subscription resumed; renewal continues next period",
         "api.subscription.expired": "Subscription ended; your plan is now Free",
+        "api.subscription.readFailed": "Could not load subscription status. Try again later.",
         "api.billing.expireCronOk": "Processed expired subscriptions ({expired}/{scanned})",
         "api.payment.orderIdRequired": "Missing order ID",
         "api.payment.orderNotFound": "Order not found",
@@ -1680,6 +1990,19 @@ var init_apiMessages = __esm({
         "api.collab.roleUpdateFailed": "Failed to update member role",
         "api.collab.memberKicked": "Member removed from room",
         "api.collab.kickFailed": "Failed to remove member",
+        "api.share.created": "Share link created",
+        "api.share.deleted": "Share deleted",
+        "api.share.listFailed": "Failed to list shares",
+        "api.share.createFailed": "Failed to create share",
+        "api.share.loadFailed": "Failed to load share",
+        "api.share.deleteFailed": "Failed to delete share",
+        "api.share.notFound": "Share not found or expired",
+        "api.share.slugRequired": "Share ID is required",
+        "api.share.filesRequired": "Files are required",
+        "api.share.invalidFile": "Invalid share file entry",
+        "api.share.tooManyFiles": "Too many files in share",
+        "api.share.payloadTooLarge": "Share payload is too large",
+        "api.share.limitReached": "Share limit reached ({limit})",
         "api.plugin.publishDisabled": "Plugin publish API is disabled",
         "api.plugin.publishAccepted": "Plugin submitted for review; await manual catalog merge",
         "api.plugin.publishFailed": "Plugin publish failed",
@@ -1691,7 +2014,8 @@ var init_apiMessages = __esm({
         "api.plugin.publishVersionRequired": "Plugin version is required",
         "api.plugin.publishEntryRequired": "manifest.entry is required",
         "api.plugin.publishPermissionsRequired": "Declare at least one permission",
-        "api.plugin.publishPermissionsInvalid": "permissions must be a non-empty string array"
+        "api.plugin.publishPermissionsInvalid": "permissions must be a non-empty string array",
+        "api.plugin.reviewNotFound": "Review record not found"
       },
       "ja-JP": API_MESSAGES_JA
     };
@@ -1891,7 +2215,7 @@ async function POST(req) {
     console.log("[Auth] User registered:", user.email);
     trackServerEvent(req, "auth.register.success", { userId: user.id });
     return new Response(
-      JSON.stringify(appendApiMessage(req, "api.auth.registerOk", { success: true, user })),
+      JSON.stringify(appendApiMessage(req, "api.auth.registerOk", { success: true, token, user })),
       {
         status: 200,
         headers: {
@@ -1988,6 +2312,7 @@ async function POST3(req) {
       JSON.stringify(
         appendApiMessage(req, "api.auth.loginOk", {
           success: true,
+          token,
           user: {
             id: user.id,
             email: user.email,
@@ -2225,7 +2550,7 @@ async function POST5(request) {
     return localizedSuccessResponse(
       request,
       "api.auth.oauthSyncOk",
-      { success: true, user },
+      { success: true, token, user },
       200,
       void 0,
       { "Set-Cookie": buildAuthSetCookie(token) }
@@ -2360,6 +2685,57 @@ var init_body = __esm({
 });
 
 // lib/api/workspacePayload.ts
+function isBinaryAssetPath(name) {
+  const lower = name.trim().toLowerCase();
+  const dot = lower.lastIndexOf(".");
+  if (dot < 0) return false;
+  return BINARY_FILE_EXTENSIONS.has(lower.slice(dot));
+}
+function isValidWorkspaceFileName(name) {
+  const trimmed = name.trim();
+  return trimmed.length > 0 && trimmed.length <= MAX_FILE_NAME_LEN;
+}
+function estimateWorkspacePayloadBytes(files, settings) {
+  const filesStr = JSON.stringify(files);
+  const settingsStr = JSON.stringify(settings ?? {});
+  return new TextEncoder().encode(filesStr).length + new TextEncoder().encode(settingsStr).length;
+}
+function sanitizeWorkspaceFilesForCloud(files) {
+  const summary = {
+    kept: 0,
+    omittedOversized: 0,
+    omittedBinary: 0,
+    omittedInvalidName: 0,
+    droppedForCount: 0,
+    droppedForBodyBytes: 0
+  };
+  const eligible = [];
+  for (const file of files) {
+    if (!isValidWorkspaceFileName(file.name)) {
+      summary.omittedInvalidName++;
+      continue;
+    }
+    if (isBinaryAssetPath(file.name)) {
+      summary.omittedBinary++;
+      continue;
+    }
+    if (typeof file.content !== "string" || file.content.length > MAX_FILE_CONTENT_LEN) {
+      summary.omittedOversized++;
+      continue;
+    }
+    eligible.push(file);
+  }
+  let kept = eligible.slice(0, MAX_WORKSPACE_FILES);
+  if (eligible.length > MAX_WORKSPACE_FILES) {
+    summary.droppedForCount = eligible.length - MAX_WORKSPACE_FILES;
+  }
+  while (kept.length > 0 && estimateWorkspacePayloadBytes(kept, {}) > MAX_WORKSPACE_BODY_BYTES) {
+    kept = kept.slice(0, -1);
+    summary.droppedForBodyBytes++;
+  }
+  summary.kept = kept.length;
+  return { files: kept, summary };
+}
 function validateWorkspacePayload(files, settings) {
   const filesStr = typeof files === "string" ? files : null;
   const settingsStr = typeof settings === "string" ? settings : null;
@@ -2390,7 +2766,7 @@ function validateWorkspacePayload(files, settings) {
   }
   return null;
 }
-var MAX_WORKSPACE_BODY_BYTES, MAX_WORKSPACE_FILES, MAX_FILE_NAME_LEN, MAX_FILE_CONTENT_LEN;
+var MAX_WORKSPACE_BODY_BYTES, MAX_WORKSPACE_FILES, MAX_FILE_NAME_LEN, MAX_FILE_CONTENT_LEN, BINARY_FILE_EXTENSIONS;
 var init_workspacePayload = __esm({
   "lib/api/workspacePayload.ts"() {
     "use strict";
@@ -2398,6 +2774,30 @@ var init_workspacePayload = __esm({
     MAX_WORKSPACE_FILES = 200;
     MAX_FILE_NAME_LEN = 200;
     MAX_FILE_CONTENT_LEN = 2e5;
+    BINARY_FILE_EXTENSIONS = /* @__PURE__ */ new Set([
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".webp",
+      ".ico",
+      ".bmp",
+      ".zip",
+      ".gz",
+      ".tar",
+      ".7z",
+      ".rar",
+      ".pdf",
+      ".wasm",
+      ".mp3",
+      ".mp4",
+      ".mov",
+      ".avi",
+      ".exe",
+      ".dll",
+      ".so",
+      ".dylib"
+    ]);
   }
 });
 
@@ -2415,6 +2815,13 @@ var init_prismaTransactions = __esm({
 });
 
 // lib/billing/prismaUpsert.ts
+async function reloadWithInclude(delegate, where, include) {
+  const row = await delegate.findUnique({ where, include });
+  if (!row) {
+    throw new Error("prismaUpsert: row missing after write");
+  }
+  return row;
+}
 async function prismaUpsert(args) {
   if (prismaSupportsTransactions()) {
     return args.delegate.upsert({
@@ -2426,27 +2833,41 @@ async function prismaUpsert(args) {
   }
   const existing = await args.delegate.findUnique({ where: args.where });
   if (existing) {
-    return args.delegate.update({
+    await args.delegate.update({
       where: args.where,
-      data: args.update,
-      include: args.include
+      data: args.update
     });
+    if (args.include) {
+      return reloadWithInclude(args.delegate, args.where, args.include);
+    }
+    const row2 = await args.delegate.findUnique({ where: args.where });
+    if (!row2) {
+      throw new Error("prismaUpsert: row missing after update");
+    }
+    return row2;
   }
   try {
-    return await args.delegate.create({
-      data: args.create,
-      include: args.include
+    await args.delegate.create({
+      data: args.create
     });
   } catch (error) {
     if (isPrismaUniqueViolation(error)) {
-      return args.delegate.update({
+      await args.delegate.update({
         where: args.where,
-        data: args.update,
-        include: args.include
+        data: args.update
       });
+    } else {
+      throw error;
     }
-    throw error;
   }
+  if (args.include) {
+    return reloadWithInclude(args.delegate, args.where, args.include);
+  }
+  const row = await args.delegate.findUnique({ where: args.where });
+  if (!row) {
+    throw new Error("prismaUpsert: row missing after create");
+  }
+  return row;
 }
 function isPrismaUniqueViolation(error) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
@@ -2802,12 +3223,15 @@ var init_stripeStatus = __esm({
 var subscriptionDb_exports = {};
 __export(subscriptionDb_exports, {
   clearSubscriptionCancelFlag: () => clearSubscriptionCancelFlag,
+  computeSubscriptionPeriod: () => computeSubscriptionPeriod,
   downgradeUserToFree: () => downgradeUserToFree,
   ensurePlansSeeded: () => ensurePlansSeeded,
+  findSubscriptionByPaddleId: () => findSubscriptionByPaddleId,
   findSubscriptionByStripeId: () => findSubscriptionByStripeId,
   getUserSubscription: () => getUserSubscription,
   markSubscriptionPastDueByStripeSubscriptionId: () => markSubscriptionPastDueByStripeSubscriptionId,
   scheduleSubscriptionCancel: () => scheduleSubscriptionCancel,
+  syncSubscriptionFromPaddle: () => syncSubscriptionFromPaddle,
   syncSubscriptionFromStripe: () => syncSubscriptionFromStripe,
   upsertUserSubscription: () => upsertUserSubscription
 });
@@ -2830,23 +3254,35 @@ async function ensurePlansSeeded() {
     });
   }
 }
-async function upsertUserSubscription(userId, planName, stripeIds) {
+function computeSubscriptionPeriod(existing, extendDays = DEFAULT_BILLING_DAYS, now = /* @__PURE__ */ new Date()) {
+  if (!existing || existing.plan.name === "free") {
+    const end2 = new Date(now);
+    end2.setDate(end2.getDate() + extendDays);
+    return { currentPeriodStart: now, currentPeriodEnd: end2 };
+  }
+  const base = existing.currentPeriodEnd > now ? existing.currentPeriodEnd : now;
+  const end = new Date(base);
+  end.setDate(end.getDate() + extendDays);
+  return { currentPeriodStart: existing.currentPeriodStart, currentPeriodEnd: end };
+}
+async function upsertUserSubscription(userId, planName, externalIds) {
   await ensurePlansSeeded();
   const plan = await prisma.plan.findUnique({ where: { name: planName } });
   if (!plan) {
     throw new Error(`\u672A\u77E5\u8BA1\u5212: ${planName}`);
   }
-  const now = /* @__PURE__ */ new Date();
-  const periodEnd = new Date(now);
-  periodEnd.setDate(periodEnd.getDate() + 30);
+  const existing = await getUserSubscription(userId);
+  const { currentPeriodStart, currentPeriodEnd } = computeSubscriptionPeriod(existing);
   const payload = {
     planId: plan.id,
     status: "active",
-    currentPeriodStart: now,
-    currentPeriodEnd: periodEnd,
+    currentPeriodStart,
+    currentPeriodEnd,
     cancelAtPeriodEnd: false,
-    stripeCustomerId: stripeIds?.customerId,
-    stripeSubscriptionId: stripeIds?.subscriptionId
+    stripeCustomerId: externalIds?.stripeCustomerId,
+    stripeSubscriptionId: externalIds?.stripeSubscriptionId,
+    paddleCustomerId: externalIds?.paddleCustomerId,
+    paddleSubscriptionId: externalIds?.paddleSubscriptionId
   };
   return prismaUpsert({
     delegate: prisma.subscription,
@@ -2908,8 +3344,8 @@ async function syncSubscriptionFromStripe(stripeSub) {
   if (!record) {
     if (userId && planName) {
       return upsertUserSubscription(userId, planName, {
-        customerId: typeof stripeSub.customer === "string" ? stripeSub.customer : stripeSub.customer?.id,
-        subscriptionId: stripeSub.id
+        stripeCustomerId: typeof stripeSub.customer === "string" ? stripeSub.customer : stripeSub.customer?.id,
+        stripeSubscriptionId: stripeSub.id
       });
     }
     return null;
@@ -2937,6 +3373,52 @@ async function syncSubscriptionFromStripe(stripeSub) {
   });
   return reloadSubscriptionWithPlan(record.userId);
 }
+async function findSubscriptionByPaddleId(paddleSubscriptionId) {
+  return prisma.subscription.findFirst({
+    where: { paddleSubscriptionId },
+    include: { plan: true }
+  });
+}
+async function syncSubscriptionFromPaddle(paddleSub) {
+  const customRaw = paddleSub.custom_data;
+  const custom = customRaw && typeof customRaw === "object" ? customRaw : {};
+  const userId = typeof custom.userId === "string" ? custom.userId : void 0;
+  const planName = typeof custom.planName === "string" ? custom.planName : void 0;
+  const subscriptionId = typeof paddleSub.id === "string" ? paddleSub.id : void 0;
+  const customerId = typeof paddleSub.customer_id === "string" ? paddleSub.customer_id : void 0;
+  const status = typeof paddleSub.status === "string" ? paddleSub.status : "";
+  let record = userId ? await getUserSubscription(userId) : null;
+  if (!record && subscriptionId) {
+    record = await findSubscriptionByPaddleId(subscriptionId);
+  }
+  if (status === "canceled") {
+    if (record) await downgradeUserToFree(record.userId);
+    return null;
+  }
+  const targetUserId = userId ?? record?.userId;
+  const targetPlan = planName ?? record?.plan.name;
+  if (!targetUserId || !targetPlan) return null;
+  await upsertUserSubscription(targetUserId, targetPlan, {
+    paddleCustomerId: customerId ?? record?.paddleCustomerId ?? void 0,
+    paddleSubscriptionId: subscriptionId ?? record?.paddleSubscriptionId ?? void 0
+  });
+  const period = paddleSub.current_billing_period;
+  const periodData = {};
+  if (period && typeof period === "object") {
+    const p = period;
+    if (typeof p.starts_at === "string") periodData.currentPeriodStart = new Date(p.starts_at);
+    if (typeof p.ends_at === "string") periodData.currentPeriodEnd = new Date(p.ends_at);
+  }
+  await prisma.subscription.update({
+    where: { userId: targetUserId },
+    data: {
+      ...periodData,
+      status: status === "past_due" ? "past_due" : "active",
+      cancelAtPeriodEnd: status === "paused"
+    }
+  });
+  return reloadSubscriptionWithPlan(targetUserId);
+}
 async function markSubscriptionPastDueByStripeSubscriptionId(stripeSubscriptionId) {
   const record = await findSubscriptionByStripeId(stripeSubscriptionId);
   if (!record) return null;
@@ -2946,6 +3428,7 @@ async function markSubscriptionPastDueByStripeSubscriptionId(stripeSubscriptionI
   });
   return reloadSubscriptionWithPlan(record.userId);
 }
+var DEFAULT_BILLING_DAYS;
 var init_subscriptionDb = __esm({
   "lib/billing/subscriptionDb.ts"() {
     "use strict";
@@ -2953,6 +3436,7 @@ var init_subscriptionDb = __esm({
     init_prismaUpsert();
     init_plans();
     init_stripeStatus();
+    DEFAULT_BILLING_DAYS = 30;
   }
 });
 
@@ -3044,7 +3528,7 @@ async function GET7(req) {
     });
   } catch (error) {
     console.error("[Subscription] Status error:", error);
-    return jsonResponse({ subscription: freeSubscription });
+    return localizedErrorResponse(req, "api.subscription.readFailed", 500);
   }
 }
 var freeSubscription, welfareSubscription;
@@ -3093,16 +3577,20 @@ async function GET8() {
       orderBy: { price: "asc" }
     });
     if (records.length > 0) {
-      const plans = records.map((plan) => ({
-        id: plan.name,
-        name: plan.name,
-        displayName: plan.displayName,
-        description: plan.description ?? "",
-        price: plan.price,
-        currency: plan.currency,
-        features: parseJsonField(plan.features, []),
-        limits: parseJsonField(plan.limits, BILLING_PLANS[0].limits)
-      }));
+      const plans = records.map((plan) => {
+        const catalog = findPlanByName(plan.name);
+        return {
+          id: plan.name,
+          name: plan.name,
+          displayName: plan.displayName,
+          description: plan.description ?? "",
+          price: plan.price,
+          currency: plan.currency,
+          priceCny: catalog?.priceCny,
+          features: parseJsonField(plan.features, []),
+          limits: parseJsonField(plan.limits, BILLING_PLANS[0].limits)
+        };
+      });
       return jsonResponse({ plans });
     }
   } catch (error) {
@@ -3133,12 +3621,12 @@ var init_checkout = __esm({
 // lib/billing/billingPath.ts
 function resolveBillingPath(capabilities) {
   if (capabilities.publicWelfare) return "welfare";
-  if (capabilities.alipay || capabilities.wechat || capabilities.stripe) return "B";
+  if (capabilities.alipay || capabilities.wechat || capabilities.stripe || capabilities.paddle) return "B";
   if (capabilities.devMock) return "dev";
   return "A";
 }
-function isStripeOnly(capabilities) {
-  return capabilities.stripe && !capabilities.alipay && !capabilities.wechat;
+function isOverseasOnly(capabilities) {
+  return (capabilities.stripe || capabilities.paddle) && !capabilities.alipay && !capabilities.wechat;
 }
 function pricingNoteForPath(path, capabilities) {
   if (path === "welfare") {
@@ -3148,11 +3636,15 @@ function pricingNoteForPath(path, capabilities) {
     const parts = [];
     if (capabilities.alipay) parts.push("\u652F\u4ED8\u5B9D");
     if (capabilities.wechat) parts.push("\u5FAE\u4FE1");
+    if (capabilities.paddle) parts.push("Paddle");
     if (capabilities.stripe) parts.push("Stripe");
-    if (isStripeOnly(capabilities)) {
+    if (isOverseasOnly(capabilities)) {
+      if (capabilities.paddle && !capabilities.stripe) {
+        return `Paddle checkout; Pro $${STRIPE_USD_PRO}/mo, Team $${STRIPE_USD_ENTERPRISE}/mo`;
+      }
       return `Stripe checkout; Pro $${STRIPE_USD_PRO}/mo, Team $${STRIPE_USD_ENTERPRISE}/mo`;
     }
-    return `\u652F\u6301${parts.join("\u3001")}\uFF1B\u4E13\u4E1A\u7248 \xA519/\u6708\uFF0C\u56E2\u961F\u7248 \xA549/\u6708\uFF08Stripe\uFF1A$${STRIPE_USD_PRO} / $${STRIPE_USD_ENTERPRISE}\uFF09`;
+    return `\u652F\u6301${parts.join("\u3001")}\uFF1B\u4E13\u4E1A\u7248 \xA539/\u6708\uFF0C\u56E2\u961F\u7248 \xA579/\u6708\uFF08Stripe\uFF1A$${STRIPE_USD_PRO} / $${STRIPE_USD_ENTERPRISE}\uFF09`;
   }
   if (path === "dev") {
     return "\u5F00\u53D1/\u96C6\u6210\u73AF\u5883\uFF1A\u53EF\u4E00\u952E\u6A21\u62DF\u5347\u7EA7\uFF08\u672A\u914D\u7F6E\u5546\u6237\u65F6\uFF09";
@@ -3176,14 +3668,22 @@ __export(payment_methods_exports, {
 async function GET9() {
   const capabilities = getBillingCapabilities();
   const billingPath = resolveBillingPath(capabilities);
-  const plans = BILLING_PLANS.map((plan) => ({
-    name: plan.name,
-    displayName: plan.displayName,
-    price: plan.price,
-    currency: plan.currency,
-    priceLabel: formatPlanPrice(plan),
-    limits: plan.limits
-  }));
+  const preferCny = capabilities.alipay || capabilities.wechat;
+  const plans = BILLING_PLANS.map((plan) => {
+    const quote = getPlanDisplayQuote(plan, { preferCny });
+    return {
+      name: plan.name,
+      displayName: plan.displayName,
+      price: plan.price,
+      currency: plan.currency,
+      priceCny: plan.priceCny,
+      priceLabel: formatPlanPrice(plan),
+      priceLabelCny: preferCny && plan.priceCny ? `\xA5${plan.priceCny}` : void 0,
+      displayPrice: quote.formatted,
+      displayCurrency: quote.currency,
+      limits: plan.limits
+    };
+  });
   const cnReady = capabilities.alipay || capabilities.wechat;
   return jsonResponse({
     ...capabilities,
@@ -3598,6 +4098,7 @@ async function POST12(request) {
     const body = await request.json();
     const planId = body.planId?.trim();
     const channel = body.channel;
+    const desktopShell = body.desktopShell === true;
     if (!planId) {
       return localizedErrorResponse(request, "api.checkout.missingPlanId", 400);
     }
@@ -3626,7 +4127,8 @@ async function POST12(request) {
         req: request,
         userId: auth.user.id,
         planName: plan.name,
-        channel
+        channel,
+        desktopShell
       });
       trackServerEvent(request, "billing.checkout.created", {
         userId: auth.user.id,
@@ -3636,8 +4138,64 @@ async function POST12(request) {
       });
       return jsonResponse(result);
     }
+    if (channel === "paddle") {
+      if (!isPaddleConfigured()) {
+        return localizedErrorResponse(request, "api.checkout.paddleNotConfigured", 503);
+      }
+      const url = await createPaddleCheckoutSession({
+        req: request,
+        userId: auth.user.id,
+        email: auth.user.email,
+        planName: plan.name,
+        desktopShell
+      });
+      trackServerEvent(request, "billing.checkout.created", {
+        userId: auth.user.id,
+        plan: plan.name,
+        channel: "paddle",
+        mode: "paddle"
+      });
+      return jsonResponse({ mode: "paddle", url });
+    }
+    if (channel === "stripe") {
+      if (!isStripeConfigured()) {
+        return localizedErrorResponse(request, "api.checkout.stripeNotConfigured", 503);
+      }
+      const existing = await getUserSubscription(auth.user.id);
+      const url = await createStripeCheckoutSession({
+        req: request,
+        userId: auth.user.id,
+        email: auth.user.email,
+        planName: plan.name,
+        stripeCustomerId: existing?.stripeCustomerId,
+        desktopShell
+      });
+      trackServerEvent(request, "billing.checkout.created", {
+        userId: auth.user.id,
+        plan: plan.name,
+        channel: "stripe",
+        mode: "stripe"
+      });
+      return jsonResponse({ mode: "stripe", url });
+    }
     if (isCnPaymentConfigured()) {
       return localizedErrorResponse(request, "api.checkout.channelRequired", 400);
+    }
+    if (isPaddleConfigured()) {
+      const url = await createPaddleCheckoutSession({
+        req: request,
+        userId: auth.user.id,
+        email: auth.user.email,
+        planName: plan.name,
+        desktopShell
+      });
+      trackServerEvent(request, "billing.checkout.created", {
+        userId: auth.user.id,
+        plan: plan.name,
+        channel: "paddle",
+        mode: "paddle"
+      });
+      return jsonResponse({ mode: "paddle", url });
     }
     if (isStripeConfigured()) {
       const existing = await getUserSubscription(auth.user.id);
@@ -3646,7 +4204,8 @@ async function POST12(request) {
         userId: auth.user.id,
         email: auth.user.email,
         planName: plan.name,
-        stripeCustomerId: existing?.stripeCustomerId
+        stripeCustomerId: existing?.stripeCustomerId,
+        desktopShell
       });
       trackServerEvent(request, "billing.checkout.created", {
         userId: auth.user.id,
@@ -3692,6 +4251,7 @@ var init_checkout2 = __esm({
     init_publicWelfare();
     init_cnPayment();
     init_plans();
+    init_paddle();
     init_subscriptionDb();
     init_stripe();
     init_logger();
@@ -3721,8 +4281,8 @@ async function handleCheckoutCompleted(session) {
     return;
   }
   await upsertUserSubscription(userId, planName, {
-    customerId: typeof session.customer === "string" ? session.customer : void 0,
-    subscriptionId: typeof session.subscription === "string" ? session.subscription : void 0
+    stripeCustomerId: typeof session.customer === "string" ? session.customer : void 0,
+    stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : void 0
   });
 }
 async function handleSubscriptionUpdated(subscription) {
@@ -3774,12 +4334,112 @@ var init_webhook = __esm({
   }
 });
 
-// lib/api/handlers/subscription/cancel.ts
-var cancel_exports = {};
-__export(cancel_exports, {
+// lib/billing/paddleWebhook.ts
+import { createHmac, timingSafeEqual } from "crypto";
+function verifyPaddleWebhookSignature(rawBody, signatureHeader, secret) {
+  const webhookSecret = secret?.trim() || process.env.PADDLE_WEBHOOK_SECRET?.trim();
+  if (!webhookSecret || !signatureHeader) return false;
+  const parts = Object.fromEntries(
+    signatureHeader.split(";").map((segment) => {
+      const eq = segment.indexOf("=");
+      if (eq === -1) return [segment.trim(), ""];
+      return [segment.slice(0, eq).trim(), segment.slice(eq + 1).trim()];
+    })
+  );
+  if (!parts.ts || !parts.h1) return false;
+  const signedPayload = `${parts.ts}:${rawBody}`;
+  const expected = createHmac("sha256", webhookSecret).update(signedPayload).digest("hex");
+  try {
+    const a = Buffer.from(expected, "hex");
+    const b = Buffer.from(parts.h1, "hex");
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return expected === parts.h1;
+  }
+}
+var init_paddleWebhook = __esm({
+  "lib/billing/paddleWebhook.ts"() {
+    "use strict";
+  }
+});
+
+// lib/api/handlers/subscription/paddle-webhook.ts
+var paddle_webhook_exports = {};
+__export(paddle_webhook_exports, {
   POST: () => POST14
 });
 async function POST14(request) {
+  if (!isPaddleConfigured()) {
+    return localizedErrorResponse(request, "api.subscription.paddleNotConfigured", 501);
+  }
+  const payload = await request.text();
+  const signature = request.headers.get("paddle-signature");
+  if (!verifyPaddleWebhookSignature(payload, signature)) {
+    console.error("[Paddle webhook] invalid signature");
+    return localizedErrorResponse(request, "api.subscription.webhookFailed", 400);
+  }
+  try {
+    const event = JSON.parse(payload);
+    const eventType = event.event_type ?? "";
+    if (!HANDLED_EVENTS.has(eventType)) {
+      return jsonResponse({ received: true, ignored: eventType });
+    }
+    const data = event.data;
+    if (!data) {
+      return jsonResponse({ received: true });
+    }
+    if (eventType === "subscription.canceled") {
+      await syncSubscriptionFromPaddle(data);
+      return jsonResponse({ received: true });
+    }
+    if (eventType.startsWith("subscription.")) {
+      await syncSubscriptionFromPaddle(data);
+      return jsonResponse({ received: true });
+    }
+    if (eventType === "transaction.completed") {
+      const subscriptionId = data.subscription_id;
+      if (typeof subscriptionId === "string" && subscriptionId) {
+        await syncSubscriptionFromPaddle({
+          id: subscriptionId,
+          customer_id: data.customer_id,
+          custom_data: data.custom_data,
+          status: "active",
+          current_billing_period: data.billing_period
+        });
+      }
+    }
+    return jsonResponse({ received: true });
+  } catch (error) {
+    console.error("[Paddle webhook] error:", error);
+    return localizedErrorResponse(request, "api.subscription.webhookFailed", 500);
+  }
+}
+var HANDLED_EVENTS;
+var init_paddle_webhook = __esm({
+  "lib/api/handlers/subscription/paddle-webhook.ts"() {
+    "use strict";
+    init_http();
+    init_localizedError();
+    init_paddle();
+    init_paddleWebhook();
+    init_subscriptionDb();
+    HANDLED_EVENTS = /* @__PURE__ */ new Set([
+      "subscription.activated",
+      "subscription.updated",
+      "subscription.canceled",
+      "subscription.past_due",
+      "transaction.completed"
+    ]);
+  }
+});
+
+// lib/api/handlers/subscription/cancel.ts
+var cancel_exports = {};
+__export(cancel_exports, {
+  POST: () => POST15
+});
+async function POST15(request) {
   try {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
@@ -3789,7 +4449,15 @@ async function POST14(request) {
     if (!record || record.plan.name === "free") {
       return localizedErrorResponse(request, "api.subscription.freeNoCancel", 400);
     }
-    if (record.stripeSubscriptionId && isStripeConfigured()) {
+    if (record.paddleSubscriptionId && isPaddleConfigured()) {
+      if (immediate) {
+        await cancelPaddleSubscriptionImmediately(record.paddleSubscriptionId);
+        await downgradeUserToFree(auth.user.id);
+      } else {
+        await cancelPaddleSubscriptionAtPeriodEnd(record.paddleSubscriptionId);
+        await scheduleSubscriptionCancel(auth.user.id);
+      }
+    } else if (record.stripeSubscriptionId && isStripeConfigured()) {
       if (immediate) {
         await cancelStripeSubscriptionImmediately(record.stripeSubscriptionId);
         await downgradeUserToFree(auth.user.id);
@@ -3839,6 +4507,7 @@ var init_cancel = __esm({
     init_localizedError();
     init_requireAuth();
     init_subscriptionDb();
+    init_paddle();
     init_stripe();
   }
 });
@@ -3846,22 +4515,37 @@ var init_cancel = __esm({
 // lib/api/handlers/subscription/portal.ts
 var portal_exports = {};
 __export(portal_exports, {
-  POST: () => POST15
+  POST: () => POST16
 });
-async function POST15(request) {
+async function POST16(request) {
   try {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const desktopShell = body.desktopShell === true;
+    const record = await getUserSubscription(auth.user.id);
+    if (!record) {
+      return localizedErrorResponse(request, "api.subscription.noStripeCustomer", 400);
+    }
+    if (record.paddleCustomerId && isPaddleConfigured()) {
+      const url2 = await createPaddleCustomerPortalSession({
+        req: request,
+        customerId: record.paddleCustomerId,
+        subscriptionId: record.paddleSubscriptionId,
+        desktopShell
+      });
+      return jsonResponse({ mode: "paddle", url: url2 });
+    }
     if (!isStripeConfigured()) {
       return localizedErrorResponse(request, "api.subscription.portalNotConfigured", 503);
     }
-    const record = await getUserSubscription(auth.user.id);
-    if (!record?.stripeCustomerId) {
+    if (!record.stripeCustomerId) {
       return localizedErrorResponse(request, "api.subscription.noStripeCustomer", 400);
     }
     const url = await createStripeBillingPortalSession({
       req: request,
-      customerId: record.stripeCustomerId
+      customerId: record.stripeCustomerId,
+      desktopShell
     });
     return jsonResponse({ mode: "stripe", url });
   } catch (error) {
@@ -3876,6 +4560,7 @@ var init_portal = __esm({
     init_localizedError();
     init_requireAuth();
     init_subscriptionDb();
+    init_paddle();
     init_stripe();
   }
 });
@@ -3883,9 +4568,9 @@ var init_portal = __esm({
 // lib/api/handlers/subscription/resume.ts
 var resume_exports = {};
 __export(resume_exports, {
-  POST: () => POST16
+  POST: () => POST17
 });
-async function POST16(request) {
+async function POST17(request) {
   try {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
@@ -3963,7 +4648,7 @@ var init_cronAuth = __esm({
 var expire_subscriptions_exports = {};
 __export(expire_subscriptions_exports, {
   GET: () => GET11,
-  POST: () => POST17
+  POST: () => POST18
 });
 async function runExpire(request) {
   if (!isCronAuthorized(request)) {
@@ -3985,7 +4670,7 @@ async function runExpire(request) {
 async function GET11(request) {
   return runExpire(request);
 }
-async function POST17(request) {
+async function POST18(request) {
   return runExpire(request);
 }
 var init_expire_subscriptions = __esm({
@@ -4002,7 +4687,7 @@ var init_expire_subscriptions = __esm({
 var ai_exports = {};
 __export(ai_exports, {
   GET: () => GET12,
-  POST: () => POST18
+  POST: () => POST19
 });
 async function GET12(req) {
   try {
@@ -4021,7 +4706,7 @@ async function GET12(req) {
     return localizedErrorResponse(req, "api.usage.readFailed", 500);
   }
 }
-async function POST18(req) {
+async function POST19(req) {
   try {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
@@ -4079,6 +4764,26 @@ var init_ai = __esm({
   }
 });
 
+// lib/billing/quotaUsageHints.ts
+function isUnlimitedQuotaLimit(limit) {
+  return limit < 0 || !Number.isFinite(limit);
+}
+function quotaUsagePercent(used, limit) {
+  if (isUnlimitedQuotaLimit(limit)) return used > 0 ? 12 : 0;
+  if (limit <= 0) return 0;
+  return Math.min(100, Math.round(used / limit * 100));
+}
+function isQuotaNearLimit(used, limit, thresholdRatio = 0.8) {
+  if (isUnlimitedQuotaLimit(limit)) return false;
+  if (limit <= 0) return false;
+  return used / limit >= thresholdRatio;
+}
+var init_quotaUsageHints = __esm({
+  "lib/billing/quotaUsageHints.ts"() {
+    "use strict";
+  }
+});
+
 // lib/billing/platformUsageEstimate.ts
 function getPlatformCostPerRequestUsd() {
   const raw = process.env.PLATFORM_AI_ESTIMATE_USD_PER_REQUEST;
@@ -4100,6 +4805,7 @@ var init_platformUsageEstimate = __esm({
 // lib/billing/usageDashboard.ts
 function buildPlatformUsageDashboard(params) {
   const platformPeriodTotal = params.daily.reduce((sum, row) => sum + row.platform, 0);
+  const usagePercent = quotaUsagePercent(params.quota.used, params.quota.limit);
   return {
     source: "server",
     quota: params.quota,
@@ -4110,12 +4816,16 @@ function buildPlatformUsageDashboard(params) {
     periodDays: params.periodDays,
     daily: params.daily,
     platformPeriodTotal,
-    costEstimatePeriodUsd: estimatePlatformCostUsd(platformPeriodTotal)
+    costEstimatePeriodUsd: estimatePlatformCostUsd(platformPeriodTotal),
+    quotaUsagePercent: usagePercent,
+    quotaNearLimit: isQuotaNearLimit(params.quota.used, params.quota.limit),
+    platformProvider: params.platformProvider
   };
 }
 var init_usageDashboard = __esm({
   "lib/billing/usageDashboard.ts"() {
     "use strict";
+    init_quotaUsageHints();
     init_platformUsageEstimate();
   }
 });
@@ -4134,13 +4844,16 @@ async function GET13(req) {
     const platformToday = await getUsageCountForDay(auth.user.id, [AI_USAGE_PLATFORM_TYPE], 0);
     const otherToday = await getUsageCountForDay(auth.user.id, [AI_USAGE_TYPE], 0);
     const daily = await getAiUsageDailyBuckets(auth.user.id, DASHBOARD_DAYS);
+    const platformRoute = resolvePlatformAiRoute();
+    const platformProvider = isPlatformAiConfigured() && platformRoute.ok ? platformRoute.route.provider : void 0;
     return jsonResponse(
       buildPlatformUsageDashboard({
         quota: buildQuotaSnapshot(plan, used),
         platformToday,
         otherToday,
         daily,
-        periodDays: DASHBOARD_DAYS
+        periodDays: DASHBOARD_DAYS,
+        platformProvider
       })
     );
   } catch (error) {
@@ -4155,6 +4868,7 @@ var init_dashboard = __esm({
     init_http();
     init_localizedError();
     init_requireAuth();
+    init_platformConfig();
     init_usageDashboard();
     init_usageDb();
     DASHBOARD_DAYS = 7;
@@ -4164,18 +4878,22 @@ var init_dashboard = __esm({
 // lib/api/aiGateway/forwardOpenAiChat.ts
 async function forwardOpenAiChat(route, messages, options) {
   const stream = options?.stream !== false;
+  const body = {
+    model: route.model,
+    messages,
+    temperature: 0.7,
+    stream
+  };
+  if (route.provider === "deepseek") {
+    body.thinking = { type: "disabled" };
+  }
   const upstream = await fetch(route.endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${route.apiKey}`
     },
-    body: JSON.stringify({
-      model: route.model,
-      messages,
-      temperature: 0.7,
-      stream
-    }),
+    body: JSON.stringify(body),
     signal: options?.signal
   });
   if (!upstream.ok) {
@@ -4252,10 +4970,224 @@ var init_forwardOpenAiChat = __esm({
   }
 });
 
+// lib/api/aiGateway/forwardPlatformChat.ts
+function openAiCompatibleRoute(route) {
+  return {
+    provider: route.provider,
+    apiKey: route.apiKey,
+    endpoint: route.endpoint,
+    model: route.model
+  };
+}
+function buildOpenAiSseResponse(content) {
+  const chunk = JSON.stringify({ choices: [{ delta: { content } }] });
+  const body = `data: ${chunk}
+
+data: [DONE]
+
+`;
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "X-AI-Billing": "platform"
+    }
+  });
+}
+function buildOpenAiJsonResponse(content) {
+  return new Response(
+    JSON.stringify({
+      choices: [{ message: { role: "assistant", content } }]
+    }),
+    {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "X-AI-Billing": "platform"
+      }
+    }
+  );
+}
+async function forwardAnthropicChat(route, messages, options) {
+  const systemMessage = messages.find((message) => message.role === "system");
+  const chatMessages = messages.filter((message) => message.role !== "system");
+  const upstream = await fetch(route.endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": route.apiKey,
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify({
+      model: route.model,
+      system: systemMessage?.content,
+      messages: chatMessages.map((message) => ({
+        role: message.role,
+        content: message.content
+      })),
+      max_tokens: 4096,
+      stream: false
+    }),
+    signal: options?.signal
+  });
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => "");
+    return new Response(
+      JSON.stringify({
+        error: "PLATFORM_AI_UPSTREAM_ERROR",
+        status: upstream.status,
+        detail: detail.slice(0, 500)
+      }),
+      { status: 502, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const data = await upstream.json();
+  const content = data.content?.[0]?.text ?? "";
+  return options?.stream === false ? buildOpenAiJsonResponse(content) : buildOpenAiSseResponse(content);
+}
+async function forwardGeminiChat(route, messages, options) {
+  const contents = messages.filter((message) => message.role !== "system").map((message) => ({
+    role: message.role === "assistant" ? "model" : "user",
+    parts: [{ text: message.content }]
+  }));
+  const systemMessage = messages.find((message) => message.role === "system");
+  const upstream = await fetch(`${route.endpoint}/${route.model}:generateContent?key=${route.apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: systemMessage ? { parts: [{ text: systemMessage.content }] } : void 0,
+      contents
+    }),
+    signal: options?.signal
+  });
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => "");
+    return new Response(
+      JSON.stringify({
+        error: "PLATFORM_AI_UPSTREAM_ERROR",
+        status: upstream.status,
+        detail: detail.slice(0, 500)
+      }),
+      { status: 502, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const data = await upstream.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  return options?.stream === false ? buildOpenAiJsonResponse(content) : buildOpenAiSseResponse(content);
+}
+async function forwardPlatformChat(route, messages, options) {
+  switch (route.adapter) {
+    case "openai-chat":
+      return forwardOpenAiChat(openAiCompatibleRoute(route), messages, options);
+    case "anthropic-messages":
+      return forwardAnthropicChat(route, messages, options);
+    case "gemini-generate":
+      return forwardGeminiChat(route, messages, options);
+    default:
+      return new Response(JSON.stringify({ error: "PLATFORM_AI_ADAPTER_UNSUPPORTED" }), {
+        status: 501,
+        headers: { "Content-Type": "application/json" }
+      });
+  }
+}
+async function forwardPlatformAgent(route, input, options) {
+  if (route.adapter !== "openai-chat") {
+    return new Response(JSON.stringify({ error: "PLATFORM_AI_AGENT_UNSUPPORTED" }), {
+      status: 501,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  return forwardOpenAiAgent(openAiCompatibleRoute(route), input, options);
+}
+var init_forwardPlatformChat = __esm({
+  "lib/api/aiGateway/forwardPlatformChat.ts"() {
+    "use strict";
+    init_forwardOpenAiChat();
+  }
+});
+
+// lib/billing/modelWeights.ts
+function getModelTier(provider, model) {
+  const haystack = `${provider}:${model}`.toLowerCase();
+  if (FRONTIER_PATTERNS.some((pattern) => pattern.test(haystack))) return "frontier";
+  if (PREMIUM_PATTERNS.some((pattern) => pattern.test(haystack))) return "premium";
+  if (STANDARD_PATTERNS.some((pattern) => pattern.test(haystack))) return "standard";
+  if (ECONOMY_PATTERNS.some((pattern) => pattern.test(haystack))) return "economy";
+  return "standard";
+}
+function getModelWeight(provider, model) {
+  return TIER_WEIGHT[getModelTier(provider, model)];
+}
+function isModelTierAllowedForPlan(tier, planName) {
+  const plan = planName.toLowerCase();
+  if (plan === "free") return tier === "economy";
+  return true;
+}
+function isPlatformModelAllowedForPlan(provider, model, planName) {
+  return isModelTierAllowedForPlan(getModelTier(provider, model), planName);
+}
+var TIER_WEIGHT, FRONTIER_PATTERNS, PREMIUM_PATTERNS, STANDARD_PATTERNS, ECONOMY_PATTERNS;
+var init_modelWeights = __esm({
+  "lib/billing/modelWeights.ts"() {
+    "use strict";
+    TIER_WEIGHT = {
+      economy: 1,
+      standard: 2,
+      premium: 5,
+      frontier: 10
+    };
+    FRONTIER_PATTERNS = [
+      /o3/i,
+      /opus/i,
+      /r1/i,
+      /reasoning/i,
+      /thinking/i,
+      /gpt-5\.4-pro/i,
+      /gpt-5\.4-thinking/i,
+      /gemini-3\.1-pro/i,
+      /glm-5\.1/i,
+      /glm-5$/i,
+      /qwen-3\.5-max/i,
+      /minimax-m2\.5$/i,
+      /grok-4\.20-reasoning/i
+    ];
+    PREMIUM_PATTERNS = [
+      /gpt-4o(?!-mini)/i,
+      /gpt-5(?!\.)/i,
+      /sonnet/i,
+      /gemini-2\.5-pro/i,
+      /gemini-3-flash/i,
+      /deepseek-v4-pro/i,
+      /deepseek-v3\.2/i,
+      /glm-4-plus/i,
+      /qwen-3\.5-plus/i
+    ];
+    STANDARD_PATTERNS = [
+      /mini/i,
+      /haiku/i,
+      /plus/i,
+      /4o-mini/i,
+      /deepseek-chat/i,
+      /deepseek-coder/i,
+      /qwen-3\.5-9b/i,
+      /minimax-m2\.5-lightning/i,
+      /grok-4\.20$/i
+    ];
+    ECONOMY_PATTERNS = [
+      /flash/i,
+      /lite/i,
+      /2b/i,
+      /4b/i,
+      /deepseek-v4-flash/i,
+      /glm-4-flash/i
+    ];
+  }
+});
+
 // lib/api/handlers/ai/chat.ts
 var chat_exports = {};
 __export(chat_exports, {
-  POST: () => POST19
+  POST: () => POST20
 });
 function isBasicChatMessage(message) {
   if (!message || typeof message !== "object") return false;
@@ -4272,7 +5204,7 @@ function hasValidMessages(messages) {
     return ["assistant", "tool"].includes(row.role);
   });
 }
-async function POST19(req) {
+async function POST20(req) {
   try {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
@@ -4290,23 +5222,6 @@ async function POST19(req) {
     if (!hasValidMessages(messages)) {
       return localizedErrorResponse(req, "api.ai.messagesRequired", 400);
     }
-    const usage = await consumeAiUsage(auth.user.id, 1, {
-      usageType: AI_USAGE_PLATFORM_TYPE
-    });
-    if (!usage.ok) {
-      trackServerEvent(req, "ai.chat.quota_exceeded", {
-        userId: auth.user.id,
-        plan: usage.quota.plan
-      });
-      return jsonResponse(
-        {
-          errorKey: "api.usage.quotaExceeded",
-          source: "server",
-          quota: usage.quota
-        },
-        429
-      );
-    }
     const resolved = resolvePlatformAiRoute({
       provider: body.provider,
       model: body.model
@@ -4314,12 +5229,44 @@ async function POST19(req) {
     if (!resolved.ok) {
       return jsonResponse({ error: resolved.reason }, 503);
     }
+    const plan = await resolveUserPlanName(auth.user.id);
+    if (!isPlatformModelAllowedForPlan(resolved.route.provider, resolved.route.model, plan)) {
+      return jsonResponse(
+        {
+          errorKey: "api.usage.modelTierRestricted",
+          plan,
+          model: resolved.route.model,
+          provider: resolved.route.provider
+        },
+        403
+      );
+    }
+    const weight = getModelWeight(resolved.route.provider, resolved.route.model);
+    const usage = await consumeAiUsage(auth.user.id, weight, {
+      usageType: AI_USAGE_PLATFORM_TYPE
+    });
+    if (!usage.ok) {
+      trackServerEvent(req, "ai.chat.quota_exceeded", {
+        userId: auth.user.id,
+        plan: usage.quota.plan,
+        weight
+      });
+      return jsonResponse(
+        {
+          errorKey: "api.usage.quotaExceeded",
+          source: "server",
+          quota: usage.quota,
+          weight
+        },
+        429
+      );
+    }
     const tools = Array.isArray(body.tools) ? body.tools : [];
     if (tools.length > 0) {
-      return forwardOpenAiAgent(resolved.route, { messages, tools });
+      return forwardPlatformAgent(resolved.route, { messages, tools });
     }
     const chatMessages = messages.filter(isBasicChatMessage);
-    return forwardOpenAiChat(resolved.route, chatMessages, { stream: body.stream !== false });
+    return forwardPlatformChat(resolved.route, chatMessages, { stream: body.stream !== false });
   } catch (error) {
     console.error("[AI Chat] error:", error);
     return localizedErrorResponse(req, "api.ai.chatFailed", 500);
@@ -4328,8 +5275,9 @@ async function POST19(req) {
 var init_chat = __esm({
   "lib/api/handlers/ai/chat.ts"() {
     "use strict";
-    init_forwardOpenAiChat();
+    init_forwardPlatformChat();
     init_platformConfig();
+    init_modelWeights();
     init_usageDb();
     init_http();
     init_localizedError();
@@ -4401,9 +5349,9 @@ var init_mcpProxy = __esm({
 // lib/api/handlers/mcp/proxy.ts
 var proxy_exports = {};
 __export(proxy_exports, {
-  POST: () => POST20
+  POST: () => POST21
 });
-async function POST20(request) {
+async function POST21(request) {
   const auth = await requireAuth(request);
   if (!auth.ok) return auth.response;
   let body;
@@ -4455,6 +5403,186 @@ var init_proxy = __esm({
     init_http();
     init_requireAuth();
     init_mcpProxy();
+  }
+});
+
+// lib/api/pluginPublishDb.ts
+function toRow(record) {
+  return {
+    reviewId: record.reviewId,
+    status: record.status === "pending" ? "pending" : "pending",
+    pluginId: record.pluginId,
+    version: record.version,
+    manifestHash: record.manifestHash,
+    submittedAt: record.submittedAt.toISOString()
+  };
+}
+async function persistPluginPublishReview(record) {
+  try {
+    await prisma.pluginPublishReview.create({
+      data: {
+        reviewId: record.reviewId,
+        userId: record.submitterUserId,
+        pluginId: record.pluginId,
+        version: record.version,
+        manifestHash: record.manifestHash,
+        status: record.status,
+        submittedAt: new Date(record.submittedAt)
+      }
+    });
+    return true;
+  } catch (error) {
+    console.warn("[PluginPublishDb] persist failed (memory queue still holds row)", error);
+    return false;
+  }
+}
+async function listPluginPublishReviewsFromDb(userId, limit = 10, status) {
+  try {
+    const rows = await prisma.pluginPublishReview.findMany({
+      where: { userId, ...status ? { status } : {} },
+      orderBy: { submittedAt: "desc" },
+      take: limit
+    });
+    return rows.map(toRow);
+  } catch (error) {
+    console.warn("[PluginPublishDb] list failed", error);
+    return null;
+  }
+}
+async function findPluginPublishReviewForUser(userId, reviewId) {
+  try {
+    const row = await prisma.pluginPublishReview.findFirst({
+      where: { userId, reviewId }
+    });
+    return row ? toRow(row) : null;
+  } catch (error) {
+    console.warn("[PluginPublishDb] find failed", error);
+    return null;
+  }
+}
+var init_pluginPublishDb = __esm({
+  "lib/api/pluginPublishDb.ts"() {
+    "use strict";
+    init_prisma();
+  }
+});
+
+// lib/api/pluginPublishQueue.ts
+function enqueuePluginPublishReview(record) {
+  queue.unshift(record);
+  if (queue.length > MAX_QUEUE) queue.length = MAX_QUEUE;
+}
+function listPluginPublishReviewsForUser(userId, limit = 10, status) {
+  return queue.filter((row) => row.submitterUserId === userId && (!status || row.status === status)).slice(0, limit);
+}
+function findPluginPublishReviewInQueue(userId, reviewId) {
+  return queue.find((row) => row.submitterUserId === userId && row.reviewId === reviewId) ?? null;
+}
+var MAX_QUEUE, queue;
+var init_pluginPublishQueue = __esm({
+  "lib/api/pluginPublishQueue.ts"() {
+    "use strict";
+    MAX_QUEUE = 50;
+    queue = [];
+  }
+});
+
+// lib/api/handlers/plugins/publishReviewById.ts
+var publishReviewById_exports = {};
+__export(publishReviewById_exports, {
+  GET: () => GET14
+});
+async function GET14(req, ctx) {
+  if (!isPluginPublishEnabled()) {
+    return jsonResponse({ review: null, publishEnabled: false });
+  }
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  const reviewId = ctx?.params?.reviewId?.trim();
+  if (!reviewId) {
+    return localizedErrorResponse(req, "api.plugin.publishInvalidId", 400);
+  }
+  try {
+    const dbReview = await findPluginPublishReviewForUser(auth.user.id, reviewId);
+    const review = dbReview ?? findPluginPublishReviewInQueue(auth.user.id, reviewId);
+    if (!review) {
+      return localizedErrorResponse(req, "api.plugin.reviewNotFound", 404);
+    }
+    return jsonResponse({ review, publishEnabled: true });
+  } catch (error) {
+    console.error("[PluginPublishReviewById] error:", error);
+    return localizedErrorResponse(req, "api.plugin.publishFailed", 500);
+  }
+}
+var init_publishReviewById = __esm({
+  "lib/api/handlers/plugins/publishReviewById.ts"() {
+    "use strict";
+    init_http();
+    init_localizedError();
+    init_pluginPublishConfig();
+    init_pluginPublishDb();
+    init_pluginPublishQueue();
+    init_requireAuth();
+  }
+});
+
+// lib/api/handlers/plugins/publishReviews.ts
+var publishReviews_exports = {};
+__export(publishReviews_exports, {
+  GET: () => GET15
+});
+function parseStatusFilter(req) {
+  const status = new URL(req.url).searchParams.get("status")?.trim().toLowerCase();
+  return status === "pending" ? "pending" : void 0;
+}
+function recordToRow(record) {
+  return {
+    reviewId: record.reviewId,
+    status: record.status,
+    pluginId: record.pluginId,
+    version: record.version,
+    manifestHash: record.manifestHash,
+    submittedAt: record.submittedAt
+  };
+}
+function mergePluginPublishReviews(memoryReviews, dbReviews, limit) {
+  const byId = /* @__PURE__ */ new Map();
+  for (const row of memoryReviews.map(recordToRow)) {
+    byId.set(row.reviewId, row);
+  }
+  if (dbReviews) {
+    for (const row of dbReviews) {
+      byId.set(row.reviewId, row);
+    }
+  }
+  return [...byId.values()].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)).slice(0, limit);
+}
+async function GET15(req) {
+  if (!isPluginPublishEnabled()) {
+    return jsonResponse({ reviews: [], publishEnabled: false });
+  }
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  const status = parseStatusFilter(req);
+  try {
+    const memoryReviews = listPluginPublishReviewsForUser(auth.user.id, 10, status);
+    const dbReviews = await listPluginPublishReviewsFromDb(auth.user.id, 10, status);
+    const reviews = mergePluginPublishReviews(memoryReviews, dbReviews, 10);
+    return jsonResponse({ reviews, publishEnabled: true, status: status ?? "all" });
+  } catch (error) {
+    console.error("[PluginPublishReviews] error:", error);
+    return localizedErrorResponse(req, "api.plugin.publishFailed", 500);
+  }
+}
+var init_publishReviews = __esm({
+  "lib/api/handlers/plugins/publishReviews.ts"() {
+    "use strict";
+    init_http();
+    init_localizedError();
+    init_pluginPublishConfig();
+    init_pluginPublishDb();
+    init_pluginPublishQueue();
+    init_requireAuth();
   }
 });
 
@@ -4525,7 +5653,7 @@ function validatePluginPublishBody(body) {
   };
   return { ok: true, pkg: normalized };
 }
-function createPluginPublishReview(pkg, submitterUserId) {
+async function createPluginPublishReview(pkg, submitterUserId) {
   const reviewId = `rev_${randomBytes2(8).toString("hex")}`;
   const manifestHash = createHash("sha256").update(
     JSON.stringify({
@@ -4535,6 +5663,17 @@ function createPluginPublishReview(pkg, submitterUserId) {
       entry: pkg.manifest.entry
     })
   ).digest("hex").slice(0, 16);
+  const record = {
+    reviewId,
+    status: "pending",
+    pluginId: pkg.manifest.id,
+    version: pkg.manifest.version,
+    manifestHash,
+    submitterUserId,
+    submittedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  enqueuePluginPublishReview(record);
+  await persistPluginPublishReview(record);
   console.info("[PluginPublish] queued for manual review", {
     reviewId,
     pluginId: pkg.manifest.id,
@@ -4544,18 +5683,20 @@ function createPluginPublishReview(pkg, submitterUserId) {
     hasSignature: Boolean(pkg.manifest.signature?.value)
   });
   return {
-    reviewId,
-    status: "pending",
-    pluginId: pkg.manifest.id,
-    version: pkg.manifest.version,
-    manifestHash,
-    submittedAt: (/* @__PURE__ */ new Date()).toISOString()
+    reviewId: record.reviewId,
+    status: record.status,
+    pluginId: record.pluginId,
+    version: record.version,
+    manifestHash: record.manifestHash,
+    submittedAt: record.submittedAt
   };
 }
 var MAX_SOURCE_BYTES, MAX_MANIFEST_ID_LEN, PLUGIN_ID_RE;
 var init_pluginPublishService = __esm({
   "lib/api/pluginPublishService.ts"() {
     "use strict";
+    init_pluginPublishDb();
+    init_pluginPublishQueue();
     MAX_SOURCE_BYTES = 32 * 1024;
     MAX_MANIFEST_ID_LEN = 64;
     PLUGIN_ID_RE = /^[a-z][a-z0-9-]*$/;
@@ -4565,9 +5706,9 @@ var init_pluginPublishService = __esm({
 // lib/api/handlers/plugins/publish.ts
 var publish_exports = {};
 __export(publish_exports, {
-  POST: () => POST21
+  POST: () => POST22
 });
-async function POST21(req) {
+async function POST22(req) {
   if (!isPluginPublishEnabled()) {
     return localizedErrorResponse(req, "api.plugin.publishDisabled", 503);
   }
@@ -4585,7 +5726,7 @@ async function POST21(req) {
     if (!validation.ok) {
       return localizedErrorResponse(req, validation.errorKey, 400, validation.params);
     }
-    const review = createPluginPublishReview(validation.pkg, auth.user.id);
+    const review = await createPluginPublishReview(validation.pkg, auth.user.id);
     return localizedSuccessResponse(req, "api.plugin.publishAccepted", review, 202);
   } catch (error) {
     console.error("[PluginPublish] error:", error);
@@ -4848,10 +5989,10 @@ var init_backgroundJobEntitlement = __esm({
 // lib/api/handlers/jobs/index.ts
 var jobs_exports = {};
 __export(jobs_exports, {
-  GET: () => GET14,
-  POST: () => POST22
+  GET: () => GET16,
+  POST: () => POST23
 });
-async function GET14(req) {
+async function GET16(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -4866,7 +6007,7 @@ async function GET14(req) {
     return localizedErrorResponse(req, "api.job.listFailed", 500);
   }
 }
-async function POST22(req) {
+async function POST23(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -4922,9 +6063,9 @@ var init_jobs = __esm({
 // lib/api/handlers/jobs/batch.ts
 var batch_exports = {};
 __export(batch_exports, {
-  POST: () => POST23
+  POST: () => POST24
 });
-async function POST23(req) {
+async function POST24(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -5150,12 +6291,41 @@ var init_translations = __esm({
         "chat.error.payloadTooLargeTips": "\u5EFA\u8BAE\uFF1A\u2460 \u5173\u95ED\u300C\u5DE5\u4F5C\u533A\u4E0A\u4E0B\u6587\u300D\uFF1B\u2461 \u51CF\u5C11 @ \u63D0\u53CA\u7684\u6587\u4EF6\uFF1B\u2462 \u5173\u95ED\u8BED\u4E49\u68C0\u7D22\uFF1B\u2463 \u62C6\u5206\u5BF9\u8BDD\u6216\u6E05\u7A7A\u5386\u53F2\u540E\u91CD\u8BD5\u3002",
         "chat.payload.preflightWarnTitle": "\u4E0A\u4E0B\u6587\u53EF\u80FD\u8FC7\u5927\uFF0C\u5EFA\u8BAE\u5148\u7CBE\u7B80\u518D\u53D1\u9001",
         "chat.payload.preflightWarnDetail": "\u9884\u8BA1\u8BF7\u6C42\u4F53\u7EA6 {estimatedKb}KB\uFF08\u9884\u7B97 {budgetKb}KB\uFF09\uFF0C\u53EF\u80FD\u89E6\u53D1 413\u3002",
+        "chat.preflight.indexTrimmed": "\u7CBE\u7B80 Agent \u7D22\u5F15\u6458\u8981\uFF08\u5DF2\u81EA\u52A8\u622A\u65AD\u81F3\u9884\u7B97\u5185\uFF09",
         "chat.payload.slimAndSend": "\u7CBE\u7B80\u540E\u53D1\u9001",
         "chat.payload.stillTooLarge": "\u5DF2\u7CBE\u7B80\u4F46\u8BF7\u6C42\u4ECD\u8FC7\u5927\uFF08\u7EA6 {estimatedKb}KB\uFF0C\u9884\u7B97 {budgetKb}KB\uFF09\uFF0C\u8BF7\u518D\u51CF\u5C11 @ \u6216\u5173\u95ED\u5DE5\u4F5C\u533A\u4E0A\u4E0B\u6587\u3002",
         "chat.payload.planHistory": "\u5386\u53F2\u538B\u7F29\u5230\u6700\u8FD1 {count} \u6761",
         "chat.payload.planInput": "\u7528\u6237\u8F93\u5165\u6700\u591A\u4FDD\u7559 {count} \u5B57\u7B26",
         "chat.payload.planWorkspace": "\u4E34\u65F6\u5173\u95ED\u5DE5\u4F5C\u533A\u4E0A\u4E0B\u6587",
         "chat.payload.planMention": "\u4E34\u65F6\u5173\u95ED @ \u6CE8\u5165",
+        "chat.payload.meterLabel": "\u4E0A\u4E0B\u6587\u7EA6 {estimatedKb}/{budgetKb} KB\uFF08{percent}%\uFF09",
+        "chat.payload.meterAria": "\u9884\u8BA1\u8BF7\u6C42\u4F53 {estimatedKb} KB\uFF0C\u9884\u7B97 {budgetKb} KB\uFF0C\u5360\u7528 {percent}%",
+        "chat.mention.preflightBannerTitle": "@ \u63D0\u53CA\u9884\u68C0",
+        "chat.mention.preflightUnresolved": "\u65E0\u6CD5\u89E3\u6790\uFF1A{tokens}",
+        "chat.mention.preflightTooMany": "\u8D85\u8FC7 {max} \u4E2A @\uFF08\u5F53\u524D {count}\uFF09",
+        "chat.mention.preflightAmbiguous": "\u7B26\u53F7\u91CD\u540D\uFF1A{token}\uFF08{paths}\uFF09",
+        "chat.mention.preflightSendHint": "\u53D1\u9001\u65F6\u5C06\u8DF3\u8FC7\u672A\u89E3\u6790\u7684 @",
+        "chat.mention.preflightBlockHint": "\u5B58\u5728\u672A\u89E3\u6790\u7684 @ \u65F6\u5C06\u963B\u6B62\u53D1\u9001\uFF0C\u8BF7\u4FEE\u6B63\u6216\u79FB\u9664",
+        "chat.mention.blockSendTitle": "\u65E0\u6CD5\u53D1\u9001\uFF1A@ \u63D0\u53CA\u672A\u89E3\u6790",
+        "chat.mention.blockSendDetail": "\u6709 {count} \u4E2A @ \u65E0\u6CD5\u89E3\u6790\uFF0C\u8BF7\u4FEE\u6B63\u540E\u518D\u53D1\u9001",
+        "chat.mention.blockSendAmbiguousTitle": "\u65E0\u6CD5\u53D1\u9001\uFF1A@ \u7B26\u53F7\u91CD\u540D",
+        "chat.mention.blockSendAmbiguousDetail": "\u6709 {count} \u4E2A @ \u5728\u591A\u4E2A\u6587\u4EF6\u4E2D\u91CD\u540D\uFF0C\u8BF7\u6539\u7528\u8DEF\u5F84\u6216\u66F4\u5177\u4F53\u7684\u7B26\u53F7",
+        "chat.mention.preflightAmbiguousBlockHint": "\u7B26\u53F7\u91CD\u540D\u65F6\u5C06\u963B\u6B62\u53D1\u9001\uFF0C\u8BF7\u6539\u7528 @path\u3001@file#symbol\uFF0C\u6216\u7CBE\u7B80\u53D1\u9001",
+        "chat.mention.slimPastAmbiguous": "\u7CBE\u7B80\u53D1\u9001",
+        "chat.payload.meterSemanticNote": "\u542B\u8BED\u4E49\u68C0\u7D22\u9884\u7559",
+        "chat.payload.meterToolLoopNote": "\u542B Agent \u5DE5\u5177\u8F6E\u6B21\u9884\u7559",
+        "chat.payload.meterMcpNote": "\u542B MCP \u5DE5\u5177\u6BB5\u9884\u7559",
+        "editor.references.peekTitle": "\u5F15\u7528\uFF1A{symbol}\uFF08{count}\uFF09",
+        "editor.references.peekClose": "\u5173\u95ED\u5F15\u7528\u5217\u8868",
+        "editor.references.lineCol": "{line}:{column}",
+        "plugin.publish.title": "\u63D0\u4EA4\u5BA1\u6838",
+        "plugin.publish.desc": "\u5C06 manifest + source \u63D0\u4EA4\u5230\u670D\u52A1\u7AEF\u4EBA\u5DE5\u5BA1\u6838\u961F\u5217\uFF08\u9700\u767B\u5F55\u4E14\u670D\u52A1\u7AEF\u5F00\u542F PLUGIN_PUBLISH_ENABLED\uFF09",
+        "plugin.publish.submit": "\u63D0\u4EA4\u5BA1\u6838",
+        "plugin.publish.success": "\u5DF2\u63D0\u4EA4\uFF0C\u5BA1\u6838\u7F16\u53F7 {reviewId}",
+        "plugin.publish.failed": "\u63D0\u4EA4\u5931\u8D25",
+        "plugin.publish.loginRequired": "\u8BF7\u5148\u767B\u5F55\u540E\u518D\u63D0\u4EA4\u5BA1\u6838",
+        "chat.largeRepo.capped": "\u5927\u4ED3\u7D22\u5F15\u5DF2\u8FBE\u4E0A\u9650\uFF1A\u5DF2\u7D22\u5F15 {indexed}/{eligible}\uFF0C@ \u4E0E\u8BED\u4E49\u68C0\u7D22\u53EF\u80FD\u4E0D\u5B8C\u6574",
+        "chat.largeRepo.nearCap": "\u5DE5\u4F5C\u533A\u63A5\u8FD1\u7D22\u5F15\u4E0A\u9650\uFF08{indexed}/{eligible}\uFF0C\u4E0A\u9650\u7EA6 {max} \u6587\u4EF6\uFF09\uFF0C\u5EFA\u8BAE\u7F29\u5C0F\u8303\u56F4\u6216\u4F7F\u7528\u684C\u9762\u7248",
         "chat.action.copy": "\u590D\u5236",
         "chat.action.copyCode": "\u590D\u5236\u4EE3\u7801",
         "chat.action.copied": "\u5DF2\u590D\u5236",
@@ -5181,7 +6351,7 @@ var init_translations = __esm({
         "chat.error.genericHint": "\u53EF\u70B9\u51FB\u6D88\u606F\u4E0B\u65B9\u300C\u91CD\u8BD5\u300D\uFF0C\u6216\u7F29\u77ED\u4E0A\u4E0B\u6587\u540E\u518D\u53D1\u3002",
         "toolbar.plugin": "\u63D2\u4EF6\uFF1A{label}",
         "toolbar.plans.guest": "\u67E5\u770B\u5957\u9910",
-        "toolbar.plans.upgrade": "\u5347\u7EA7\u5957\u9910 $4.99 \u8D77",
+        "toolbar.plans.upgrade": "\u5347\u7EA7\u5957\u9910 {price} \u8D77",
         "toolbar.welfare.badge": "\u516C\u76CA\u514D\u8D39",
         "toolbar.welfare.title": "\u516C\u76CA IDE\uFF1A\u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\uFF0C\u5E73\u53F0\u914D\u989D\u5DF2\u653E\u5BBD",
         "toolbar.plans.team": "\u5347\u7EA7\u56E2\u961F\u7248",
@@ -5212,12 +6382,14 @@ var init_translations = __esm({
         "welcome.desktopBadge": "\u684C\u9762\u7248",
         "welcome.cloudOk": "\u4E91\u7AEF\u8D26\u53F7\u670D\u52A1\u6B63\u5E38\uFF0C\u53EF\u6CE8\u518C\u5E76\u540C\u6B65\u5DE5\u4F5C\u533A\u3002",
         "welcome.cloudDegraded": "\u4E91\u7AEF\u6570\u636E\u5E93\u6682\u4E0D\u53EF\u7528\uFF1A\u6CE8\u518C/\u4E91\u5DE5\u4F5C\u533A\u53EF\u80FD\u5931\u8D25\u3002\u4F60\u4ECD\u53EF\u4F7F\u7528 BYOK \u4E0E\u672C\u5730\u7F16\u8F91\uFF1B\u7EF4\u62A4\u8005\u8BF7\u68C0\u67E5\u90E8\u7F72\u73AF\u5883\u53D8\u91CF\u3002",
+        "welcome.cloudDegradedPlatform": "\u4E91\u7AEF\u6570\u636E\u5E93\u6682\u4E0D\u53EF\u7528\uFF1A\u6CE8\u518C/\u4E91\u5DE5\u4F5C\u533A\u53EF\u80FD\u5931\u8D25\u3002\u672C\u5730\u7F16\u8F91\u4ECD\u53EF\u7528\uFF1B\u7EF4\u62A4\u8005\u8BF7\u68C0\u67E5 DATABASE_URL \u4E0E AUTH_SECRET\u3002",
         "welcome.networkTips": "\u9875\u9762\u52A0\u8F7D\u6162\u6216 API \u8D85\u65F6\uFF1F\u56FD\u5185\u8BBF\u95EE vercel.app \u53EF\u80FD\u4E0D\u7A33\u5B9A\u3002\u53EF\u7A0D\u540E\u91CD\u8BD5\u3001\u66F4\u6362\u7F51\u7EDC\uFF0C\u6216\u4E0B\u8F7D Windows/macOS \u684C\u9762\u7248\u3002\u81EA\u5B9A\u4E49\u57DF\u540D\u89C1 docs/CUSTOM_DOMAIN.md\u3002",
         "welcome.title": "\u66F4\u5FEB\u8FDB\u5165\u601D\u8DEF\uFF0C\u66F4\u5C11\u6D88\u8017\u5728\u73AF\u5883\u4E0A",
         "welcome.lead": "\u6253\u5F00\u6587\u4EF6\u3001\u4E0E AI \u534F\u4F5C\u3001\u8FD0\u884C\u4EE3\u7801\u3001\u7BA1\u7406\u5DE5\u4F5C\u533A\uFF0C\u5168\u90E8\u5728\u4E00\u4E2A\u8F7B\u91CF\u754C\u9762\u91CC\u5B8C\u6210\u3002\u4ECE\u4E0B\u9762\u7684\u5165\u53E3\u76F4\u63A5\u5F00\u59CB\u5DE5\u4F5C\uFF0C\u4E0D\u7528\u5148\u7A7F\u8FC7\u4E00\u5C42\u8BF4\u660E\u9875\u3002",
         "welcome.platformCta": "\u514D\u8D39\u6CE8\u518C\u5373\u53EF\u4F7F\u7528\u5E73\u53F0 AI\uFF0C\u65E0\u9700\u81EA\u5907 DeepSeek / OpenAI API Key\uFF08\u7C7B\u4F3C Cursor \u5F00\u7BB1\u5373\u7528\uFF09\u3002",
         "welcome.platformCtaButton": "\u514D\u8D39\u6CE8\u518C\u5E76\u5F00\u59CB",
         "welcome.platformCtaSignupPage": "\u6216\u6253\u5F00\u6CE8\u518C\u9875\uFF08\u4FBF\u4E8E\u6536\u85CF\u4E0E\u641C\u7D22\uFF09",
+        "welcome.platformQuotaHint": "\u514D\u8D39\u7248\uFF1A\u6BCF\u65E5 200 \u52A0\u6743\u914D\u989D\uFF0C\u9ED8\u8BA4\u7ECF\u6D4E\u6A21\u578B\uFF08\u5982 DeepSeek Flash\uFF09\uFF1B\u5347\u7EA7 Pro \u89E3\u9501\u5168\u6863\u6A21\u578B\u4E0E 2000 \u914D\u989D\u3002",
         "welcome.settings": "\u8BBE\u7F6E\u4E2D\u5FC3",
         "welcome.quickStart": "\u5FEB\u901F\u5F00\u59CB",
         "welcome.recent": "\u6700\u8FD1\u9879\u76EE",
@@ -5225,7 +6397,7 @@ var init_translations = __esm({
         "welcome.recentEmpty": "\u8FD8\u6CA1\u6709\u6700\u8FD1\u9879\u76EE\u3002\u65B0\u5EFA\u4E00\u4E2A\u5DE5\u4F5C\u533A\u540E\uFF0C\u8FD9\u91CC\u4F1A\u4FDD\u7559\u4F60\u7684\u6700\u8FD1\u5165\u53E3\u3002",
         "welcome.recentEmptyTitle": "\u4ECE\u6A21\u677F\u6216\u5DE5\u4F5C\u533A\u5F00\u59CB",
         "welcome.onboarding.title": "\u9996\u6B21\u4F7F\u7528\uFF1F\u4E09\u6B65\u5373\u53EF\u4E0A\u624B",
-        "welcome.onboarding.desc": "\u2460 \u514D\u8D39\u6CE8\u518C\uFF08\u5E73\u53F0 AI\uFF09\u6216\u914D\u7F6E\u81EA\u5E26 Key \u2192 \u2461 \u9009\u6A21\u677F\u6216\u5BFC\u5165\u9879\u76EE \u2192 \u2462 \u4E0E Agent \u534F\u4F5C \xB7 Ctrl+Enter \u8FD0\u884C \xB7 F5 \u8C03\u8BD5\u3002",
+        "welcome.onboarding.desc": "\u2460 \u514D\u8D39\u6CE8\u518C\uFF08\u5E73\u53F0 AI\uFF09\u2192 \u2461 \u9009\u6A21\u677F\u6216\u5BFC\u5165\u9879\u76EE \u2192 \u2462 \u4E0E Agent \u534F\u4F5C \xB7 Ctrl+Enter \u8FD0\u884C \xB7 F5 \u8C03\u8BD5\u3002",
         "welcome.onboarding.dismiss": "\u77E5\u9053\u4E86",
         "welcome.features": "\u6838\u5FC3\u80FD\u529B",
         "welcome.shortcuts": "\u5E38\u7528\u5FEB\u6377\u952E",
@@ -5275,6 +6447,8 @@ var init_translations = __esm({
         "auth.oauth.github": "\u4F7F\u7528 GitHub \u767B\u5F55",
         "auth.oauth.google": "\u4F7F\u7528 Google \u767B\u5F55",
         "auth.oauth.divider": "\u6216\u4F7F\u7528\u90AE\u7BB1\u767B\u5F55",
+        "auth.oauth.desktopReturnTitle": "\u5DF2\u8FD4\u56DE\u684C\u9762\u7248",
+        "auth.oauth.desktopReturnDetail": "OAuth \u767B\u5F55\u5DF2\u5B8C\u6210\uFF0C\u4E91\u7AEF\u529F\u80FD\u5DF2\u5C31\u7EEA\u3002",
         "auth.email": "\u90AE\u7BB1\u5730\u5740",
         "auth.password": "\u5BC6\u7801",
         "auth.confirmPassword": "\u786E\u8BA4\u5BC6\u7801",
@@ -5336,20 +6510,117 @@ var init_translations = __esm({
         "settings.ai.platformReady": "\u670D\u52A1\u7AEF\u5DF2\u914D\u7F6E\u5E73\u53F0 AI\uFF08{provider}\uFF09\uFF0C\u767B\u5F55\u540E\u5373\u53EF\u4F7F\u7528\u5E73\u53F0\u6A21\u5F0F\u3002",
         "settings.ai.platformReadyBadge": "Chat / Agent / Tab \u8865\u5168 / \u63D2\u4EF6\u53EF\u8D70\u5E73\u53F0\u7F51\u5173",
         "settings.ai.platformNotConfigured": "\u90E8\u7F72\u672A\u914D\u7F6E PLATFORM_DEEPSEEK_API_KEY\uFF0C\u5E73\u53F0\u6A21\u5F0F\u6682\u4E0D\u53EF\u7528\uFF1B\u53EF\u5207\u6362 BYOK \u6216\u8054\u7CFB\u7BA1\u7406\u5458\u3002",
+        "settings.ai.platformNotConfiguredPlatformOnly": "\u90E8\u7F72\u672A\u914D\u7F6E\u5E73\u53F0 AI \u5BC6\u94A5\uFF0C\u767B\u5F55\u7528\u6237\u7684 Chat / Agent \u6682\u4E0D\u53EF\u7528\uFF1B\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458\u914D\u7F6E PLATFORM_* \u73AF\u5883\u53D8\u91CF\u3002",
+        "settings.ai.platformFreeEconomyHint": "\u514D\u8D39\u7248\u4EC5\u53EF\u7528\u7ECF\u6D4E\u6A21\u578B\uFF08Flash / Lite \u7B49\uFF09\uFF0C\u6BCF\u6B21\u8BF7\u6C42\u6309\u6863\u4F4D\u6D88\u8017\u52A0\u6743\u914D\u989D\uFF1BPro \u89E3\u9501\u6807\u51C6 / \u9AD8\u7EA7 / \u524D\u6CBF\u6A21\u578B\u3002",
         "settings.ai.platformUnreachable": "\u65E0\u6CD5\u8FDE\u63A5 /api/health\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u6216\u7A0D\u540E\u91CD\u8BD5\u3002",
         "settings.ai.usageDashboardTitle": "\u5E73\u53F0 AI \u7528\u91CF",
         "settings.ai.usageDashboardDesc": "\u53EA\u8BFB\u7EDF\u8BA1\uFF1A\u5E73\u53F0\u7F51\u5173\u8BF7\u6C42\u3001\u6BCF\u65E5\u914D\u989D\u4E0E\u4F30\u7B97\u6210\u672C\uFF08\u975E\u6B63\u5F0F\u8D26\u5355\uFF09\u3002BYOK \u76F4\u8FDE\u4E0D\u8BA1\u5165\u300C\u5E73\u53F0\u300D\u67F1\u3002",
+        "settings.ai.usageDashboardDescPlatform": "\u53EA\u8BFB\u7EDF\u8BA1\uFF1A\u5E73\u53F0\u7F51\u5173\u8BF7\u6C42\u3001\u6BCF\u65E5\u52A0\u6743\u914D\u989D\u4E0E\u4F30\u7B97\u6210\u672C\uFF08\u975E\u6B63\u5F0F\u8D26\u5355\uFF09\u3002",
         "settings.ai.usageDashboardLoading": "\u6B63\u5728\u52A0\u8F7D\u7528\u91CF\u6570\u636E\u2026",
         "settings.ai.usageDashboardError": "\u65E0\u6CD5\u52A0\u8F7D\u7528\u91CF\u4EEA\u8868\u76D8\uFF0C\u8BF7\u786E\u8BA4\u5DF2\u767B\u5F55\u4E14\u6570\u636E\u5E93\u53EF\u7528\u3002",
         "settings.ai.usageDashboardRefresh": "\u5237\u65B0",
         "settings.ai.usagePlatformToday": "\u4ECA\u65E5\u5E73\u53F0\u8BF7\u6C42",
         "settings.ai.usageOtherToday": "\u4ECA\u65E5\u5176\u4ED6\uFF08\u540C\u6B65/BYOK\uFF09",
+        "settings.ai.usageOtherTodayPlatform": "\u4ECA\u65E5\u5176\u4ED6\uFF08\u540C\u6B65\uFF09",
         "settings.ai.usageCostToday": "\u4ECA\u65E5\u4F30\u7B97\u6210\u672C",
         "settings.ai.usageCostPeriod": "\u8FD1 {days} \u65E5\u4F30\u7B97\u6210\u672C",
         "settings.ai.usageCostFootnote": "\u6309\u7EA6 ${rate}/\u6B21\u4F30\u7B97\uFF1B\u8FD1 {days} \u65E5\u5E73\u53F0\u8BF7\u6C42 {total} \u6B21\u3002\u4EC5\u4F9B\u53C2\u8003\u3002",
         "settings.ai.usageChartAria": "\u8FD1\u4E03\u65E5 AI \u8BF7\u6C42\u67F1\u72B6\u56FE",
         "settings.ai.usageLegendPlatform": "\u5E73\u53F0\u7F51\u5173",
         "settings.ai.usageLegendOther": "\u5176\u4ED6",
+        "settings.ai.usageQuotaNearLimit": "\u4ECA\u65E5\u914D\u989D\u5DF2\u7528 {percent}%\uFF08{used}/{limit}\uFF09\uFF0C\u63A5\u8FD1\u4E0A\u9650",
+        "settings.ai.usagePlatformProvider": "\u5E73\u53F0\u8DEF\u7531",
+        "settings.pluginOps.title": "\u63D2\u4EF6\u8FD0\u7EF4\uFF08\u53EA\u8BFB\uFF09",
+        "settings.pluginOps.desc": "\u6765\u81EA GET /api/health \u7684\u670D\u52A1\u7AEF\u72B6\u6001\uFF1B\u53D1\u5E03\u5BA1\u6838\u961F\u5217\u4EC5\u5728\u5F53\u524D\u5B9E\u4F8B\u5185\u5B58\u4E2D\u4FDD\u7559\u3002",
+        "settings.pluginOps.publishApi": "POST /api/plugins/publish",
+        "settings.pluginOps.officialKey": "\u5B98\u65B9\u7B7E\u540D\u516C\u94A5",
+        "settings.pluginOps.envDocLink": "Vercel \u751F\u4EA7\u73AF\u5883\u53D8\u91CF",
+        "settings.pluginOps.clientFlagsLink": "v1.2.6 \u5BA2\u6237\u7AEF\u5F00\u5173",
+        "settings.pluginOps.reviewsTitle": "\u6211\u7684\u53D1\u5E03\u5BA1\u6838",
+        "settings.pluginOps.reviewsFilter": "\u72B6\u6001\u7B5B\u9009",
+        "settings.pluginOps.reviewsFilterAll": "\u5168\u90E8",
+        "settings.pluginOps.reviewsFilterPending": "\u5F85\u5BA1\u6838",
+        "settings.pluginOps.reviewsEmpty": "\u6682\u65E0\u63D0\u4EA4\u8BB0\u5F55\uFF08\u9700\u5F00\u542F PLUGIN_PUBLISH_ENABLED\uFF09",
+        "settings.pluginOps.reviewsRefresh": "\u5237\u65B0\u5BA1\u6838\u5217\u8868",
+        "settings.pluginOps.reviewsHint": "reviewId \u4EC5\u4F9B\u8FD0\u7EF4\u5BF9\u7167\u65E5\u5FD7\uFF1B\u51B7\u542F\u52A8\u540E\u670D\u52A1\u7AEF\u5217\u8868\u4F1A\u6E05\u7A7A\u3002",
+        "settings.pluginOps.reviewsCount": "\u5171 {total} \u6761 \xB7 \u5F85\u5BA1\u6838 {pending}",
+        "settings.v13.title": "v1.3 \u80FD\u529B\uFF08\u53EA\u8BFB\uFF09",
+        "settings.v13.desc": "Python \u5BFC\u822A\u3001\u7D22\u5F15\u6301\u4E45\u5316 embedding\u3001\u7D22\u5F15\u8017\u65F6\u9065\u6D4B\u4E0E\u540E\u53F0 Agent \u5F00\u5173\u72B6\u6001\u3002",
+        "settings.v13.pythonNav": "Python \u8DE8\u6587\u4EF6\u5BFC\u822A",
+        "settings.v13.embeddingPersist": "Embedding \u6301\u4E45\u7F13\u5B58",
+        "settings.v13.indexTelemetry": "\u7D22\u5F15\u6784\u5EFA\u9065\u6D4B",
+        "settings.v13.backgroundAgent": "\u540E\u53F0 Agent UI",
+        "settings.v13.embeddingMetrics": "Embedding \u7F13\u5B58\uFF1A\u547D\u4E2D {hits} \xB7 \u672A\u547D\u4E2D {misses} \xB7 \u8FC7\u671F {expired}",
+        "settings.v13.indexBuildMode": "\u4E0A\u6B21\u7D22\u5F15\uFF1A{mode} \xB7 {ms}ms",
+        "settings.v14.title": "v1.4 \u80FD\u529B\uFF08\u53EA\u8BFB\uFF09",
+        "settings.v14.desc": "v1.4 \u751F\u4EA7\u7B56\u7565\uFF1ATab/FIM \xB7 2k \u7D22\u5F15 \xB7 Git hunk \xB7 \u684C\u9762\u58F3 \xB7 \u540E\u53F0 Agent \xB7 MCP/\u63D2\u4EF6\u3002",
+        "settings.v14.tabFimProduction": "Tab/FIM \u751F\u4EA7\u7B56\u7565",
+        "settings.v14.p95Target": "Tab \u5EF6\u8FDF\u76EE\u6807\uFF1AP95 < {ms}ms",
+        "settings.v14.productionDebounce": "\u751F\u4EA7\u9ED8\u8BA4\u9632\u6296\uFF1A{ms}ms",
+        "settings.v14.index2kProduction": "\u7D22\u5F15 2k / Worker \u751F\u4EA7\u7B56\u7565",
+        "settings.v14.indexCap": "\u5F53\u524D\u7D22\u5F15\u4E0A\u9650 {current}\uFF08\u684C\u9762 {desktop}\uFF09",
+        "settings.v14.indexLastBuild": "\u4E0A\u6B21\u7D22\u5F15\uFF1A{mode} \xB7 {ms}ms",
+        "settings.v14.indexBuildMode": "\u7D22\u5F15\u6784\u5EFA\u6A21\u5F0F",
+        "settings.v14.indexBuildMode.auto": "\u81EA\u52A8\uFF08\u5927\u4ED3\u8D70 Worker\uFF09",
+        "settings.v14.indexBuildMode.worker": "\u5F3A\u5236 Worker",
+        "settings.v14.indexBuildMode.sync": "\u4E3B\u7EBF\u7A0B\u540C\u6B65",
+        "settings.v14.gitHunkStage": "Git \u5757\u7EA7 stage",
+        "settings.v14.desktopShellProduction": "\u684C\u9762\u58F3\u751F\u4EA7\u7B56\u7565",
+        "settings.v14.desktopOnly": "\u4EC5\u684C\u9762\u7248",
+        "settings.v14.backgroundAgentProduction": "\u540E\u53F0 Agent \u751F\u4EA7\u7B56\u7565",
+        "settings.v14.mcpPluginProduction": "MCP/\u63D2\u4EF6\u751F\u4EA7\u7B56\u7565",
+        "settings.v14.catalogCounts": "\u5B98\u65B9 MCP {mcp} \xB7 \u63D2\u4EF6\u76EE\u5F55 {plugins}",
+        "settings.v15.title": "v1.5 \u80FD\u529B\uFF08\u53EA\u8BFB\uFF09",
+        "settings.v16.title": "v1.6 \u4E0A\u5E02\u5C31\u7EEA",
+        "settings.v16.desc": "GA \u51B2\u523A\u72B6\u6001\uFF08\u5BA2\u6237\u7AEF\u7279\u6027 + \u8FD0\u7EF4\u9879\u89C1 V1.6_GA_EXECUTION.md\uFF09\u3002",
+        "settings.v16.platformAi": "\u5E73\u53F0 AI \u7F51\u5173\uFF08\u767B\u5F55\u5373\u7528\uFF09",
+        "settings.v16.tabPlusPlus": "Tab++ \u751F\u4EA7",
+        "settings.v16.overseasBilling": "\u6D77\u5916 MoR \u8BA2\u9605",
+        "settings.v16.overseasDeferred": "v1.6.0\uFF1A\u6D77\u5916 Pro/Team \u6682\u7F13 \xB7 Free+BYOK",
+        "settings.v16.overseasLive": "Paddle/Stripe live",
+        "settings.v16.gaBuild": "GA \u751F\u4EA7\u6784\u5EFA",
+        "settings.v16.byokLegacy": "BYOK \u65E7\u6A21\u5F0F",
+        "platform.parity.title": "\u684C\u9762 / \u6D4F\u89C8\u5668\u80FD\u529B\u5BF9\u7167",
+        "platform.parity.desc": "\u540C\u4E00\u5957 UI \u5728\u4E0D\u540C\u8FD0\u884C\u73AF\u5883\u4E0B\u7684\u80FD\u529B\u5DEE\u5F02\uFF08\u4F9B\u6392\u67E5\u4E0E\u9009\u578B\u53C2\u8003\uFF09\u3002",
+        "platform.surface.desktop": "\u684C\u9762\u7248",
+        "platform.surface.browser": "\u6D4F\u89C8\u5668",
+        "platform.runtime.label": "\u8FD0\u884C\u73AF\u5883",
+        "platform.runtime.desktopReady": "\u684C\u9762\u6587\u4EF6\u5939\u5DF2\u7ED1\u5B9A \xB7 \u539F\u751F\u8FD0\u884C\u5C31\u7EEA",
+        "platform.runtime.webReady": "WebContainer \u5DF2\u5C31\u7EEA",
+        "platform.runtime.desktopIdle": "\u684C\u9762\u7248 \xB7 \u8BF7\u6253\u5F00\u672C\u5730\u6587\u4EF6\u5939",
+        "platform.runtime.loading": "\u8FD0\u884C\u73AF\u5883\u52A0\u8F7D\u4E2D",
+        "platform.capability.partial": "\u90E8\u5206\u652F\u6301",
+        "platform.capability.nativeFolder": "\u672C\u5730\u6587\u4EF6\u5939 / \u591A\u6839\u5DE5\u4F5C\u533A",
+        "platform.capability.nativePty": "\u539F\u751F\u7EC8\u7AEF PTY",
+        "platform.capability.nativeGitReadonly": "\u539F\u751F Git \u53EA\u8BFB\u5FEB\u7167",
+        "platform.capability.nativeNodeInspect": "Node inspect \u8C03\u8BD5",
+        "platform.capability.webContainerRun": "WebContainer \u8FD0\u884C npm/node",
+        "platform.capability.runtimeShellHooks": "Runtime shell hooks",
+        "platform.capability.fileSystemAccessPicker": "File System Access \u6253\u5F00\u76EE\u5F55",
+        "status.platform.desktop": "\u684C\u9762\u7248",
+        "status.platform.browser": "\u6D4F\u89C8\u5668",
+        "settings.v15.desc": "v1.5 \u751F\u4EA7\u5F00\u5173\uFF1A\u5E73\u53F0\u591A\u6A21\u578B \xB7 Tab++ \xB7 Spec Artifacts \xB7 AIDE Runtime \xB7 Activity Line\u3002",
+        "settings.v15.platformModels": "\u5E73\u53F0\u591A\u6A21\u578B / \u5F03 BYOK",
+        "settings.v15.tabPlusPlus": "Tab++ \u751F\u4EA7\uFF08\u591A\u884C ghost \xB7 FIM\uFF09",
+        "settings.v15.tabPlusPlusTargets": "Tab++ \u76EE\u6807\uFF1AP95 < {p95} ms \xB7 debounce {debounce} ms \xB7 \u2264{lines} \u884C",
+        "settings.v15.specArtifactsV2": "Spec Artifacts v2\uFF08hooks.yaml\uFF09",
+        "settings.v15.aideRuntime": "AIDE Runtime \u5F15\u64CE",
+        "settings.v15.orchestratorMode": "Orchestrator \u6A21\u5F0F\uFF1A{mode}",
+        "settings.v15.activityLine": "Activity Line \u751F\u4EA7 UI",
+        "settings.v15.byokLegacy": "BYOK \u65E7\u5165\u53E3\uFF08legacy\uFF09",
+        "settings.tabCompletion.metricsCardTitle": "Tab \u8865\u5168\u6307\u6807\uFF08v1.3\uFF09",
+        "settings.tabCompletion.metricsReset": "\u91CD\u7F6E\u7EDF\u8BA1",
+        "settings.tabCompletion.tabPlusPlusPocOn": "Tab++ POC\uFF1A\u591A\u884C\u5E7D\u7075\u8865\u5168\u5DF2\u542F\u7528\uFF08v1.4.3 \u5B9E\u9A8C\uFF09",
+        "settings.tabCompletion.tabPlusPlusPocTargets": "Tab++ POC \u76EE\u6807\uFF1AP95 < {p95} ms \xB7 debounce {debounce} ms",
+        "settings.tabCompletion.tabPlusPlusProductionOn": "Tab++ \u751F\u4EA7\uFF1A\u591A\u884C\u5E7D\u7075\u8865\u5168\u5DF2\u542F\u7528\uFF08v1.5 F1\uFF09",
+        "settings.tabCompletion.tabPlusPlusProductionTargets": "Tab++ \u751F\u4EA7\u76EE\u6807\uFF1AP95 < {p95} ms \xB7 debounce {debounce} ms \xB7 \u2264{lines} \u884C",
+        "settings.tabCompletion.p95CollectHint": "\u5728\u7F16\u8F91\u5668\u4E2D\u8F93\u5165\u4EE3\u7801\u540E\uFF0C\u672C\u9875\u5C06\u663E\u793A Tab \u5EF6\u8FDF P95 \u6837\u672C\u3002",
+        "settings.backgroundAgent.title": "\u540E\u53F0 Agent",
+        "settings.backgroundAgent.desc": "\u5173\u9875\u540E\u670D\u52A1\u7AEF\u7EE7\u7EED\u6267\u884C Agent\uFF1B\u9700 VITE_BACKGROUND_AGENT \u4E0E Cron\u3002",
+        "settings.backgroundAgent.enabled": "\u5BA2\u6237\u7AEF UI",
+        "settings.backgroundAgent.cron": "\u4EFB\u52A1\u5904\u7406",
+        "settings.backgroundAgent.envHint": "\u751F\u4EA7\u9ED8\u8BA4\u5173\u95ED\uFF1B\u542F\u7528\u89C1 docs/V1.1_FEATURE_FLAGS.md \u4E0E V1.3_ENV.md\u3002",
+        "settings.index.telemetry": "\u4E0A\u6B21\u7D22\u5F15 {ms}ms\uFF08{mode}\uFF09",
         "settings.ai.privacy": "\u9690\u79C1\u8BF4\u660E",
         "settings.ai.privacyText": "API Key \u4FDD\u5B58\u5728\u6D4F\u89C8\u5668\u672C\u5730\u3002\u9664\u4F60\u9009\u62E9\u7684\u6A21\u578B\u670D\u52A1\u5916\uFF0C\u5E94\u7528\u4E0D\u4F1A\u989D\u5916\u8F6C\u53D1\u5230\u5176\u4ED6\u7B2C\u4E09\u65B9\u670D\u52A1\u3002",
         "settings.ai.privacyGuest": " \u767B\u5F55\u8D26\u53F7\u540E\u53EF\u540C\u6B65\u4E91\u7AEF\u914D\u989D\u7EDF\u8BA1\u3002",
@@ -5368,6 +6639,8 @@ var init_translations = __esm({
         "settings.formatOnSave": "\u4FDD\u5B58\u65F6\u683C\u5F0F\u5316",
         "settings.formatOnSave.desc": "\u81EA\u52A8\u4FDD\u5B58\u524D\u683C\u5F0F\u5316\u5F53\u524D\u6587\u4EF6\uFF08\u534F\u4F5C\u53EA\u8BFB\u623F\u95F4\u4E2D\u8DF3\u8FC7\uFF09\u3002",
         "settings.formatOnSave.aria": "\u4FDD\u5B58\u65F6\u683C\u5F0F\u5316",
+        "settings.formatLanguages.title": "\u683C\u5F0F\u5316\u652F\u6301\u8BED\u8A00",
+        "settings.formatLanguages.desc": "JS/TS\u3001JSON\u3001CSS\u3001HTML\u3001Markdown \u4F7F\u7528\u5185\u7F6E\u7F29\u8FDB\uFF1BJava\u3001C++\u3001Go\u3001Kotlin\u3001Rust \u63D0\u4F9B\u57FA\u7840\u82B1\u62EC\u53F7\u7F29\u8FDB\uFF08\u975E\u5B8C\u6574 Prettier\uFF09\u3002",
         "settings.tabCompletion.title": "Tab AI \u8865\u5168",
         "settings.tabCompletion.desc": "\u5728\u7F16\u8F91\u5668\u4E2D\u901A\u8FC7 Tab / \u5185\u8054\u8865\u5168\u63D2\u5165 AI \u5EFA\u8BAE\u3002\u652F\u6301 BYOK\u3001\u5E73\u53F0 AI \u4E0E Ollama\uFF1BDeepSeek / Qwen / Ollama \u4F18\u5148 FIM\uFF0C\u5176\u4F59\u8D70\u5E73\u53F0\u6216\u5BF9\u8BDD\u56DE\u9000\u3002",
         "settings.tabCompletion.maxLines": "\u8865\u5168\u6700\u5927\u884C\u6570",
@@ -5380,12 +6653,28 @@ var init_translations = __esm({
         "settings.tabCompletion.path.chat": "\u5BF9\u8BDD\u56DE\u9000\uFF08BYOK \u975E FIM \u6A21\u578B\uFF09",
         "settings.tabCompletion.path.off": "\u672A\u914D\u7F6E AI\uFF0C\u8865\u5168\u4E0D\u53EF\u7528",
         "settings.tabCompletion.metricsTitle": "\u4F1A\u8BDD\u7EDF\u8BA1",
-        "settings.tabCompletion.metricsDesc": "\u7F13\u5B58\u547D\u4E2D {hits} \xB7 \u672A\u547D\u4E2D {misses} \xB7 FIM {fim} \xB7 \u5E73\u53F0 {platform} \xB7 \u5BF9\u8BDD {chat} \xB7 \u5E73\u5747\u5EF6\u8FDF {avgMs} ms \xB7 \u4E0A\u6B21\u8DEF\u5F84 {last}",
-        "settings.tabCompletion.metricsReset": "\u91CD\u7F6E\u7EDF\u8BA1",
+        "settings.tabCompletion.metricsDesc": "\u7F13\u5B58\u547D\u4E2D {hits} \xB7 \u672A\u547D\u4E2D {misses} \xB7 \u8DF3\u8FC7 {skipped} \xB7 FIM \u6210\u529F {fim}\uFF08\u5C1D\u8BD5 {fimAttempts} \xB7 \u56DE\u9000\u5BF9\u8BDD {fimFallback}\uFF09\xB7 \u5E73\u53F0 {platform} \xB7 \u5BF9\u8BDD {chat} \xB7 \u5E73\u5747\u5EF6\u8FDF {avgMs} ms \xB7 \u4E0A\u6B21\u8DEF\u5F84 {last}",
+        "settings.tabCompletion.metricsP95": "\u5EF6\u8FDF\u5206\u4F4D\uFF1AP50 {p50} ms \xB7 P95 {p95} ms \xB7 \u6837\u672C {samples} \xB7 \u76EE\u6807 < {target} ms",
+        "settings.tabCompletion.metricsP95Unknown": "\u5EF6\u8FDF\u5206\u4F4D\uFF1A\u6682\u65E0\u6837\u672C\uFF08\u76EE\u6807 < {target} ms\uFF09",
+        "settings.tabCompletion.metricsP95Pass": "\u8FBE\u6807",
+        "settings.tabCompletion.metricsP95Fail": "\u672A\u8FBE\u6807",
+        "settings.tabCompletion.metricsFailures": "\u5931\u8D25 {count}\uFF08{reason}\uFF09",
+        "settings.tabCompletion.failureReason.empty": "\u7A7A\u7ED3\u679C",
+        "settings.tabCompletion.failureReason.timeout": "\u8D85\u65F6",
+        "settings.tabCompletion.failureReason.http413": "\u8BF7\u6C42\u8FC7\u5927",
+        "settings.tabCompletion.failureReason.error": "\u9519\u8BEF",
+        "settings.tabCompletion.failureReason.unknown": "\u672A\u77E5",
         "settings.editorPrefs": "\u7F16\u8F91\u504F\u597D",
         "settings.editorPrefs.desc": "\u5F53\u524D\u7248\u672C\u5148\u4FDD\u7559\u7B80\u6D01\u8BBE\u7F6E\uFF0C\u628A\u6700\u5E38\u7528\u7684\u81EA\u52A8\u4FDD\u5B58\u3001\u4E3B\u9898\u548C\u8BED\u8A00\u6536\u5728\u4E00\u5904\u3002\u540E\u7EED\u9002\u5408\u7EE7\u7EED\u8865\u5145\u5B57\u4F53\u3001\u7F29\u8FDB\u4E0E\u683C\u5F0F\u5316\u7B56\u7565\u3002",
         "settings.features.noticeTitle": "\u80FD\u529B\u8BF4\u660E",
         "settings.features.noticeDesc": "\u4E0B\u5217\u6761\u76EE\u63CF\u8FF0\u5F53\u524D\u4EA7\u54C1\u5DF2\u5177\u5907\u7684\u80FD\u529B\uFF0C\u4E0D\u662F\u72EC\u7ACB\u5F00\u5173\u3002MCP\u3001\u9879\u76EE\u89C4\u5219\u7B49\u53EF\u5728\u672C\u9875\u4E0B\u65B9\u914D\u7F6E\u5E76\u4FDD\u5B58\u3002",
+        "settings.v12.card.title": "v1.2 \u5E73\u53F0\u80FD\u529B\uFF08\u53EA\u8BFB\uFF09",
+        "settings.v12.card.desc": "\u591A\u6839\u5DE5\u4F5C\u533A\u4E0E\u5927\u6587\u4EF6\u6811\u5728\u6B63\u5F0F\u73AF\u5883\u9ED8\u8BA4\u5F00\u542F\uFF1B\u63D2\u4EF6\u53EF\u4FE1\u5E02\u573A\u9700\u73AF\u5883\u53D8\u91CF\u6216\u4F1A\u8BDD\u5F00\u5173\u3002",
+        "settings.v12.multiRoot": "\u591A\u6839\u5DE5\u4F5C\u533A",
+        "settings.v12.virtualTree": "\u865A\u62DF\u6587\u4EF6\u6811\uFF08\u2265500 \u884C\uFF09",
+        "settings.v12.pluginTrust": "\u63D2\u4EF6\u53EF\u4FE1\u5E02\u573A",
+        "settings.v12.statusOn": "\u5DF2\u542F\u7528",
+        "settings.v12.statusOff": "\u672A\u542F\u7528",
         "settings.feature.review.title": "\u4EE3\u7801\u5BA1\u67E5",
         "settings.feature.review.desc": "AI \u9A71\u52A8\u7684\u8D28\u91CF\u5206\u6790\u4E0E\u5EFA\u8BAE",
         "settings.feature.completion.title": "\u667A\u80FD\u8865\u5168",
@@ -5404,6 +6693,9 @@ var init_translations = __esm({
         "settings.index.card.desc": "\u7D22\u5F15\u5B8C\u6210\u540E\u53EF\u5728 Chat \u8F93\u5165 `@` \u9009\u62E9\u6587\u4EF6/\u7B26\u53F7\u6CE8\u5165\u4E0A\u4E0B\u6587\uFF1B\u7D22\u5F15\u53D7 .gitignore \u4E0E\u6587\u4EF6\u5927\u5C0F\u4E0A\u9650\u5F71\u54CD\u3002",
         "settings.index.retry": "\u91CD\u8BD5\u7D22\u5F15",
         "settings.index.limitLinkLabel": "\u6D4F\u89C8\u5668\u80FD\u529B\u8FB9\u754C",
+        "settings.index.cappedHint": "\u5DF2\u8FBE\u6D4F\u89C8\u5668\u7D22\u5F15\u4E0A\u9650\uFF0C\u90E8\u5206\u6587\u4EF6\u672A\u7EB3\u5165 @ \u4E0E\u8BED\u4E49\u68C0\u7D22\uFF1B\u8BE6\u89C1\u4E0B\u65B9\u94FE\u63A5\u3002",
+        "settings.semantic.indexNotReady": "\u7D22\u5F15\u5C1A\u672A\u5C31\u7EEA\uFF1A\u8BF7\u5148\u5BFC\u5165\u5DE5\u4F5C\u533A\u5E76\u7B49\u5F85\u7D22\u5F15\u5B8C\u6210\u540E\u518D\u7528\u8BED\u4E49 @\u3002",
+        "settings.semantic.indexCappedHint": "\u7D22\u5F15\u5DF2\u622A\u65AD\uFF1A\u8BED\u4E49\u68C0\u7D22\u4EC5\u8986\u76D6\u5DF2\u7D22\u5F15\u5B50\u96C6\uFF0C\u5927\u4ED3\u8BF7\u8003\u8651\u684C\u9762\u7248\u6216\u7F29\u5C0F\u5DE5\u4F5C\u533A\u3002",
         "settings.payload.card.title": "\u4E0A\u4E0B\u6587\u9884\u7B97\uFF08413 \u9884\u9632\uFF09",
         "settings.payload.card.desc": "\u53D1\u9001\u524D\u4F1A\u4F30\u7B97\u8BF7\u6C42\u4F53\uFF0C\u8D85\u9884\u7B97\u65F6\u5148\u63D0\u793A\u5E76\u63D0\u4F9B\u201C\u7CBE\u7B80\u540E\u53D1\u9001\u201D\u3002",
         "settings.payload.card.providerBudget": "\u5F53\u524D\u6A21\u578B\u9884\u7B97\uFF1A{provider} \u7EA6 {budgetKb}KB",
@@ -5438,6 +6730,13 @@ var init_translations = __esm({
         "subscription.plans.loadError": "\u6682\u65F6\u65E0\u6CD5\u8BFB\u53D6\u5728\u7EBF\u5957\u9910\u4FE1\u606F\uFF0C\u5148\u4E3A\u4F60\u5C55\u793A\u9ED8\u8BA4\u65B9\u6848\u3002",
         "subscription.loginRequired": "\u8BF7\u5148\u767B\u5F55\u540E\u518D\u5347\u7EA7\u8BA2\u9605",
         "subscription.payFailed": "\u652F\u4ED8\u8BF7\u6C42\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u6216\u7A0D\u540E\u91CD\u8BD5\u3002",
+        "billing.desktopReturnTitle": "\u5DF2\u8FD4\u56DE\u684C\u9762\u7248",
+        "billing.desktopReturnDetail": "\u8BA2\u9605\u72B6\u6001\u5DF2\u540C\u6B65\uFF0C\u53EF\u5728\u8BBE\u7F6E\u4E2D\u67E5\u770B\u5F53\u524D\u5957\u9910\u3002",
+        "desktop.returnPrompt.title": "\u767B\u5F55/\u652F\u4ED8\u5DF2\u5B8C\u6210",
+        "desktop.returnPrompt.detail": "\u82E5\u672A\u81EA\u52A8\u6253\u5F00\u684C\u9762\u5E94\u7528\uFF0C\u8BF7\u70B9\u51FB\u53F3\u4FA7\u6309\u94AE\u3002",
+        "desktop.returnPrompt.button": "\u6253\u5F00 AI IDE \u684C\u9762\u7248",
+        "desktop.returnPrompt.failedTitle": "\u684C\u9762\u56DE\u8DF3\u5931\u8D25",
+        "desktop.returnPrompt.failedDetail": "\u8BF7\u91CD\u65B0\u6253\u5F00\u684C\u9762\u5E94\u7528\uFF0C\u6216\u5728\u8BBE\u7F6E\u4E2D\u91CD\u65B0\u767B\u5F55\u3002",
         "subscription.devUpgradeFailed": "\u5F00\u53D1\u6A21\u5F0F\u5347\u7EA7\u5931\u8D25",
         "subscription.payNotConfigured": "\u652F\u4ED8\u5C1A\u672A\u914D\u7F6E\uFF0C\u8BF7\u5728\u670D\u52A1\u7AEF\u8BBE\u7F6E\u652F\u4ED8\u5B9D\u6216\u5FAE\u4FE1\u5546\u6237\u53C2\u6570\u3002",
         "subscription.paySuccess": "\u652F\u4ED8\u6210\u529F\uFF0C\u8BA2\u9605\u5DF2\u66F4\u65B0",
@@ -5473,9 +6772,15 @@ var init_translations = __esm({
         "subscription.checkout.alipayHint": "\u5B89\u5168\u8DF3\u8F6C\u81F3\u652F\u4ED8\u5B9D\u6536\u94F6\u53F0\u5B8C\u6210\u4ED8\u6B3E",
         "subscription.checkout.stripe": "Stripe \u5347\u7EA7",
         "subscription.checkout.stripeHint": "\u5C06\u8DF3\u8F6C\u81F3 Stripe \u5B89\u5168\u6536\u94F6\u53F0\u5B8C\u6210\u8BA2\u9605",
+        "subscription.checkout.paddle": "Paddle \u5347\u7EA7",
+        "subscription.checkout.paddleHint": "\u5C06\u8DF3\u8F6C\u81F3 Paddle \u5B89\u5168\u6536\u94F6\u53F0\u5B8C\u6210\u8BA2\u9605\uFF08\u6D77\u5916 MoR\uFF09",
+        "subscription.payMethod.paddle": "Paddle",
         "subscription.checkout.welfareIncluded": "\u516C\u76CA\u514D\u8D39\u5DF2\u5305\u542B",
         "subscription.checkout.upgrade": "\u7ACB\u5373\u5347\u7EA7",
         "subscription.checkout.beta": "\u516C\u6D4B\u514D\u8D39",
+        "subscription.checkout.overseasSoon": "\u6D77\u5916\u652F\u4ED8\u5373\u5C06\u5F00\u653E",
+        "subscription.overseasComingSoon": "\u6D77\u5916 Pro/Team \u8BA2\u9605\u5373\u5C06\u5F00\u653E\uFF1B\u5F53\u524D\u8BF7\u4F7F\u7528\u514D\u8D39\u7248 + \u5E73\u53F0 AI\uFF0C\u6216\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E BYOK\u3002",
+        "subscription.pricing.cnWithOverseasSoon": "\u56FD\u5185\u652F\u6301{methods}\uFF1B\u6D77\u5916 Pro/Team \u652F\u4ED8\u5373\u5C06\u5728 v1.6.1 \u5F00\u653E\uFF0C\u5F53\u524D\u53EF\u4F7F\u7528\u514D\u8D39\u7248 + BYOK\u3002",
         "subscription.cancelFailed": "\u53D6\u6D88\u8BA2\u9605\u5931\u8D25",
         "subscription.cancelFailedRetry": "\u53D6\u6D88\u8BA2\u9605\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
         "subscription.resumeFailed": "\u6062\u590D\u8BA2\u9605\u5931\u8D25",
@@ -5485,17 +6790,17 @@ var init_translations = __esm({
         "subscription.updated": "\u8BA2\u9605\u72B6\u6001\u5DF2\u66F4\u65B0",
         "subscription.resumed": "\u8BA2\u9605\u5DF2\u6062\u590D",
         "subscription.plan.free.name": "\u514D\u8D39\u7248",
-        "subscription.plan.free.desc": "\u4E2A\u4EBA\u5B66\u4E60\u4E0E\u65E5\u5E38\u5C0F\u9879\u76EE\uFF0C\u914D\u989D\u5DF2\u653E\u5BBD\u3002",
-        "subscription.plan.free.f1": "\u57FA\u7840 AI \u5BF9\u8BDD",
-        "subscription.plan.free.f2": "10 \u4E2A\u4E91\u5DE5\u4F5C\u533A",
-        "subscription.plan.free.f3": "\u6BCF\u65E5 200 \u6B21\u914D\u989D",
+        "subscription.plan.free.desc": "\u4E2A\u4EBA\u5B66\u4E60\u4E0E\u65E5\u5E38\u5C0F\u9879\u76EE\uFF1B\u767B\u5F55\u5373\u7528\u5E73\u53F0 AI\u3002",
+        "subscription.plan.free.f1": "\u5E73\u53F0 AI \xB7 \u7ECF\u6D4E\u6A21\u578B\uFF08Flash / Lite\uFF09",
+        "subscription.plan.free.f2": "\u65E0\u9650\u4E91\u5DE5\u4F5C\u533A",
+        "subscription.plan.free.f3": "\u6BCF\u65E5 200 \u52A0\u6743\u914D\u989D\u5355\u4F4D",
         "subscription.plan.pro.name": "\u4E13\u4E1A\u7248",
-        "subscription.plan.pro.desc": "\u9AD8\u9891\u4E2A\u4EBA\u5F00\u53D1\u8005\uFF0C$4.99/\u6708\u3002",
-        "subscription.plan.pro.f1": "\u6BCF\u65E5 5000 \u6B21\u914D\u989D",
+        "subscription.plan.pro.desc": "\u9AD8\u9891\u4E2A\u4EBA\u5F00\u53D1\u8005\uFF0C$9.99/\u6708\u3002",
+        "subscription.plan.pro.f1": "\u6BCF\u65E5 2000 \u52A0\u6743\u914D\u989D\u5355\u4F4D",
         "subscription.plan.pro.f2": "\u65E0\u9650\u5DE5\u4F5C\u533A",
         "subscription.plan.pro.f3": "Stripe \u5B89\u5168\u8BA2\u9605",
         "subscription.plan.enterprise.name": "\u56E2\u961F\u7248",
-        "subscription.plan.enterprise.desc": "\u5C0F\u56E2\u961F\u4E0E\u91CD\u5EA6\u7528\u6237\uFF0C$12.99/\u6708\u3002",
+        "subscription.plan.enterprise.desc": "\u5C0F\u56E2\u961F\u4E0E\u91CD\u5EA6\u7528\u6237\uFF0C$19.99/\u6708\u3002",
         "subscription.plan.enterprise.f1": "\u914D\u989D\u4E0D\u9650",
         "subscription.plan.enterprise.f2": "\u65E0\u9650\u5DE5\u4F5C\u533A",
         "subscription.plan.enterprise.f3": "\u56E2\u961F\u80FD\u529B\uFF08\u89C4\u5212\uFF09",
@@ -5516,10 +6821,13 @@ var init_translations = __esm({
         "command.cat.debug": "\u8C03\u8BD5",
         "command.cat.index": "\u7D22\u5F15 (@)",
         "command.cat.editor": "\u7F16\u8F91\u5668",
+        "command.cat.spec": "Spec",
         "command.formatDocument": "\u683C\u5F0F\u5316\u6587\u6863",
         "command.formatDocument.sub": "\u683C\u5F0F\u5316\u5F53\u524D\u6253\u5F00\u7684\u6587\u4EF6",
         "command.goToDefinition": "\u8F6C\u5230\u5B9A\u4E49",
         "command.goToDefinition.sub": "\u8DF3\u8F6C\u5230\u7B26\u53F7\u5B9A\u4E49\uFF08TS/JS\uFF0C\u8DE8\u6587\u4EF6\uFF09",
+        "command.goToReferences": "\u8F6C\u5230\u5F15\u7528",
+        "command.goToReferences.sub": "\u67E5\u627E\u7B26\u53F7\u5F15\u7528\uFF08TS/JS\uFF0C\u8DE8\u6587\u4EF6\uFF09",
         "command.openFile": "\u6253\u5F00\u6587\u4EF6",
         "command.newFile": "\u65B0\u5EFA\u6587\u4EF6",
         "command.newFile.sub": "\u521B\u5EFA\u4E00\u4E2A\u7A7A\u767D\u6587\u4EF6",
@@ -5583,6 +6891,8 @@ var init_translations = __esm({
         "mcp.loading": "\u6B63\u5728\u52A0\u8F7D MCP \u914D\u7F6E\u2026",
         "mcp.title": "MCP \u670D\u52A1\u5668",
         "mcp.desc": "\u901A\u8FC7 /api/mcp/proxy \u8FDE\u63A5 Streamable HTTP MCP\u3002\u672C\u5730 URL \u9700 dev:stack \u4E14\u5141\u8BB8 localhost\u3002",
+        "mcp.toolCountHint": "\u5DF2\u8FDE\u63A5 {count} \u4E2A\u5DE5\u5177 \xB7 Chat \u8868\u8BA1\u9884\u7559\u7EA6 {reserveKb}KB",
+        "mcp.toolCountUnknown": "\u5DE5\u5177\u6570\u4F30\u7B97\u4E2D\uFF08\u8868\u8BA1\u9ED8\u8BA4\u9884\u7559\u7EA6 6KB\uFF09",
         "mcp.empty": "\u5C1A\u672A\u914D\u7F6E MCP \u670D\u52A1\u5668\u3002\u6DFB\u52A0\u540E Agent \u53EF\u5728\u56DE\u590D\u4E2D\u4F7F\u7528 <<<mcp-tool>>> \u5757\u8C03\u7528\u5DE5\u5177\u3002",
         "mcp.displayName": "\u663E\u793A\u540D\u79F0",
         "mcp.enabled": "\u542F\u7528",
@@ -5603,6 +6913,17 @@ var init_translations = __esm({
         "mcp.ping.checking": "\u68C0\u6D4B\u4E2D\u2026",
         "mcp.ping.ok": "\u5DF2\u8FDE\u63A5",
         "mcp.ping.fail": "\u8FDE\u63A5\u5931\u8D25",
+        "mcp.browser.title": "MCP \u5DE5\u5177\u6D4F\u89C8\u5668",
+        "mcp.browser.desc": "\u6309 Schema \u624B\u52A8\u8C03\u7528 MCP \u5DE5\u5177\uFF0C\u9A8C\u8BC1\u63A5\u5165\u548C\u8FD4\u56DE\u7ED3\u6784\u3002",
+        "mcp.browser.loading": "\u52A0\u8F7D\u4E2D\u2026",
+        "mcp.browser.empty": "\u6682\u65E0\u5DF2\u542F\u7528 MCP Server\u3002",
+        "mcp.browser.call": "\u8C03\u7528\u5DE5\u5177",
+        "mcp.log.title": "MCP \u7ED3\u6784\u5316\u7ED3\u679C\uFF08{count}\uFF09",
+        "mcp.log.onlyFailures": "\u4EC5\u5931\u8D25",
+        "mcp.log.groupByServer": "\u6309 Server \u5206\u7EC4",
+        "mcp.log.empty": "\u65E0\u53EF\u663E\u793A\u6761\u76EE\u3002",
+        "mcp.log.statusOk": "OK",
+        "mcp.log.statusError": "ERROR",
         "rules.title": "\u9879\u76EE\u89C4\u5219",
         "rules.desc": "\u7F16\u8F91 .aide/rules.md \u6216 .cursorrules\uFF0C\u5185\u5BB9\u4F1A\u81EA\u52A8\u6CE8\u5165 Chat / Agent \u7684 system prompt\u3002",
         "rules.empty": "\u5C1A\u672A\u68C0\u6D4B\u5230\u89C4\u5219\u6587\u4EF6\u3002\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u5728\u7F16\u8F91\u5668\u4E2D\u521B\u5EFA\u6A21\u677F\u3002",
@@ -5639,6 +6960,8 @@ var init_translations = __esm({
         "chat.agentModeTitle": "Agent \u6A21\u5F0F\uFF1A\u81EA\u52A8\u89E3\u6790\u591A\u6587\u4EF6\u6539\u52A8\u5E76\u5199\u5165\u7F16\u8F91\u5668",
         "chat.agentOn": "Agent \u5F00",
         "chat.agent": "Agent",
+        "chat.planShort": "Plan",
+        "chat.workspaceShort": "\u5DE5\u4F5C\u533A",
         "chat.workspaceEmpty": "\u5148\u5728\u5DE5\u4F5C\u533A\u4E2D\u5BFC\u5165\u6587\u4EF6\uFF0C\u624D\u80FD\u542F\u7528\u5B8C\u6574\u4E0A\u4E0B\u6587\u3002",
         "chat.workspaceSelected": "\u5DF2\u9009\u62E9 {count} \u4E2A\u5DE5\u4F5C\u533A\u6587\u4EF6",
         "chat.workspaceCtx": "\u5DE5\u4F5C\u533A\u4E0A\u4E0B\u6587",
@@ -5700,11 +7023,18 @@ var init_translations = __esm({
         "quota.today": "\u4ECA\u65E5 AI \u7528\u91CF",
         "quota.exhausted": "\u4ECA\u65E5\u989D\u5EA6\u5DF2\u7528\u5B8C\uFF0C\u8BF7\u660E\u5929\u518D\u8BD5\u6216\u5347\u7EA7\u5957\u9910\u3002",
         "quota.unlimitedPlan": "\u5F53\u524D\u8BA1\u5212\u914D\u989D\u4E0D\u9650\u3002",
+        "quota.unlimitedShort": "\u4E0D\u9650",
+        "quota.usedTodayShort": "\u4ECA\u65E5 {used}",
+        "quota.chatUnlimitedAria": "{plan}\uFF0C\u4ECA\u65E5\u5DF2\u7528 {used} \u6B21",
         "quota.remaining": "\u5269\u4F59\u7EA6 {count} \u6B21",
+        "quota.freeEconomyHint": "\u514D\u8D39\u7248\u4EC5\u7ECF\u6D4E\u6A21\u578B",
         "quota.plan": "\u8BA1\u5212",
         "sidebar.filenamePlaceholder": "\u8F93\u5165\u6587\u4EF6\u540D\uFF0C\u4F8B\u5982 index.ts",
         "sidebar.create": "\u521B\u5EFA",
         "sidebar.deleteFile": "\u5220\u9664\u6587\u4EF6",
+        "sidebar.newSpec": "\u65B0\u5EFA Spec\uFF08Spec Studio\uFF09",
+        "sidebar.ctx.openSpecStudio": "\u5728 Spec Studio \u4E2D\u6253\u5F00",
+        "sidebar.ctx.runFirstSpecTask": "\u6267\u884C\u9996\u6761\u672A\u5B8C\u6210\u4EFB\u52A1",
         "sidebar.largeTreeHint": "\u6587\u4EF6\u8F83\u591A\uFF0C\u76EE\u5F55\u6811\u5DF2\u9ED8\u8BA4\u6298\u53E0\uFF1B\u4F7F\u7528\u300C\u5C55\u5F00\u5168\u90E8\u300D\u6D4F\u89C8\u3002",
         "sidebar.fileFilterPlaceholder": "\u7B5B\u9009\u6587\u4EF6\u2026",
         "sidebar.fileFilterCount": "\u663E\u793A {shown} / {total}",
@@ -5805,6 +7135,18 @@ var init_translations = __esm({
         "runtime.status.ready": "\u8FD0\u884C\u73AF\u5883\u5DF2\u5C31\u7EEA",
         "runtime.status.loading": "\u6B63\u5728\u51C6\u5907\u8FD0\u884C\u73AF\u5883",
         "runtime.status.notReady": "\u8FD0\u884C\u73AF\u5883\u672A\u5C31\u7EEA",
+        "runtime.queuePaused.title": "Runtime \u961F\u5217\u5DF2\u6682\u505C",
+        "runtime.queuePaused.detail": "queue.before hook \u5931\u8D25\uFF0C\u5DF2\u963B\u6B62\u5165\u961F\u3002\u53EF\u5728\u4EFB\u52A1\u961F\u5217\u70B9\u51FB\u300C\u6062\u590D\u961F\u5217\u300D\u3002",
+        "runtime.queuePaused.resume": "\u6062\u590D\u961F\u5217",
+        "runtime.queuePaused.resumedTitle": "\u961F\u5217\u5DF2\u6062\u590D",
+        "runtime.queuePaused.resumedDetail": "\u53EF\u4EE5\u7EE7\u7EED\u5165\u961F Spec \u4EFB\u52A1\u3002",
+        "runtime.verifyFail.title": "\u9A8C\u6536\u672A\u901A\u8FC7",
+        "runtime.verifyFail.detail": "acceptance.md \u4ECD\u6709\u672A\u52FE\u9009\u9879\u6216\u547D\u4EE4\u5931\u8D25\uFF1B\u5DF2\u89E6\u53D1 verify.fail hooks\u3002",
+        "runtime.state.cardTitle": "runtime-state.json",
+        "runtime.state.activeSpec": "\u5F53\u524D Spec\uFF1A{name}",
+        "runtime.state.queue": "\u961F\u5217\uFF1ASpec {spec} \xB7 Plan {plan}",
+        "runtime.state.lastHook": "\u6700\u8FD1 Hook\uFF1A{id} \xB7 {status}",
+        "runtime.state.updated": "\u66F4\u65B0\uFF1A{at}",
         "editor.runtimeFailed": "\u8FD0\u884C\u73AF\u5883\u542F\u52A8\u5931\u8D25",
         "editor.runtimeRetry": "\u91CD\u8BD5",
         "editor.restarting": "\u6B63\u5728\u91CD\u65B0\u542F\u52A8\u8FD0\u884C\u73AF\u5883",
@@ -6072,6 +7414,8 @@ var init_translations = __esm({
         "git.branchNameRequired": "\u8BF7\u8F93\u5165\u5206\u652F\u540D\u79F0",
         "git.branchNameInvalid": "\u5206\u652F\u540D\u79F0\u65E0\u6548",
         "git.branchExists": "\u5206\u652F\u5DF2\u5B58\u5728",
+        "git.error.noHunksSelected": "\u672A\u9009\u62E9\u4EFB\u4F55 diff hunk",
+        "git.error.stagedDiffUnavailable": "\u65E0\u6CD5\u8BFB\u53D6 {path} \u7684\u6682\u5B58\u5DEE\u5F02",
         "git.createBranch": "\u521B\u5EFA",
         "git.createBranchTitle": "\u65B0\u5EFA\u5206\u652F",
         "git.newBranchPlaceholder": "feature/my-branch",
@@ -6109,6 +7453,16 @@ var init_translations = __esm({
         "git.diffTruncatedBanner": "\u5DEE\u5F02\u8FC7\u5927\uFF0C\u4EC5\u663E\u793A\u524D {oldShown}/{oldTotal} \u884C\uFF08\u65E7\uFF09\u4E0E {newShown}/{newTotal} \u884C\uFF08\u65B0\uFF09\u3002\u5B8C\u6574 diff \u8BF7\u7528\u7EC8\u7AEF git diff\u3002",
         "git.discardFileTitle": "\u653E\u5F03\u6B64\u6587\u4EF6\u7684\u672A\u6682\u5B58\u6539\u52A8",
         "git.stageTitle": "\u6682\u5B58",
+        "git.matrixSummary": "\u72B6\u6001\u77E9\u9635\uFF1A\u5DF2\u6682\u5B58 {staged} \xB7 \u672A\u6682\u5B58 {unstaged} \xB7 \u5408\u8BA1 {total}",
+        "git.hunkStageTitle": "\u5757\u7EA7 stage",
+        "git.hunkLoading": "\u52A0\u8F7D diff \u5757\u2026",
+        "git.hunkEmpty": "\u65E0\u53EF\u5206\u5757\u6682\u5B58\u7684\u6539\u52A8",
+        "git.hunkItem": "\u5757 {index}\uFF08{summary}\uFF09",
+        "git.hunkStageSelected": "\u6682\u5B58\u6240\u9009\u5757",
+        "git.hunkStaging": "\u6682\u5B58\u4E2D\u2026",
+        "git.hunkStaged": "\u5DF2\u6682\u5B58\u6240\u9009\u5757",
+        "git.hunkStageFailed": "\u5757\u7EA7\u6682\u5B58\u5931\u8D25",
+        "git.hunkLoadFailed": "\u52A0\u8F7D diff \u5757\u5931\u8D25",
         "git.stagedLabel": "\u5DF2\u6682\u5B58",
         "git.stagedCount": "{count} \u4E2A\u6587\u4EF6",
         "git.changesLabel": "\u66F4\u6539",
@@ -6265,6 +7619,10 @@ var init_translations = __esm({
         "status.autosave.off": "\u624B\u52A8\u4FDD\u5B58",
         "status.autosaveTitle": "\u5207\u6362\u81EA\u52A8\u4FDD\u5B58",
         "status.gitTitle": "\u6253\u5F00 Git \u9762\u677F",
+        "status.spec.count": "Spec {count} \xB7 \u672A\u5B8C\u6210 {open}",
+        "status.spec.studioTitle": "\u6253\u5F00 Spec Studio",
+        "status.spec.run": "\u6267\u884C",
+        "status.spec.runTitle": "\u6267\u884C\u9996\u6761\u672A\u5B8C\u6210\u7684 Spec \u4EFB\u52A1",
         "status.ai.connected": "AI \u5DF2\u8FDE\u63A5",
         "status.ai.configure": "\u914D\u7F6E AI",
         "status.aiTitle": "\u914D\u7F6E AI",
@@ -6447,6 +7805,9 @@ var init_translations = __esm({
         "agentApply.applyCurrentHunks": "\u5E94\u7528\u5DF2\u9009\u5757",
         "agentApply.applyCurrentFull": "\u5E94\u7528\u6574\u6587\u4EF6",
         "agentApply.applyAll": "\u5E94\u7528\u5168\u90E8 ({count})",
+        "agentApply.failTitle": "\u90E8\u5206\u6587\u4EF6\u672A\u80FD\u5199\u5165",
+        "agentApply.failDetail": "\u5DF2\u5E94\u7528 {applied}/{total} \xB7 {paths}\uFF1A{reason}",
+        "agentApply.failReason.unknown": "\u672A\u77E5\u9519\u8BEF",
         "agentApply.skipCurrent": "\u8DF3\u8FC7\u672C\u6587\u4EF6",
         "agentApply.hunkBadge": "{accepted}/{total} \u5757",
         "agent.tool.writeStaged": "\u2713 {tool} {detail} \xB7 {hunks} \u4E2A\u53D8\u66F4\u5757",
@@ -6588,7 +7949,13 @@ var init_translations = __esm({
         "share.tab.share": "\u521B\u5EFA\u5206\u4EAB",
         "share.tab.history": "\u5386\u53F2\u8BB0\u5F55",
         "share.tab.import": "\u5BFC\u5165 JSON",
-        "share.createHint": "\u751F\u6210\u4E00\u4E2A\u672C\u5730\u5206\u4EAB\u5FEB\u7167\u94FE\u63A5\uFF0C\u65B9\u4FBF\u4F60\u7A0D\u540E\u6062\u590D\uFF0C\u6216\u5206\u4EAB\u7ED9\u540C\u4E00\u73AF\u5883\u91CC\u7684\u5176\u4ED6\u4EBA\u4F7F\u7528\u3002",
+        "share.createHint": "\u751F\u6210\u5206\u4EAB\u94FE\u63A5\uFF08\u4F18\u5148\u4FDD\u5B58\u5230\u4E91\u7AEF\uFF0C\u53EF\u5728\u4EFB\u610F\u6D4F\u89C8\u5668\u6253\u5F00\uFF09\uFF1B\u79BB\u7EBF\u65F6\u56DE\u9000\u4E3A\u4EC5\u672C\u673A\u53EF\u7528\u7684\u672C\u5730\u5FEB\u7167\u3002\u4E5F\u53EF\u5BFC\u51FA JSON \u5907\u4EFD\u3002",
+        "share.generating": "\u6B63\u5728\u751F\u6210\u2026",
+        "share.createFailed": "\u751F\u6210\u5206\u4EAB\u94FE\u63A5\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u6216\u5BFC\u51FA JSON\u3002",
+        "share.cloudHint": "\u4E91\u7AEF\u94FE\u63A5 30 \u5929\u5185\u6709\u6548\uFF0C\u53EF\u5728\u4EFB\u610F\u8BBE\u5907/\u6D4F\u89C8\u5668\u6253\u5F00\u3002",
+        "share.localHint": "\u5F53\u524D\u4E3A\u672C\u5730\u5FEB\u7167\uFF0C\u4EC5\u5728\u672C\u6D4F\u89C8\u5668\u6709\u6548\uFF1B\u8054\u7F51\u540E\u4F1A\u4F18\u5148\u5C1D\u8BD5\u4E91\u7AEF\u5206\u4EAB\u3002",
+        "share.cloudBadge": "\u4E91\u7AEF",
+        "share.localBadge": "\u672C\u5730",
         "share.generateLink": "\u751F\u6210\u5206\u4EAB\u94FE\u63A5",
         "share.exportJson": "\u5BFC\u51FA JSON",
         "share.linkReady": "\u94FE\u63A5\u5DF2\u751F\u6210\uFF0C\u73B0\u5728\u53EF\u4EE5\u590D\u5236\u6216\u91CD\u65B0\u751F\u6210\u3002",
@@ -6710,6 +8077,7 @@ var init_translations = __esm({
         "format.error.bracketMismatch": "\u4F4D\u7F6E {pos}: \u62EC\u53F7\u4E0D\u5339\u914D\uFF0C\u671F\u671B {expected} \u4F46\u5F97\u5230 {actual}",
         "format.error.stringUnclosed": "\u4F4D\u7F6E {pos}: \u5B57\u7B26\u4E32\u5F15\u53F7\u672A\u95ED\u5408",
         "format.error.unclosedBrackets": "\u6709\u672A\u95ED\u5408\u7684\u62EC\u53F7: {stack}",
+        "format.error.failed": "\u683C\u5F0F\u5316\u5931\u8D25\uFF0C\u5DF2\u4FDD\u7559\u539F\u6587",
         "github.error.repoNotFound": "\u4ED3\u5E93\u4E0D\u5B58\u5728\u6216\u79C1\u6709",
         "review.summary.done": "\u5BA1\u67E5\u5B8C\u6210",
         "review.summary.partial": "\u4EE3\u7801\u5BA1\u67E5\u5B8C\u6210\uFF08\u89E3\u6790\u7ED3\u679C\u4E0D\u5B8C\u6574\uFF09",
@@ -6776,8 +8144,8 @@ var init_translations = __esm({
         "plugin.market.sdkBadge": "SDK {version}",
         "subscription.upgraded": "\u5DF2\u5347\u7EA7\u4E3A {plan}",
         "subscription.betaNote": "\u5F53\u524D\u4E3A\u516C\u6D4B\u671F\uFF0C\u4E13\u4E1A\u7248\u4E0E\u56E2\u961F\u7248\u529F\u80FD\u514D\u8D39\u5F00\u653E\uFF1B\u6B63\u5F0F\u6536\u6B3E\u63A5\u5165\u540E\u5C06\u5728\u6B64\u5F00\u542F\u5347\u7EA7\u3002",
-        "subscription.pricing.live": "\u652F\u6301{methods}\uFF1B\u4E13\u4E1A\u7248 \xA519/\u6708\uFF0C\u56E2\u961F\u7248 \xA549/\u6708",
-        "subscription.pricing.liveStripe": "\u652F\u6301{methods}\uFF1B\u4E13\u4E1A\u7248 $4.99/\u6708\uFF0C\u56E2\u961F\u7248 $12.99/\u6708",
+        "subscription.pricing.live": "\u652F\u6301{methods}\uFF1B\u4E13\u4E1A\u7248 \xA539/\u6708\uFF0C\u56E2\u961F\u7248 \xA579/\u6708",
+        "subscription.pricing.liveStripe": "\u652F\u6301{methods}\uFF1B\u4E13\u4E1A\u7248 $9.99/\u6708\uFF0C\u56E2\u961F\u7248 $19.99/\u6708",
         "subscription.pricing.publicWelfare": "\u516C\u76CA\u514D\u8D39 IDE\uFF1A\u6C38\u4E45\u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\u3002\u5E73\u53F0 AI \u6BCF\u65E5\u914D\u989D\u5DF2\u653E\u5BBD\uFF0C\u63A8\u8350\u4F7F\u7528 BYOK \u81EA\u5E26 API Key\u3002",
         "subscription.pricing.dev": "\u5F00\u53D1/\u96C6\u6210\u73AF\u5883\uFF1A\u53EF\u4E00\u952E\u6A21\u62DF\u5347\u7EA7\uFF08\u672A\u914D\u7F6E\u5546\u6237\u65F6\uFF09",
         "subscription.payMethod.alipay": "\u652F\u4ED8\u5B9D",
@@ -6814,6 +8182,7 @@ var init_translations = __esm({
         "runtime.webcontainer.bootFailed": "WebContainer \u542F\u52A8\u5931\u8D25",
         "runtime.webcontainer.notReady": "WebContainer \u8FD8\u672A\u5C31\u7EEA",
         "runtime.webcontainer.busy": "\u5DF2\u6709\u547D\u4EE4\u6B63\u5728\u8FD0\u884C",
+        "runtime.webcontainer.crossOriginHint": "\u6D4F\u89C8\u5668\u672A\u542F\u7528 Cross-Origin Isolation\uFF0CWebContainer \u53EF\u80FD\u65E0\u6CD5\u542F\u52A8\u3002\u8BF7\u4F7F\u7528 HTTPS \u6216\u684C\u9762\u7248\uFF0C\u5E76\u786E\u4FDD\u54CD\u5E94\u5934\u5305\u542B COOP/COEP\u3002",
         "network.error.generic": "\u7F51\u7EDC\u5F02\u5E38\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
         "network.error.offline": "\u65E0\u6CD5\u8FDE\u63A5\u670D\u52A1\u5668\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u540E\u91CD\u8BD5",
         "editor.defaultFileComment": "// \u6B22\u8FCE\u4F7F\u7528 AI IDE",
@@ -6876,6 +8245,39 @@ var init_translations = __esm({
         "queue.panel.skipContinue": "\u8DF3\u8FC7\u7EE7\u7EED",
         "queue.panel.sendQueue": "\u6392\u961F\u4E2D\uFF1A",
         "queue.panel.sendQueueMore": "+{count} \u66F4\u591A",
+        "chat.queue.processing": "\u6B63\u5728\u5904\u7406\u4E2D\u2026",
+        "chat.queue.activePlan": "Plan\uFF1A{text}",
+        "chat.queue.activeSpec": "Spec\uFF1A{text}",
+        "chat.agentRun.savedTitle": "\u5DF2\u4FDD\u5B58",
+        "chat.agentRun.savedDetail": "\u672C\u6B21 Agent \u8FD0\u884C\u8BB0\u5F55\u5DF2\u4FDD\u5B58",
+        "chat.agentRun.noRecordTitle": "\u65E0\u8BB0\u5F55",
+        "chat.agentRun.noRecordDetail": "\u8FD8\u6CA1\u6709\u5DF2\u4FDD\u5B58\u7684 Agent \u8FD0\u884C",
+        "chat.agentRun.replayContent": "\u5DF2\u56DE\u653E\u6700\u8FD1\u4E00\u6B21\u8FD0\u884C\uFF08{activity} \u6761\u5DE5\u5177\u6D3B\u52A8\uFF0C{rounds} \u8F6E\uFF09",
+        "chat.report.copiedTitle": "\u5DF2\u590D\u5236",
+        "chat.report.copiedDetail": "\u961F\u5217\u6267\u884C\u62A5\u544A\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F",
+        "chat.report.savedTitle": "\u5DF2\u4FDD\u5B58",
+        "chat.report.savedDetail": "\u62A5\u544A\u5DF2\u5199\u5165 {path}",
+        "chat.report.noReportTitle": "\u6682\u65E0\u62A5\u544A",
+        "chat.report.noReportHint": "\u8BF7\u5148\u5728\u4EFB\u52A1\u961F\u5217\u4E2D\u4FDD\u5B58\u62A5\u544A\u5230 .aide/reports",
+        "chat.report.noReportSaveFirst": "\u8BF7\u5148\u4FDD\u5B58\u4E00\u4EFD\u961F\u5217\u62A5\u544A",
+        "chat.report.openFailedTitle": "\u65E0\u6CD5\u6253\u5F00",
+        "chat.report.openFailedDetail": "\u672A\u627E\u5230\u62A5\u544A\u6587\u4EF6\uFF1A{path}",
+        "chat.report.restoreEmptyTitle": "\u65E0\u53EF\u6062\u590D\u9879",
+        "chat.report.restoreNoMatch": "\u62A5\u544A\u4E2D\u6CA1\u6709\u53EF\u5339\u914D\u7684\u5F85\u6267\u884C\u9879",
+        "chat.report.restoredTitle": "\u5DF2\u6062\u590D\u961F\u5217",
+        "chat.report.restoreDetail": "Plan {plan} \xB7 Spec {spec}{extra}",
+        "chat.report.restoreUnresolved": " \xB7 \u672A\u5339\u914D {count} \u9879",
+        "chat.report.autoSavedTitle": "\u5DF2\u81EA\u52A8\u4FDD\u5B58",
+        "chat.report.autoSavedDetail": "\u961F\u5217\u62A5\u544A\uFF1A{path}",
+        "chat.queue.completeBody": "\u4EFB\u52A1\u961F\u5217\u5DF2\u6267\u884C\u5B8C\u6BD5",
+        "chat.queue.enqueuedTitle": "\u5DF2\u52A0\u5165\u961F\u5217",
+        "chat.queue.enqueuedDetail": "\u5F85\u6267\u884C\u4EFB\u52A1 +1\uFF08\u5F53\u524D {count}\uFF09",
+        "chat.plan.runFirstStep": "\u6267\u884C\u7B2C\u4E00\u6B65",
+        "chat.plan.runFirstStepTitle": "\u6267\u884C\u8BA1\u5212\u4E2D\u7684\u7B2C\u4E00\u6B65",
+        "welcome.pathLocalTitle": "\u672C\u5730\u5F00\u59CB",
+        "welcome.pathLocalDesc": "\u65E0\u9700\u767B\u5F55\uFF0C\u652F\u6301 BYOK \u4E0E\u672C\u5730\u7F16\u8F91",
+        "welcome.pathCloudTitle": "\u767B\u5F55\u4E91\u8D26\u53F7",
+        "welcome.pathCloudDesc": "\u540C\u6B65\u5DE5\u4F5C\u533A\u4E0E\u5E73\u53F0 AI \u914D\u989D",
         "queue.preview.title": "\u961F\u5217\u9884\u89C8",
         "queue.preview.planTag": "Plan",
         "queue.preview.specTag": "Spec",
@@ -6895,6 +8297,8 @@ var init_translations = __esm({
         "plan.catalog.sort.mostOpen": "\u6309\u672A\u5B8C\u6210\u6B65\u9AA4\u6570",
         "plan.catalog.sort.title": "\u6309\u6807\u9898",
         "plan.catalog.mapTargetDefault": "\u6620\u5C04\u76EE\u6807\uFF1A\u9ED8\u8BA4\u6700\u8FD1 Spec",
+        "plan.catalog.mapTargetTitle": "\u6620\u5C04\u76EE\u6807 Spec tasks \u6587\u4EF6",
+        "plan.catalog.shownCount": "\u5DF2\u663E\u793A {shown} / {total} \u6761\u8BA1\u5212",
         "plan.catalog.createFromTemplate": "\u4ECE\u6A21\u677F\u521B\u5EFA",
         "plan.catalog.newPlanPlaceholder": "\u65B0\u8BA1\u5212\u6807\u9898\uFF0C\u4F8B\u5982\uFF1A\u767B\u5F55\u4F18\u5316",
         "plan.catalog.templateCustom": " (\u81EA\u5B9A\u4E49)",
@@ -6922,12 +8326,15 @@ var init_translations = __esm({
         "plan.overview.goReports": "\u67E5\u770B\u6267\u884C\u62A5\u544A",
         "spec.catalog.openLinkedPlan": "\u6253\u5F00\u8BA1\u5212",
         "spec.catalog.title": "Specs \u76EE\u5F55\uFF08.aide/specs\uFF09",
-        "spec.catalog.desc": "\u6309 Spec \u6D4F\u89C8\u4EFB\u52A1\u8FDB\u5EA6\uFF0C\u652F\u6301\u641C\u7D22\u3001\u6392\u5E8F\uFF0C\u5E76\u6253\u5F00 tasks / acceptance\u3002",
+        "spec.catalog.desc": "\u6309 Spec \u6D4F\u89C8\u4EFB\u52A1\u8FDB\u5EA6\uFF0C\u652F\u6301\u641C\u7D22\u3001\u6392\u5E8F\uFF1B\u4E3A Runtime \u81EA\u52A8\u5316\u8BF7\u521B\u5EFA hooks.yaml\uFF08queue / Agent / verify\uFF09\u3002",
         "spec.catalog.searchPlaceholder": "\u641C\u7D22 Spec \u540D / \u8DEF\u5F84",
         "spec.catalog.sort.recentExec": "\u6309\u6700\u8FD1\u6267\u884C",
         "spec.catalog.sort.mostOpen": "\u6309\u672A\u5B8C\u6210\u6570",
         "spec.catalog.sort.title": "\u6309\u540D\u79F0",
-        "spec.catalog.namePlaceholder": "\u65B0 Spec \u540D\u79F0",
+        "spec.catalog.namePlaceholder": "\u4F8B\u5982: auth-refactor",
+        "spec.catalog.hooksGuide.title": "Runtime \u81EA\u52A8\u5316\uFF1A\u4E09\u6B65\u6DFB\u52A0 hooks.yaml",
+        "spec.catalog.hooksGuide.desc": "\u2460 \u521B\u5EFA Spec \u2192 \u2461 \u5728\u76EE\u5F55\u4E2D\u70B9\u300C\u521B\u5EFA hooks.yaml\u300D\u2192 \u2462 \u7F16\u8F91 pre-run / post-write \u7B49 Hook\uFF0CActivity Line \u4F1A\u663E\u793A\u6267\u884C\u4E8B\u4EF6\u3002",
+        "spec.catalog.hooksGuide.dismiss": "\u77E5\u9053\u4E86",
         "spec.catalog.create": "\u521B\u5EFA Spec",
         "spec.catalog.openRoot": "\u6253\u5F00 specs \u6839\u76EE\u5F55",
         "spec.catalog.showMore": "\u663E\u793A\u66F4\u591A",
@@ -6936,6 +8343,98 @@ var init_translations = __esm({
         "spec.catalog.openTasks": "\u6253\u5F00 tasks",
         "spec.catalog.openAcceptance": "\u6253\u5F00 acceptance",
         "spec.catalog.runFirst": "\u6267\u884C\u9996\u6761\u672A\u5B8C\u6210",
+        "spec.catalog.hooksPreview": "Runtime Hooks\uFF08\u53EA\u8BFB\u9884\u89C8\uFF09",
+        "spec.catalog.hooksCount": "{count} \u4E2A Hook",
+        "spec.catalog.hooksInvalid": "hooks.yaml \u6821\u9A8C\u5931\u8D25",
+        "spec.catalog.lastHookLog": "\u6700\u8FD1 Hook",
+        "spec.catalog.openHooks": "hooks",
+        "spec.catalog.createHooks": "\u521B\u5EFA hooks.yaml",
+        "spec.catalog.sort.mostHooks": "Hook \u6570\u91CF",
+        "spec.catalog.runtimeStateSummary": "Runtime \u72B6\u6001\uFF08\u53EA\u8BFB\u9884\u89C8\uFF09",
+        "spec.catalog.visibleCount": "\u5DF2\u663E\u793A {shown} / {total} \u4E2A Spec",
+        "spec.catalog.openTasksCount": "\u672A\u5B8C\u6210 {open}/{total}",
+        "spec.catalog.status.active": "\u6D3B\u8DC3",
+        "spec.catalog.status.completed": "\u5DF2\u5B8C\u6210",
+        "spec.catalog.status.inProgress": "\u8FDB\u884C\u4E2D",
+        "spec.catalog.status.idle": "\u672A\u6267\u884C",
+        "spec.catalog.lastExecuted": "\u6700\u8FD1\u6267\u884C {at}",
+        "spec.catalog.sourceLinks": "\u6765\u6E90 {count}",
+        "spec.catalog.openStudio": "\u6253\u5F00 Spec Studio",
+        "specStudio.title": "Spec Studio",
+        "specStudio.lead": "\u4E3A Node\u3001Java\u3001C++\u3001Git \u4E0E AI Agent \u4EFB\u52A1\u751F\u6210\u53EF\u6267\u884C Spec\uFF08requirements / design / tasks / acceptance + hooks\uFF09\u3002",
+        "specStudio.nameLabel": "Spec \u540D\u79F0",
+        "specStudio.goalLabel": "\u76EE\u6807\uFF08\u4F9B AI \u5B8C\u5584 Spec\uFF09",
+        "specStudio.goalPlaceholder": "\u4F8B\u5982\uFF1A\u4E3A\u767B\u5F55 API \u589E\u52A0 refresh token\uFF0C\u5E76\u8865\u96C6\u6210\u6D4B\u8BD5",
+        "specStudio.filterStacks": "\u6309\u6280\u672F\u6808\u7B5B\u9009\u6A21\u677F",
+        "specStudio.filterAll": "\u5168\u90E8",
+        "specStudio.stack.node": "Node",
+        "specStudio.stack.java": "Java",
+        "specStudio.stack.cpp": "C++",
+        "specStudio.stack.go": "Go",
+        "specStudio.stack.rust": "Rust",
+        "specStudio.stack.python": "Python",
+        "specStudio.stack.git": "Git",
+        "specStudio.stack.ai": "AI",
+        "specStudio.stack.general": "\u901A\u7528",
+        "specStudio.recommended": "\u63A8\u8350",
+        "specStudio.create": "\u521B\u5EFA Spec",
+        "specStudio.refineWithAi": "AI \u5B8C\u5584 Spec",
+        "specStudio.executeFirst": "\u6267\u884C\u9996\u6761\u4EFB\u52A1",
+        "specStudio.createLinkedPlan": "\u521B\u5EFA\u5173\u8054 Plan",
+        "specStudio.linkedPlanToast": "\u5DF2\u521B\u5EFA\u5173\u8054 Plan",
+        "specStudio.linkedPlanFailed": "\u65E0\u6CD5\u521B\u5EFA\u5173\u8054 Plan\uFF08\u8BF7\u786E\u8BA4 Spec tasks \u6587\u4EF6\u5B58\u5728\uFF09",
+        "specStudio.createdHint": "\u5DF2\u5199\u5165 {path}\uFF0C\u53EF\u7528 AI \u5B8C\u5584\u6216\u76F4\u63A5\u6267\u884C\u3002",
+        "specStudio.createdToast": "Spec \u5DF2\u521B\u5EFA",
+        "specStudio.template.blank.title": "\u7A7A\u767D Spec",
+        "specStudio.template.blank.desc": "\u56DB\u4EF6\u5957\u9AA8\u67B6\uFF0C\u81EA\u884C\u586B\u5199",
+        "specStudio.template.node-api.title": "Node API \u529F\u80FD",
+        "specStudio.template.node-api.desc": "REST/TS \u8DEF\u7531\u3001\u6D4B\u8BD5\u4E0E lint hooks",
+        "specStudio.template.node-bugfix.title": "Node Bug \u4FEE\u590D",
+        "specStudio.template.node-bugfix.desc": "\u590D\u73B0\u6B65\u9AA4 + \u56DE\u5F52\u6D4B\u8BD5\u6A21\u677F",
+        "specStudio.template.java-service.title": "Java \u670D\u52A1",
+        "specStudio.template.java-service.desc": "Maven/Gradle \u5206\u5C42\u4E0E mvn test",
+        "specStudio.template.cpp-module.title": "C++ \u6A21\u5757",
+        "specStudio.template.cpp-module.desc": "CMake \u5E03\u5C40\u4E0E ctest hooks",
+        "specStudio.template.go-service.title": "Go \u670D\u52A1",
+        "specStudio.template.go-service.desc": "Go module \u5206\u5C42\u4E0E go test hooks",
+        "specStudio.template.rust-crate.title": "Rust Crate",
+        "specStudio.template.rust-crate.desc": "Cargo \u5E03\u5C40\u4E0E cargo test hooks",
+        "specStudio.template.python-service.title": "Python \u670D\u52A1",
+        "specStudio.template.python-service.desc": "pyproject + pytest hooks",
+        "specStudio.template.git-release.title": "Git \u53D1\u5E03",
+        "specStudio.template.git-release.desc": "Changelog\u3001\u7248\u672C\u53F7\u4E0E tag \u6E05\u5355",
+        "specStudio.template.ai-agent-task.title": "AI Agent \u4EFB\u52A1",
+        "specStudio.template.ai-agent-task.desc": "\u591A\u6587\u4EF6 Agent \u8BA1\u5212\u4E0E review hooks",
+        "command.specStudio": "Spec Studio",
+        "command.specStudio.sub": "\u591A\u6808\u6A21\u677F\u521B\u5EFA\u53EF\u6267\u884C Spec",
+        "command.runFirstSpecTask": "\u6267\u884C\u9996\u6761 Spec \u4EFB\u52A1",
+        "command.runFirstSpecTask.sub": "\u5728\u6240\u6709 Spec \u4E2D\u627E\u7B2C\u4E00\u6761\u672A\u5B8C\u6210\u4EFB\u52A1\u5E76\u5165\u961F",
+        "welcome.quick.specStudio.title": "Spec Studio",
+        "welcome.quick.specStudio.desc": "Node / Java / C++ / Git / AI \u4E00\u952E\u5EFA Spec",
+        "welcome.cta.specStudio": "\u6253\u5F00 Studio",
+        "spec.workflow.title": "Specs \u5DE5\u4F5C\u6D41\uFF08requirements/design/tasks/acceptance\uFF09",
+        "spec.workflow.desc": "\u5728 `.aide/specs/<name>/` \u4E0B\u521B\u5EFA\u6807\u51C6\u56DB\u4EF6\u5957\uFF0C\u5E76\u81EA\u52A8\u8FDB\u5165 Chat/Agent \u4E0A\u4E0B\u6587\u3002",
+        "spec.workflow.create": "\u521B\u5EFA Spec",
+        "spec.workflow.openRoot": "\u6253\u5F00 Specs",
+        "spec.workflow.tasksRecent": "Spec \u4EFB\u52A1\uFF08\u6700\u8FD1 8 \u6761\uFF09",
+        "spec.workflow.runTask": "\u6267\u884C\u4EFB\u52A1",
+        "spec.workflow.markDone": "\u6807\u8BB0\u5B8C\u6210",
+        "activityLine.title": "Activity Line",
+        "activityLine.expandHint": "\u70B9\u51FB\u5C55\u5F00",
+        "activityLine.eventCount": "{count} \u6761\u4E8B\u4EF6",
+        "activityLine.empty": "\u6682\u65E0\u8FD0\u884C\u4E8B\u4EF6",
+        "activityLine.agentWrite": "Agent \u5199\u5165",
+        "activityLine.hookStart": "Hook \u5F00\u59CB",
+        "activityLine.hookEnd": "Hook \u7ED3\u675F",
+        "activityLine.verifyFail": "\u9A8C\u6536\u5931\u8D25",
+        "activityLine.ok": "\u6210\u529F",
+        "activityLine.fail": "\u5931\u8D25",
+        "settings.aideRuntime.stubCardTitle": "AIDE Runtime Stub",
+        "settings.aideRuntime.productionCardTitle": "Activity Line",
+        "settings.aideRuntime.engineProductionCardTitle": "AIDE Runtime",
+        "settings.aideRuntime.stubCardDesc": "Activity Line \u4E0E orchestrator \u5904\u4E8E {mode} \u6A21\u5F0F\uFF1A\u4EC5\u8BB0\u5F55\u4E8B\u4EF6\uFF0C\u4E0D\u6392\u6C34\u961F\u5217\u3002\u5F00\u542F\uFF1AVITE_AIDE_RUNTIME_UI \u6216 session flag\u3002",
+        "settings.aideRuntime.productionCardDesc": "Activity Line \u751F\u4EA7 UI \u5DF2\u542F\u7528\uFF08VITE_AIDE_ACTIVITY_LINE\uFF09\u3002\u961F\u5217 \xB7 Agent \u5199\u5165 \xB7 Hook \u4E8B\u4EF6\u4F1A\u663E\u793A\u5728 Chat \u9762\u677F\u9876\u90E8\u3002",
+        "settings.aideRuntime.engineProductionCardDesc": "AIDE Runtime \u751F\u4EA7\u5F15\u64CE\u5DF2\u542F\u7528\uFF08VITE_AIDE_RUNTIME \xB7 {mode}\uFF09\u3002Spec \u5165\u961F\u4F1A\u6267\u884C queue.before hooks\uFF1BAgent apply \u4E0E\u9A8C\u6536\u5931\u8D25\u4F1A\u89E6\u53D1\u540E\u7EED hooks \u5E76\u5199\u5165 runtime-state.json\u3002",
         "report.catalog.title": "\u6267\u884C\u62A5\u544A\uFF08.aide/reports\uFF09",
         "report.catalog.desc": "\u67E5\u770B\u3001\u6062\u590D\u961F\u5217\u3001\u6253\u5F00\u4E0E\u5220\u9664\u62A5\u544A\uFF1B\u652F\u6301\u591A\u9009\u5220\u9664\u3001\u53EA\u4FDD\u7559\u6700\u8FD1 N \u4EFD\u3001\u5BFC\u51FA\u9009\u4E2D ZIP\u3002",
         "report.catalog.autoSave": "\u961F\u5217\u5B8C\u6210\u65F6\u81EA\u52A8\u4FDD\u5B58\u62A5\u544A\u5230 .aide/reports",
@@ -7005,6 +8504,9 @@ var init_translations = __esm({
         "plan.host.syncSuccess.failedSuffix": "\uFF0C\u5931\u8D25 {failed} \u4E2A",
         "spec.host.noOpenTask.title": "\u65E0\u5F85\u6267\u884C",
         "spec.host.noOpenTask.detail": "\u8BE5 Spec \u6CA1\u6709\u672A\u5B8C\u6210\u4EFB\u52A1",
+        "spec.host.missingTasks.title": "\u627E\u4E0D\u5230 Spec \u4EFB\u52A1",
+        "spec.host.missingTasks.detail": "\u5DE5\u4F5C\u533A\u4E2D\u4E0D\u5B58\u5728 {path}",
+        "spec.host.noRunnableSpec.detail": "\u5DE5\u4F5C\u533A\u6CA1\u6709\u5E26\u672A\u5B8C\u6210\u4EFB\u52A1\u7684 Spec",
         "report.host.noReports.title": "\u6682\u65E0\u62A5\u544A",
         "report.host.noReports.detail": "\u8BF7\u5148\u5728\u4EFB\u52A1\u961F\u5217\u4E2D\u4FDD\u5B58\u62A5\u544A\u5230 .aide/reports",
         "report.host.openFailed.title": "\u65E0\u6CD5\u6253\u5F00",
@@ -7086,12 +8588,41 @@ var init_translations = __esm({
         "chat.error.payloadTooLargeTips": "Try: turn off workspace context; reduce @ mentions; disable semantic search; start a shorter thread.",
         "chat.payload.preflightWarnTitle": "Context may be too large \u2014 slim before sending",
         "chat.payload.preflightWarnDetail": "Estimated payload is about {estimatedKb}KB (budget {budgetKb}KB) and may trigger 413.",
+        "chat.preflight.indexTrimmed": "Slim Agent index summary (auto-trimmed to budget)",
         "chat.payload.slimAndSend": "Slim and send",
         "chat.payload.stillTooLarge": "Still too large after slimming (about {estimatedKb}KB, budget {budgetKb}KB). Reduce @ mentions or disable workspace context.",
         "chat.payload.planHistory": "Compress history to latest {count} turns",
         "chat.payload.planInput": "Keep at most {count} chars from input",
         "chat.payload.planWorkspace": "Temporarily disable workspace context",
         "chat.payload.planMention": "Temporarily disable @ mention injection",
+        "chat.payload.meterLabel": "Context ~{estimatedKb}/{budgetKb} KB ({percent}%)",
+        "chat.payload.meterAria": "Estimated payload {estimatedKb} KB of {budgetKb} KB budget ({percent}%)",
+        "chat.mention.preflightBannerTitle": "@ mention preflight",
+        "chat.mention.preflightUnresolved": "Unresolved: {tokens}",
+        "chat.mention.preflightTooMany": "More than {max} @ mentions ({count})",
+        "chat.mention.preflightAmbiguous": "Ambiguous symbol: {token} ({paths})",
+        "chat.mention.preflightSendHint": "Unresolved @ tokens will be skipped on send",
+        "chat.mention.preflightBlockHint": "Send is blocked while unresolved @ mentions remain",
+        "chat.mention.blockSendTitle": "Cannot send: unresolved @ mentions",
+        "chat.mention.blockSendDetail": "{count} @ mention(s) could not be resolved \u2014 fix them before sending",
+        "chat.mention.blockSendAmbiguousTitle": "Cannot send: ambiguous @ symbols",
+        "chat.mention.blockSendAmbiguousDetail": "{count} @ mention(s) match multiple files \u2014 use a path or a more specific symbol",
+        "chat.mention.preflightAmbiguousBlockHint": "Ambiguous symbols block send \u2014 prefer @path, @file#symbol, or slim send",
+        "chat.mention.slimPastAmbiguous": "Slim send",
+        "chat.payload.meterSemanticNote": "Includes semantic search reserve",
+        "chat.payload.meterToolLoopNote": "Includes agent tool-loop reserve",
+        "chat.payload.meterMcpNote": "Includes MCP tools reserve",
+        "editor.references.peekTitle": "References: {symbol} ({count})",
+        "editor.references.peekClose": "Close references list",
+        "editor.references.lineCol": "{line}:{column}",
+        "plugin.publish.title": "Submit for review",
+        "plugin.publish.desc": "POST manifest + source to the server review queue (login + PLUGIN_PUBLISH_ENABLED required)",
+        "plugin.publish.submit": "Submit for review",
+        "plugin.publish.success": "Submitted \u2014 review {reviewId}",
+        "plugin.publish.failed": "Submit failed",
+        "plugin.publish.loginRequired": "Sign in before submitting for review",
+        "chat.largeRepo.capped": "Index cap reached: {indexed}/{eligible} files indexed; @ and semantic search may be incomplete",
+        "chat.largeRepo.nearCap": "Workspace near index cap ({indexed}/{eligible}, max ~{max} files). Narrow scope or use the desktop app",
         "chat.action.copy": "Copy",
         "chat.action.copyCode": "Copy code",
         "chat.action.copied": "Copied",
@@ -7117,7 +8648,7 @@ var init_translations = __esm({
         "chat.error.genericHint": "Use Retry below or shorten context before sending again.",
         "toolbar.plugin": "Plugin: {label}",
         "toolbar.plans.guest": "View plans",
-        "toolbar.plans.upgrade": "Upgrade from $4.99",
+        "toolbar.plans.upgrade": "Upgrade from {price}",
         "toolbar.welfare.badge": "Free & open",
         "toolbar.welfare.title": "Public-welfare IDE: no subscription fees; generous platform quotas",
         "toolbar.plans.team": "Upgrade to Team",
@@ -7148,12 +8679,14 @@ var init_translations = __esm({
         "welcome.desktopBadge": "Desktop",
         "welcome.cloudOk": "Cloud accounts are available \u2014 sign in and sync workspaces.",
         "welcome.cloudDegraded": "Cloud database is unavailable \u2014 sign-in and cloud workspaces may fail. BYOK and local editing still work.",
+        "welcome.cloudDegradedPlatform": "Cloud database is unavailable \u2014 sign-in and cloud workspaces may fail. Local editing still works; admins should check DATABASE_URL and AUTH_SECRET.",
         "welcome.networkTips": "Slow load or API timeouts? Access to vercel.app can be unstable in some regions. Retry later, switch networks, or install the Windows desktop app (local disk and terminal do not rely on browser file APIs). Custom domain planned in v1.0.8.",
         "welcome.title": "Get into flow faster, spend less time on setup",
         "welcome.lead": "Open files, pair with AI, run code, and manage workspaces in one lightweight UI. Pick an entry below and start\u2014no extra intro screen.",
         "welcome.platformCta": "Sign up free to use platform AI\u2014no DeepSeek or OpenAI API key required (Cursor-style out of the box).",
         "welcome.platformCtaButton": "Sign up free",
         "welcome.platformCtaSignupPage": "Or open the signup page (SEO-friendly)",
+        "welcome.platformQuotaHint": "Free tier: 200 weighted quota units/day on economy models (e.g. DeepSeek Flash). Upgrade to Pro for all tiers and 2000 units.",
         "welcome.settings": "Settings",
         "welcome.quickStart": "Quick start",
         "welcome.recent": "Recent projects",
@@ -7161,7 +8694,7 @@ var init_translations = __esm({
         "welcome.recentEmpty": "No recent projects yet. Create a workspace and it will show up here.",
         "welcome.recentEmptyTitle": "Start from a template or workspace",
         "welcome.onboarding.title": "New here? Three steps to get started",
-        "welcome.onboarding.desc": "\u2460 Sign up (platform AI) or add your own key \u2192 \u2461 Template or import \u2192 \u2462 Agent \xB7 Ctrl+Enter run \xB7 F5 debug.",
+        "welcome.onboarding.desc": "\u2460 Sign up (platform AI) \u2192 \u2461 Template or import \u2192 \u2462 Agent \xB7 Ctrl+Enter run \xB7 F5 debug.",
         "welcome.onboarding.dismiss": "Got it",
         "welcome.features": "Core capabilities",
         "welcome.shortcuts": "Shortcuts",
@@ -7211,6 +8744,8 @@ var init_translations = __esm({
         "auth.oauth.github": "Continue with GitHub",
         "auth.oauth.google": "Continue with Google",
         "auth.oauth.divider": "Or continue with email",
+        "auth.oauth.desktopReturnTitle": "Back on desktop",
+        "auth.oauth.desktopReturnDetail": "OAuth sign-in completed. Cloud features are ready.",
         "auth.email": "Email",
         "auth.password": "Password",
         "auth.confirmPassword": "Confirm password",
@@ -7272,20 +8807,117 @@ var init_translations = __esm({
         "settings.ai.platformReady": "Platform AI is configured on the server ({provider}). Sign in to use platform mode.",
         "settings.ai.platformReadyBadge": "Chat, Agent, tab completion, and plugins can use the platform gateway",
         "settings.ai.platformNotConfigured": "PLATFORM_DEEPSEEK_API_KEY is not set on the deployment. Platform mode is unavailable\u2014use BYOK or ask your admin.",
+        "settings.ai.platformNotConfiguredPlatformOnly": "Platform AI keys are not configured on this deployment. Signed-in Chat / Agent is unavailable until PLATFORM_* env vars are set.",
+        "settings.ai.platformFreeEconomyHint": "Free plan: economy-tier models only (Flash / Lite). Each request consumes weighted quota units; Pro unlocks standard, premium, and frontier models.",
         "settings.ai.platformUnreachable": "Could not reach /api/health. Check your network and try again.",
         "settings.ai.usageDashboardTitle": "Platform AI usage",
         "settings.ai.usageDashboardDesc": "Read-only stats: platform gateway requests, daily quota, and estimated cost (not an invoice). BYOK direct calls are not counted as platform.",
+        "settings.ai.usageDashboardDescPlatform": "Read-only stats: platform gateway requests, daily weighted quota, and estimated cost (not an invoice).",
         "settings.ai.usageDashboardLoading": "Loading usage data\u2026",
         "settings.ai.usageDashboardError": "Could not load the usage dashboard. Sign in and ensure the database is available.",
         "settings.ai.usageDashboardRefresh": "Refresh",
         "settings.ai.usagePlatformToday": "Platform requests today",
         "settings.ai.usageOtherToday": "Other today (sync / BYOK)",
+        "settings.ai.usageOtherTodayPlatform": "Other today (sync)",
         "settings.ai.usageCostToday": "Est. cost today",
         "settings.ai.usageCostPeriod": "Est. cost ({days}d)",
         "settings.ai.usageCostFootnote": "About ${rate}/request estimate; {total} platform requests in the last {days} days. Informational only.",
         "settings.ai.usageChartAria": "Seven-day AI request bar chart",
         "settings.ai.usageLegendPlatform": "Platform gateway",
         "settings.ai.usageLegendOther": "Other",
+        "settings.ai.usageQuotaNearLimit": "Daily quota at {percent}% ({used}/{limit}) \u2014 nearing limit",
+        "settings.ai.usagePlatformProvider": "Platform route",
+        "settings.pluginOps.title": "Plugin ops (read-only)",
+        "settings.pluginOps.desc": "Server status from GET /api/health; review queue is in-memory per instance.",
+        "settings.pluginOps.publishApi": "POST /api/plugins/publish",
+        "settings.pluginOps.officialKey": "Official signing public key",
+        "settings.pluginOps.envDocLink": "Vercel production env",
+        "settings.pluginOps.clientFlagsLink": "v1.2.6 client flags",
+        "settings.pluginOps.reviewsTitle": "My publish reviews",
+        "settings.pluginOps.reviewsFilter": "Status filter",
+        "settings.pluginOps.reviewsFilterAll": "All",
+        "settings.pluginOps.reviewsFilterPending": "Pending",
+        "settings.pluginOps.reviewsEmpty": "No submissions yet (requires PLUGIN_PUBLISH_ENABLED)",
+        "settings.pluginOps.reviewsRefresh": "Refresh review list",
+        "settings.pluginOps.reviewsHint": "reviewId is for log correlation; server list clears on cold start.",
+        "settings.pluginOps.reviewsCount": "{total} total \xB7 {pending} pending",
+        "settings.v13.title": "v1.3 capabilities (read-only)",
+        "settings.v13.desc": "Python navigation, embedding persist cache, index telemetry, and background Agent flags.",
+        "settings.v13.pythonNav": "Python cross-file navigation",
+        "settings.v13.embeddingPersist": "Embedding persist cache",
+        "settings.v13.indexTelemetry": "Index build telemetry",
+        "settings.v13.backgroundAgent": "Background Agent UI",
+        "settings.v13.embeddingMetrics": "Embedding cache: {hits} hits \xB7 {misses} misses \xB7 {expired} expired",
+        "settings.v13.indexBuildMode": "Last index: {mode} \xB7 {ms}ms",
+        "settings.v14.title": "v1.4 capabilities (read-only)",
+        "settings.v14.desc": "v1.4 production policies: Tab/FIM \xB7 2k index \xB7 Git hunks \xB7 desktop \xB7 background Agent \xB7 MCP/plugins.",
+        "settings.v14.tabFimProduction": "Tab/FIM production policy",
+        "settings.v14.p95Target": "Tab latency target: P95 < {ms}ms",
+        "settings.v14.productionDebounce": "Production default debounce: {ms}ms",
+        "settings.v14.index2kProduction": "Index 2k / Worker production policy",
+        "settings.v14.indexCap": "Index cap {current} (desktop {desktop})",
+        "settings.v14.indexLastBuild": "Last index: {mode} \xB7 {ms}ms",
+        "settings.v14.indexBuildMode": "Index build mode",
+        "settings.v14.indexBuildMode.auto": "Auto (worker for large repos)",
+        "settings.v14.indexBuildMode.worker": "Force worker",
+        "settings.v14.indexBuildMode.sync": "Main-thread sync",
+        "settings.v14.gitHunkStage": "Git hunk stage",
+        "settings.v14.desktopShellProduction": "Desktop shell production policy",
+        "settings.v14.desktopOnly": "Desktop only",
+        "settings.v14.backgroundAgentProduction": "Background Agent production policy",
+        "settings.v14.mcpPluginProduction": "MCP/plugin production policy",
+        "settings.v14.catalogCounts": "Official MCP {mcp} \xB7 plugin catalog {plugins}",
+        "settings.v15.title": "v1.5 capabilities (read-only)",
+        "settings.v16.title": "v1.6 launch readiness",
+        "settings.v16.desc": "GA sprint status (ops checklist: V1.6_GA_EXECUTION.md).",
+        "settings.v16.platformAi": "Platform AI gateway (signed-in)",
+        "settings.v16.tabPlusPlus": "Tab++ production",
+        "settings.v16.overseasBilling": "Overseas MoR billing",
+        "settings.v16.overseasDeferred": "v1.6.0: overseas Pro/Team deferred \xB7 Free+BYOK",
+        "settings.v16.overseasLive": "Paddle/Stripe live",
+        "settings.v16.gaBuild": "GA production build",
+        "settings.v16.byokLegacy": "BYOK legacy mode",
+        "platform.parity.title": "Desktop / browser parity",
+        "platform.parity.desc": "Capability differences for the same UI across runtimes (troubleshooting & planning).",
+        "platform.surface.desktop": "Desktop",
+        "platform.surface.browser": "Browser",
+        "platform.runtime.label": "Runtime",
+        "platform.runtime.desktopReady": "Desktop folder bound \xB7 native runtime ready",
+        "platform.runtime.webReady": "WebContainer ready",
+        "platform.runtime.desktopIdle": "Desktop \xB7 open a local folder",
+        "platform.runtime.loading": "Runtime loading",
+        "platform.capability.partial": "Partial",
+        "platform.capability.nativeFolder": "Local folder / multi-root workspace",
+        "platform.capability.nativePty": "Native terminal PTY",
+        "platform.capability.nativeGitReadonly": "Native Git read-only snapshot",
+        "platform.capability.nativeNodeInspect": "Node inspect debugging",
+        "platform.capability.webContainerRun": "WebContainer npm/node runs",
+        "platform.capability.runtimeShellHooks": "Runtime shell hooks",
+        "platform.capability.fileSystemAccessPicker": "File System Access folder picker",
+        "status.platform.desktop": "Desktop",
+        "status.platform.browser": "Browser",
+        "settings.v15.desc": "v1.5 production flags: platform models \xB7 Tab++ \xB7 Spec Artifacts \xB7 AIDE Runtime \xB7 Activity Line.",
+        "settings.v15.platformModels": "Platform models / BYOK off",
+        "settings.v15.tabPlusPlus": "Tab++ production (multiline ghost \xB7 FIM)",
+        "settings.v15.tabPlusPlusTargets": "Tab++ targets: P95 < {p95} ms \xB7 debounce {debounce} ms \xB7 \u2264{lines} lines",
+        "settings.v15.specArtifactsV2": "Spec Artifacts v2 (hooks.yaml)",
+        "settings.v15.aideRuntime": "AIDE Runtime engine",
+        "settings.v15.orchestratorMode": "Orchestrator mode: {mode}",
+        "settings.v15.activityLine": "Activity Line production UI",
+        "settings.v15.byokLegacy": "BYOK legacy entry",
+        "settings.tabCompletion.metricsCardTitle": "Tab completion metrics (v1.3)",
+        "settings.tabCompletion.metricsReset": "Reset stats",
+        "settings.tabCompletion.tabPlusPlusPocOn": "Tab++ POC: multiline ghost completion on (v1.4.3 experiment)",
+        "settings.tabCompletion.tabPlusPlusPocTargets": "Tab++ POC targets: P95 < {p95} ms \xB7 debounce {debounce} ms",
+        "settings.tabCompletion.tabPlusPlusProductionOn": "Tab++ production: multiline ghost on (v1.5 F1)",
+        "settings.tabCompletion.tabPlusPlusProductionTargets": "Tab++ production targets: P95 < {p95} ms \xB7 debounce {debounce} ms \xB7 \u2264{lines} lines",
+        "settings.tabCompletion.p95CollectHint": "Type in the editor \u2014 Tab latency P95 samples will appear here.",
+        "settings.backgroundAgent.title": "Background Agent",
+        "settings.backgroundAgent.desc": "Server-side Agent after closing the tab; needs VITE_BACKGROUND_AGENT + cron.",
+        "settings.backgroundAgent.enabled": "Client UI",
+        "settings.backgroundAgent.cron": "Job processor",
+        "settings.backgroundAgent.envHint": "Off in production by default; see docs/V1.1_FEATURE_FLAGS.md and V1.3_ENV.md.",
+        "settings.index.telemetry": "Last index {ms}ms ({mode})",
         "settings.ai.privacy": "Privacy",
         "settings.ai.privacyText": "API keys stay in your browser. We do not forward them to third parties beyond your chosen model provider.",
         "settings.ai.privacyGuest": " Sign in to sync cloud quota usage.",
@@ -7304,6 +8936,8 @@ var init_translations = __esm({
         "settings.formatOnSave": "Format on save",
         "settings.formatOnSave.desc": "Format the active file before autosave (skipped in read-only collab rooms).",
         "settings.formatOnSave.aria": "Format on save",
+        "settings.formatLanguages.title": "Supported format languages",
+        "settings.formatLanguages.desc": "JS/TS, JSON, CSS, HTML, and Markdown use built-in indent; Java, C++, Go, Kotlin, and Rust get basic brace indent (not full Prettier).",
         "settings.tabCompletion.title": "Tab AI completion",
         "settings.tabCompletion.desc": "Inline Tab completions in the editor. Supports BYOK, platform AI, and Ollama; DeepSeek / Qwen / Ollama prefer FIM, others use platform or chat fallback.",
         "settings.tabCompletion.maxLines": "Max completion lines",
@@ -7316,12 +8950,28 @@ var init_translations = __esm({
         "settings.tabCompletion.path.chat": "Chat fallback (BYOK, non-FIM models)",
         "settings.tabCompletion.path.off": "AI not configured; completions disabled",
         "settings.tabCompletion.metricsTitle": "Session stats",
-        "settings.tabCompletion.metricsDesc": "Cache hits {hits} \xB7 misses {misses} \xB7 FIM {fim} \xB7 platform {platform} \xB7 chat {chat} \xB7 avg {avgMs} ms \xB7 last {last}",
-        "settings.tabCompletion.metricsReset": "Reset stats",
+        "settings.tabCompletion.metricsDesc": "Cache hits {hits} \xB7 misses {misses} \xB7 skipped {skipped} \xB7 FIM ok {fim} (attempts {fimAttempts} \xB7 chat fallback {fimFallback}) \xB7 platform {platform} \xB7 chat {chat} \xB7 avg {avgMs} ms \xB7 last {last}",
+        "settings.tabCompletion.metricsP95": "Latency percentiles: P50 {p50} ms \xB7 P95 {p95} ms \xB7 samples {samples} \xB7 target < {target} ms",
+        "settings.tabCompletion.metricsP95Unknown": "Latency percentiles: no samples yet (target < {target} ms)",
+        "settings.tabCompletion.metricsP95Pass": "within target",
+        "settings.tabCompletion.metricsP95Fail": "above target",
+        "settings.tabCompletion.metricsFailures": "Failures {count} ({reason})",
+        "settings.tabCompletion.failureReason.empty": "empty",
+        "settings.tabCompletion.failureReason.timeout": "timeout",
+        "settings.tabCompletion.failureReason.http413": "payload too large",
+        "settings.tabCompletion.failureReason.error": "error",
+        "settings.tabCompletion.failureReason.unknown": "unknown",
         "settings.editorPrefs": "Editor preferences",
         "settings.editorPrefs.desc": "Keeps settings minimal for now. Font, indent, and format options may come later.",
         "settings.features.noticeTitle": "Capability overview",
         "settings.features.noticeDesc": "Items below describe what the product already does\u2014they are not toggles. Configure MCP and rules below.",
+        "settings.v12.card.title": "v1.2 platform (read-only)",
+        "settings.v12.card.desc": "Multi-root workspace and virtual file tree are on by default in production. Plugin trust market needs env or session flag.",
+        "settings.v12.multiRoot": "Multi-root workspace",
+        "settings.v12.virtualTree": "Virtual file tree (\u2265500 rows)",
+        "settings.v12.pluginTrust": "Plugin trust market",
+        "settings.v12.statusOn": "On",
+        "settings.v12.statusOff": "Off",
         "settings.feature.review.title": "Code review",
         "settings.feature.review.desc": "AI-driven quality hints",
         "settings.feature.completion.title": "Smart completion",
@@ -7340,6 +8990,9 @@ var init_translations = __esm({
         "settings.index.card.desc": "When indexing is ready, type `@` in Chat to pick files/symbols for context injection. Indexing is affected by .gitignore and file size caps.",
         "settings.index.retry": "Retry indexing",
         "settings.index.limitLinkLabel": "Browser limitations",
+        "settings.index.cappedHint": "Index cap reached \u2014 some files are excluded from @ and semantic search. See the link below.",
+        "settings.semantic.indexNotReady": "Index not ready yet \u2014 import a workspace and wait for indexing before using semantic @.",
+        "settings.semantic.indexCappedHint": "Index is capped \u2014 semantic search only covers the indexed subset. Use desktop or a smaller workspace for large repos.",
         "settings.payload.card.title": "Context budget (413 prevention)",
         "settings.payload.card.desc": "Preflight estimates request payload and shows \u201CSlim and send\u201D before oversized calls.",
         "settings.payload.card.providerBudget": "Current provider budget: {provider} about {budgetKb}KB",
@@ -7374,6 +9027,13 @@ var init_translations = __esm({
         "subscription.plans.loadError": "Could not load plans online. Showing defaults.",
         "subscription.loginRequired": "Sign in before upgrading",
         "subscription.payFailed": "Payment request failed. Check your network and retry.",
+        "billing.desktopReturnTitle": "Back on desktop",
+        "billing.desktopReturnDetail": "Subscription synced. Check Settings for your current plan.",
+        "desktop.returnPrompt.title": "Sign-in or payment complete",
+        "desktop.returnPrompt.detail": "If the desktop app did not open automatically, use the button on the right.",
+        "desktop.returnPrompt.button": "Open AI IDE Desktop",
+        "desktop.returnPrompt.failedTitle": "Desktop handoff failed",
+        "desktop.returnPrompt.failedDetail": "Reopen the desktop app or sign in again from Settings.",
         "subscription.devUpgradeFailed": "Dev-mode upgrade failed",
         "subscription.payNotConfigured": "Payments are not configured on the server.",
         "subscription.paySuccess": "Payment succeeded. Subscription updated.",
@@ -7409,9 +9069,15 @@ var init_translations = __esm({
         "subscription.checkout.alipayHint": "You will be redirected to Alipay to complete payment",
         "subscription.checkout.stripe": "Upgrade with Stripe",
         "subscription.checkout.stripeHint": "You will be redirected to Stripe Checkout to complete your subscription",
+        "subscription.checkout.paddle": "Upgrade with Paddle",
+        "subscription.checkout.paddleHint": "You will be redirected to Paddle Checkout (global MoR)",
+        "subscription.payMethod.paddle": "Paddle",
         "subscription.checkout.welfareIncluded": "Included (free)",
         "subscription.checkout.upgrade": "Upgrade now",
         "subscription.checkout.beta": "Free during beta",
+        "subscription.checkout.overseasSoon": "Overseas billing soon",
+        "subscription.overseasComingSoon": "Overseas Pro/Team checkout opens in v1.6.1. Use Free + platform AI or BYOK in Settings for now.",
+        "subscription.pricing.cnWithOverseasSoon": "Pay with {methods} in China. Overseas Pro/Team billing opens in v1.6.1 \u2014 Free + BYOK available now.",
         "subscription.cancelFailed": "Could not cancel subscription",
         "subscription.cancelFailedRetry": "Cancel failed. Try again later.",
         "subscription.resumeFailed": "Could not resume subscription",
@@ -7421,17 +9087,17 @@ var init_translations = __esm({
         "subscription.updated": "Subscription updated",
         "subscription.resumed": "Subscription resumed",
         "subscription.plan.free.name": "Free",
-        "subscription.plan.free.desc": "Learning and small projects with generous quota.",
-        "subscription.plan.free.f1": "Basic AI chat",
-        "subscription.plan.free.f2": "10 cloud workspaces",
-        "subscription.plan.free.f3": "200 requests / day",
+        "subscription.plan.free.desc": "Learning and small projects with platform AI after sign-in.",
+        "subscription.plan.free.f1": "Platform AI \xB7 economy models (Flash / Lite)",
+        "subscription.plan.free.f2": "Unlimited cloud workspaces",
+        "subscription.plan.free.f3": "200 weighted quota units / day",
         "subscription.plan.pro.name": "Pro",
-        "subscription.plan.pro.desc": "Power users, $4.99/mo.",
-        "subscription.plan.pro.f1": "5000 requests / day",
+        "subscription.plan.pro.desc": "Power users, $9.99/mo.",
+        "subscription.plan.pro.f1": "2000 weighted quota units / day",
         "subscription.plan.pro.f2": "Unlimited workspaces",
         "subscription.plan.pro.f3": "Secure Stripe subscription",
         "subscription.plan.enterprise.name": "Team",
-        "subscription.plan.enterprise.desc": "Teams and heavy usage, $12.99/mo.",
+        "subscription.plan.enterprise.desc": "Teams and heavy usage, $19.99/mo.",
         "subscription.plan.enterprise.f1": "Unlimited quota",
         "subscription.plan.enterprise.f2": "Unlimited workspaces",
         "subscription.plan.enterprise.f3": "Team features (planned)",
@@ -7452,10 +9118,13 @@ var init_translations = __esm({
         "command.cat.debug": "Debug",
         "command.cat.index": "Index (@)",
         "command.cat.editor": "Editor",
+        "command.cat.spec": "Spec",
         "command.formatDocument": "Format document",
         "command.formatDocument.sub": "Format the active file",
         "command.goToDefinition": "Go to definition",
         "command.goToDefinition.sub": "Jump to symbol definition (TS/JS, cross-file)",
+        "command.goToReferences": "Go to references",
+        "command.goToReferences.sub": "Find symbol references (TS/JS, cross-file)",
         "command.openFile": "Open file",
         "command.newFile": "New file",
         "command.newFile.sub": "Create a blank file",
@@ -7519,6 +9188,8 @@ var init_translations = __esm({
         "mcp.loading": "Loading MCP settings\u2026",
         "mcp.title": "MCP servers",
         "mcp.desc": "Connect Streamable HTTP MCP via /api/mcp/proxy. Local URLs need dev:stack and localhost allowed.",
+        "mcp.toolCountHint": "{count} tools connected \xB7 Chat meter reserves ~{reserveKb}KB",
+        "mcp.toolCountUnknown": "Estimating tool count (meter defaults to ~6KB reserve)",
         "mcp.empty": "No MCP servers yet. After adding one, Agent can call tools via <<<mcp-tool>>> blocks.",
         "mcp.displayName": "Display name",
         "mcp.enabled": "Enabled",
@@ -7539,6 +9210,17 @@ var init_translations = __esm({
         "mcp.ping.checking": "Checking\u2026",
         "mcp.ping.ok": "Connected",
         "mcp.ping.fail": "Connection failed",
+        "mcp.browser.title": "MCP tool browser",
+        "mcp.browser.desc": "Call MCP tools manually by schema to verify integration and response shape.",
+        "mcp.browser.loading": "Loading\u2026",
+        "mcp.browser.empty": "No enabled MCP servers.",
+        "mcp.browser.call": "Call tool",
+        "mcp.log.title": "MCP structured results ({count})",
+        "mcp.log.onlyFailures": "Failures only",
+        "mcp.log.groupByServer": "Group by server",
+        "mcp.log.empty": "Nothing to show.",
+        "mcp.log.statusOk": "OK",
+        "mcp.log.statusError": "ERROR",
         "rules.title": "Project rules",
         "rules.desc": "Edit .aide/rules.md or .cursorrules; content is injected into Chat / Agent system prompts.",
         "rules.empty": "No rules file detected. Create a template in the editor below.",
@@ -7575,6 +9257,8 @@ var init_translations = __esm({
         "chat.agentModeTitle": "Agent mode: parse multi-file edits and apply to the editor",
         "chat.agentOn": "Agent on",
         "chat.agent": "Agent",
+        "chat.planShort": "Plan",
+        "chat.workspaceShort": "Workspace",
         "chat.workspaceEmpty": "Import workspace files first to enable full context.",
         "chat.workspaceSelected": "{count} workspace files selected",
         "chat.workspaceCtx": "Workspace context",
@@ -7636,11 +9320,18 @@ var init_translations = __esm({
         "quota.today": "AI usage today",
         "quota.exhausted": "Daily quota used. Try tomorrow or upgrade.",
         "quota.unlimitedPlan": "Unlimited quota on this plan.",
+        "quota.unlimitedShort": "Unlimited",
+        "quota.usedTodayShort": "Today {used}",
+        "quota.chatUnlimitedAria": "{plan}, {used} used today",
         "quota.remaining": "About {count} left",
+        "quota.freeEconomyHint": "Free plan \xB7 economy models only",
         "quota.plan": "Plan",
         "sidebar.filenamePlaceholder": "Filename, e.g. index.ts",
         "sidebar.create": "Create",
         "sidebar.deleteFile": "Delete file",
+        "sidebar.newSpec": "New Spec (Spec Studio)",
+        "sidebar.ctx.openSpecStudio": "Open in Spec Studio",
+        "sidebar.ctx.runFirstSpecTask": "Run first open task",
         "sidebar.largeTreeHint": "Large workspace: the tree starts collapsed. Use Expand all to browse.",
         "sidebar.fileFilterPlaceholder": "Filter files\u2026",
         "sidebar.fileFilterCount": "Showing {shown} / {total}",
@@ -7741,6 +9432,18 @@ var init_translations = __esm({
         "runtime.status.ready": "Runtime ready",
         "runtime.status.loading": "Preparing runtime",
         "runtime.status.notReady": "Runtime not ready",
+        "runtime.queuePaused.title": "Runtime queue paused",
+        "runtime.queuePaused.detail": "A queue.before hook failed; enqueue was blocked. Use Resume queue in the task queue panel.",
+        "runtime.queuePaused.resume": "Resume queue",
+        "runtime.queuePaused.resumedTitle": "Queue resumed",
+        "runtime.queuePaused.resumedDetail": "You can enqueue spec tasks again.",
+        "runtime.verifyFail.title": "Acceptance verification failed",
+        "runtime.verifyFail.detail": "acceptance.md still has open items or failed commands; verify.fail hooks were triggered.",
+        "runtime.state.cardTitle": "runtime-state.json",
+        "runtime.state.activeSpec": "Active spec: {name}",
+        "runtime.state.queue": "Queue: spec {spec} \xB7 plan {plan}",
+        "runtime.state.lastHook": "Last hook: {id} \xB7 {status}",
+        "runtime.state.updated": "Updated: {at}",
         "editor.runtimeFailed": "Failed to start runtime",
         "editor.runtimeRetry": "Retry",
         "editor.restarting": "Restarting runtime",
@@ -8008,6 +9711,8 @@ var init_translations = __esm({
         "git.branchNameRequired": "Enter a branch name",
         "git.branchNameInvalid": "Invalid branch name",
         "git.branchExists": "Branch already exists",
+        "git.error.noHunksSelected": "No diff hunks selected",
+        "git.error.stagedDiffUnavailable": "Staged diff unavailable for {path}",
         "git.createBranch": "Create",
         "git.createBranchTitle": "Create branch",
         "git.newBranchPlaceholder": "feature/my-branch",
@@ -8045,6 +9750,16 @@ var init_translations = __esm({
         "git.diffTruncatedBanner": "Diff too large \u2014 showing first {oldShown}/{oldTotal} old lines and {newShown}/{newTotal} new lines. Use terminal git diff for the full file.",
         "git.discardFileTitle": "Discard unstaged changes for this file",
         "git.stageTitle": "Stage",
+        "git.matrixSummary": "Status matrix: staged {staged} \xB7 unstaged {unstaged} \xB7 total {total}",
+        "git.hunkStageTitle": "Hunk stage",
+        "git.hunkLoading": "Loading diff hunks\u2026",
+        "git.hunkEmpty": "No hunks to stage",
+        "git.hunkItem": "Hunk {index} ({summary})",
+        "git.hunkStageSelected": "Stage selected hunks",
+        "git.hunkStaging": "Staging\u2026",
+        "git.hunkStaged": "Selected hunks staged",
+        "git.hunkStageFailed": "Hunk stage failed",
+        "git.hunkLoadFailed": "Failed to load hunks",
         "git.stagedLabel": "Staged",
         "git.stagedCount": "{count} files",
         "git.changesLabel": "Changes",
@@ -8201,6 +9916,10 @@ var init_translations = __esm({
         "status.autosave.off": "Manual save",
         "status.autosaveTitle": "Toggle autosave",
         "status.gitTitle": "Open Git panel",
+        "status.spec.count": "Spec {count} \xB7 open {open}",
+        "status.spec.studioTitle": "Open Spec Studio",
+        "status.spec.run": "Run",
+        "status.spec.runTitle": "Run first open Spec task",
         "status.ai.connected": "AI connected",
         "status.ai.configure": "Configure AI",
         "status.aiTitle": "Configure AI",
@@ -8383,6 +10102,9 @@ var init_translations = __esm({
         "agentApply.applyCurrentHunks": "Apply selected hunks",
         "agentApply.applyCurrentFull": "Apply whole file",
         "agentApply.applyAll": "Apply all ({count})",
+        "agentApply.failTitle": "Some files could not be written",
+        "agentApply.failDetail": "Applied {applied}/{total} \xB7 {paths}: {reason}",
+        "agentApply.failReason.unknown": "Unknown error",
         "agentApply.skipCurrent": "Skip this file",
         "agentApply.hunkBadge": "{accepted}/{total} hunks",
         "agent.tool.writeStaged": "\u2713 {tool} {detail} \xB7 {hunks} hunks",
@@ -8524,7 +10246,13 @@ var init_translations = __esm({
         "share.tab.share": "Share",
         "share.tab.history": "History",
         "share.tab.import": "Import JSON",
-        "share.createHint": "Create a local share snapshot link to restore later or share in the same environment.",
+        "share.createHint": "Generate a share link (cloud-first, opens in any browser). Falls back to a local-only snapshot when offline. You can also export JSON.",
+        "share.generating": "Generating\u2026",
+        "share.createFailed": "Could not create share link. Try again or export JSON.",
+        "share.cloudHint": "Cloud link is valid for 30 days and works on any device or browser.",
+        "share.localHint": "Local snapshot only \u2014 this browser. Cloud share is used when online.",
+        "share.cloudBadge": "Cloud",
+        "share.localBadge": "Local",
         "share.generateLink": "Generate share link",
         "share.exportJson": "Export JSON",
         "share.linkReady": "Link ready \u2014 copy or regenerate.",
@@ -8646,6 +10374,7 @@ var init_translations = __esm({
         "format.error.bracketMismatch": "At {pos}: bracket mismatch, expected {expected} but got {actual}",
         "format.error.stringUnclosed": "At {pos}: unclosed string quote",
         "format.error.unclosedBrackets": "Unclosed brackets: {stack}",
+        "format.error.failed": "Format failed; original content kept",
         "github.error.repoNotFound": "Repository not found or private",
         "review.summary.done": "Review complete",
         "review.summary.partial": "Review complete (parsed result incomplete)",
@@ -8712,8 +10441,8 @@ var init_translations = __esm({
         "plugin.market.sdkBadge": "SDK {version}",
         "subscription.upgraded": "Upgraded to {plan}",
         "subscription.betaNote": "Public beta: Pro and Team features are free. Paid checkout will open here when billing goes live.",
-        "subscription.pricing.live": "Pay with {methods}; Pro \xA519/mo, Team \xA549/mo",
-        "subscription.pricing.liveStripe": "Pay with {methods}; Pro $4.99/mo, Team $12.99/mo",
+        "subscription.pricing.live": "Pay with {methods}; Pro \xA539/mo, Team \xA579/mo",
+        "subscription.pricing.liveStripe": "Pay with {methods}; Pro $9.99/mo, Team $19.99/mo",
         "subscription.pricing.publicWelfare": "Public-welfare IDE: no subscription fees. Platform AI quotas are generous; BYOK is recommended.",
         "subscription.pricing.dev": "Dev/integration: one-click mock upgrade when merchants are not configured",
         "subscription.payMethod.alipay": "Alipay",
@@ -8750,6 +10479,7 @@ var init_translations = __esm({
         "runtime.webcontainer.bootFailed": "WebContainer failed to start",
         "runtime.webcontainer.notReady": "WebContainer is not ready yet",
         "runtime.webcontainer.busy": "A command is already running",
+        "runtime.webcontainer.crossOriginHint": "Cross-Origin Isolation is not enabled; WebContainer may fail to start. Use HTTPS or the desktop app with COOP/COEP headers.",
         "network.error.generic": "Network error. Try again later.",
         "network.error.offline": "Cannot reach the server. Check your network and try again.",
         "editor.defaultFileComment": "// Welcome to AI IDE",
@@ -8812,6 +10542,39 @@ var init_translations = __esm({
         "queue.panel.skipContinue": "Skip and continue",
         "queue.panel.sendQueue": "Send queue:",
         "queue.panel.sendQueueMore": "+{count} more",
+        "chat.queue.processing": "Processing\u2026",
+        "chat.queue.activePlan": "Plan: {text}",
+        "chat.queue.activeSpec": "Spec: {text}",
+        "chat.agentRun.savedTitle": "Saved",
+        "chat.agentRun.savedDetail": "This Agent run was saved to history",
+        "chat.agentRun.noRecordTitle": "No record",
+        "chat.agentRun.noRecordDetail": "No saved Agent runs yet",
+        "chat.agentRun.replayContent": "Replayed the latest run ({activity} tool steps, {rounds} rounds)",
+        "chat.report.copiedTitle": "Copied",
+        "chat.report.copiedDetail": "Queue report copied to clipboard",
+        "chat.report.savedTitle": "Saved",
+        "chat.report.savedDetail": "Report written to {path}",
+        "chat.report.noReportTitle": "No report",
+        "chat.report.noReportHint": "Save a queue report to .aide/reports first",
+        "chat.report.noReportSaveFirst": "Save a queue report first",
+        "chat.report.openFailedTitle": "Cannot open",
+        "chat.report.openFailedDetail": "Report file not found: {path}",
+        "chat.report.restoreEmptyTitle": "Nothing to restore",
+        "chat.report.restoreNoMatch": "No matching pending items in the report",
+        "chat.report.restoredTitle": "Queue restored",
+        "chat.report.restoreDetail": "Plan {plan} \xB7 Spec {spec}{extra}",
+        "chat.report.restoreUnresolved": " \xB7 {count} unmatched",
+        "chat.report.autoSavedTitle": "Auto-saved",
+        "chat.report.autoSavedDetail": "Queue report: {path}",
+        "chat.queue.completeBody": "Task queue finished",
+        "chat.queue.enqueuedTitle": "Queued",
+        "chat.queue.enqueuedDetail": "+1 pending task (total {count})",
+        "chat.plan.runFirstStep": "Run first step",
+        "chat.plan.runFirstStepTitle": "Execute the first step in the plan",
+        "welcome.pathLocalTitle": "Start locally",
+        "welcome.pathLocalDesc": "No sign-in \u2014 BYOK and local editing",
+        "welcome.pathCloudTitle": "Sign in",
+        "welcome.pathCloudDesc": "Sync workspaces and platform AI quota",
         "queue.preview.title": "Queue preview",
         "queue.preview.planTag": "Plan",
         "queue.preview.specTag": "Spec",
@@ -8831,6 +10594,8 @@ var init_translations = __esm({
         "plan.catalog.sort.mostOpen": "Most open steps",
         "plan.catalog.sort.title": "Title",
         "plan.catalog.mapTargetDefault": "Map target: latest Spec",
+        "plan.catalog.mapTargetTitle": "Spec tasks file to map into",
+        "plan.catalog.shownCount": "Showing {shown} / {total} plans",
         "plan.catalog.createFromTemplate": "Create from template",
         "plan.catalog.newPlanPlaceholder": "Plan title, e.g. Login polish",
         "plan.catalog.templateCustom": " (custom)",
@@ -8858,12 +10623,15 @@ var init_translations = __esm({
         "plan.overview.goReports": "Go to reports",
         "spec.catalog.openLinkedPlan": "Open plan",
         "spec.catalog.title": "Specs (.aide/specs)",
-        "spec.catalog.desc": "Browse specs, search/sort, open tasks and acceptance.",
+        "spec.catalog.desc": "Browse specs with search and sort. Add hooks.yaml for Runtime automation (queue, Agent, verify).",
         "spec.catalog.searchPlaceholder": "Search spec name / path",
         "spec.catalog.sort.recentExec": "Recent execution",
         "spec.catalog.sort.mostOpen": "Most open tasks",
         "spec.catalog.sort.title": "Name",
-        "spec.catalog.namePlaceholder": "New spec name",
+        "spec.catalog.namePlaceholder": "e.g. auth-refactor",
+        "spec.catalog.hooksGuide.title": "Runtime automation: add hooks.yaml in three steps",
+        "spec.catalog.hooksGuide.desc": "\u2460 Create a spec \u2192 \u2461 Click Create hooks.yaml in the catalog \u2192 \u2462 Edit pre-run / post-write hooks; Activity Line shows events.",
+        "spec.catalog.hooksGuide.dismiss": "Got it",
         "spec.catalog.create": "Create Spec",
         "spec.catalog.openRoot": "Open specs root",
         "spec.catalog.showMore": "Show more",
@@ -8872,6 +10640,98 @@ var init_translations = __esm({
         "spec.catalog.openTasks": "Open tasks",
         "spec.catalog.openAcceptance": "Open acceptance",
         "spec.catalog.runFirst": "Run first open task",
+        "spec.catalog.hooksPreview": "Runtime hooks (read-only preview)",
+        "spec.catalog.hooksCount": "{count} hook(s)",
+        "spec.catalog.hooksInvalid": "hooks.yaml validation failed",
+        "spec.catalog.lastHookLog": "Recent hook",
+        "spec.catalog.openHooks": "hooks",
+        "spec.catalog.createHooks": "Create hooks.yaml",
+        "spec.catalog.sort.mostHooks": "Most hooks",
+        "spec.catalog.runtimeStateSummary": "Runtime state (read-only preview)",
+        "spec.catalog.visibleCount": "Showing {shown} / {total} specs",
+        "spec.catalog.openTasksCount": "Open {open}/{total}",
+        "spec.catalog.status.active": "Active",
+        "spec.catalog.status.completed": "Completed",
+        "spec.catalog.status.inProgress": "In progress",
+        "spec.catalog.status.idle": "Not started",
+        "spec.catalog.lastExecuted": "Last run {at}",
+        "spec.catalog.sourceLinks": "Sources {count}",
+        "spec.catalog.openStudio": "Open Spec Studio",
+        "specStudio.title": "Spec Studio",
+        "specStudio.lead": "Generate executable Specs for Node, Java, C++, Git, and AI agent tasks (requirements / design / tasks / acceptance + hooks).",
+        "specStudio.nameLabel": "Spec name",
+        "specStudio.goalLabel": "Goal (for AI refine)",
+        "specStudio.goalPlaceholder": "e.g. Add refresh token to login API with integration tests",
+        "specStudio.filterStacks": "Filter templates by stack",
+        "specStudio.filterAll": "All",
+        "specStudio.stack.node": "Node",
+        "specStudio.stack.java": "Java",
+        "specStudio.stack.cpp": "C++",
+        "specStudio.stack.go": "Go",
+        "specStudio.stack.rust": "Rust",
+        "specStudio.stack.python": "Python",
+        "specStudio.stack.git": "Git",
+        "specStudio.stack.ai": "AI",
+        "specStudio.stack.general": "General",
+        "specStudio.recommended": "Recommended",
+        "specStudio.create": "Create Spec",
+        "specStudio.refineWithAi": "Refine with AI",
+        "specStudio.executeFirst": "Run first task",
+        "specStudio.createLinkedPlan": "Create linked Plan",
+        "specStudio.linkedPlanToast": "Linked Plan created",
+        "specStudio.linkedPlanFailed": "Could not create linked Plan (ensure Spec tasks file exists)",
+        "specStudio.createdHint": "Written to {path}. Refine with AI or execute.",
+        "specStudio.createdToast": "Spec created",
+        "specStudio.template.blank.title": "Blank Spec",
+        "specStudio.template.blank.desc": "Four-file skeleton to fill in",
+        "specStudio.template.node-api.title": "Node API feature",
+        "specStudio.template.node-api.desc": "REST/TS routes, tests, and lint hooks",
+        "specStudio.template.node-bugfix.title": "Node bugfix",
+        "specStudio.template.node-bugfix.desc": "Repro steps + regression test template",
+        "specStudio.template.java-service.title": "Java service",
+        "specStudio.template.java-service.desc": "Maven/Gradle layers with mvn test",
+        "specStudio.template.cpp-module.title": "C++ module",
+        "specStudio.template.cpp-module.desc": "CMake layout and ctest hooks",
+        "specStudio.template.go-service.title": "Go service",
+        "specStudio.template.go-service.desc": "Go modules with go test hooks",
+        "specStudio.template.rust-crate.title": "Rust crate",
+        "specStudio.template.rust-crate.desc": "Cargo layout with cargo test hooks",
+        "specStudio.template.python-service.title": "Python service",
+        "specStudio.template.python-service.desc": "pyproject layout with pytest hooks",
+        "specStudio.template.git-release.title": "Git release",
+        "specStudio.template.git-release.desc": "Changelog, version bump, tag checklist",
+        "specStudio.template.ai-agent-task.title": "AI agent task",
+        "specStudio.template.ai-agent-task.desc": "Multi-file agent plan with review hooks",
+        "command.specStudio": "Spec Studio",
+        "command.specStudio.sub": "Create executable Specs from stack templates",
+        "command.runFirstSpecTask": "Run first open Spec task",
+        "command.runFirstSpecTask.sub": "Enqueue the first unchecked task across all Specs",
+        "welcome.quick.specStudio.title": "Spec Studio",
+        "welcome.quick.specStudio.desc": "Node / Java / C++ / Git / AI Spec in one flow",
+        "welcome.cta.specStudio": "Open Studio",
+        "spec.workflow.title": "Specs workflow (requirements/design/tasks/acceptance)",
+        "spec.workflow.desc": "Create the standard four files under `.aide/specs/<name>/` and inject them into Chat/Agent context.",
+        "spec.workflow.create": "Create Spec",
+        "spec.workflow.openRoot": "Open Specs",
+        "spec.workflow.tasksRecent": "Spec tasks (recent 8)",
+        "spec.workflow.runTask": "Run task",
+        "spec.workflow.markDone": "Mark done",
+        "activityLine.title": "Activity Line",
+        "activityLine.expandHint": "Click to expand",
+        "activityLine.eventCount": "{count} events",
+        "activityLine.empty": "No runtime events yet",
+        "activityLine.agentWrite": "Agent write",
+        "activityLine.hookStart": "Hook start",
+        "activityLine.hookEnd": "Hook end",
+        "activityLine.verifyFail": "Verify failed",
+        "activityLine.ok": "ok",
+        "activityLine.fail": "fail",
+        "settings.aideRuntime.stubCardTitle": "AIDE Runtime stub",
+        "settings.aideRuntime.productionCardTitle": "Activity Line",
+        "settings.aideRuntime.engineProductionCardTitle": "AIDE Runtime",
+        "settings.aideRuntime.stubCardDesc": "Activity Line and orchestrator are in {mode} mode: events only, no queue drainage. Enable via VITE_AIDE_RUNTIME_UI or session flag.",
+        "settings.aideRuntime.productionCardDesc": "Activity Line production UI is on (VITE_AIDE_ACTIVITY_LINE). Queue, Agent writes, and Hook events appear above Chat.",
+        "settings.aideRuntime.engineProductionCardDesc": "AIDE Runtime production engine is on (VITE_AIDE_RUNTIME \xB7 {mode}). Spec enqueue runs queue.before hooks; Agent apply and verify failures trigger follow-up hooks and write runtime-state.json.",
         "report.catalog.title": "Reports (.aide/reports)",
         "report.catalog.desc": "View, restore queue, open/delete; bulk delete, keep recent N, export ZIP.",
         "report.catalog.autoSave": "Auto-save report when queue completes",
@@ -8941,6 +10801,9 @@ var init_translations = __esm({
         "plan.host.syncSuccess.failedSuffix": ", {failed} failed",
         "spec.host.noOpenTask.title": "Nothing to run",
         "spec.host.noOpenTask.detail": "No open tasks in this Spec",
+        "spec.host.missingTasks.title": "Spec tasks missing",
+        "spec.host.missingTasks.detail": "Not found in workspace: {path}",
+        "spec.host.noRunnableSpec.detail": "No Spec with open tasks in the workspace",
         "report.host.noReports.title": "No reports",
         "report.host.noReports.detail": "Save a report from the task queue to .aide/reports first",
         "report.host.openFailed.title": "Cannot open",
@@ -8991,39 +10854,48 @@ var init_translationsJaBulk = __esm({
       "settings.advanced.experimentalDesc": "Reserved for future toggles when features mature.",
       "settings.advanced.reset": "Reset defaults",
       "settings.ai.apiKey": "API Key",
-      "settings.ai.keyMode": "AI \u63A5\u7D9A",
-      "settings.ai.keyModePlatform": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI\uFF08Key \u4E0D\u8981\uFF09",
-      "settings.ai.keyModeByok": "\u81EA\u5E26 API Key",
-      "settings.ai.keyModePlatformHint": "\u30ED\u30B0\u30A4\u30F3\u5F8C\u3001\u30B5\u30FC\u30D0\u30FC\u7D4C\u7531\u3067\u5229\u7528\uFF08\u65E5\u6B21\u30AF\u30A9\u30FC\u30BF\uFF09\u3002Cursor \u306E\u3088\u3046\u306B\u3059\u3050\u4F7F\u3048\u307E\u3059\u3002",
-      "settings.ai.keyModeByokHint": "Key \u306F\u30D6\u30E9\u30A6\u30B6\u306B\u306E\u307F\u4FDD\u5B58\u3057\u3001\u30D7\u30ED\u30D0\u30A4\u30C0\u3078\u76F4\u63A5\u63A5\u7D9A\u3057\u307E\u3059\u3002",
-      "settings.ai.platformStatus": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u72B6\u614B",
-      "settings.ai.platformChecking": "\u30C7\u30D7\u30ED\u30A4\u8A2D\u5B9A\u3092\u78BA\u8A8D\u4E2D\u2026",
-      "settings.ai.platformReady": "\u30B5\u30FC\u30D0\u30FC\u3067\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u8A2D\u5B9A\u6E08\u307F\uFF08{provider}\uFF09\u3002\u30ED\u30B0\u30A4\u30F3\u5F8C\u306B\u5229\u7528\u3067\u304D\u307E\u3059\u3002",
-      "settings.ai.platformReadyBadge": "Chat / Agent / Tab \u88DC\u5B8C / \u30D7\u30E9\u30B0\u30A4\u30F3\u304C\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u7D4C\u7531\u3067\u5229\u7528\u53EF\u80FD",
-      "settings.ai.platformNotConfigured": "PLATFORM_DEEPSEEK_API_KEY \u304C\u672A\u8A2D\u5B9A\u3067\u3059\u3002\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u30E2\u30FC\u30C9\u306F\u5229\u7528\u3067\u304D\u307E\u305B\u3093\uFF08BYOK \u306B\u5207\u66FF\u53EF\uFF09\u3002",
-      "settings.ai.platformUnreachable": "/api/health \u306B\u63A5\u7D9A\u3067\u304D\u307E\u305B\u3093\u3002\u30CD\u30C3\u30C8\u30EF\u30FC\u30AF\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      "settings.ai.usageDashboardTitle": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u5229\u7528\u91CF",
-      "settings.ai.usageDashboardDesc": "\u8AAD\u307F\u53D6\u308A\u5C02\u7528\uFF1A\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u30EA\u30AF\u30A8\u30B9\u30C8\u3001\u65E5\u6B21\u30AF\u30A9\u30FC\u30BF\u3001\u6982\u7B97\u30B3\u30B9\u30C8\uFF08\u8ACB\u6C42\u66F8\u3067\u306F\u3042\u308A\u307E\u305B\u3093\uFF09\u3002BYOK \u76F4\u7D50\u306F\u300C\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u300D\u306B\u542B\u307E\u308C\u307E\u305B\u3093\u3002",
-      "settings.ai.usageDashboardLoading": "\u5229\u7528\u91CF\u3092\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026",
-      "settings.ai.usageDashboardError": "\u5229\u7528\u91CF\u30C0\u30C3\u30B7\u30E5\u30DC\u30FC\u30C9\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3002\u30ED\u30B0\u30A4\u30F3\u3068 DB \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      "settings.ai.usageDashboardRefresh": "\u66F4\u65B0",
-      "settings.ai.usagePlatformToday": "\u672C\u65E5\u306E\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0",
-      "settings.ai.usageOtherToday": "\u672C\u65E5\u306E\u305D\u306E\u4ED6\uFF08\u540C\u671F/BYOK\uFF09",
-      "settings.ai.usageCostToday": "\u672C\u65E5\u306E\u6982\u7B97\u30B3\u30B9\u30C8",
-      "settings.ai.usageCostPeriod": "\u76F4\u8FD1 {days} \u65E5\u306E\u6982\u7B97",
-      "settings.ai.usageCostFootnote": "\u7D04 ${rate}/\u56DE\u3067\u6982\u7B97\u3002\u76F4\u8FD1 {days} \u65E5\u306E\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 {total} \u56DE\u3002\u53C2\u8003\u5024\u3067\u3059\u3002",
-      "settings.ai.usageChartAria": "\u76F4\u8FD17\u65E5\u306E\u30EA\u30AF\u30A8\u30B9\u30C8\u68D2\u30B0\u30E9\u30D5",
-      "settings.ai.usageLegendPlatform": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0",
-      "settings.ai.usageLegendOther": "\u305D\u306E\u4ED6",
-      "plugin.hero.sdk2": "SDK 2.0: AI \u30E2\u30FC\u30C9\u3068\u30C7\u30D0\u30C3\u30B0\u8981\u7D04\u3092\u8AAD\u307F\u53D6\u308C\u307E\u3059\u3002\u30DE\u30FC\u30B1\u30C3\u30C8\u306E\u300CSDK v2 \u72B6\u614B\u300D\u30C7\u30E2\u3092\u8A66\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      "plugin.sdkDoc": "\u30D7\u30E9\u30B0\u30A4\u30F3 SDK 2.0 \u30C9\u30AD\u30E5\u30E1\u30F3\u30C8",
       "settings.ai.endpoint": "Local endpoint",
+      "settings.ai.keyMode": "AI access",
+      "settings.ai.keyModeByok": "Bring your own API key",
+      "settings.ai.keyModeByokHint": "Your key stays in the browser and calls the \u30D7\u30ED\u30D0\u30A4\u30C0\u30FC directly.",
+      "settings.ai.keyModePlatform": "Platform AI (no API key needed)",
+      "settings.ai.keyModePlatformHint": "After sign-in, \u30C1\u30E3\u30C3\u30C8 goes through our \u30B5\u30FC\u30D0\u30FC and counts toward your daily \u30AF\u30A9\u30FC\u30BF.",
       "settings.ai.keyPlaceholder": "Enter your API key",
       "settings.ai.model": "\u30E2\u30C7\u30EB",
+      "settings.ai.platformChecking": "Checking deployment\u2026",
+      "settings.ai.platformNotConfigured": "PLATFORM_DEEPSEEK_API_KEY is not set on the deployment. Platform mode is unavailable\u2014use BYOK or ask your admin.",
+      "settings.ai.platformReady": "Platform AI is configured on the \u30B5\u30FC\u30D0\u30FC ({provider}). \u30B5\u30A4\u30F3\u30A4\u30F3 to use platform mode.",
+      "settings.ai.platformReadyBadge": "\u30C1\u30E3\u30C3\u30C8, \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8, tab completion, and \u30D7\u30E9\u30B0\u30A4\u30F3s can use the platform gateway",
+      "settings.ai.platformStatus": "Platform AI service",
+      "settings.ai.platformUnreachable": "Could not reach /api/health. Check your \u30CD\u30C3\u30C8\u30EF\u30FC\u30AF and try again.",
       "settings.ai.privacy": "\u30D7\u30E9\u30A4\u30D0\u30B7\u30FC",
       "settings.ai.privacyGuest": " \u30B5\u30A4\u30F3\u30A4\u30F3 to sync cloud \u30AF\u30A9\u30FC\u30BF usage.",
       "settings.ai.privacyText": "API keys stay in your browser. We do not forward them to third parties beyond your chosen \u30E2\u30C7\u30EB \u30D7\u30ED\u30D0\u30A4\u30C0\u30FC.",
       "settings.ai.provider": "AI \u30D7\u30ED\u30D0\u30A4\u30C0\u30FC",
+      "settings.ai.usageChartAria": "Seven-day AI \u30EA\u30AF\u30A8\u30B9\u30C8 bar chart",
+      "settings.ai.usageCostFootnote": "About ${rate}/\u30EA\u30AF\u30A8\u30B9\u30C8 estimate; {total} platform \u30EA\u30AF\u30A8\u30B9\u30C8s in the last {days} days. Informational only.",
+      "settings.ai.usageCostPeriod": "Est. cost ({days}d)",
+      "settings.ai.usageCostToday": "Est. cost today",
+      "settings.ai.usageDashboardDesc": "\u95B2\u89A7\u5C02\u7528 stats: platform gateway \u30EA\u30AF\u30A8\u30B9\u30C8s, daily \u30AF\u30A9\u30FC\u30BF, and estimated cost (not an invoice). BYOK direct calls are not counted as platform.",
+      "settings.ai.usageDashboardError": "Could not load the usage dashboard. \u30B5\u30A4\u30F3\u30A4\u30F3 and ensure the database is available.",
+      "settings.ai.usageDashboardLoading": "\u8AAD\u307F\u8FBC\u307F\u4E2D usage data\u2026",
+      "settings.ai.usageDashboardRefresh": "\u66F4\u65B0",
+      "settings.ai.usageDashboardTitle": "Platform AI usage",
+      "settings.ai.usageLegendOther": "Other",
+      "settings.ai.usageLegendPlatform": "Platform gateway",
+      "settings.ai.usageOtherToday": "Other today (sync / BYOK)",
+      "settings.ai.usagePlatformProvider": "Platform route",
+      "settings.ai.usagePlatformToday": "Platform \u30EA\u30AF\u30A8\u30B9\u30C8s today",
+      "settings.ai.usageQuotaNearLimit": "Daily \u30AF\u30A9\u30FC\u30BF at {percent}% ({used}/{limit}) \u2014 nearing limit",
+      "settings.aideRuntime.engineProductionCardDesc": "AIDE \u5B9F\u884Ctime production engine is on (VITE_AIDE_RUNTIME \xB7 {mode}). Spec enqueue runs queue.before hooks; \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 apply and verify failures trigger follow-up hooks and write runtime-state.json.",
+      "settings.aideRuntime.productionCardDesc": "Activity Line production UI is on (VITE_AIDE_ACTIVITY_LINE). \u30AD\u30E5\u30FC, \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 writes, and Hook events appear above \u30C1\u30E3\u30C3\u30C8.",
+      "settings.aideRuntime.stubCardDesc": "Activity Line and orchestrator are in {mode} mode: events only, no queue drainage. \u6709\u52B9\u5316 via VITE_AIDE_RUNTIME_UI or session flag.",
+      "settings.aideRuntime.stubCardTitle": "AIDE \u5B9F\u884Ctime stub",
+      "settings.backgroundAgent.cron": "Job processor",
+      "settings.backgroundAgent.desc": "\u30B5\u30FC\u30D0\u30FC-side \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 after closing the tab; needs VITE_BACKGROUND_AGENT + cron.",
+      "settings.backgroundAgent.enabled": "Client UI",
+      "settings.backgroundAgent.envHint": "Off in production by default; see docs/V1.1_FEATURE_FLAGS.md and V1.3_ENV.md.",
+      "settings.backgroundAgent.title": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9 \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8",
       "settings.badge.beta": "Beta",
       "settings.badge.comingSoon": "Coming soon",
       "settings.badge.enabled": "\u6709\u52B9",
@@ -9044,32 +10916,97 @@ var init_translationsJaBulk = __esm({
       "settings.features.noticeDesc": "Items below describe what the product already does\u2014they are not toggles. Configure MCP and rules below.",
       "settings.features.noticeTitle": "Capability overview",
       "settings.footer.hint": "Changes apply to the \u73FE\u5728 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 after save.",
+      "settings.index.cappedHint": "Index cap reached \u2014 some \u30D5\u30A1\u30A4\u30EB are excluded from @ and semantic search. See the link below.",
       "settings.index.card.desc": "When indexing is ready, type `@` in \u30C1\u30E3\u30C3\u30C8 to pick \u30D5\u30A1\u30A4\u30EB/symbols for \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8 injection. Indexing is affected by .gitignore and \u30D5\u30A1\u30A4\u30EB size caps.",
       "settings.index.card.title": "Index & @ search",
       "settings.index.limitLinkLabel": "Browser limitations",
       "settings.index.retry": "\u518D\u8A66\u884C indexing",
+      "settings.index.telemetry": "Last index {ms}ms ({mode})",
       "settings.network.desc": "If the site is slow or sign-in fails, vercel.app may be unstable in your region. \u518D\u8A66\u884C on another \u30CD\u30C3\u30C8\u30EF\u30FC\u30AF, use BYOK locally, or install the Windows desktop build. Custom domain: docs/CUSTOM_DOMAIN.md.",
       "settings.network.title": "\u30CD\u30C3\u30C8\u30EF\u30FC\u30AF & access",
       "settings.payload.card.desc": "Preflight estimates \u30EA\u30AF\u30A8\u30B9\u30C8 payload and shows \u201CSlim and send\u201D before oversized calls.",
       "settings.payload.card.providerBudget": "\u73FE\u5728 \u30D7\u30ED\u30D0\u30A4\u30C0\u30FC budget: {provider} about {budgetKb}KB",
       "settings.payload.card.strategy": "Slim strategy: compress history, trim input, temporarily disable \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9/@ \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8",
       "settings.payload.card.title": "\u30B3\u30F3\u30C6\u30AD\u30B9\u30C8 budget (413 prevention)",
+      "settings.pluginOps.clientFlagsLink": "v1.2.6 client flags",
+      "settings.pluginOps.desc": "\u30B5\u30FC\u30D0\u30FC status from GET /api/health; review queue is in-memory per instance.",
+      "settings.pluginOps.envDocLink": "Vercel production env",
+      "settings.pluginOps.reviewsCount": "{total} total \xB7 {pending} pending",
+      "settings.pluginOps.reviewsEmpty": "No submissions yet (requires PLUGIN_PUBLISH_ENABLED)",
+      "settings.pluginOps.reviewsFilter": "\u30B9\u30C6\u30FC\u30BF\u30B9 filter",
+      "settings.pluginOps.reviewsFilterAll": "All",
+      "settings.pluginOps.reviewsFilterPending": "Pending",
+      "settings.pluginOps.reviewsHint": "reviewId is for log correlation; \u30B5\u30FC\u30D0\u30FC list clears on cold start.",
+      "settings.pluginOps.reviewsRefresh": "\u66F4\u65B0 review list",
+      "settings.pluginOps.reviewsTitle": "My publish reviews",
       "settings.section.current": "Section",
+      "settings.semantic.indexCappedHint": "Index is capped \u2014 semantic search only covers the indexed subset. Use desktop or a smaller \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 for large repos.",
+      "settings.semantic.indexNotReady": "Index not ready yet \u2014 import a \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 and wait for indexing before using semantic @.",
       "settings.semantic.onboarding.enableHint": "After enabling semantic search, @ and semantic retrieval can inject relevant \u30B3\u30FC\u30C9 snippets. \u30A4\u30F3\u30DD\u30FC\u30C8 your \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 first and wait for indexing to finish.",
       "settings.semantic.onboarding.needKey": "\u30BB\u30DE\u30F3\u30C6\u30A3\u30C3\u30AF search requires an Embedding API key (not Ollama). Fill it in your AI config, then enable the switch.",
-      "settings.tabCompletion.desc": "Inline Tab completions in the editor. BYOK, platform AI, and Ollama supported; FIM preferred for DeepSeek / Qwen / Ollama.",
+      "settings.tabCompletion.debounce": "Trigger delay (ms)",
+      "settings.tabCompletion.debounceDesc": "Wait after you stop typing before \u30EA\u30AF\u30A8\u30B9\u30C8ing (120\u2013800).",
+      "settings.tabCompletion.desc": "Inline Tab completions in the editor. Supports BYOK, platform AI, and Ollama; DeepSeek / Qwen / Ollama prefer FIM, others use platform or \u30C1\u30E3\u30C3\u30C8 fallback.",
+      "settings.tabCompletion.failureReason.empty": "empty",
+      "settings.tabCompletion.failureReason.error": "\u30A8\u30E9\u30FC",
+      "settings.tabCompletion.failureReason.http413": "payload too large",
+      "settings.tabCompletion.failureReason.timeout": "timeout",
+      "settings.tabCompletion.failureReason.unknown": "unknown",
       "settings.tabCompletion.maxLines": "Max completion lines",
       "settings.tabCompletion.maxLinesDesc": "Maximum lines per suggestion (1\u201312).",
-      "settings.tabCompletion.debounce": "Trigger delay (ms)",
-      "settings.tabCompletion.debounceDesc": "Wait after typing stops (120\u2013800).",
-      "settings.tabCompletion.pathTitle": "Active completion path",
-      "settings.tabCompletion.path.fim": "FIM API (preferred)",
-      "settings.tabCompletion.path.platform": "Platform AI",
-      "settings.tabCompletion.path.chat": "Chat fallback",
-      "settings.tabCompletion.path.off": "AI not configured",
-      "settings.tabCompletion.metricsTitle": "Session stats",
-      "settings.tabCompletion.metricsDesc": "Hits {hits} \xB7 misses {misses} \xB7 FIM {fim} \xB7 platform {platform} \xB7 chat {chat} \xB7 avg {avgMs} ms \xB7 last {last}",
+      "settings.tabCompletion.metricsCardTitle": "Tab completion metrics (v1.3)",
+      "settings.tabCompletion.metricsDesc": "Cache hits {hits} \xB7 misses {misses} \xB7 skipped {skipped} \xB7 FIM ok {fim} (attempts {fimAttempts} \xB7 \u30C1\u30E3\u30C3\u30C8 fallback {fimFallback}) \xB7 platform {platform} \xB7 \u30C1\u30E3\u30C3\u30C8 {chat} \xB7 avg {avgMs} ms \xB7 last {last}",
+      "settings.tabCompletion.metricsFailures": "Failures {count} ({reason})",
+      "settings.tabCompletion.metricsP95": "Latency percentiles: P50 {p50} ms \xB7 P95 {p95} ms \xB7 samples {samples} \xB7 target < {target} ms",
+      "settings.tabCompletion.metricsP95Fail": "above target",
+      "settings.tabCompletion.metricsP95Pass": "within target",
+      "settings.tabCompletion.metricsP95Unknown": "Latency percentiles: no samples yet (target < {target} ms)",
       "settings.tabCompletion.metricsReset": "Reset stats",
+      "settings.tabCompletion.metricsTitle": "Session stats",
+      "settings.tabCompletion.p95CollectHint": "Type in the editor \u2014 Tab latency P95 samples will appear here.",
+      "settings.tabCompletion.path.chat": "\u30C1\u30E3\u30C3\u30C8 fallback (BYOK, non-FIM \u30E2\u30C7\u30EBs)",
+      "settings.tabCompletion.path.fim": "FIM API (low latency, preferred)",
+      "settings.tabCompletion.path.off": "AI not configured; completions disabled",
+      "settings.tabCompletion.path.platform": "Platform AI (signed in + platform key mode)",
+      "settings.tabCompletion.pathTitle": "Active completion path",
+      "settings.tabCompletion.tabPlusPlusProductionOn": "Tab++ production: multiline ghost on (v1.5 F1)",
+      "settings.tabCompletion.tabPlusPlusProductionTargets": "Tab++ production targets: P95 < {p95} ms \xB7 debounce {debounce} ms \xB7 \u2264{lines} lines",
+      "settings.v13.backgroundAgent": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9 \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 UI",
+      "settings.v13.desc": "Python navigation, embedding persist cache, index telemetry, and background \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 flags.",
+      "settings.v13.embeddingMetrics": "Embedding cache: {hits} hits \xB7 {misses} misses \xB7 {expired} expired",
+      "settings.v13.embeddingPersist": "Embedding persist cache",
+      "settings.v13.indexBuildMode": "Last index: {mode} \xB7 {ms}ms",
+      "settings.v13.indexTelemetry": "Index build telemetry",
+      "settings.v13.pythonNav": "Python cross-\u30D5\u30A1\u30A4\u30EB navigation",
+      "settings.v13.title": "v1.3 capabilities (\u95B2\u89A7\u5C02\u7528)",
+      "settings.v14.backgroundAgentProduction": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9 \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 production policy",
+      "settings.v14.catalogCounts": "Official MCP {mcp} \xB7 \u30D7\u30E9\u30B0\u30A4\u30F3 catalog {plugins}",
+      "settings.v14.desc": "v1.4 production policies: Tab/FIM \xB7 2k index \xB7 Git hunks \xB7 desktop \xB7 background \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 \xB7 MCP/\u30D7\u30E9\u30B0\u30A4\u30F3s.",
+      "settings.v14.desktopOnly": "Desktop only",
+      "settings.v14.desktopShellProduction": "Desktop shell production policy",
+      "settings.v14.gitHunkStage": "Git hunk stage",
+      "settings.v14.index2kProduction": "Index 2k / Worker production policy",
+      "settings.v14.indexBuildMode": "Index build mode",
+      "settings.v14.indexBuildMode.auto": "Auto (worker for large repos)",
+      "settings.v14.indexBuildMode.sync": "Main-thread sync",
+      "settings.v14.indexBuildMode.worker": "Force worker",
+      "settings.v14.indexCap": "Index cap {current} (desktop {desktop})",
+      "settings.v14.indexLastBuild": "Last index: {mode} \xB7 {ms}ms",
+      "settings.v14.mcpPluginProduction": "MCP/\u30D7\u30E9\u30B0\u30A4\u30F3 production policy",
+      "settings.v14.p95Target": "Tab latency target: P95 < {ms}ms",
+      "settings.v14.productionDebounce": "Production default debounce: {ms}ms",
+      "settings.v14.tabFimProduction": "Tab/FIM production policy",
+      "settings.v14.title": "v1.4 capabilities (\u95B2\u89A7\u5C02\u7528)",
+      "settings.v15.activityLine": "Activity Line production UI",
+      "settings.v15.aideRuntime": "AIDE \u5B9F\u884Ctime engine",
+      "settings.v15.byokLegacy": "BYOK legacy entry",
+      "settings.v15.desc": "v1.5 production flags: platform \u30E2\u30C7\u30EBs \xB7 Tab++ \xB7 Spec Artifacts \xB7 AIDE \u5B9F\u884Ctime \xB7 Activity Line.",
+      "settings.v15.orchestratorMode": "Orchestrator mode: {mode}",
+      "settings.v15.platformModels": "Platform \u30E2\u30C7\u30EBs / BYOK off",
+      "settings.v15.specArtifactsV2": "Spec Artifacts v2 (hooks.yaml)",
+      "settings.v15.tabPlusPlus": "Tab++ production (multiline ghost \xB7 FIM)",
+      "settings.v15.tabPlusPlusTargets": "Tab++ targets: P95 < {p95} ms \xB7 debounce {debounce} ms \xB7 \u2264{lines} lines",
+      "settings.v15.title": "v1.5 capabilities (\u95B2\u89A7\u5C02\u7528)",
       "subscription.betaNote": "Public beta: Pro and Team features are \u7121\u6599. Paid checkout will open here when billing goes live.",
       "subscription.cancelEnd": "\u30AD\u30E3\u30F3\u30BB\u30EB at period end",
       "subscription.cancelFailed": "Could not cancel \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3",
@@ -9098,26 +11035,26 @@ var init_translationsJaBulk = __esm({
       "subscription.payNotConfigured": "\u652F\u6255\u3044s are not configured on the \u30B5\u30FC\u30D0\u30FC.",
       "subscription.paySuccessDetail": "\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9d to {plan}. \u30AF\u30A9\u30FC\u30BF synced.",
       "subscription.paymentMethods": "\u652F\u6255\u3044 methods",
-      "subscription.plan.enterprise.desc": "Teams and heavy usage, \xA549/mo.",
+      "subscription.plan.enterprise.desc": "Teams and heavy usage, $19.99/mo.",
       "subscription.plan.enterprise.f1": "\u7121\u5236\u9650 \u30AF\u30A9\u30FC\u30BF",
       "subscription.plan.enterprise.f2": "\u7121\u5236\u9650 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
       "subscription.plan.enterprise.f3": "Team features (\u30D7\u30E9\u30F3ned)",
       "subscription.plan.enterprise.name": "Team",
-      "subscription.plan.free.desc": "Learning and small \u30D7\u30ED\u30B8\u30A7\u30AF\u30C8s with generous \u30AF\u30A9\u30FC\u30BF.",
-      "subscription.plan.free.f1": "Basic AI \u30C1\u30E3\u30C3\u30C8",
-      "subscription.plan.free.f2": "10 cloud \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
-      "subscription.plan.free.f3": "200 \u30EA\u30AF\u30A8\u30B9\u30C8s / day",
+      "subscription.plan.free.desc": "Learning and small \u30D7\u30ED\u30B8\u30A7\u30AF\u30C8s with platform AI after sign-in.",
+      "subscription.plan.free.f1": "Platform AI \xB7 economy \u30E2\u30C7\u30EBs (Flash / Lite)",
+      "subscription.plan.free.f2": "\u7121\u5236\u9650 cloud \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "subscription.plan.free.f3": "200 weighted \u30AF\u30A9\u30FC\u30BF units / day",
       "subscription.plan.free.name": "\u7121\u6599",
-      "subscription.plan.pro.desc": "Power users, \xA519/mo.",
-      "subscription.plan.pro.f1": "5000 \u30EA\u30AF\u30A8\u30B9\u30C8s / day",
+      "subscription.plan.pro.desc": "Power users, $9.99/mo.",
+      "subscription.plan.pro.f1": "2000 weighted \u30AF\u30A9\u30FC\u30BF units / day",
       "subscription.plan.pro.f2": "\u7121\u5236\u9650 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
-      "subscription.plan.pro.f3": "Secure Alipay checkout",
+      "subscription.plan.pro.f3": "Secure Stripe \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3",
       "subscription.plan.pro.name": "Pro",
       "subscription.plans.loadError": "Could not load \u30D7\u30E9\u30F3s online. Showing defaults.",
       "subscription.portalFailed": "Could not open Stripe portal",
       "subscription.portalPageFailed": "Could not open billing page",
       "subscription.pricing.dev": "Dev/integration: one-click mock \u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9 when merchants are not configured",
-      "subscription.pricing.live": "Pay with {methods}; Pro \xA519/mo, Team \xA549/mo",
+      "subscription.pricing.live": "Pay with {methods}; Pro \xA539/mo, Team \xA579/mo",
       "subscription.processing": "\u51E6\u7406\u4E2D\u2026",
       "subscription.resume": "Resume billing",
       "subscription.resumeFailed": "Could not resume \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3",
@@ -9125,7 +11062,6 @@ var init_translationsJaBulk = __esm({
       "subscription.resumed": "\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 resumed",
       "subscription.resuming": "Resuming\u2026",
       "subscription.stripePortal": "Stripe billing portal",
-      "subscription.unit.workspaces": "",
       "subscription.updated": "\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 updated",
       "subscription.upgraded": "\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9d to {plan}",
       "collab.aria": "Live \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 Beta",
@@ -9200,11 +11136,17 @@ var init_translationsJaBulk = __esm({
       "welcome.footer.terms": "\u5229\u7528\u898F\u7D04",
       "welcome.gaBadge": "GA",
       "welcome.networkTips": "Slow load or API timeouts? Access to vercel.app can be unstable in some regions. \u518D\u8A66\u884C later, switch \u30CD\u30C3\u30C8\u30EF\u30FC\u30AFs, or install the Windows desktop app (local disk and terminal do not rely on browser \u30D5\u30A1\u30A4\u30EB APIs). Custom domain \u30D7\u30E9\u30F3ned in v1.0.8.",
-      "welcome.onboarding.desc": "\u2460 Pick a \u30C6\u30F3\u30D7\u30EC\u30FC\u30C8 or import a folder \u2192 \u2461 Add an AI key in \u8A2D\u5B9A (optional) \u2192 \u2462 \u5B9F\u884C with Ctrl+Enter.",
+      "welcome.onboarding.desc": "\u2460 Sign up (platform AI) \u2192 \u2461 \u30C6\u30F3\u30D7\u30EC\u30FC\u30C8 or import \u2192 \u2462 \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 \xB7 Ctrl+Enter run \xB7 F5 debug.",
       "welcome.onboarding.dismiss": "Got it",
       "welcome.onboarding.title": "New here? Three steps to get started",
+      "welcome.platformCta": "Sign up \u7121\u6599 to use platform AI\u2014no DeepSeek or \u958B\u304FAI API key required (Cursor-style out of the box).",
+      "welcome.platformCtaButton": "Sign up \u7121\u6599",
+      "welcome.platformCtaSignupPage": "Or open the signup page (SEO-friendly)",
       "welcome.rcBadge": "RC beta",
       "welcome.recentEmptyTitle": "Start from a \u30C6\u30F3\u30D7\u30EC\u30FC\u30C8 or \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "welcome.shortcut.debugContinue": "\u7D9A\u884C debug (when paused)",
+      "welcome.shortcut.debugPanel": "\u958B\u304F debug panel",
+      "welcome.shortcut.debugStop": "\u505C\u6B62 debug",
       "welcome.stableBadge": "v{version} stable",
       "toolbar.backgroundJobs": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9",
       "toolbar.fileCount": "\u30D5\u30A1\u30A4\u30EB",
@@ -9215,20 +11157,36 @@ var init_translationsJaBulk = __esm({
       "toolbar.logoutTitle": "\u30B5\u30A4\u30F3\u30A2\u30A6\u30C8",
       "toolbar.plans.guest": "View \u30D7\u30E9\u30F3s",
       "toolbar.plans.team": "\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9 to Team",
-      "toolbar.plans.upgrade": "\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9 from \xA519",
+      "toolbar.plans.upgrade": "\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9 from {price}",
       "toolbar.plugin": "\u30D7\u30E9\u30B0\u30A4\u30F3: {label}",
       "command.ai": "AI assistant",
       "command.ai.sub": "\u958B\u304F \u30C1\u30E3\u30C3\u30C8 panel",
       "command.autosaveOff": "\u7121\u52B9\u5316 autosave",
       "command.autosaveOn": "\u6709\u52B9\u5316 autosave",
       "command.cat.ai": "AI",
+      "command.cat.debug": "Debug",
       "command.cat.files": "\u30D5\u30A1\u30A4\u30EB",
       "command.cat.index": "Index (@)",
       "command.cat.npm": "npm scripts",
       "command.cat.run": "\u5B9F\u884C",
+      "command.cat.tasks": "Tasks",
       "command.cat.view": "View",
       "command.collab": "Live \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3",
       "command.collab.sub": "\u53C2\u52A0 a shared \u30EB\u30FC\u30E0",
+      "command.debug.continue": "\u7D9A\u884C",
+      "command.debug.continue.sub": "\u5B9F\u884C until the next breakpoint",
+      "command.debug.panel": "\u958B\u304F debug panel",
+      "command.debug.panel.sub": "Breakpoints, call stack, and locals",
+      "command.debug.start": "Start debugging",
+      "command.debug.start.sub": "Launch Node inspect for the active \u30D5\u30A1\u30A4\u30EB",
+      "command.debug.stepInto": "Step into",
+      "command.debug.stepInto.sub": "Step into the function call",
+      "command.debug.stepOut": "Step out",
+      "command.debug.stepOut.sub": "\u5B9F\u884C until the \u73FE\u5728 function returns",
+      "command.debug.stepOver": "Step over",
+      "command.debug.stepOver.sub": "\u5B9F\u884C the \u73FE\u5728 line and pause on the next",
+      "command.debug.stop": "\u505C\u6B62 debug",
+      "command.debug.stop.sub": "End the \u73FE\u5728 debug session",
       "command.empty.desc": "Try a \u30D5\u30A1\u30A4\u30EB name, feature, or @search (e.g. @login).",
       "command.empty.title": "No matching commands",
       "command.exportFile": "\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8 \u73FE\u5728 \u30D5\u30A1\u30A4\u30EB",
@@ -9236,8 +11194,6 @@ var init_translationsJaBulk = __esm({
       "command.footer.close": "ESC close",
       "command.footer.enter": "Enter run",
       "command.footer.navigate": "\u2191\u2193 navigate",
-      "command.git": "Git \u30D1\u30CD\u30EB",
-      "command.git.sub": "\u5909\u66F4\u3068\u5C65\u6B74",
       "command.import": "\u30A4\u30F3\u30DD\u30FC\u30C8 \u30D5\u30A1\u30A4\u30EB or \u30D7\u30ED\u30B8\u30A7\u30AF\u30C8",
       "command.importFolder": "\u30A4\u30F3\u30DD\u30FC\u30C8 folder to \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
       "command.importFolder.sub": "\u958B\u304F import panel",
@@ -9256,6 +11212,7 @@ var init_translationsJaBulk = __esm({
       "command.review": "\u30B3\u30FC\u30C9 review",
       "command.review.sub": "Quality and risk checks",
       "command.run.sub": "Execute the active \u30D5\u30A1\u30A4\u30EB",
+      "command.scriptsPanel": "\u958B\u304F NPM Scripts panel",
       "command.search": "Global search",
       "command.search.sub": "Find in \u30D5\u30A1\u30A4\u30EB",
       "command.settings": "\u8A2D\u5B9A",
@@ -9264,6 +11221,7 @@ var init_translationsJaBulk = __esm({
       "command.share.sub": "Snapshot or import share",
       "command.snippets": "Snippet library",
       "command.snippets.sub": "Insert common snippets",
+      "command.tasksPanel": "\u958B\u304F tasks panel",
       "command.themePicker": "\u30C6\u30FC\u30DE picker",
       "command.themePicker.sub": "Browse editor themes",
       "command.themeToDark": "Switch to dark theme",
@@ -9293,13 +11251,8 @@ var init_translationsJaBulk = __esm({
       "chat.backgroundRun.upgradeHint": "\u7121\u6599 \u30D7\u30E9\u30F3 background job \u30AF\u30A9\u30FC\u30BF exceeded. \u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9 to Pro for more.",
       "chat.configured": "\u6E96\u5099\u5B8C\u4E86",
       "chat.configuredShort": "OK",
-      "chat.pendingConfigShort": "\u8981\u8A2D\u5B9A",
-      "chat.pendingPlatformSignInShort": "\u8981\u30ED\u30B0\u30A4\u30F3",
-      "chat.controlsExpand": "AI \u30AA\u30D7\u30B7\u30E7\u30F3\u3092\u5C55\u958B",
-      "chat.controlsCollapse": "AI \u30AA\u30D7\u30B7\u30E7\u30F3\u3092\u6298\u308A\u305F\u305F\u3080",
-      "chat.modesGroup": "AI \u30E2\u30FC\u30C9",
-      "chat.planModeOn": "Plan \u30E2\u30FC\u30C9 ON",
-      "chat.planModeOff": "Plan \u30E2\u30FC\u30C9\u3092\u30AA\u30F3",
+      "chat.controlsCollapse": "Collapse AI options",
+      "chat.controlsExpand": "Expand AI options",
       "chat.error.abortedBody": "This reply was stopped manually.",
       "chat.error.abortedHint": "Edit your question and send again.",
       "chat.error.abortedTitle": "Generation stopped",
@@ -9327,15 +11280,35 @@ var init_translationsJaBulk = __esm({
       "chat.indexRetry": "\u518D\u8A66\u884C",
       "chat.inputPlaceholder": "\u30E1\u30C3\u30BB\u30FC\u30B8; @ \u30D5\u30A1\u30A4\u30EB/symbol for \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8; Enter to send",
       "chat.inputPlaceholderNoConfig": "Configure API key or local Ollama first",
+      "chat.largeRepo.capped": "Index cap reached: {indexed}/{eligible} \u30D5\u30A1\u30A4\u30EB indexed; @ and semantic search may be incomplete",
+      "chat.largeRepo.nearCap": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 near index cap ({indexed}/{eligible}, max ~{max} \u30D5\u30A1\u30A4\u30EB). Narrow scope or use the desktop app",
       "chat.mcp.followUp": "MCP \u30C4\u30FC\u30EB ran. Results below. \u7D9A\u884C the task; output another <<<mcp-tool>>> block if needed.\\n\\n{log}",
       "chat.mcp.results": "**MCP tool results**",
+      "chat.mention.blockSendAmbiguousDetail": "{count} @ mention(s) match multiple \u30D5\u30A1\u30A4\u30EB \u2014 use a path or a more specific symbol",
+      "chat.mention.blockSendAmbiguousTitle": "Cannot send: ambiguous @ symbols",
+      "chat.mention.blockSendDetail": "{count} @ mention(s) could not be resolved \u2014 fix them before sending",
+      "chat.mention.blockSendTitle": "Cannot send: unresolved @ mentions",
+      "chat.mention.preflightAmbiguous": "Ambiguous symbol: {token} ({paths})",
+      "chat.mention.preflightAmbiguousBlockHint": "Ambiguous symbols block send \u2014 prefer @path, @\u30D5\u30A1\u30A4\u30EB#symbol, or slim send",
+      "chat.mention.preflightBannerTitle": "@ mention preflight",
+      "chat.mention.preflightBlockHint": "\u9001\u4FE1 is blocked while unresolved @ mentions remain",
+      "chat.mention.preflightSendHint": "Unresolved @ tokens will be skipped on send",
+      "chat.mention.preflightTooMany": "More than {max} @ mentions ({count})",
+      "chat.mention.preflightUnresolved": "Unresolved: {tokens}",
+      "chat.mention.slimPastAmbiguous": "Slim send",
       "chat.mentionBuildingBlocked": "Indexing in progress \u2014 wait before using @ to pick \u30D5\u30A1\u30A4\u30EB/symbols.",
       "chat.mentionOnboardingBody": "Type `@` to select a \u30D5\u30A1\u30A4\u30EB/symbol and inject \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8. If the list is empty, indexing may not be ready yet\u2014try again after indexing completes.",
       "chat.mentionOnboardingDismiss": "Got it",
       "chat.mentionOnboardingTitle": "First @ onboarding",
+      "chat.modesGroup": "AI modes",
       "chat.needConfig": "Finish AI setup before sending \u30E1\u30C3\u30BB\u30FC\u30B8s.",
       "chat.needKey": "Configure an API key or switch to local Ollama before \u30C1\u30E3\u30C3\u30C8ting.",
       "chat.noModel": "No \u30E2\u30C7\u30EB selected",
+      "chat.payload.meterAria": "Estimated payload {estimatedKb} KB of {budgetKb} KB budget ({percent}%)",
+      "chat.payload.meterLabel": "\u30B3\u30F3\u30C6\u30AD\u30B9\u30C8 ~{estimatedKb}/{budgetKb} KB ({percent}%)",
+      "chat.payload.meterMcpNote": "Includes MCP \u30C4\u30FC\u30EB reserve",
+      "chat.payload.meterSemanticNote": "Includes semantic search reserve",
+      "chat.payload.meterToolLoopNote": "Includes \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 tool-loop reserve",
       "chat.payload.planHistory": "Compress history to latest {count} turns",
       "chat.payload.planInput": "Keep at most {count} chars from input",
       "chat.payload.planMention": "Temporarily disable @ mention injection",
@@ -9345,6 +11318,11 @@ var init_translationsJaBulk = __esm({
       "chat.payload.slimAndSend": "Slim and send",
       "chat.payload.stillTooLarge": "Still too large after slimming (about {estimatedKb}KB, budget {budgetKb}KB). Reduce @ mentions or disable \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8.",
       "chat.pendingConfig": "Setup needed",
+      "chat.pendingConfigShort": "Setup",
+      "chat.pendingPlatformSignInShort": "\u30B5\u30A4\u30F3\u30A4\u30F3",
+      "chat.planModeOff": "Turn on \u30D7\u30E9\u30F3 mode",
+      "chat.planModeOn": "\u30D7\u30E9\u30F3 mode on",
+      "chat.planShort": "\u30D7\u30E9\u30F3",
       "chat.preview": "\u30D7\u30EC\u30D3\u30E5\u30FC",
       "chat.prompt.editorFile": "\u73FE\u5728 editor \u30D5\u30A1\u30A4\u30EB:\\n```\\n{code}\\n```",
       "chat.prompt.userRequest": "User \u30EA\u30AF\u30A8\u30B9\u30C8: {action}",
@@ -9364,6 +11342,7 @@ var init_translationsJaBulk = __esm({
       "chat.workspaceCtx": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8",
       "chat.workspaceEmpty": "\u30A4\u30F3\u30DD\u30FC\u30C8 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 \u30D5\u30A1\u30A4\u30EB first to enable full \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8.",
       "chat.workspaceSelected": "{count} \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 \u30D5\u30A1\u30A4\u30EB selected",
+      "chat.workspaceShort": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
       "agent.error.toolsUnsupported": "\u30D7\u30ED\u30D0\u30A4\u30C0\u30FC ({provider}) does not support tool loop; using Markdown \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8.",
       "agent.settings.autoApply": "Auto-apply writes",
       "agent.settings.autoApplyDesc": "When off, write_\u30D5\u30A1\u30A4\u30EB is staged for Diff preview before applying to editor and disk.",
@@ -9427,11 +11406,11 @@ var init_translationsJaBulk = __esm({
       "notify.runtimeInit": "\u5B9F\u884Ctime still starting",
       "notify.runtimeInitFile": "\u5B9F\u884C the \u73FE\u5728 \u30D5\u30A1\u30A4\u30EB once WebContainer is ready.",
       "notify.runtimeInitNpm": "\u5B9F\u884C npm scripts once WebContainer is ready.",
+      "notify.scriptExitCode": "{script} exit \u30B3\u30FC\u30C9: {code}",
       "notify.scriptFailed": "Script \u5931\u6557",
-      "notify.scriptRan": "Script \u5B9F\u884C\u6E08\u307F",
+      "notify.scriptRan": "Script ran",
       "notify.scriptRanDetail": "npm run {script}",
-      "notify.scriptExitCode": "{script} \u7D42\u4E86\u30B3\u30FC\u30C9: {code}",
-      "notify.scriptTimeoutDetail": "{script} \u306F\u5B9F\u884C\u4E2D\u307E\u305F\u306F\u30BF\u30A4\u30E0\u30A2\u30A6\u30C8 \u2014 \u30BF\u30FC\u30DF\u30CA\u30EB\u3092\u78BA\u8A8D",
+      "notify.scriptTimeoutDetail": "{script} is still \u5B9F\u884C\u4E2D or timed out \u2014 check the terminal",
       "notify.sessionExpired": "Session expired",
       "notify.sessionExpiredDetail": "\u30B5\u30A4\u30F3\u30A4\u30F3 again to sync \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 and \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3.",
       "notify.signedIn": "\u30B5\u30A4\u30F3\u30A4\u30F3: {email}",
@@ -9465,165 +11444,8 @@ var init_translationsJaBulk = __esm({
       "editor.action.snippet": "Snippets",
       "editor.action.snippetTitle": "\u958B\u304F snippet library",
       "editor.action.terminal": "\u30BF\u30FC\u30DF\u30CA\u30EB",
-      "editor.action.terminalTitle": "\u30BF\u30FC\u30DF\u30CA\u30EB\u8868\u793A/\u975E\u8868\u793A (Ctrl+`)",
-      "command.cat.debug": "\u30C7\u30D0\u30C3\u30B0",
-      "command.debug.start": "\u30C7\u30D0\u30C3\u30B0\u958B\u59CB",
-      "command.debug.start.sub": "\u73FE\u5728\u306E\u30D5\u30A1\u30A4\u30EB\u3067 Node inspect \u3092\u8D77\u52D5",
-      "command.debug.panel": "\u30C7\u30D0\u30C3\u30B0\u30D1\u30CD\u30EB\u3092\u958B\u304F",
-      "command.debug.panel.sub": "\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u3001\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF\u3001\u5909\u6570",
-      "command.debug.stop": "\u30C7\u30D0\u30C3\u30B0\u505C\u6B62",
-      "command.debug.stop.sub": "\u73FE\u5728\u306E\u30C7\u30D0\u30C3\u30B0\u30BB\u30C3\u30B7\u30E7\u30F3\u3092\u7D42\u4E86",
-      "command.debug.continue": "\u7D9A\u884C",
-      "command.debug.continue.sub": "\u6B21\u306E\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u307E\u3067\u5B9F\u884C",
-      "command.debug.stepOver": "\u30B9\u30C6\u30C3\u30D7\u30AA\u30FC\u30D0\u30FC",
-      "command.debug.stepOver.sub": "\u73FE\u5728\u884C\u3092\u5B9F\u884C\u3057\u6B21\u306E\u884C\u3067\u505C\u6B62",
-      "command.debug.stepInto": "\u30B9\u30C6\u30C3\u30D7\u30A4\u30F3",
-      "command.debug.stepInto.sub": "\u95A2\u6570\u306E\u5185\u90E8\u306B\u5165\u308B",
-      "command.debug.stepOut": "\u30B9\u30C6\u30C3\u30D7\u30A2\u30A6\u30C8",
-      "command.debug.stepOut.sub": "\u73FE\u5728\u306E\u95A2\u6570\u304B\u3089\u629C\u3051\u308B",
-      "panel.debug.subtitle": "\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u3001\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF\u3001\u5B9F\u884C\u5236\u5FA1",
-      "welcome.shortcut.debugContinue": "\u30C7\u30D0\u30C3\u30B0\u7D9A\u884C\uFF08\u4E00\u6642\u505C\u6B62\u4E2D\uFF09",
-      "welcome.shortcut.debugStop": "\u30C7\u30D0\u30C3\u30B0\u505C\u6B62",
-      "welcome.shortcut.debugPanel": "\u30C7\u30D0\u30C3\u30B0\u30D1\u30CD\u30EB\u3092\u958B\u304F",
-      "bottomPanel.ariaLabel": "\u4E0B\u90E8\u30D1\u30CD\u30EB",
-      "bottomPanel.tab.terminal": "\u30BF\u30FC\u30DF\u30CA\u30EB",
-      "bottomPanel.tab.scripts": "NPM Scripts",
-      "bottomPanel.tab.tasks": "\u30BF\u30B9\u30AF",
-      "bottomPanel.tab.debug": "\u30C7\u30D0\u30C3\u30B0",
-      "debug.alphaBadge": "Alpha",
-      "debug.f2Badge": "F2",
-      "debug.f3Badge": "F3",
-      "debug.f4Badge": "F4",
-      "debug.f5Badge": "F5",
-      "debug.gaBadge": "1.1.7",
-      "debug.viewerBlockedTitle": "\u30B3\u30E9\u30DC Viewer \u306F\u30C7\u30D0\u30C3\u30B0\u4E0D\u53EF",
-      "debug.viewerBlockedDetail": "\u30C7\u30D0\u30C3\u30B0\u306F Host/Editor \u306E\u307F\u5229\u7528\u53EF\u80FD\u3067\u3059\u3002Viewer \u306F\u30B3\u30FC\u30C9\u95B2\u89A7\u306E\u307F\u3067\u3001\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u8A2D\u5B9A\u3084\u30C7\u30D0\u30C3\u30B0\u958B\u59CB\u306F\u3067\u304D\u307E\u305B\u3093\u3002",
-      "debug.continue": "\u7D9A\u884C",
-      "debug.stepOver": "\u30B9\u30C6\u30C3\u30D7\u30AA\u30FC\u30D0\u30FC",
-      "debug.stepInto": "\u30B9\u30C6\u30C3\u30D7\u30A4\u30F3",
-      "debug.stepOut": "\u30B9\u30C6\u30C3\u30D7\u30A2\u30A6\u30C8",
-      "debug.continueHint": "F5 \xB7 \u7D9A\u884C",
-      "debug.stepOverHint": "F10 \xB7 \u30B9\u30C6\u30C3\u30D7\u30AA\u30FC\u30D0\u30FC",
-      "debug.stepIntoHint": "F11 \xB7 \u30B9\u30C6\u30C3\u30D7\u30A4\u30F3",
-      "debug.stepOutHint": "Shift+F11 \xB7 \u30B9\u30C6\u30C3\u30D7\u30A2\u30A6\u30C8",
-      "debug.stopHint": "Shift+F5 \xB7 \u30C7\u30D0\u30C3\u30B0\u505C\u6B62",
-      "debug.runBlockedTitle": "\u30C7\u30D0\u30C3\u30B0\u30BB\u30C3\u30B7\u30E7\u30F3\u5B9F\u884C\u4E2D",
-      "debug.runBlockedDetail": "\u30B3\u30FC\u30C9\u3084 npm \u30B9\u30AF\u30EA\u30D7\u30C8\u3092\u5B9F\u884C\u3059\u308B\u524D\u306B\u30C7\u30D0\u30C3\u30B0\u3092\u505C\u6B62\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      "debug.alreadyActiveTitle": "\u30C7\u30D0\u30C3\u30B0\u306F\u65E2\u306B\u5B9F\u884C\u4E2D",
-      "debug.alreadyActiveDetail": "\u73FE\u5728\u306E\u30C7\u30D0\u30C3\u30B0\u30BB\u30C3\u30B7\u30E7\u30F3\u3092\u5148\u306B\u505C\u6B62\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      "debug.executionRequiresCdpTitle": "\u30C7\u30D0\u30C3\u30B0\u30B3\u30DE\u30F3\u30C9\u3092\u5B9F\u884C\u3067\u304D\u307E\u305B\u3093",
-      "debug.executionRequiresCdp": "\u7D9A\u884C/\u30B9\u30C6\u30C3\u30D7\u306B\u306F CDP \u540C\u671F\u3068\u4E00\u6642\u505C\u6B62\u72B6\u614B\u304C\u5FC5\u8981\u3067\u3059\u3002",
-      "debug.executionFailedTitle": "\u30C7\u30D0\u30C3\u30B0\u30B3\u30DE\u30F3\u30C9\u5931\u6557",
-      "debug.executionFailed": "\u30C7\u30D0\u30C3\u30AC\u306B\u30B3\u30DE\u30F3\u30C9\u3092\u9001\u4FE1\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002",
-      "debug.callStackTitle": "\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF",
-      "debug.callStackEmpty": "\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF\u60C5\u5831\u304C\u3042\u308A\u307E\u305B\u3093\u3002",
-      "debug.localsTitle": "\u30ED\u30FC\u30AB\u30EB\u5909\u6570",
-      "debug.localsEmpty": "\u3053\u306E\u30D5\u30EC\u30FC\u30E0\u306B\u30ED\u30FC\u30AB\u30EB\u5909\u6570\u306F\u3042\u308A\u307E\u305B\u3093\u3002",
-      "debug.inspectRequiresCdp": "\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF\u3068\u30ED\u30FC\u30AB\u30EB\u5909\u6570\u306B\u306F CDP \u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u540C\u671F\u304C\u5FC5\u8981\u3067\u3059\uFF08debugger \u6CE8\u5165\u30D5\u30A9\u30FC\u30EB\u30D0\u30C3\u30AF\u3067\u306F\u5229\u7528\u4E0D\u53EF\uFF09\u3002",
-      "debug.breakpointHint": "\u30AC\u30BF\u30FC\u3067 BP \u3092\u8FFD\u52A0\uFF1BAlt+\u30AF\u30EA\u30C3\u30AF\u3067\u6709\u52B9/\u7121\u52B9\uFF08\u7070\u8272=\u7121\u52B9\uFF09\u3002",
-      "debug.conditionalCdpHint": "\u6761\u4EF6\u5F0F\u306F CDP \u3067\u8A55\u4FA1\u3055\u308C\u307E\u3059\uFF08\u4F8B: x > 1\uFF09\u3002\u30D2\u30C3\u30C8\u56DE\u6570\u304C N \u306B\u9054\u3059\u308B\u307E\u3067\u81EA\u52D5\u3067\u7D9A\u884C\u3057\u307E\u3059\u3002",
-      "debug.conditionalInjectHint": "debugger; \u6CE8\u5165\u30E2\u30FC\u30C9\u3067\u3059\u3002\u6761\u4EF6/\u30D2\u30C3\u30C8\u56DE\u6570\u306B\u306F CDP \u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u540C\u671F\u304C\u5FC5\u8981\u3067\u3059\u3002",
-      "debug.breakpointCondition": "\u6761\u4EF6",
-      "debug.breakpointConditionPlaceholder": "\u4F8B: x > 1",
-      "debug.breakpointHitCount": "\u30D2\u30C3\u30C8\u56DE\u6570",
-      "debug.breakpointConditionalHover": "\u6761\u4EF6 BP \xB7 {line} \u884C \xB7 \u6761\u4EF6 {condition} \xB7 {hitCount} \u56DE\u30D2\u30C3\u30C8\u5F8C\u306B\u4E00\u6642\u505C\u6B62",
-      "debug.watchTitle": "\u30A6\u30A9\u30C3\u30C1",
-      "debug.watchHint": "\u6700\u5927 3 \u5F0F\uFF1B\u4E00\u6642\u505C\u6B62\u6642\u306B\u81EA\u52D5\u8A55\u4FA1\uFF08\u8AAD\u307F\u53D6\u308A\u5C02\u7528\uFF09\u3002",
-      "debug.watchPlaceholder": "\u30A6\u30A9\u30C3\u30C1 {n}",
-      "debug.watchSlotLabel": "\u30A6\u30A9\u30C3\u30C1\u5F0F {n}",
-      "debug.watchRequiresCdp": "\u30A6\u30A9\u30C3\u30C1\u306B\u306F CDP \u30C7\u30D0\u30C3\u30B0\u30BB\u30C3\u30B7\u30E7\u30F3\u304C\u5FC5\u8981\u3067\u3059\u3002",
-      "debug.watchResumeHint": "\u4E00\u6642\u505C\u6B62\u6642\u306B\u7D50\u679C\u3092\u8868\u793A",
-      "debug.watchPausedEmpty": "\u2014",
-      "debug.watchEmptyValue": "undefined",
-      "debug.alphaHint": "v1.1.7\uFF1A\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u3001\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF\u3001\u30B9\u30C6\u30C3\u30D7\u5B9F\u884C\u3002\u30B3\u30DE\u30F3\u30C9\u30D1\u30EC\u30C3\u30C8\u3067\u300C\u30C7\u30D0\u30C3\u30B0\u300D\u3068\u5165\u529B\u3057\u3066\u958B\u59CB\u3002",
-      "debug.start": "{file} \u3092\u30C7\u30D0\u30C3\u30B0",
-      "debug.stop": "\u30C7\u30D0\u30C3\u30B0\u505C\u6B62",
-      "debug.stopped": "\u30C7\u30D0\u30C3\u30B0\u3092\u505C\u6B62\u3057\u307E\u3057\u305F",
-      "debug.stoppedDetail": "\u30BB\u30C3\u30B7\u30E7\u30F3\u72B6\u614B\u3092\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F\uFF08\u30D7\u30ED\u30BB\u30B9\u306F WebContainer \u5185\u3067\u52D5\u4F5C\u4E2D\u306E\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059\uFF09\u3002",
-      "debug.inspectUrl": "Inspect URL",
-      "debug.attachSuccess": "\u30C7\u30D0\u30C3\u30AC\u304C\u5F85\u6A5F\u4E2D\u3067\u3059",
-      "debug.attachFailed": "\u30C7\u30D0\u30C3\u30AC\u306B\u63A5\u7D9A\u3067\u304D\u307E\u305B\u3093",
-      "debug.attachFailedNoUrl": "\u30BF\u30FC\u30DF\u30CA\u30EB\u51FA\u529B\u306B ws:// inspect URL \u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002",
-      "debug.waitRuntimeTitle": "\u30E9\u30F3\u30BF\u30A4\u30E0\u5F85\u6A5F\u4E2D",
-      "debug.waitRuntimeDesc": "WebContainer \u306E\u6E96\u5099\u5B8C\u4E86\u5F8C\u306B Node inspect \u3092\u958B\u59CB\u3067\u304D\u307E\u3059\u3002\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7\u3067\u30D5\u30A9\u30EB\u30C0\u3092\u958B\u3044\u3066\u3044\u308B\u5834\u5408\u306F\u3059\u3050\u306B\u30C7\u30D0\u30C3\u30B0\u3067\u304D\u307E\u3059\u3002",
-      "welcome.platformCta": "\u7121\u6599\u767B\u9332\u3067\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI\uFF08API Key \u4E0D\u8981\u30FBCursor \u98A8\uFF09",
-      "welcome.platformCtaButton": "\u7121\u6599\u767B\u9332\u3057\u3066\u958B\u59CB",
-      "welcome.platformCtaSignupPage": "\u767B\u9332\u30DA\u30FC\u30B8\u3092\u958B\u304F\uFF08\u691C\u7D22\u5411\u3051\uFF09",
-      "debug.breakpointsTitle": "\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8",
-      "debug.breakpointsEmpty": "\u884C\u756A\u53F7\u5DE6\u306E\u30AC\u30BF\u30FC\u3067\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u3092\u8FFD\u52A0\u3057\u307E\u3059\u3002",
-      "debug.breakpointHover": "\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8 \xB7 {line} \u884C\u76EE",
-      "debug.breakpointDisabledHover": "\u7121\u52B9\u306A\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8 \xB7 {line} \u884C\u76EE",
-      "debug.breakpointsRegistered": "{count} \u500B\u306E\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u3092\u540C\u671F",
-      "debug.syncModeCdp": "CDP \u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u540C\u671F",
-      "debug.syncModeInjected": "debugger \u6587\u30D5\u30A9\u30FC\u30EB\u30D0\u30C3\u30AF",
-      "debug.runtimeDesktop": "\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7 Node inspect",
-      "debug.runtimeWebContainer": "WebContainer",
-      "debug.injectFallbackTitle": "debugger \u6CE8\u5165\u30D5\u30A9\u30FC\u30EB\u30D0\u30C3\u30AF\u3092\u4F7F\u7528",
-      "debug.injectFallbackDetail": "\u30D6\u30E9\u30A6\u30B6\u304B\u3089 inspect WebSocket \u306B\u63A5\u7D9A\u3067\u304D\u306A\u3044\u305F\u3081\u3001\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u884C\u306B debugger; \u3092\u6CE8\u5165\u3057\u307E\u3057\u305F\u3002",
-      "debug.pausedAt": "{file}:{line} \u3067\u4E00\u6642\u505C\u6B62",
-      "debug.phase.idle": "\u5F85\u6A5F",
-      "debug.phase.starting": "\u8D77\u52D5\u4E2D\u2026",
-      "debug.phase.listening": "\u30C7\u30D0\u30C3\u30AC\u63A5\u7D9A\u5F85\u3061\u2026",
-      "debug.phase.attached": "inspect URL \u3092\u691C\u51FA",
-      "debug.phase.running": "\u5B9F\u884C\u4E2D",
-      "debug.phase.paused": "\u4E00\u6642\u505C\u6B62",
-      "debug.phase.ended": "\u7D42\u4E86",
-      "debug.phase.failed": "\u5931\u6557",
-      "bottomPanel.resize": "\u4E0B\u90E8\u30D1\u30CD\u30EB\u306E\u9AD8\u3055\u3092\u8ABF\u6574",
-      "bottomPanel.resizeHint": "\u30C9\u30E9\u30C3\u30B0\u3067\u30EA\u30B5\u30A4\u30BA\uFF1B\u30C0\u30D6\u30EB\u30AF\u30EA\u30C3\u30AF\u3067\u65E2\u5B9A\u5024\u306B\u623B\u3059",
-      "terminal.title": "\u30BF\u30FC\u30DF\u30CA\u30EB",
-      "terminal.running": "\u5B9F\u884C\u4E2D",
-      "terminal.run": "\u5B9F\u884C",
-      "terminal.clear": "\u30AF\u30EA\u30A2",
-      "terminal.hint": "\u300C\u5B9F\u884C\u300D\u3067\u73FE\u5728\u306E\u30D5\u30A1\u30A4\u30EB\u3092\u5B9F\u884C\u3059\u308B\u304B\u3001\u4E0B\u3067 shell \u30B3\u30DE\u30F3\u30C9\u3092\u5165\u529B\uFF08Enter \u3067\u9001\u4FE1\uFF09\u3002",
-      "terminal.desktopHint": "\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7 shell\uFF1A\u30B3\u30DE\u30F3\u30C9\u5165\u529B\u5F8C Enter \u3067\u5B9F\u884C\u3002",
-      "terminal.readOnly": "\u30B3\u30E9\u30DC\u95B2\u89A7\u5C02\u7528\u30E2\u30FC\u30C9\u3067\u306F\u30BF\u30FC\u30DF\u30CA\u30EB\u5165\u529B\u306F\u7121\u52B9\u3067\u3059\u3002",
-      "terminal.sessionsAria": "\u30BF\u30FC\u30DF\u30CA\u30EB\u30BB\u30C3\u30B7\u30E7\u30F3",
-      "terminal.sessionLabel": "\u30BB\u30C3\u30B7\u30E7\u30F3 {label}",
-      "terminal.newSession": "\u65B0\u898F\u30BF\u30FC\u30DF\u30CA\u30EB\u30BB\u30C3\u30B7\u30E7\u30F3",
-      "terminal.closeSession": "\u30BB\u30C3\u30B7\u30E7\u30F3\u3092\u9589\u3058\u308B",
-      "terminal.ptyHint": "\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7 PTY \u30E2\u30FC\u30C9\uFF08node-pty \u304C\u5FC5\u8981\uFF09",
-      "terminal.ptyActive": "PTY shell \u63A5\u7D9A\u6E08\u307F",
-      "scripts.emptyTitle": "package.json \u306E scripts \u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093",
-      "scripts.emptyDesc": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9\u306B package.json \u3068 scripts \u30D5\u30A3\u30FC\u30EB\u30C9\u3092\u8FFD\u52A0\u3059\u308B\u3068\u3001\u3053\u3053\u304B\u3089\u5B9F\u884C\u3067\u304D\u307E\u3059\u3002",
-      "scripts.openPackageJson": "package.json \u3092\u958B\u304F",
-      "scripts.searchPlaceholder": "\u30B9\u30AF\u30EA\u30D7\u30C8\u3092\u7D5E\u308A\u8FBC\u307F\u2026",
-      "scripts.count": "{count} \u4EF6\u306E\u30B9\u30AF\u30EA\u30D7\u30C8",
-      "scripts.run": "\u5B9F\u884C",
-      "scripts.running": "\u5B9F\u884C\u4E2D",
-      "scripts.runTitle": "npm run {name} \u3092\u5B9F\u884C",
-      "scripts.noMatch": "\u4E00\u81F4\u3059\u308B\u30B9\u30AF\u30EA\u30D7\u30C8\u304C\u3042\u308A\u307E\u305B\u3093",
-      "scripts.lastRunSuccess": "\u524D\u56DE\u6210\u529F: {name}",
-      "scripts.lastRunError": "\u524D\u56DE\u5931\u6557: {name}",
-      "tasksPanel.emptyTitle": "\u30BF\u30B9\u30AF\u30C1\u30A7\u30C3\u30AF\u30EA\u30B9\u30C8\u304C\u3042\u308A\u307E\u305B\u3093",
-      "tasksPanel.emptyDesc": ".aide/tasks.md \u3092\u4F5C\u6210\u3059\u308B\u304B\u3001.aide/specs/*/tasks.md \u306B\u30C1\u30A7\u30C3\u30AF\u30DC\u30C3\u30AF\u30B9\u30BF\u30B9\u30AF\u3092\u8FFD\u52A0\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      "tasksPanel.searchPlaceholder": "\u30BF\u30B9\u30AF\u307E\u305F\u306F\u30D1\u30B9\u3092\u7D5E\u308A\u8FBC\u307F\u2026",
-      "tasksPanel.sendAgent": "Agent \u306B\u9001\u4FE1 ({count})",
-      "tasksPanel.kindProject": "\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8",
-      "tasksPanel.kindSpec": "Spec",
-      "tasksPanel.noChecklist": "\u30C1\u30A7\u30C3\u30AF\u30EA\u30B9\u30C8\u9805\u76EE\u306A\u3057",
-      "tasksPanel.emptyGroup": "`- [ ]` \u884C\u304C\u307E\u3060\u3042\u308A\u307E\u305B\u3093 \u2014 \u30D5\u30A1\u30A4\u30EB\u3092\u958B\u3044\u3066\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      "tasksPanel.noMatch": "\u30D5\u30A3\u30EB\u30BF\u30FC\u306B\u4E00\u81F4\u3059\u308B\u30BF\u30B9\u30AF\u304C\u3042\u308A\u307E\u305B\u3093",
-      "tasksPanel.noMatchHint": "\u30AD\u30FC\u30EF\u30FC\u30C9\u3092\u77ED\u304F\u3059\u308B\u304B\u3001\u30D5\u30A3\u30EB\u30BF\u30FC\u3092\u30AF\u30EA\u30A2\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      "tasksPanel.allDone": "\u3059\u3079\u3066\u306E\u30BF\u30B9\u30AF\u304C\u5B8C\u4E86 \u2014 \u30B0\u30EB\u30FC\u30D7\u3092\u5C55\u958B\u3059\u308B\u304B\u30D5\u30A1\u30A4\u30EB\u3092\u958B\u3044\u3066\u7DE8\u96C6",
-      "tasksPanel.collapseGroup": "\u30B0\u30EB\u30FC\u30D7\u3092\u6298\u308A\u305F\u305F\u3080",
-      "tasksPanel.expandGroup": "\u30B0\u30EB\u30FC\u30D7\u3092\u5C55\u958B",
-      "tasksPanel.showMore": "\u3055\u3089\u306B {count} \u4EF6\u8868\u793A",
-      "tasksPanel.showLess": "\u30EA\u30B9\u30C8\u3092\u6298\u308A\u305F\u305F\u3080",
-      "tasksPanel.fileMissing": "\u30D5\u30A1\u30A4\u30EB\u304C\u30A8\u30C7\u30A3\u30BF\u3067\u958B\u304B\u308C\u3066\u3044\u307E\u305B\u3093",
-      "tasksPanel.noOpenTasks": "\u672A\u5B8C\u4E86\u30BF\u30B9\u30AF\u304C\u3042\u308A\u307E\u305B\u3093",
-      "tasksPanel.agentQueued": "Agent \u30AD\u30E5\u30FC\u306B\u8FFD\u52A0\u3057\u307E\u3057\u305F",
-      "tasksPanel.agentQueuedDetail": "\u672A\u5B8C\u4E86 {count} \u4EF6",
-      "command.tasksPanel": "\u30BF\u30B9\u30AF\u30D1\u30CD\u30EB\u3092\u958B\u304F",
-      "command.scriptsPanel": "NPM Scripts \u30D1\u30CD\u30EB\u3092\u958B\u304F",
-      "command.terminal": "\u30BF\u30FC\u30DF\u30CA\u30EB\u3092\u8868\u793A/\u975E\u8868\u793A",
-      "tasks.title": "\u30BF\u30B9\u30AF\u30C1\u30A7\u30C3\u30AF\u30EA\u30B9\u30C8",
-      "tasks.descPanel": "\u4E0B\u90E8\u306E\u300C\u30BF\u30B9\u30AF\u300D\u30BF\u30D6\u3067 .aide/tasks.md \u3068 spec \u30BF\u30B9\u30AF\u3092\u78BA\u8A8D\uFF1B\u672A\u5B8C\u4E86\u9805\u76EE\u306F Agent \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8\u306B\u6CE8\u5165\u3055\u308C\u307E\u3059\u3002",
-      "tasks.openPanel": "\u30BF\u30B9\u30AF\u30D1\u30CD\u30EB\u3092\u958B\u304F",
-      "tasks.empty": "\u30BF\u30B9\u30AF\u30D5\u30A1\u30A4\u30EB\u304C\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002\u4E0B\u306E\u30DC\u30BF\u30F3\u3067\u30A8\u30C7\u30A3\u30BF\u306B\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092\u4F5C\u6210\u3057\u307E\u3059\u3002",
-      "tasks.open": "\u30A8\u30C7\u30A3\u30BF\u3067\u30BF\u30B9\u30AF\u3092\u958B\u304F",
-      "tasks.create": ".aide/tasks.md \u3092\u4F5C\u6210",
-      "tasks.summary": "\u9032\u6357 {done}/{total}\uFF08\u6B8B\u308A {open}\uFF09",
+      "editor.action.terminalTitle": "Toggle terminal (Ctrl+`)",
+      "editor.breadcrumb": "\u73FE\u5728 \u30D5\u30A1\u30A4\u30EB info",
       "editor.defaultFileComment": "// \u3088\u3046\u3053\u305D to AI IDE",
       "editor.inlineCompletion.label": "AI completion",
       "editor.loadFailed": "\u30A8\u30C7\u30A3\u30BF \u5931\u6557 to load",
@@ -9632,6 +11454,9 @@ var init_translationsJaBulk = __esm({
       "editor.meta.chars": "{count} chars",
       "editor.meta.lines": "{count} lines",
       "editor.placeholder": "// Start coding...",
+      "editor.references.lineCol": "{line}:{column}",
+      "editor.references.peekClose": "\u9589\u3058\u308B references list",
+      "editor.references.peekTitle": "References: {symbol} ({count})",
       "editor.reload": "Reload",
       "editor.restarting": "Restarting runtime",
       "editor.runtimeFailed": "\u5931\u6557 to start runtime",
@@ -9646,6 +11471,7 @@ var init_translationsJaBulk = __esm({
       "sidebar.filenamePlaceholder": "\u30D5\u30A1\u30A4\u30EBname, e.g. index.ts",
       "sidebar.files": "\u30D5\u30A1\u30A4\u30EB",
       "sidebar.largeTreeHint": "Large \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9: the tree starts collapsed. Use Expand all to browse.",
+      "sidebar.virtualTreeHint": "Virtual scrolling enabled for large \u30D5\u30A1\u30A4\u30EB tree",
       "common.confirm": "\u78BA\u8A8D",
       "common.ok": "OK",
       "modal.dialog": "Dialog",
@@ -9679,7 +11505,256 @@ var init_translationsJaBulk = __esm({
       "workspace.success.created": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 created",
       "workspace.success.deleted": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 deleted",
       "workspace.success.saved": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 saved",
-      "payment.success.simulate": "\u652F\u6255\u3044 simulated; \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 updated"
+      "payment.success.simulate": "\u652F\u6255\u3044 simulated; \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3 updated",
+      "debug.alphaBadge": "Alpha",
+      "debug.alphaHint": 'v1.1.7: breakpoints, call stack, and stepping \u2014 type "debug" in the command palette to start.',
+      "debug.alreadyActiveDetail": "\u505C\u6B62 the \u73FE\u5728 debug session first.",
+      "debug.alreadyActiveTitle": "Debug already \u5B9F\u884C\u4E2D",
+      "debug.attachFailed": "Could not attach debugger",
+      "debug.attachFailedNoUrl": "No ws:// inspect URL found in terminal output.",
+      "debug.attachSuccess": "Debugger listening",
+      "debug.breakpointCondition": "Condition",
+      "debug.breakpointConditionPlaceholder": "e.g. x > 1",
+      "debug.breakpointConditionalHover": "Conditional \xB7 line {line} \xB7 {condition} \xB7 pause after {hitCount} hit(s)",
+      "debug.breakpointDisabledHover": "\u7121\u52B9 breakpoint \xB7 line {line}",
+      "debug.breakpointHint": "Click the gutter to add breakpoints; Alt+click toggles enabled (gray = disabled).",
+      "debug.breakpointHitCount": "Hit count",
+      "debug.breakpointHover": "Breakpoint \xB7 line {line}",
+      "debug.breakpointsEmpty": "Click the gutter left of line numbers to add breakpoints.",
+      "debug.breakpointsRegistered": "{count} breakpoints synced",
+      "debug.breakpointsTitle": "Breakpoints",
+      "debug.callStackEmpty": "No call stack available.",
+      "debug.callStackTitle": "Call stack",
+      "debug.conditionalCdpHint": "Conditions are evaluated by CDP (e.g. x > 1). Hit count auto-continues until N hits.",
+      "debug.conditionalInjectHint": "Injected debugger; mode \u2014 advanced breakpoints need CDP sync (use CDP breakpoints).",
+      "debug.continue": "\u7D9A\u884C",
+      "debug.continueHint": "F5 \xB7 \u7D9A\u884C",
+      "debug.executionFailed": "Could not send a command to the debugger.",
+      "debug.executionFailedTitle": "Debug command \u5931\u6557",
+      "debug.executionRequiresCdp": "\u7D9A\u884C/step requires CDP sync while paused.",
+      "debug.executionRequiresCdpTitle": "Cannot run debug command",
+      "debug.f2Badge": "F2",
+      "debug.f3Badge": "F3",
+      "debug.f4Badge": "F4",
+      "debug.f5Badge": "F5",
+      "debug.gaBadge": "1.1.7",
+      "debug.injectFallbackDetail": "Browser could not open the inspect WebSocket; injected debugger; at breakpoint lines instead.",
+      "debug.injectFallbackTitle": "Using debugger injection fallback",
+      "debug.inspectRequiresCdp": "Call stack and locals require CDP breakpoint sync (debugger injection fallback cannot provide them).",
+      "debug.inspectUrl": "Inspect URL",
+      "debug.localsEmpty": "No local variables in this frame.",
+      "debug.localsTitle": "Locals",
+      "debug.pausedAt": "Paused at {file}:{line}",
+      "debug.phase.attached": "Inspect URL detected",
+      "debug.phase.ended": "Ended",
+      "debug.phase.failed": "\u5931\u6557",
+      "debug.phase.idle": "Idle",
+      "debug.phase.listening": "Waiting for debugger\u2026",
+      "debug.phase.paused": "Paused",
+      "debug.phase.running": "\u5B9F\u884C\u4E2D",
+      "debug.phase.starting": "Starting\u2026",
+      "debug.runBlockedDetail": "\u505C\u6B62 debugging before \u5B9F\u884C\u4E2D \u30B3\u30FC\u30C9 or npm scripts.",
+      "debug.runBlockedTitle": "Debug session active",
+      "debug.runtimeDesktop": "Desktop Node inspect",
+      "debug.runtimeWebContainer": "WebContainer",
+      "debug.start": "Debug {file}",
+      "debug.stepInto": "Step into",
+      "debug.stepIntoHint": "F11 \xB7 Step into",
+      "debug.stepOut": "Step out",
+      "debug.stepOutHint": "Shift+F11 \xB7 Step out",
+      "debug.stepOver": "Step over",
+      "debug.stepOverHint": "F10 \xB7 Step over",
+      "debug.stop": "\u505C\u6B62 debug",
+      "debug.stopHint": "Shift+F5 \xB7 \u505C\u6B62 debug",
+      "debug.stopped": "Debug stopped",
+      "debug.stoppedDetail": "Session state cleared (the process may still be \u5B9F\u884C\u4E2D in WebContainer).",
+      "debug.syncModeCdp": "CDP breakpoint sync",
+      "debug.syncModeInjected": "debugger statement fallback",
+      "debug.viewerBlockedDetail": "Only host and editor roles can debug. \u95B2\u89A7\u8005s can read \u30D5\u30A1\u30A4\u30EB but cannot set breakpoints or control sessions.",
+      "debug.viewerBlockedTitle": "Debugging unavailable for \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 viewers",
+      "debug.waitRuntimeDesc": "Start Node inspect after WebContainer is ready, or debug immediately when a desktop folder is bound.",
+      "debug.waitRuntimeTitle": "Waiting for runtime",
+      "debug.watchEmptyValue": "undefined",
+      "debug.watchHint": "Up to 3 expressions; evaluated when paused (\u95B2\u89A7\u5C02\u7528).",
+      "debug.watchPausedEmpty": "\u2014",
+      "debug.watchPlaceholder": "Watch {n}",
+      "debug.watchRequiresCdp": "Watch requires a CDP debug session.",
+      "debug.watchResumeHint": "Values shown when paused",
+      "debug.watchSlotLabel": "Watch expression {n}",
+      "debug.watchTitle": "Watch",
+      "queue.panel.activeTask": "\u5B9F\u884C\u4E2D: {task}",
+      "queue.panel.clearPlan": "Clear \u30D7\u30E9\u30F3 queue",
+      "queue.panel.clearSpec": "Clear Spec queue",
+      "queue.panel.copyReport": "\u30B3\u30D4\u30FC report",
+      "queue.panel.failureStats": "Failures: \u30D7\u30E9\u30F3 {plan} \xB7 Spec {spec}",
+      "queue.panel.openLatestReport": "\u958B\u304F latest report",
+      "queue.panel.planFailed": "\u30D7\u30E9\u30F3 step \u5931\u6557: {step} ({error})",
+      "queue.panel.planQueueCount": "\u30D7\u30E9\u30F3 queue: {count} pending",
+      "queue.panel.recentDone": "\u6700\u8FD1ly done:",
+      "queue.panel.resetFailure": "Reset failures",
+      "queue.panel.resetSuccess": "Reset \u6210\u529Fes",
+      "queue.panel.restoreFromLatest": "Restore from latest report",
+      "queue.panel.retryPlan": "\u518D\u8A66\u884C step",
+      "queue.panel.retrySpec": "\u518D\u8A66\u884C task",
+      "queue.panel.saveReport": "\u4FDD\u5B58 to .aide/reports",
+      "queue.panel.sendQueue": "\u9001\u4FE1 queue:",
+      "queue.panel.sendQueueMore": "+{count} more",
+      "queue.panel.sessionStatus": "Session: {status}",
+      "queue.panel.skipContinue": "Skip and continue",
+      "queue.panel.specFailed": "Spec task \u5931\u6557: {task} ({error})",
+      "queue.panel.specQueueCount": "Spec queue: {count} pending",
+      "queue.panel.successStats": "\u6210\u529Fes: \u30D7\u30E9\u30F3 {plan} \xB7 Spec {spec}",
+      "queue.panel.title": "Task queue",
+      "queue.panel.waitingPrompt": "Waiting: {text}",
+      "queue.persist.corruptedDetail": "Local queue data was invalid or incompatible. The queue was cleared; restore from a report or re-enqueue.",
+      "queue.persist.corruptedTitle": "\u30AD\u30E5\u30FC \u30B9\u30C8\u30EC\u30FC\u30B8 reset",
+      "queue.preview.collapse": "Collapse preview",
+      "queue.preview.expand": "Show {count} more",
+      "queue.preview.planTag": "\u30D7\u30E9\u30F3",
+      "queue.preview.specTag": "Spec",
+      "queue.preview.title": "\u30AD\u30E5\u30FC preview",
+      "queue.sessionStats.corrupted": "\u30AD\u30E5\u30FC stats were corrupted and have been reset",
+      "wm.action.deleteTitle": "\u524A\u9664 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "wm.action.exportTitle": "\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "wm.action.load": "Load",
+      "wm.autoBackupDetected": "Auto-backup detected",
+      "wm.badge.cloud": "Cloud",
+      "wm.badge.local": "Local",
+      "wm.cloud.sectionDesc": "\u4FDD\u5B58 to your \u30A2\u30AB\u30A6\u30F3\u30C8, import/export JSON, restore auto-backup.",
+      "wm.cloud.sectionTitle": "Cloud snapshots & backup",
+      "wm.cloudPreview.full": "All {count} \u30D5\u30A1\u30A4\u30EB(s) will sync to cloud.",
+      "wm.cloudPreview.partial": "{syncable}/{total} \u30D5\u30A1\u30A4\u30EB(s) will sync (binary and oversized \u30D5\u30A1\u30A4\u30EB are skipped).",
+      "wm.confirm.delete.confirm": "\u524A\u9664",
+      "wm.confirm.delete.message": '\u524A\u9664 "{name}"? This backup cannot be restored from the list.',
+      "wm.confirm.delete.title": "\u524A\u9664 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "wm.confirm.load.confirm": "Load",
+      "wm.confirm.load.message": 'Load "{name}"? Unsaved editor changes may be lost.',
+      "wm.confirm.load.title": "Load \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "wm.confirm.restore.confirm": "Restore",
+      "wm.confirm.restore.message": "An auto-backup was found. Restore replaces editor \u30D5\u30A1\u30A4\u30EB and some settings.",
+      "wm.confirm.restore.title": "Restore auto-backup",
+      "wm.deleteFailed": "\u524A\u9664 \u5931\u6557",
+      "wm.deleted": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 deleted",
+      "wm.deleted.flash": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 deleted.",
+      "wm.descPlaceholder": "Description (optional)",
+      "wm.empty.desc": "\u4FDD\u5B58 your progress here to return anytime.",
+      "wm.empty.title": "No saved \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 yet",
+      "wm.exportAll": "All data exported",
+      "wm.exportAllBtn": "\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8 all data",
+      "wm.exportFailed": "\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8 \u5931\u6557",
+      "wm.exportFailedDetail": "Could not read cloud \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "wm.exported": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 exported",
+      "wm.hero.guest": "\u4FDD\u5B58 the \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9, import backups, export all data, or restore auto-backup.",
+      "wm.hero.loggedIn": "\u30B5\u30A4\u30F3\u30A4\u30F3: saves sync to cloud (with a local copy). Cloud badge = \u30B5\u30FC\u30D0\u30FC entry.",
+      "wm.hero.title": "\u4FDD\u5B58 progress and keep a recovery path",
+      "wm.importBackup": "\u30A4\u30F3\u30DD\u30FC\u30C8 backup",
+      "wm.importFailed": "\u30A4\u30F3\u30DD\u30FC\u30C8 \u5931\u6557. Check \u30D5\u30A1\u30A4\u30EB format.",
+      "wm.importSuccess": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 imported.",
+      "wm.listLoadFailed": "Could not load \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 list.",
+      "wm.loadFailed": "Load \u5931\u6557",
+      "wm.loadFailedDetail": "Could not read \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "wm.loading": "\u8AAD\u307F\u8FBC\u307F\u4E2D \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9\u2026",
+      "wm.local.sectionDesc": "Pick a folder on your computer. Edits save back to disk.",
+      "wm.local.sectionTitle": "\u958B\u304F a local \u30D7\u30ED\u30B8\u30A7\u30AF\u30C8 (Cursor-style)",
+      "wm.meta.cloudLazy": "Cloud (fetch on load)",
+      "wm.meta.fileCount": "{count} \u30D5\u30A1\u30A4\u30EB",
+      "wm.namePlaceholder": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 name",
+      "wm.noAutoBackup": "No auto-backup found",
+      "wm.restoreBackup": "Restore backup",
+      "wm.saveCurrent": "\u4FDD\u5B58 \u73FE\u5728 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "wm.saveFailed": "\u4FDD\u5B58 \u5931\u6557",
+      "wm.saved": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 saved",
+      "wm.saved.cloud": "{count} \u30D5\u30A1\u30A4\u30EB synced to cloud.",
+      "wm.saved.flash": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 saved.",
+      "wm.saved.local": "{count} \u30D5\u30A1\u30A4\u30EB saved locally.",
+      "wm.searchPlaceholder": "\u691C\u7D22 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "wm.title": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9s",
+      "mcp.add": "Add MCP \u30B5\u30FC\u30D0\u30FC",
+      "mcp.catalog.add": "Add",
+      "mcp.catalog.community.desc": "Pick an HTTP-compatible \u30B5\u30FC\u30D0\u30FC from Smithery, then paste the URL",
+      "mcp.catalog.community.name": "Community catalog",
+      "mcp.catalog.docs": "Docs",
+      "mcp.catalog.local.desc": "\u5B9F\u884C npm run dev:stack first; default 127.0.0.1:3001/mcp",
+      "mcp.catalog.local.name": "Local dev:stack",
+      "mcp.catalog.selfHosted.desc": "Your Streamable HTTP endpoint (HTTPS)",
+      "mcp.catalog.selfHosted.name": "Self-hosted HTTP MCP",
+      "mcp.catalog.title": "Official presets",
+      "mcp.desc": "Connect Streamable HTTP MCP via /api/mcp/proxy. Local URLs need dev:stack and localhost allowed.",
+      "mcp.displayName": "Display name",
+      "mcp.empty": "No MCP \u30B5\u30FC\u30D0\u30FCs yet. After adding one, \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 can call \u30C4\u30FC\u30EB via <<<mcp-tool>>> blocks.",
+      "mcp.enabled": "\u6709\u52B9",
+      "mcp.error.missingResult": "MCP response missing result",
+      "mcp.error.requestFailed": "MCP \u30EA\u30AF\u30A8\u30B9\u30C8 \u5931\u6557 ({status})",
+      "mcp.followUp.checkbox": "Auto follow-up rounds after tool calls (feed results back to the \u30E2\u30C7\u30EB)",
+      "mcp.followUp.maxRounds": "Max follow-up rounds",
+      "mcp.followUp.title": "\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 auto follow-up",
+      "mcp.loading": "\u8AAD\u307F\u8FBC\u307F\u4E2D MCP settings\u2026",
+      "mcp.ping.checking": "Checking\u2026",
+      "mcp.ping.emptyUrl": "URL is empty",
+      "mcp.ping.fail": "Connection \u5931\u6557",
+      "mcp.ping.ok": "\u63A5\u7D9A\u6E08\u307F",
+      "mcp.ping.toolsListed": "Listed {count} \u30C4\u30FC\u30EB",
+      "mcp.test": "Test",
+      "mcp.title": "MCP \u30B5\u30FC\u30D0\u30FCs",
+      "mcp.toolCountHint": "{count} \u30C4\u30FC\u30EB connected \xB7 \u30C1\u30E3\u30C3\u30C8 meter reserves ~{reserveKb}KB",
+      "mcp.toolCountUnknown": "Estimating tool count (meter defaults to ~6KB reserve)",
+      "backgroundJobs.activeBadge": "{count} active background job(s)",
+      "backgroundJobs.applyToIde": "\u9069\u7528 to IDE",
+      "backgroundJobs.applyToIdeEmpty": "No \u30D5\u30A1\u30A4\u30EB changes to apply",
+      "backgroundJobs.applyToIdeOk": "Merged into editor",
+      "backgroundJobs.applyToIdeOkDetail": "Updated {count} \u30D5\u30A1\u30A4\u30EB(s)",
+      "backgroundJobs.autoMarkPlanStep": "Auto-mark \u30D7\u30E9\u30F3 step on \u6210\u529F",
+      "backgroundJobs.cancel": "\u30AD\u30E3\u30F3\u30BB\u30EB job",
+      "backgroundJobs.cancelFailed": "\u5931\u6557 to cancel",
+      "backgroundJobs.cancelled": "Job cancelled",
+      "backgroundJobs.cloudWritebackOk": "Written to cloud \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 {workspace} ({count} \u30D5\u30A1\u30A4\u30EB(s))",
+      "backgroundJobs.copyPrompt": "\u30B3\u30D4\u30FC prompt",
+      "backgroundJobs.copyPromptFailed": "\u30B3\u30D4\u30FC \u5931\u6557",
+      "backgroundJobs.copyPromptOk": "\u30B3\u30D4\u30FC\u6E08\u307F",
+      "backgroundJobs.detailTitle": "Job details",
+      "backgroundJobs.empty": "No background jobs yet. Use \u201C\u5B9F\u884C in background\u201D in \u30C1\u30E3\u30C3\u30C8 \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8 mode.",
+      "backgroundJobs.filter.active": "Active",
+      "backgroundJobs.filter.all": "All",
+      "backgroundJobs.filter.finished": "Finished",
+      "backgroundJobs.filterEmpty": "No jobs match this filter",
+      "backgroundJobs.filterLabel": "Filter jobs",
+      "backgroundJobs.finishedAt": "Finished",
+      "backgroundJobs.hint": "Auto-refreshes every 5s while jobs are active",
+      "backgroundJobs.hintFree": "\u7121\u6599: 2 jobs/day, 1 active at a time. \u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9 to Pro for higher limits.",
+      "backgroundJobs.loadFailed": "\u5931\u6557 to load jobs",
+      "backgroundJobs.login": "\u30B5\u30A4\u30F3\u30A4\u30F3",
+      "backgroundJobs.loginRequired": "\u30B5\u30A4\u30F3\u30A4\u30F3 to use background \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8",
+      "backgroundJobs.markPlanStep": "Mark \u30D7\u30E9\u30F3 step done",
+      "backgroundJobs.notifyCancelled": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u30B8\u30E7\u30D6 cancelled",
+      "backgroundJobs.notifyClickHint": "Click to open background jobs",
+      "backgroundJobs.notifyDesktopCancelled": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u30B8\u30E7\u30D6 cancelled",
+      "backgroundJobs.notifyDesktopFailed": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u30B8\u30E7\u30D6 \u5931\u6557",
+      "backgroundJobs.notifyDesktopSucceeded": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u30B8\u30E7\u30D6 completed",
+      "backgroundJobs.notifyFailed": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u30B8\u30E7\u30D6 \u5931\u6557",
+      "backgroundJobs.notifyOnComplete": "Desktop notification on completion",
+      "backgroundJobs.notifySucceeded": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u30B8\u30E7\u30D6 completed",
+      "backgroundJobs.openCloud": "\u958B\u304F cloud \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "backgroundJobs.planSource": "\u30D7\u30E9\u30F3",
+      "backgroundJobs.planStepAlreadyDone": "\u30D7\u30E9\u30F3 step already done or \u30D7\u30E9\u30F3 \u30D5\u30A1\u30A4\u30EB missing",
+      "backgroundJobs.planStepMarked": "\u30D7\u30E9\u30F3 step marked done",
+      "backgroundJobs.planStepMarkedDetail": "{path}: {step}",
+      "backgroundJobs.previewDiff": "\u30D7\u30EC\u30D3\u30E5\u30FC diff",
+      "backgroundJobs.progress": "Progress",
+      "backgroundJobs.refresh": "\u66F4\u65B0",
+      "backgroundJobs.reloadCloudDetail": "Load \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 \u201C{workspace}\u201D from the \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 manager to view \u30D5\u30A1\u30A4\u30EB",
+      "backgroundJobs.reloadCloudFailed": "Could not load cloud \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "backgroundJobs.reloadCloudHint": "Cloud \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 updated",
+      "backgroundJobs.repoKey": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "backgroundJobs.result": "Result",
+      "backgroundJobs.retry": "\u518D\u8A66\u884C",
+      "backgroundJobs.retryFailed": "\u518D\u8A66\u884C \u5931\u6557",
+      "backgroundJobs.retryQueued": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u30B8\u30E7\u30D6 resubmitted",
+      "backgroundJobs.status.cancelled": "\u30AD\u30E3\u30F3\u30BB\u30EBled",
+      "backgroundJobs.status.failed": "\u5931\u6557",
+      "backgroundJobs.status.queued": "\u30AD\u30E5\u30FCd",
+      "backgroundJobs.status.running": "\u5B9F\u884C\u4E2D",
+      "backgroundJobs.status.succeeded": "Succeeded",
+      "backgroundJobs.upgradePro": "\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9 to Pro"
     };
   }
 });
@@ -9762,6 +11837,8 @@ var init_translationsJa = __esm({
       "auth.submit.register": "\u30A2\u30AB\u30A6\u30F3\u30C8\u4F5C\u6210",
       "auth.oauth.github": "GitHub \u3067\u7D9A\u884C",
       "auth.oauth.google": "Google \u3067\u7D9A\u884C",
+      "auth.oauth.desktopReturnTitle": "\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7\u306B\u623B\u308A\u307E\u3057\u305F",
+      "auth.oauth.desktopReturnDetail": "OAuth \u30ED\u30B0\u30A4\u30F3\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F\u3002\u30AF\u30E9\u30A6\u30C9\u6A5F\u80FD\u304C\u5229\u7528\u3067\u304D\u307E\u3059\u3002",
       "auth.success.login": "\u30B5\u30A4\u30F3\u30A4\u30F3\u3057\u307E\u3057\u305F",
       "auth.success.register": "\u767B\u9332\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F",
       "settings.kicker": "\u8A2D\u5B9A\u30BB\u30F3\u30BF\u30FC",
@@ -9792,17 +11869,31 @@ var init_translationsJa = __esm({
       "settings.formatOnSave": "\u4FDD\u5B58\u6642\u306B\u30D5\u30A9\u30FC\u30DE\u30C3\u30C8",
       "settings.formatOnSave.desc": "\u81EA\u52D5\u4FDD\u5B58\u524D\u306B\u30A2\u30AF\u30C6\u30A3\u30D6\u30D5\u30A1\u30A4\u30EB\u3092\u30D5\u30A9\u30FC\u30DE\u30C3\u30C8\uFF08\u30B3\u30E9\u30DC\u95B2\u89A7\u5C02\u7528\u30EB\u30FC\u30E0\u3067\u306F\u30B9\u30AD\u30C3\u30D7\uFF09\u3002",
       "settings.formatOnSave.aria": "\u4FDD\u5B58\u6642\u306B\u30D5\u30A9\u30FC\u30DE\u30C3\u30C8",
+      "settings.formatLanguages.title": "\u30D5\u30A9\u30FC\u30DE\u30C3\u30C8\u5BFE\u5FDC\u8A00\u8A9E",
+      "settings.formatLanguages.desc": "JS/TS\u30FBJSON\u30FBCSS\u30FBHTML\u30FBMarkdown \u306F\u5185\u8535\u30A4\u30F3\u30C7\u30F3\u30C8\u3002Java/C++/Go/Kotlin/Rust \u306F\u57FA\u672C\u306E\u6CE2\u62EC\u5F27\u30A4\u30F3\u30C7\u30F3\u30C8\uFF08Prettier \u5B8C\u5168\u7248\u3067\u306F\u3042\u308A\u307E\u305B\u3093\uFF09\u3002",
       "settings.saveChanges": "\u5909\u66F4\u3092\u4FDD\u5B58",
       "settings.close": "\u8A2D\u5B9A\u3092\u9589\u3058\u308B",
       "settings.tabCompletion.title": "Tab \u88DC\u5B8C",
       "settings.editorPrefs": "\u30A8\u30C7\u30A3\u30BF\u8A2D\u5B9A",
       "settings.cloudSave.card.title": "\u30AF\u30E9\u30A6\u30C9\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9\u540C\u671F",
       "settings.cloudSave.card.desc": "\u5927\u304D\u306A\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9\u306F\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u524D\u306B\u30D7\u30EC\u30D3\u30E5\u30FC\u3057\u3001413 \u3092\u56DE\u907F\u3059\u308B\u305F\u3081\u4E00\u90E8\u30D5\u30A1\u30A4\u30EB\u3092\u7701\u7565\u3057\u307E\u3059\u3002",
+      "settings.v12.card.title": "v1.2 \u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\uFF08\u8AAD\u307F\u53D6\u308A\u5C02\u7528\uFF09",
+      "settings.v12.card.desc": "\u672C\u756A\u3067\u306F\u30DE\u30EB\u30C1\u30EB\u30FC\u30C8\u3068\u4EEE\u60F3\u30D5\u30A1\u30A4\u30EB\u30C4\u30EA\u30FC\u304C\u65E2\u5B9A\u3067\u6709\u52B9\u3002\u30D7\u30E9\u30B0\u30A4\u30F3\u4FE1\u983C\u30DE\u30FC\u30B1\u30C3\u30C8\u306F\u74B0\u5883\u5909\u6570\u307E\u305F\u306F\u30BB\u30C3\u30B7\u30E7\u30F3\u8A2D\u5B9A\u304C\u5FC5\u8981\u3067\u3059\u3002",
+      "settings.v12.multiRoot": "\u30DE\u30EB\u30C1\u30EB\u30FC\u30C8\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
+      "settings.v12.virtualTree": "\u4EEE\u60F3\u30D5\u30A1\u30A4\u30EB\u30C4\u30EA\u30FC\uFF08500 \u884C\u4EE5\u4E0A\uFF09",
+      "settings.v12.pluginTrust": "\u30D7\u30E9\u30B0\u30A4\u30F3\u4FE1\u983C\u30DE\u30FC\u30B1\u30C3\u30C8",
+      "settings.v12.statusOn": "\u6709\u52B9",
+      "settings.v12.statusOff": "\u7121\u52B9",
+      "settings.pluginOps.title": "\u30D7\u30E9\u30B0\u30A4\u30F3\u904B\u7528\uFF08\u8AAD\u307F\u53D6\u308A\u5C02\u7528\uFF09",
+      "settings.pluginOps.publishApi": "POST /api/plugins/publish",
+      "settings.pluginOps.officialKey": "\u516C\u5F0F\u7F72\u540D\u516C\u958B\u9375",
       "subscription.title": "\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3",
       "subscription.hero.title": "\u4F5C\u696D\u30EA\u30BA\u30E0\u306B\u5408\u3063\u305F\u30D7\u30E9\u30F3\u3092\u9078\u629E",
       "subscription.hero.desc": "\u7121\u6599\u30D7\u30E9\u30F3\u304B\u3089\u958B\u59CB\u3057\u3001\u5FC5\u8981\u306B\u5FDC\u3058\u3066 Pro / Team \u3078\u3002AI \u30AF\u30A9\u30FC\u30BF\u3068\u30AF\u30E9\u30A6\u30C9\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9\u4E0A\u9650\u304C\u30D7\u30E9\u30F3\u3054\u3068\u306B\u7570\u306A\u308A\u307E\u3059\u3002",
       "subscription.currentPlan": "\u73FE\u5728\u306E\u30D7\u30E9\u30F3",
       "subscription.recommended": "\u304A\u3059\u3059\u3081",
+      "billing.desktopReturnTitle": "\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7\u306B\u623B\u308A\u307E\u3057\u305F",
+      "billing.desktopReturnDetail": "\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3\u3092\u540C\u671F\u3057\u307E\u3057\u305F\u3002\u8A2D\u5B9A\u3067\u30D7\u30E9\u30F3\u3092\u78BA\u8A8D\u3067\u304D\u307E\u3059\u3002",
       "subscription.loading": "\u30D7\u30E9\u30F3\u60C5\u5831\u3092\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026",
       "subscription.loginRequired": "\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u524D\u306B\u30B5\u30A4\u30F3\u30A4\u30F3\u3057\u3066\u304F\u3060\u3055\u3044",
       "subscription.checkout.free": "\u7121\u6599\u3067\u7D9A\u884C",
@@ -9817,8 +11908,15 @@ var init_translationsJa = __esm({
       "subscription.checkout.stripe": "Stripe \u3067\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9",
       "subscription.checkout.stripeHint": "Stripe \u306E\u5B89\u5168\u306A\u30C1\u30A7\u30C3\u30AF\u30A2\u30A6\u30C8\u306B\u30EA\u30C0\u30A4\u30EC\u30AF\u30C8\u3057\u3066\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3\u3092\u5B8C\u4E86\u3057\u307E\u3059",
       "subscription.checkout.welfareIncluded": "\u516C\u76CA\u7121\u6599\u306B\u542B\u307E\u308C\u307E\u3059",
-      "subscription.pricing.liveStripe": "{methods} \u5BFE\u5FDC\uFF1BPro $4.99/\u6708\u3001Team $12.99/\u6708",
+      "subscription.pricing.liveStripe": "{methods} \u5BFE\u5FDC\uFF1BPro $9.99/\u6708\u3001Team $19.99/\u6708",
       "subscription.pricing.publicWelfare": "\u516C\u76CA\u7121\u6599 IDE\uFF1A\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3\u6599\u306F\u6C38\u4E45\u7121\u6599\u3002\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u306E\u65E5\u6B21\u30AF\u30A9\u30FC\u30BF\u306F\u7DE9\u548C\u6E08\u307F\u3002BYOK \u306E\u5229\u7528\u3092\u63A8\u5968\u3057\u307E\u3059\u3002",
+      "subscription.unit.workspaces": " \u4EF6",
+      "subscription.checkout.paddle": "Paddle \u3067\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9",
+      "subscription.checkout.paddleHint": "Paddle \u306E\u5B89\u5168\u306A\u30C1\u30A7\u30C3\u30AF\u30A2\u30A6\u30C8\u306B\u30EA\u30C0\u30A4\u30EC\u30AF\u30C8\uFF08\u6D77\u5916 MoR\uFF09",
+      "subscription.payMethod.paddle": "Paddle",
+      "subscription.checkout.overseasSoon": "\u6D77\u5916\u6C7A\u6E08\u306F\u8FD1\u65E5\u516C\u958B",
+      "subscription.overseasComingSoon": "\u6D77\u5916 Pro/Team \u30B5\u30D6\u30B9\u30AF\u306F\u8FD1\u65E5\u516C\u958B\u3002\u73FE\u5728\u306F\u7121\u6599\u7248 + \u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI\u3001\u307E\u305F\u306F\u8A2D\u5B9A\u3067 BYOK \u3092\u3054\u5229\u7528\u304F\u3060\u3055\u3044\u3002",
+      "subscription.pricing.cnWithOverseasSoon": "\u56FD\u5185\u306F {methods} \u5BFE\u5FDC\u3002\u6D77\u5916 Pro/Team \u6C7A\u6E08\u306F v1.6.1 \u3067\u516C\u958B\u4E88\u5B9A\u3002\u73FE\u5728\u306F\u7121\u6599\u7248 + BYOK \u3092\u3054\u5229\u7528\u304F\u3060\u3055\u3044\u3002",
       "collab.title": "\u30E9\u30A4\u30D6\u30B3\u30E9\u30DC",
       "collab.hero.title": "\u540C\u3058\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9\u3067\u4E00\u7DD2\u306B\u4F5C\u696D",
       "collab.hero.desc": "\u30EB\u30FC\u30E0\u3092\u4F5C\u6210\u307E\u305F\u306F\u53C2\u52A0\u3002\u30B5\u30A4\u30F3\u30A4\u30F3\u5F8C\u306F\u30B5\u30FC\u30D0\u30FC\u540C\u671F\u30EB\u30FC\u30E0\uFF1BLivekit \u307E\u305F\u306F WebRTC \u3067\u30AB\u30FC\u30BD\u30EB/\u9078\u629E\u7BC4\u56F2\u3092\u30EA\u30A2\u30EB\u30BF\u30A4\u30E0\u8868\u793A\u3002",
@@ -9855,6 +11953,8 @@ var init_translationsJa = __esm({
       "command.formatDocument.sub": "\u30A2\u30AF\u30C6\u30A3\u30D6\u30D5\u30A1\u30A4\u30EB\u3092\u30D5\u30A9\u30FC\u30DE\u30C3\u30C8",
       "command.goToDefinition": "\u5B9A\u7FA9\u3078\u79FB\u52D5",
       "command.goToDefinition.sub": "\u30B7\u30F3\u30DC\u30EB\u5B9A\u7FA9\u3078\u30B8\u30E3\u30F3\u30D7\uFF08TS/JS\u30FB\u30D5\u30A1\u30A4\u30EB\u6A2A\u65AD\uFF09",
+      "command.goToReferences": "\u53C2\u7167\u3078\u79FB\u52D5",
+      "command.goToReferences.sub": "\u30B7\u30F3\u30DC\u30EB\u53C2\u7167\u3092\u691C\u7D22\uFF08TS/JS\u30FB\u30D5\u30A1\u30A4\u30EB\u6A2A\u65AD\uFF09",
       "command.newFile": "\u65B0\u898F\u30D5\u30A1\u30A4\u30EB",
       "command.run": "\u30B3\u30FC\u30C9\u5B9F\u884C",
       "command.terminal": "\u30BF\u30FC\u30DF\u30CA\u30EB",
@@ -9885,6 +11985,8 @@ var init_translationsJa = __esm({
       "git.branchNameRequired": "\u30D6\u30E9\u30F3\u30C1\u540D\u3092\u5165\u529B",
       "git.branchNameInvalid": "\u30D6\u30E9\u30F3\u30C1\u540D\u304C\u7121\u52B9",
       "git.branchExists": "\u30D6\u30E9\u30F3\u30C1\u306F\u65E2\u306B\u5B58\u5728",
+      "git.error.noHunksSelected": "diff hunk \u304C\u9078\u629E\u3055\u308C\u3066\u3044\u307E\u305B\u3093",
+      "git.error.stagedDiffUnavailable": "{path} \u306E\u30B9\u30C6\u30FC\u30B8\u6E08\u307F\u5DEE\u5206\u3092\u8AAD\u307F\u53D6\u308C\u307E\u305B\u3093",
       "git.createBranch": "\u4F5C\u6210",
       "git.createBranchTitle": "\u65B0\u898F\u30D6\u30E9\u30F3\u30C1",
       "git.newBranchPlaceholder": "feature/my-branch",
@@ -9922,6 +12024,16 @@ var init_translationsJa = __esm({
       "git.diffTruncatedBanner": "\u5DEE\u5206\u304C\u5927\u304D\u3044\u305F\u3081\u3001\u65E7 {oldShown}/{oldTotal} \u884C\u30FB\u65B0 {newShown}/{newTotal} \u884C\u306E\u307F\u8868\u793A\u3002\u5168\u4F53\u306F\u30BF\u30FC\u30DF\u30CA\u30EB git diff \u3092\u5229\u7528\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
       "git.discardFileTitle": "\u3053\u306E\u30D5\u30A1\u30A4\u30EB\u306E\u672A\u30B9\u30C6\u30FC\u30B8\u5909\u66F4\u3092\u7834\u68C4",
       "git.stageTitle": "\u30B9\u30C6\u30FC\u30B8",
+      "git.matrixSummary": "\u72B6\u614B\u30DE\u30C8\u30EA\u30AF\u30B9: \u30B9\u30C6\u30FC\u30B8\u6E08\u307F {staged} \xB7 \u672A\u30B9\u30C6\u30FC\u30B8 {unstaged} \xB7 \u5408\u8A08 {total}",
+      "git.hunkStageTitle": "\u30CF\u30F3\u30AF\u5358\u4F4D\u3067\u30B9\u30C6\u30FC\u30B8",
+      "git.hunkLoading": "diff \u30CF\u30F3\u30AF\u3092\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026",
+      "git.hunkEmpty": "\u30B9\u30C6\u30FC\u30B8\u53EF\u80FD\u306A\u30CF\u30F3\u30AF\u304C\u3042\u308A\u307E\u305B\u3093",
+      "git.hunkItem": "\u30CF\u30F3\u30AF {index}\uFF08{summary}\uFF09",
+      "git.hunkStageSelected": "\u9078\u629E\u3057\u305F\u30CF\u30F3\u30AF\u3092\u30B9\u30C6\u30FC\u30B8",
+      "git.hunkStaging": "\u30B9\u30C6\u30FC\u30B8\u4E2D\u2026",
+      "git.hunkStaged": "\u9078\u629E\u3057\u305F\u30CF\u30F3\u30AF\u3092\u30B9\u30C6\u30FC\u30B8\u3057\u307E\u3057\u305F",
+      "git.hunkStageFailed": "\u30CF\u30F3\u30AF\u306E\u30B9\u30C6\u30FC\u30B8\u306B\u5931\u6557",
+      "git.hunkLoadFailed": "\u30CF\u30F3\u30AF\u306E\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557",
       "git.stagedLabel": "\u30B9\u30C6\u30FC\u30B8\u6E08\u307F",
       "git.stagedCount": "{count} \u30D5\u30A1\u30A4\u30EB",
       "git.changesLabel": "\u5909\u66F4",
@@ -9952,7 +12064,154 @@ var init_translationsJa = __esm({
       "git.historyFilterEmpty": "\u4E00\u81F4\u3059\u308B\u30B3\u30DF\u30C3\u30C8\u304C\u3042\u308A\u307E\u305B\u3093",
       "git.historyFilterEmptyDesc": "\u5225\u306E\u30AD\u30FC\u30EF\u30FC\u30C9\u3092\u8A66\u3059\u304B\u3001\u5C65\u6B74\u3092\u3055\u3089\u306B\u8AAD\u307F\u8FBC\u3093\u3067\u304B\u3089\u7D5E\u308A\u8FBC\u3093\u3067\u304F\u3060\u3055\u3044\u3002",
       "git.historyFilterPathHint": "\u30D1\u30B9\u7D5E\u308A\u8FBC\u307F\u306F\u5C55\u958B\u6E08\u307F\u3067\u30D5\u30A1\u30A4\u30EB\u4E00\u89A7\u3092\u8AAD\u307F\u8FBC\u3093\u3060\u30B3\u30DF\u30C3\u30C8\u306E\u307F\u5BFE\u8C61\u3067\u3059\u3002\u30B3\u30DF\u30C3\u30C8\u3092\u5C55\u958B\u3059\u308B\u304B\u3001\u5C65\u6B74\u3092\u8FFD\u52A0\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-      "git.tab.historyFiltered": "\u5C65\u6B74 {shown}/{total}"
+      "git.tab.historyFiltered": "\u5C65\u6B74 {shown}/{total}",
+      "settings.ai.platformNotConfiguredPlatformOnly": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u30AD\u30FC\u672A\u8A2D\u5B9A\u306E\u305F\u3081\u3001\u30ED\u30B0\u30A4\u30F3\u30E6\u30FC\u30B6\u30FC\u306E Chat / Agent \u306F\u5229\u7528\u4E0D\u53EF\u3002\u7BA1\u7406\u8005\u306B PLATFORM_* \u74B0\u5883\u5909\u6570\u306E\u8A2D\u5B9A\u3092\u4F9D\u983C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      "settings.ai.platformFreeEconomyHint": "\u7121\u6599\u7248\u306F\u7D4C\u6E08\u30E2\u30C7\u30EB\uFF08Flash / Lite \u7B49\uFF09\u306E\u307F\u3002\u30EA\u30AF\u30A8\u30B9\u30C8\u3054\u3068\u306B\u52A0\u91CD\u30AF\u30A9\u30FC\u30BF\u3092\u6D88\u8CBB\u3002Pro \u3067\u6A19\u6E96 / \u9AD8\u5EA6 / \u6700\u5148\u7AEF\u30E2\u30C7\u30EB\u3092\u89E3\u653E\u3002",
+      "settings.ai.usageDashboardDescPlatform": "\u8AAD\u307F\u53D6\u308A\u5C02\u7528\uFF1A\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u306E\u30EA\u30AF\u30A8\u30B9\u30C8\u3001\u65E5\u6B21\u52A0\u91CD\u30AF\u30A9\u30FC\u30BF\u3001\u63A8\u5B9A\u30B3\u30B9\u30C8\uFF08\u6B63\u5F0F\u8ACB\u6C42\u3067\u306F\u3042\u308A\u307E\u305B\u3093\uFF09\u3002",
+      "settings.ai.usageOtherTodayPlatform": "\u4ECA\u65E5\u305D\u306E\u4ED6\uFF08\u540C\u671F\uFF09",
+      "settings.v16.title": "v1.6 \u30ED\u30FC\u30F3\u30C1\u6E96\u5099",
+      "settings.v16.desc": "GA \u30B9\u30D7\u30EA\u30F3\u30C8\u72B6\u614B\uFF08\u30AF\u30E9\u30A4\u30A2\u30F3\u30C8\u6A5F\u80FD + \u904B\u7528\u306F V1.6_GA_EXECUTION.md\uFF09\u3002",
+      "settings.v16.platformAi": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\uFF08\u30ED\u30B0\u30A4\u30F3\u5373\u5229\u7528\uFF09",
+      "settings.v16.tabPlusPlus": "Tab++ \u672C\u756A",
+      "settings.v16.overseasBilling": "\u6D77\u5916 MoR \u30B5\u30D6\u30B9\u30AF",
+      "settings.v16.overseasDeferred": "v1.6.0\uFF1A\u6D77\u5916 Pro/Team \u5EF6\u671F \xB7 Free+BYOK",
+      "settings.v16.overseasLive": "Paddle/Stripe live",
+      "settings.tabCompletion.tabPlusPlusPocOn": "Tab++ POC\uFF1A\u8907\u6570\u884C\u30B4\u30FC\u30B9\u30C8\u88DC\u5B8C ON\uFF08v1.4.3 \u5B9F\u9A13\uFF09",
+      "settings.tabCompletion.tabPlusPlusPocTargets": "Tab++ POC \u76EE\u6A19\uFF1AP95 < {p95} ms \xB7 debounce {debounce} ms",
+      "mcp.browser.title": "MCP \u30C4\u30FC\u30EB\u30D6\u30E9\u30A6\u30B6",
+      "mcp.browser.desc": "Schema \u306B\u6CBF\u3063\u3066 MCP \u30C4\u30FC\u30EB\u3092\u624B\u52D5\u547C\u3073\u51FA\u3057\u3001\u63A5\u7D9A\u3068\u5FDC\u7B54\u69CB\u9020\u3092\u691C\u8A3C\u3002",
+      "mcp.browser.loading": "\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026",
+      "mcp.browser.empty": "\u6709\u52B9\u306A MCP \u30B5\u30FC\u30D0\u30FC\u304C\u3042\u308A\u307E\u305B\u3093\u3002",
+      "mcp.browser.call": "\u30C4\u30FC\u30EB\u3092\u547C\u3073\u51FA\u3059",
+      "mcp.log.title": "MCP \u69CB\u9020\u5316\u7D50\u679C\uFF08{count}\uFF09",
+      "mcp.log.onlyFailures": "\u5931\u6557\u306E\u307F",
+      "mcp.log.groupByServer": "\u30B5\u30FC\u30D0\u30FC\u5225\u306B\u30B0\u30EB\u30FC\u30D7",
+      "mcp.log.empty": "\u8868\u793A\u3059\u308B\u9805\u76EE\u304C\u3042\u308A\u307E\u305B\u3093\u3002",
+      "mcp.log.statusOk": "OK",
+      "mcp.log.statusError": "ERROR",
+      "format.error.failed": "\u30D5\u30A9\u30FC\u30DE\u30C3\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u539F\u6587\u3092\u4FDD\u6301\u3057\u307E\u3057\u305F",
+      "runtime.webcontainer.crossOriginHint": "Cross-Origin Isolation \u304C\u7121\u52B9\u3067\u3059\u3002WebContainer \u304C\u8D77\u52D5\u3057\u306A\u3044\u5834\u5408\u304C\u3042\u308A\u307E\u3059\u3002HTTPS \u307E\u305F\u306F\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7\u7248\u3068 COOP/COEP \u30D8\u30C3\u30C0\u30FC\u3092\u3054\u5229\u7528\u304F\u3060\u3055\u3044\u3002",
+      "chat.preflight.indexTrimmed": "Agent \u30A4\u30F3\u30C7\u30C3\u30AF\u30B9\u8981\u7D04\u3092\u7C21\u7565\u5316\uFF08\u4E88\u7B97\u5185\u306B\u81EA\u52D5\u30C8\u30EA\u30E0\uFF09",
+      "chat.quotaExceeded": "\u672C\u65E5\u306E AI \u30AF\u30A9\u30FC\u30BF\u3092\u4F7F\u3044\u5207\u308A\u307E\u3057\u305F\uFF08{used}/{limit}\uFF09\u3002\n\n\u7121\u6599\u7248\u306F\u65E5\u6B21\u5236\u9650\u3067\u3059\u3002\u5F8C\u3067\u3082\u3046\u4E00\u5EA6\u8A66\u3059\u304B\u3001\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      "chat.needSignInForPlatform": "\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u306B\u306F\u30B5\u30A4\u30F3\u30A4\u30F3\u304C\u5FC5\u8981\u3067\u3059\u3002\u767B\u9332\u3057\u3066\u30ED\u30B0\u30A4\u30F3\u3059\u308B\u304B\u3001\u8A2D\u5B9A\u3067 BYOK \u306B\u5207\u308A\u66FF\u3048\u3066\u304F\u3060\u3055\u3044\u3002",
+      "chat.pendingPlatformSignIn": "\u30B5\u30A4\u30F3\u30A4\u30F3\u5F85\u3061",
+      "chat.queue.processing": "\u51E6\u7406\u4E2D\u2026",
+      "chat.queue.activePlan": "Plan\uFF1A{text}",
+      "chat.queue.activeSpec": "Spec\uFF1A{text}",
+      "chat.agentRun.savedTitle": "\u4FDD\u5B58\u6E08\u307F",
+      "chat.agentRun.savedDetail": "\u3053\u306E Agent \u5B9F\u884C\u8A18\u9332\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F",
+      "chat.agentRun.noRecordTitle": "\u8A18\u9332\u306A\u3057",
+      "chat.agentRun.noRecordDetail": "\u4FDD\u5B58\u3055\u308C\u305F Agent \u5B9F\u884C\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093",
+      "chat.agentRun.replayContent": "\u6700\u65B0\u5B9F\u884C\u3092\u518D\u751F\uFF08\u30C4\u30FC\u30EB {activity} \u4EF6 \xB7 {rounds} \u30E9\u30A6\u30F3\u30C9\uFF09",
+      "chat.report.copiedTitle": "\u30B3\u30D4\u30FC\u6E08\u307F",
+      "chat.report.copiedDetail": "\u30AD\u30E5\u30FC\u30EC\u30DD\u30FC\u30C8\u3092\u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u306B\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F",
+      "chat.report.savedTitle": "\u4FDD\u5B58\u6E08\u307F",
+      "chat.report.savedDetail": "\u30EC\u30DD\u30FC\u30C8\u3092 {path} \u306B\u66F8\u304D\u8FBC\u307F\u307E\u3057\u305F",
+      "chat.report.noReportTitle": "\u30EC\u30DD\u30FC\u30C8\u306A\u3057",
+      "chat.report.noReportHint": "\u5148\u306B .aide/reports \u306B\u30AD\u30E5\u30FC\u30EC\u30DD\u30FC\u30C8\u3092\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044",
+      "chat.report.noReportSaveFirst": "\u5148\u306B\u30AD\u30E5\u30FC\u30EC\u30DD\u30FC\u30C8\u3092\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044",
+      "chat.report.openFailedTitle": "\u958B\u3051\u307E\u305B\u3093",
+      "chat.report.openFailedDetail": "\u30EC\u30DD\u30FC\u30C8\u30D5\u30A1\u30A4\u30EB\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\uFF1A{path}",
+      "chat.report.restoreEmptyTitle": "\u5FA9\u5143\u3059\u308B\u9805\u76EE\u306A\u3057",
+      "chat.report.restoreNoMatch": "\u30EC\u30DD\u30FC\u30C8\u306B\u4E00\u81F4\u3059\u308B\u672A\u5B9F\u884C\u9805\u76EE\u304C\u3042\u308A\u307E\u305B\u3093",
+      "chat.report.restoredTitle": "\u30AD\u30E5\u30FC\u3092\u5FA9\u5143",
+      "chat.report.restoreDetail": "Plan {plan} \xB7 Spec {spec}{extra}",
+      "chat.report.restoreUnresolved": " \xB7 \u672A\u4E00\u81F4 {count} \u4EF6",
+      "chat.report.autoSavedTitle": "\u81EA\u52D5\u4FDD\u5B58",
+      "chat.report.autoSavedDetail": "\u30AD\u30E5\u30FC\u30EC\u30DD\u30FC\u30C8\uFF1A{path}",
+      "chat.queue.completeBody": "\u30BF\u30B9\u30AF\u30AD\u30E5\u30FC\u306E\u5B9F\u884C\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F",
+      "chat.queue.enqueuedTitle": "\u30AD\u30E5\u30FC\u306B\u8FFD\u52A0",
+      "chat.queue.enqueuedDetail": "\u672A\u5B9F\u884C\u30BF\u30B9\u30AF +1\uFF08\u73FE\u5728 {count}\uFF09",
+      "chat.plan.runFirstStep": "\u6700\u521D\u306E\u30B9\u30C6\u30C3\u30D7\u3092\u5B9F\u884C",
+      "chat.plan.runFirstStepTitle": "\u30D7\u30E9\u30F3\u306E\u6700\u521D\u306E\u30B9\u30C6\u30C3\u30D7\u3092\u5B9F\u884C",
+      "welcome.cloudDegradedPlatform": "\u30AF\u30E9\u30A6\u30C9 DB \u304C\u4E00\u6642\u5229\u7528\u4E0D\u53EF\uFF1A\u767B\u9332 / \u30AF\u30E9\u30A6\u30C9\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9\u304C\u5931\u6557\u3059\u308B\u5834\u5408\u304C\u3042\u308A\u307E\u3059\u3002\u30ED\u30FC\u30AB\u30EB\u7DE8\u96C6\u306F\u5229\u7528\u53EF\u80FD\u3002\u7BA1\u7406\u8005\u306F DATABASE_URL \u3068 AUTH_SECRET \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      "welcome.platformQuotaHint": "\u7121\u6599\u7248\uFF1A\u65E5\u6B21 200 \u52A0\u91CD\u30AF\u30A9\u30FC\u30BF\u3001\u30C7\u30D5\u30A9\u30EB\u30C8\u306F\u7D4C\u6E08\u30E2\u30C7\u30EB\uFF08DeepSeek Flash \u7B49\uFF09\u3002Pro \u3067\u5168\u30E2\u30C7\u30EB\u3068 2000 \u30AF\u30A9\u30FC\u30BF\u3002",
+      "welcome.pathLocalTitle": "\u30ED\u30FC\u30AB\u30EB\u3067\u958B\u59CB",
+      "welcome.pathLocalDesc": "\u30ED\u30B0\u30A4\u30F3\u4E0D\u8981 \xB7 BYOK \u3068\u30ED\u30FC\u30AB\u30EB\u7DE8\u96C6",
+      "welcome.pathCloudTitle": "\u30AF\u30E9\u30A6\u30C9\u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u30ED\u30B0\u30A4\u30F3",
+      "welcome.pathCloudDesc": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9\u540C\u671F\u3068\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0 AI \u30AF\u30A9\u30FC\u30BF",
+      "bottomPanel.tab.debug": "\u30C7\u30D0\u30C3\u30B0",
+      "panel.debug.subtitle": "\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u3001\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF\u3001\u5B9F\u884C\u5236\u5FA1",
+      "command.cat.debug": "\u30C7\u30D0\u30C3\u30B0",
+      "command.debug.start": "\u30C7\u30D0\u30C3\u30B0\u958B\u59CB",
+      "command.debug.start.sub": "\u30A2\u30AF\u30C6\u30A3\u30D6\u30D5\u30A1\u30A4\u30EB\u3067 Node inspect \u3092\u8D77\u52D5",
+      "command.debug.panel": "\u30C7\u30D0\u30C3\u30B0\u30D1\u30CD\u30EB\u3092\u958B\u304F",
+      "command.debug.panel.sub": "\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u3001\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF\u3001\u30ED\u30FC\u30AB\u30EB\u5909\u6570",
+      "command.debug.stop": "\u30C7\u30D0\u30C3\u30B0\u505C\u6B62",
+      "command.debug.stop.sub": "\u73FE\u5728\u306E\u30C7\u30D0\u30C3\u30B0\u30BB\u30C3\u30B7\u30E7\u30F3\u3092\u7D42\u4E86",
+      "command.debug.continue.sub": "\u6B21\u306E\u30D6\u30EC\u30FC\u30AF\u30DD\u30A4\u30F3\u30C8\u307E\u3067\u5B9F\u884C",
+      "command.debug.stepOver": "\u30B9\u30C6\u30C3\u30D7\u30AA\u30FC\u30D0\u30FC",
+      "command.debug.stepOver.sub": "\u73FE\u5728\u884C\u3092\u5B9F\u884C\u3057\u6B21\u306E\u884C\u3067\u505C\u6B62",
+      "command.debug.stepInto": "\u30B9\u30C6\u30C3\u30D7\u30A4\u30F3",
+      "command.debug.stepInto.sub": "\u95A2\u6570\u547C\u3073\u51FA\u3057\u306E\u5185\u90E8\u3078",
+      "command.debug.stepOut": "\u30B9\u30C6\u30C3\u30D7\u30A2\u30A6\u30C8",
+      "command.debug.stepOut.sub": "\u73FE\u5728\u306E\u95A2\u6570\u304B\u3089\u629C\u3051\u308B\u307E\u3067\u5B9F\u884C",
+      "debug.callStackTitle": "\u30B3\u30FC\u30EB\u30B9\u30BF\u30C3\u30AF",
+      "debug.viewerBlockedTitle": "Viewer \u3067\u306F\u30C7\u30D0\u30C3\u30B0\u3067\u304D\u307E\u305B\u3093",
+      "command.cat.spec": "Spec",
+      "command.specStudio": "Spec Studio",
+      "command.specStudio.sub": "\u30DE\u30EB\u30C1\u30B9\u30BF\u30C3\u30AF\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3067\u5B9F\u884C\u53EF\u80FD\u306A Spec \u3092\u4F5C\u6210",
+      "command.runFirstSpecTask": "\u6700\u521D\u306E Spec \u30BF\u30B9\u30AF\u3092\u5B9F\u884C",
+      "command.runFirstSpecTask.sub": "\u672A\u5B8C\u4E86\u30BF\u30B9\u30AF\u3092\u6301\u3064 Spec \u3092\u691C\u7D22\u3057\u3066\u30AD\u30E5\u30FC\u306B\u8FFD\u52A0",
+      "spec.catalog.openStudio": "Spec Studio \u3092\u958B\u304F",
+      "spec.host.noRunnableSpec.detail": "\u672A\u5B8C\u4E86\u30BF\u30B9\u30AF\u306E\u3042\u308B Spec \u304C\u3042\u308A\u307E\u305B\u3093",
+      "sidebar.newSpec": "\u65B0\u898F Spec\uFF08Spec Studio\uFF09",
+      "sidebar.ctx.openSpecStudio": "Spec Studio \u3067\u958B\u304F",
+      "sidebar.ctx.runFirstSpecTask": "\u6700\u521D\u306E\u672A\u5B8C\u4E86\u30BF\u30B9\u30AF\u3092\u5B9F\u884C",
+      "specStudio.title": "Spec Studio",
+      "specStudio.lead": "Node / Java / C++ / Go / Rust / Python / Git / AI \u5411\u3051\u306E\u5B9F\u884C\u53EF\u80FD Spec\uFF08requirements / design / tasks / acceptance + hooks\uFF09\u3092\u751F\u6210\u3057\u307E\u3059\u3002",
+      "specStudio.nameLabel": "Spec \u540D",
+      "specStudio.goalLabel": "\u76EE\u6A19\uFF08AI \u3067 Spec \u3092\u6539\u5584\uFF09",
+      "specStudio.goalPlaceholder": "\u4F8B\uFF1A\u30ED\u30B0\u30A4\u30F3 API \u306B refresh token \u3068\u7D71\u5408\u30C6\u30B9\u30C8\u3092\u8FFD\u52A0",
+      "specStudio.filterStacks": "\u30B9\u30BF\u30C3\u30AF\u3067\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092\u7D5E\u308A\u8FBC\u307F",
+      "specStudio.filterAll": "\u3059\u3079\u3066",
+      "specStudio.stack.node": "Node",
+      "specStudio.stack.java": "Java",
+      "specStudio.stack.cpp": "C++",
+      "specStudio.stack.go": "Go",
+      "specStudio.stack.rust": "Rust",
+      "specStudio.stack.python": "Python",
+      "specStudio.stack.git": "Git",
+      "specStudio.stack.ai": "AI",
+      "specStudio.stack.general": "\u6C4E\u7528",
+      "specStudio.recommended": "\u304A\u3059\u3059\u3081",
+      "specStudio.create": "Spec \u3092\u4F5C\u6210",
+      "specStudio.refineWithAi": "AI \u3067 Spec \u3092\u6539\u5584",
+      "specStudio.executeFirst": "\u6700\u521D\u306E\u30BF\u30B9\u30AF\u3092\u5B9F\u884C",
+      "specStudio.createLinkedPlan": "\u95A2\u9023 Plan \u3092\u4F5C\u6210",
+      "specStudio.linkedPlanToast": "\u95A2\u9023 Plan \u3092\u4F5C\u6210\u3057\u307E\u3057\u305F",
+      "specStudio.linkedPlanFailed": "\u95A2\u9023 Plan \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\uFF08Spec tasks \u30D5\u30A1\u30A4\u30EB\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\uFF09",
+      "specStudio.createdHint": "{path} \u306B\u66F8\u304D\u8FBC\u307F\u307E\u3057\u305F\u3002AI \u3067\u6539\u5584\u3059\u308B\u304B\u5B9F\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      "specStudio.createdToast": "Spec \u3092\u4F5C\u6210\u3057\u307E\u3057\u305F",
+      "specStudio.template.blank.title": "\u7A7A\u767D Spec",
+      "specStudio.template.blank.desc": "\u56DB\u30D5\u30A1\u30A4\u30EB\u306E\u9AA8\u7D44\u307F",
+      "specStudio.template.node-api.title": "Node API \u6A5F\u80FD",
+      "specStudio.template.node-api.desc": "REST/TS \u30EB\u30FC\u30C8\u30FB\u30C6\u30B9\u30C8\u30FBlint hooks",
+      "specStudio.template.node-bugfix.title": "Node \u30D0\u30B0\u4FEE\u6B63",
+      "specStudio.template.node-bugfix.desc": "\u518D\u73FE\u624B\u9806 + \u56DE\u5E30\u30C6\u30B9\u30C8",
+      "specStudio.template.java-service.title": "Java \u30B5\u30FC\u30D3\u30B9",
+      "specStudio.template.java-service.desc": "Maven/Gradle + mvn test",
+      "specStudio.template.cpp-module.title": "C++ \u30E2\u30B8\u30E5\u30FC\u30EB",
+      "specStudio.template.cpp-module.desc": "CMake + ctest hooks",
+      "specStudio.template.go-service.title": "Go \u30B5\u30FC\u30D3\u30B9",
+      "specStudio.template.go-service.desc": "Go modules + go test hooks",
+      "specStudio.template.rust-crate.title": "Rust Crate",
+      "specStudio.template.rust-crate.desc": "Cargo + cargo test hooks",
+      "specStudio.template.python-service.title": "Python \u30B5\u30FC\u30D3\u30B9",
+      "specStudio.template.python-service.desc": "pyproject + pytest hooks",
+      "specStudio.template.git-release.title": "Git \u30EA\u30EA\u30FC\u30B9",
+      "specStudio.template.git-release.desc": "CHANGELOG\u30FB\u30D0\u30FC\u30B8\u30E7\u30F3\u30FBtag \u30C1\u30A7\u30C3\u30AF\u30EA\u30B9\u30C8",
+      "specStudio.template.ai-agent-task.title": "AI Agent \u30BF\u30B9\u30AF",
+      "specStudio.template.ai-agent-task.desc": "\u30DE\u30EB\u30C1\u30D5\u30A1\u30A4\u30EB Agent \u8A08\u753B + review hooks",
+      "welcome.quick.specStudio.title": "Spec Studio",
+      "welcome.quick.specStudio.desc": "Node / Java / C++ / Git / AI \u3067 Spec \u3092\u4E00\u62EC\u4F5C\u6210",
+      "welcome.cta.specStudio": "Studio \u3092\u958B\u304F",
+      "status.spec.count": "Spec {count} \xB7 \u672A\u5B8C\u4E86 {open}",
+      "status.spec.studioTitle": "Spec Studio \u3092\u958B\u304F",
+      "status.spec.run": "\u5B9F\u884C",
+      "status.spec.runTitle": "\u6700\u521D\u306E\u672A\u5B8C\u4E86 Spec \u30BF\u30B9\u30AF\u3092\u5B9F\u884C",
+      "settings.aideRuntime.productionCardTitle": "Activity Line",
+      "settings.aideRuntime.engineProductionCardTitle": "AIDE Runtime"
     };
   }
 });
@@ -11598,6 +13857,51 @@ var init_backgroundAgentChat = __esm({
   }
 });
 
+// src/services/agentPromptShared.ts
+function toolCallSignature(name, args) {
+  const keys = Object.keys(args).sort();
+  const normalized = keys.map((key) => `${key}=${JSON.stringify(args[key])}`).join("&");
+  return `${name}|${normalized}`;
+}
+function needsAgentFinalSummary(activityCount, finalContent) {
+  return activityCount > 0 && !finalContent.trim();
+}
+function isRepeatedToolCall(signature, previousSignature, repeatCount) {
+  if (signature === previousSignature) {
+    const nextCount = repeatCount + 1;
+    return { repeated: nextCount >= 2, nextCount };
+  }
+  return { repeated: false, nextCount: 1 };
+}
+var AGENT_OUTPUT_RULES, AGENT_TOOLS_SYSTEM, AGENT_BACKGROUND_SYSTEM, AGENT_SUMMARY_NUDGE;
+var init_agentPromptShared = __esm({
+  "src/services/agentPromptShared.ts"() {
+    "use strict";
+    AGENT_OUTPUT_RULES = `- After tool use (or when the user asks to explore/review only), ALWAYS end with plain-text for the user: 2\u20135 sentences in their language summarizing what you found or changed.
+- Never finish with only tool calls and no user-facing text.
+- Do not call the same tool with the same arguments twice; reuse prior tool output.
+- For workspace overview requests: call list_files at most once, optionally read_file key paths, then summarize structure and notable files.
+- Do not output chain-of-thought, \u601D\u8003\u8FC7\u7A0B, or hidden reasoning; only the final user-facing answer.`;
+    AGENT_TOOLS_SYSTEM = `You are an autonomous coding agent in AI IDE with tools.
+- Use list_files and read_file to explore before editing.
+- Use search_repo for file paths and symbol names (fast index).
+- Use grep_repo to find text or regex matches inside file contents.
+- Use write_file with the FULL file content for each change (not a diff).
+- Use move_file to rename or relocate files; use delete_file to remove a file; use create_dir to create directories.
+- Use run_command for builds/tests (WebContainer in browser, native shell on desktop). Destructive commands are blocked.
+- Tool outputs may be truncated at ~32k chars; narrow grep/read scope if needed.
+- Do not output ### filename markdown blocks unless the user asks for a written report only.
+${AGENT_OUTPUT_RULES}`;
+    AGENT_BACKGROUND_SYSTEM = `You are an autonomous coding agent running as a cloud background job in AI IDE.
+- Use list_files and read_file to explore before editing.
+- Use search_repo for file paths; grep_repo for content search.
+- Use write_file with the FULL file content for each change (not a diff).
+- run_command, move_file, delete_file are NOT available in this environment.
+${AGENT_OUTPUT_RULES}`;
+    AGENT_SUMMARY_NUDGE = `Stop calling tools. Reply in plain text only: summarize what you found or did for the user in 2\u20135 sentences, using the same language as their request. Mention key files or changes if relevant.`;
+  }
+});
+
 // lib/api/backgroundAgentLoop.ts
 function parseToolArguments(raw) {
   try {
@@ -11625,7 +13929,11 @@ async function runBackgroundAgentLoop(userId, config, workspace, userGoal, callb
   let finalContent = "";
   let rounds = 0;
   let toolCalls = 0;
+  let lastToolSignature = null;
+  let repeatToolCount = 0;
+  let stopToolsForSummary = false;
   for (let round = 0; round < maxRounds; round++) {
+    if (stopToolsForSummary) break;
     if (await callbacks?.shouldStop?.()) break;
     rounds = round + 1;
     await callbacks?.onRound?.(rounds);
@@ -11652,9 +13960,26 @@ async function runBackgroundAgentLoop(userId, config, workspace, userGoal, callb
         tool_call_id: call.id,
         content: result.ok ? result.output : `ERROR: ${result.error ?? result.output}`
       });
+      const signature = toolCallSignature(name, args);
+      const repeat = isRepeatedToolCall(signature, lastToolSignature, repeatToolCount);
+      lastToolSignature = signature;
+      repeatToolCount = repeat.nextCount;
+      if (repeat.repeated) {
+        stopToolsForSummary = true;
+        break;
+      }
     }
     if (completion.finish_reason === "stop" && !completion.tool_calls?.length) {
       break;
+    }
+  }
+  if (needsAgentFinalSummary(toolCalls, finalContent)) {
+    messages.push({ role: "user", content: AGENT_SUMMARY_NUDGE });
+    const summaryCompletion = await sendBackgroundAgentCompletion(userId, config, messages, {
+      tools: []
+    });
+    if (summaryCompletion.content?.trim()) {
+      finalContent = summaryCompletion.content;
     }
   }
   return { finalContent, rounds, toolCalls };
@@ -11666,12 +13991,8 @@ var init_backgroundAgentLoop = __esm({
     init_backgroundAgentConfig();
     init_backgroundAgentChat();
     init_backgroundAgentTools();
-    AGENT_SYSTEM = `You are an autonomous coding agent running as a cloud background job in AI IDE.
-- Use list_files and read_file to explore before editing.
-- Use search_repo for file paths; grep_repo for content search.
-- Use write_file with the FULL file content for each change (not a diff).
-- run_command, move_file, delete_file are NOT available in this environment.
-- When done, reply briefly summarizing what you changed.`;
+    init_agentPromptShared();
+    AGENT_SYSTEM = AGENT_BACKGROUND_SYSTEM;
   }
 });
 
@@ -12084,8 +14405,8 @@ var init_backgroundJobProcessor = __esm({
 // lib/api/handlers/jobs/process.ts
 var process_exports = {};
 __export(process_exports, {
-  GET: () => GET15,
-  POST: () => POST24
+  GET: () => GET17,
+  POST: () => POST25
 });
 async function runProcess(request) {
   if (!isCronAuthorized(request)) {
@@ -12104,10 +14425,10 @@ async function runProcess(request) {
     return localizedErrorResponse(request, "api.job.processFailed", 500);
   }
 }
-async function GET15(request) {
+async function GET17(request) {
   return runProcess(request);
 }
-async function POST24(request) {
+async function POST25(request) {
   return runProcess(request);
 }
 var init_process = __esm({
@@ -12123,9 +14444,9 @@ var init_process = __esm({
 // lib/api/handlers/jobs/cancel.ts
 var cancel_exports2 = {};
 __export(cancel_exports2, {
-  POST: () => POST25
+  POST: () => POST26
 });
-async function POST25(req, ctx) {
+async function POST26(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -12161,9 +14482,9 @@ var init_cancel2 = __esm({
 // lib/api/handlers/jobs/byId.ts
 var byId_exports2 = {};
 __export(byId_exports2, {
-  GET: () => GET16
+  GET: () => GET18
 });
-async function GET16(req, ctx) {
+async function GET18(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -12191,10 +14512,10 @@ var init_byId2 = __esm({
 var byId_exports3 = {};
 __export(byId_exports3, {
   DELETE: () => DELETE,
-  GET: () => GET17,
+  GET: () => GET19,
   PUT: () => PUT
 });
-async function GET17(req, ctx) {
+async function GET19(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -12557,10 +14878,10 @@ var init_collaborationRoomsService = __esm({
 // lib/api/handlers/collab/rooms/index.ts
 var rooms_exports = {};
 __export(rooms_exports, {
-  GET: () => GET18,
-  POST: () => POST26
+  GET: () => GET20,
+  POST: () => POST27
 });
-async function GET18(req) {
+async function GET20(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -12573,7 +14894,7 @@ async function GET18(req) {
     return localizedErrorResponse(req, "api.collab.listFailed", 500);
   }
 }
-async function POST26(req) {
+async function POST27(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -12618,13 +14939,280 @@ var init_rooms = __esm({
   }
 });
 
+// lib/api/sharePayload.ts
+function normalizeShareFile(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const entry = raw;
+  if (typeof entry.name !== "string" || typeof entry.content !== "string") return null;
+  const name = entry.name.trim();
+  if (!name || name.length > MAX_FILE_NAME_LEN) return null;
+  if (entry.content.length > MAX_FILE_CONTENT_LEN) return null;
+  return { name, content: entry.content };
+}
+function validateSharePayload(files) {
+  if (!Array.isArray(files) || files.length === 0) {
+    return { ok: false, key: "api.share.filesRequired" };
+  }
+  if (files.length > MAX_SHARE_FILES) {
+    return { ok: false, key: "api.share.tooManyFiles" };
+  }
+  const normalized = [];
+  for (const raw of files) {
+    const file = normalizeShareFile(raw);
+    if (!file) return { ok: false, key: "api.share.invalidFile" };
+    normalized.push(file);
+  }
+  const sanitized = sanitizeWorkspaceFilesForCloud(normalized);
+  if (sanitized.files.length === 0) {
+    return { ok: false, key: "api.share.payloadTooLarge" };
+  }
+  const bodyBytes = new TextEncoder().encode(JSON.stringify(sanitized.files)).length;
+  if (bodyBytes > MAX_SHARE_BODY_BYTES) {
+    return { ok: false, key: "api.share.payloadTooLarge" };
+  }
+  return {
+    ok: true,
+    files: sanitized.files.map((file, index) => ({
+      name: file.name,
+      content: file.content,
+      language: typeof files[index]?.language === "string" ? String(files[index].language) : "plaintext"
+    }))
+  };
+}
+var MAX_SHARE_BODY_BYTES, MAX_SHARE_FILES;
+var init_sharePayload = __esm({
+  "lib/api/sharePayload.ts"() {
+    "use strict";
+    init_workspacePayload();
+    MAX_SHARE_BODY_BYTES = 4e5;
+    MAX_SHARE_FILES = 50;
+  }
+});
+
+// lib/api/projectSharesService.ts
+import { randomBytes as randomBytes3 } from "node:crypto";
+function generateShareSlug() {
+  return randomBytes3(6).toString("base64url").replace(/[^a-zA-Z0-9]/g, "x").slice(0, 8);
+}
+function parseShareFiles(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function serializeProjectShare(row) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    userId: row.userId,
+    files: parseShareFiles(row.files),
+    expiresAt: row.expiresAt,
+    createdAt: row.createdAt
+  };
+}
+async function countUserProjectShares(userId) {
+  return prisma.projectShare.count({
+    where: { userId, expiresAt: { gt: /* @__PURE__ */ new Date() } }
+  });
+}
+async function createProjectShare(userId, files) {
+  const expiresAt = new Date(Date.now() + SHARE_TTL_MS);
+  const filesJson = JSON.stringify(files);
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const slug = generateShareSlug();
+    try {
+      const row = await prisma.projectShare.create({
+        data: { slug, userId, files: filesJson, expiresAt }
+      });
+      return serializeProjectShare(row);
+    } catch (error) {
+      const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+      if (code === "P2002" && attempt < 4) continue;
+      throw error;
+    }
+  }
+  throw new Error("share_slug_conflict");
+}
+async function getProjectShareBySlug(slug) {
+  const normalized = slug.trim();
+  if (!normalized) return null;
+  const row = await prisma.projectShare.findUnique({ where: { slug: normalized } });
+  if (!row) return null;
+  if (row.expiresAt.getTime() <= Date.now()) return null;
+  return serializeProjectShare(row);
+}
+async function listProjectSharesForUser(userId) {
+  const rows = await prisma.projectShare.findMany({
+    where: { userId, expiresAt: { gt: /* @__PURE__ */ new Date() } },
+    orderBy: { createdAt: "desc" },
+    take: MAX_SHARES_PER_USER
+  });
+  return rows.map(serializeProjectShare);
+}
+async function deleteProjectShare(slug, userId) {
+  const normalized = slug.trim();
+  if (!normalized) return false;
+  const row = await prisma.projectShare.findUnique({ where: { slug: normalized } });
+  if (!row || row.userId !== userId) return false;
+  await prisma.projectShare.delete({ where: { slug: normalized } });
+  return true;
+}
+var SHARE_TTL_MS, MAX_SHARES_PER_USER;
+var init_projectSharesService = __esm({
+  "lib/api/projectSharesService.ts"() {
+    "use strict";
+    init_prisma();
+    SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1e3;
+    MAX_SHARES_PER_USER = 30;
+  }
+});
+
+// lib/api/handlers/shares/index.ts
+var shares_exports = {};
+__export(shares_exports, {
+  GET: () => GET21,
+  POST: () => POST28
+});
+async function GET21(req) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  try {
+    const shares = await listProjectSharesForUser(auth.user.id);
+    return jsonResponse({
+      shares: shares.map((share) => ({
+        slug: share.slug,
+        fileCount: share.files.length,
+        createdAt: share.createdAt.toISOString(),
+        expiresAt: share.expiresAt.toISOString()
+      }))
+    });
+  } catch (error) {
+    console.error("[Share] List error:", error);
+    return localizedErrorResponse(req, "api.share.listFailed", 500);
+  }
+}
+async function POST28(req) {
+  const user = await optionalAuth(req);
+  try {
+    const rate = await checkRateLimitDistributed(req, {
+      ...resolveRateLimitOptions("shares:create"),
+      suffix: user?.id ?? "anon"
+    });
+    if (!rate.allowed) return rateLimitErrorResponse(req, rate);
+    const parsed = await readJsonWithLimit(req, MAX_SHARE_BODY_BYTES + 8e3);
+    if (!parsed.ok) return parsed.response;
+    const validated = validateSharePayload(parsed.value.files);
+    if (!validated.ok) {
+      return localizedErrorResponse(req, validated.key, 400);
+    }
+    if (user) {
+      const used = await countUserProjectShares(user.id);
+      if (used >= MAX_SHARES_PER_USER) {
+        return localizedErrorResponse(req, "api.share.limitReached", 429, { limit: MAX_SHARES_PER_USER });
+      }
+    }
+    const share = await createProjectShare(user?.id ?? null, validated.files);
+    return jsonResponse(
+      appendApiMessage(req, "api.share.created", {
+        share: {
+          slug: share.slug,
+          fileCount: share.files.length,
+          createdAt: share.createdAt.toISOString(),
+          expiresAt: share.expiresAt.toISOString()
+        }
+      }),
+      201
+    );
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+    console.error("[Share] Create error:", code, error);
+    if (code === "P2021") {
+      return localizedErrorResponse(req, "api.share.createFailed", 503);
+    }
+    return localizedErrorResponse(req, "api.share.createFailed", 500);
+  }
+}
+var init_shares = __esm({
+  "lib/api/handlers/shares/index.ts"() {
+    "use strict";
+    init_http();
+    init_requireAuth();
+    init_body();
+    init_localizedError();
+    init_sharePayload();
+    init_projectSharesService();
+    init_rateLimit();
+    init_rateLimitKv();
+    init_rateLimitResponse();
+  }
+});
+
+// lib/api/handlers/shares/bySlug.ts
+var bySlug_exports = {};
+__export(bySlug_exports, {
+  DELETE: () => DELETE2,
+  GET: () => GET22
+});
+async function GET22(req, ctx) {
+  const slug = ctx?.params?.slug?.trim();
+  if (!slug) {
+    return localizedErrorResponse(req, "api.share.slugRequired", 400);
+  }
+  try {
+    const share = await getProjectShareBySlug(slug);
+    if (!share) {
+      return localizedErrorResponse(req, "api.share.notFound", 404);
+    }
+    return jsonResponse({
+      share: {
+        slug: share.slug,
+        files: share.files,
+        createdAt: share.createdAt.toISOString(),
+        expiresAt: share.expiresAt.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error("[Share] Load error:", error);
+    return localizedErrorResponse(req, "api.share.loadFailed", 500);
+  }
+}
+async function DELETE2(req, ctx) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+  const slug = ctx?.params?.slug?.trim();
+  if (!slug) {
+    return localizedErrorResponse(req, "api.share.slugRequired", 400);
+  }
+  try {
+    const deleted = await deleteProjectShare(slug, auth.user.id);
+    if (!deleted) {
+      return localizedErrorResponse(req, "api.share.notFound", 404);
+    }
+    return jsonResponse(appendApiMessage(req, "api.share.deleted", { slug }));
+  } catch (error) {
+    console.error("[Share] Delete error:", error);
+    return localizedErrorResponse(req, "api.share.deleteFailed", 500);
+  }
+}
+var init_bySlug = __esm({
+  "lib/api/handlers/shares/bySlug.ts"() {
+    "use strict";
+    init_http();
+    init_requireAuth();
+    init_localizedError();
+    init_projectSharesService();
+  }
+});
+
 // lib/api/handlers/collab/rooms/byCode.ts
 var byCode_exports = {};
 __export(byCode_exports, {
-  GET: () => GET19,
-  POST: () => POST27
+  GET: () => GET23,
+  POST: () => POST29
 });
-async function GET19(req, ctx) {
+async function GET23(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const code = ctx?.params?.code?.trim().toLowerCase();
@@ -12653,7 +15241,7 @@ async function GET19(req, ctx) {
     return localizedErrorResponse(req, "api.collab.loadFailed", 500);
   }
 }
-async function POST27(req, ctx) {
+async function POST29(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const code = ctx?.params?.code?.trim().toLowerCase();
@@ -12708,9 +15296,9 @@ var init_byCode = __esm({
 // lib/api/handlers/collab/rooms/leave.ts
 var leave_exports = {};
 __export(leave_exports, {
-  POST: () => POST28
+  POST: () => POST30
 });
-async function POST28(req, ctx) {
+async function POST30(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const code = ctx?.params?.code?.trim().toLowerCase();
@@ -12810,9 +15398,9 @@ var init_member = __esm({
 // lib/api/handlers/collab/rooms/kick.ts
 var kick_exports = {};
 __export(kick_exports, {
-  POST: () => POST29
+  POST: () => POST31
 });
-async function POST29(req, ctx) {
+async function POST31(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const code = ctx?.params?.code?.trim().toLowerCase();
@@ -12862,10 +15450,10 @@ var init_kick = __esm({
 // lib/api/handlers/auth/authCatchAll.ts
 var authCatchAll_exports = {};
 __export(authCatchAll_exports, {
-  GET: () => GET20
+  GET: () => GET24
 });
-import { randomBytes as randomBytes3 } from "crypto";
-async function GET20(req) {
+import { randomBytes as randomBytes4 } from "crypto";
+async function GET24(req) {
   const url = new URL(req.url);
   const pathname = url.pathname;
   if (pathname.includes("providers")) {
@@ -12882,7 +15470,7 @@ async function GET20(req) {
     });
   }
   return new Response(JSON.stringify({
-    csrfToken: randomBytes3(32).toString("hex")
+    csrfToken: randomBytes4(32).toString("hex")
   }), {
     headers: { "Content-Type": "application/json" }
   });
@@ -12985,6 +15573,12 @@ var routes = [
   },
   {
     method: "POST",
+    match: (p) => p === "/api/subscription/paddle/webhook" ? {} : null,
+    load: () => Promise.resolve().then(() => (init_paddle_webhook(), paddle_webhook_exports)),
+    export: "POST"
+  },
+  {
+    method: "POST",
     match: (p) => p === "/api/subscription/cancel" ? {} : null,
     load: () => Promise.resolve().then(() => (init_cancel(), cancel_exports)),
     export: "POST"
@@ -13023,6 +15617,21 @@ var routes = [
   },
   { method: "POST", match: (p) => p === "/api/ai/chat" ? {} : null, load: () => Promise.resolve().then(() => (init_chat(), chat_exports)), export: "POST" },
   { method: "POST", match: (p) => p === "/api/mcp/proxy" ? {} : null, load: () => Promise.resolve().then(() => (init_proxy(), proxy_exports)), export: "POST" },
+  {
+    method: "GET",
+    match: (p) => {
+      const match = p.match(/^\/api\/plugins\/publish\/reviews\/([^/]+)$/);
+      return match ? { reviewId: decodeURIComponent(match[1]) } : null;
+    },
+    load: () => Promise.resolve().then(() => (init_publishReviewById(), publishReviewById_exports)),
+    export: "GET"
+  },
+  {
+    method: "GET",
+    match: (p) => p === "/api/plugins/publish/reviews" ? {} : null,
+    load: () => Promise.resolve().then(() => (init_publishReviews(), publishReviews_exports)),
+    export: "GET"
+  },
   {
     method: "POST",
     match: (p) => p === "/api/plugins/publish" ? {} : null,
@@ -13096,6 +15705,26 @@ var routes = [
   },
   { method: "GET", match: (p) => p === "/api/collab/rooms" ? {} : null, load: () => Promise.resolve().then(() => (init_rooms(), rooms_exports)), export: "GET" },
   { method: "POST", match: (p) => p === "/api/collab/rooms" ? {} : null, load: () => Promise.resolve().then(() => (init_rooms(), rooms_exports)), export: "POST" },
+  { method: "GET", match: (p) => p === "/api/shares" ? {} : null, load: () => Promise.resolve().then(() => (init_shares(), shares_exports)), export: "GET" },
+  { method: "POST", match: (p) => p === "/api/shares" ? {} : null, load: () => Promise.resolve().then(() => (init_shares(), shares_exports)), export: "POST" },
+  {
+    method: "GET",
+    match: (p) => {
+      const m = p.match(/^\/api\/shares\/([^/]+)$/);
+      return m ? { slug: decodeURIComponent(m[1]) } : null;
+    },
+    load: () => Promise.resolve().then(() => (init_bySlug(), bySlug_exports)),
+    export: "GET"
+  },
+  {
+    method: "DELETE",
+    match: (p) => {
+      const m = p.match(/^\/api\/shares\/([^/]+)$/);
+      return m ? { slug: decodeURIComponent(m[1]) } : null;
+    },
+    load: () => Promise.resolve().then(() => (init_bySlug(), bySlug_exports)),
+    export: "DELETE"
+  },
   {
     method: "GET",
     match: (p) => {
@@ -13269,18 +15898,18 @@ async function handle(request) {
     );
   }
 }
-var GET21 = handle;
-var POST30 = handle;
+var GET25 = handle;
+var POST32 = handle;
 var PUT2 = handle;
-var DELETE2 = handle;
+var DELETE3 = handle;
 var PATCH2 = handle;
 var OPTIONS = handle;
 export {
-  DELETE2 as DELETE,
-  GET21 as GET,
+  DELETE3 as DELETE,
+  GET25 as GET,
   OPTIONS,
   PATCH2 as PATCH,
-  POST30 as POST,
+  POST32 as POST,
   PUT2 as PUT
 };
 //# sourceMappingURL=index.js.map
