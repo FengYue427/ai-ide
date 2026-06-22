@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { X, Mail, Lock, Github, Chrome, Eye, EyeOff, Sparkles, ArrowLeft, Check, AlertCircle } from 'lucide-react'
+import { X, Mail, Lock, Github, Chrome, Eye, EyeOff, ArrowLeft, Check, AlertCircle } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { localizeAuthApiError } from '../lib/authApiErrors'
 import { isForgotPasswordEnabled } from '../lib/authFeatures'
+import { resolveAppLogo } from '../lib/appOrigin'
+import { isCnSelfHostedDeploy } from '../lib/deployContext'
 import { useOAuthProviders } from '../hooks/useOAuthProviders'
 import { navigateToOAuthSignIn } from '../lib/externalNavigation'
 import { authService, type User } from '../services/authService'
@@ -75,6 +77,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'login', onClose, on
   })
 
   const validation = getValidation()
+  const showCnAccountHint = isCnSelfHostedDeploy()
+  const logoUrl = resolveAppLogo()
 
   const isFormValid = () => {
     if (activeTab === 'login') return validateEmail(email) && password.length > 0
@@ -201,12 +205,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'login', onClose, on
         </div>
 
         <div className="auth-logo-section">
-          <div className="auth-logo">
-            <Sparkles size={28} />
+          <div className="auth-logo auth-logo--image">
+            <img src={logoUrl} alt="AI IDE" width={32} height={32} />
           </div>
           <h2 className="auth-title">{getTitle()}</h2>
           <p className="auth-subtitle">{getSubtitle()}</p>
         </div>
+
+        {showCnAccountHint ? (
+          <div className="auth-alert auth-alert-info" role="note">
+            <AlertCircle size={16} />
+            {t('auth.cnAccountHint')}
+          </div>
+        ) : null}
 
         {error && (
           <div className="auth-alert auth-alert-error">

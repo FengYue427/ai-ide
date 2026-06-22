@@ -1,4 +1,6 @@
 import { useCallback, useMemo } from 'react'
+import { AcceptanceEditorModal } from '../components/AcceptanceEditorModal'
+import { acceptancePathFromTasksPath } from '../services/intentOs/acceptanceEditorService'
 import DropZone from '../components/DropZone'
 import StatusBar from '../components/StatusBar'
 import WorkspacePanel from '../components/WorkspacePanel'
@@ -43,11 +45,16 @@ import {
 } from '../services/projectTasksService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { buildSpecTemplateFiles, SPECS_ROOT } from '../services/specsService'
+import { launchCapstoneAfterCreate } from '../lib/capstoneAutoLaunch'
 import {
   createSpecStudioBundle,
+  type SpecStudioTemplateId,
 } from '../services/specStudioService'
+import { assembleFormalizationBundle } from '../services/intentOs/intentFormalizationService'
 import { useSpecTaskActions } from '../hooks/useSpecTaskActions'
+import { useAutopilotLite } from '../hooks/useAutopilotLite'
 import { buildSpecStatusSummary } from '../lib/specStatusSummary'
+import { shouldShowIntentShell } from '../lib/intentShellFeatures'
 import { buildPlanExecutionPrompt } from '../services/planExecutionService'
 import { buildSpecExecutionPrompt } from '../services/planSpecWorkflowService'
 import {
@@ -56,6 +63,7 @@ import {
 } from '../services/planBackgroundJobsService'
 import { listBackgroundJobs } from '../services/backgroundJobsApiService'
 import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
+import { gatePlanBackgroundBatch } from '../lib/planBackgroundBatchGate'
 import { buildPlanCatalog } from '../services/planCatalogService'
 import { buildReportCatalog, findLatestReportPath } from '../services/reportCatalogService'
 import {
@@ -95,6 +103,9 @@ import {
   hasQueueRestoreItems,
 } from '../services/queueReportRestorePreviewService'
 import { useI18n } from '../i18n'
+import { WeeklyRecapModal } from '../components/WeeklyRecapModal'
+import type { LearningPath } from '../lib/learningPaths'
+import type { WorkspaceMode } from '../lib/workspaceMode'
 
 interface PanelHostProps {
   notify: (kind: ToastKind, title: string, detail?: string) => void
@@ -117,6 +128,7 @@ interface PanelHostProps {
   closeSettingsPanel: () => void
   openNewFileInput: () => void
   openSettingsPanel: () => void
+  openSettingsToIntentGraph: () => void
   openGitPanel: () => void
   openShareDialog: () => void
   openChatPanel: () => void
@@ -137,7 +149,7 @@ interface PanelHostProps {
   openWorkspaceManagerModal: () => void
   openWorkspacePanelModal: () => void
   openTemplateModal: () => void
-  openSpecStudio: () => void
+  openSpecStudio: (prefill?: { specName?: string; templateId?: string }) => void
   openThemeSelector: () => void
   openWelcomeScreen: () => void
   openRegisterDialog: () => void
@@ -151,6 +163,9 @@ interface PanelHostProps {
   gitUnstaged?: number
   gitStageAllDisabled?: boolean
   onStageAll?: () => void | Promise<void>
+  applyWorkspaceMode: (mode: WorkspaceMode) => void
+  onSessionResume: () => void
+  onStartLearningPath: (path: LearningPath) => void
 }
 
 export function PanelHost({
@@ -174,6 +189,7 @@ export function PanelHost({
   closeSettingsPanel,
   openNewFileInput,
   openSettingsPanel,
+  openSettingsToIntentGraph,
   openGitPanel,
   openShareDialog,
   openChatPanel,
@@ -208,6 +224,9 @@ export function PanelHost({
   gitUnstaged = 0,
   gitStageAllDisabled = false,
   onStageAll,
+  applyWorkspaceMode,
+  onSessionResume,
+  onStartLearningPath,
 }: PanelHostProps) {
   const { language, setLanguage, t } = useI18n()
   const planT: PlanHostTranslateFn = useCallback(
@@ -253,6 +272,8 @@ export function PanelHost({
   const showWorkspacePanel = useIDEStore((s) => s.showWorkspacePanel)
   const showThemeSelector = useIDEStore((s) => s.showThemeSelector)
   const showWelcome = useIDEStore((s) => s.showWelcome)
+  const showWeeklyRecap = useIDEStore((s) => s.showWeeklyRecap)
+  const shareModalTab = useIDEStore((s) => s.shareModalTab)
 
   const setFiles = useIDEStore((s) => s.setFiles)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
@@ -267,9 +288,16 @@ export function PanelHost({
   const queuedPlanExecutions = useIDEStore((s) => s.queuedPlanExecutions)
   const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
   const queuedChatPrompt = useIDEStore((s) => s.queuedChatPrompt)
+  const specDriftReports = useIDEStore((s) => s.specDriftReports)
+  const settingsCenterTab = useIDEStore((s) => s.settingsCenterTab)
+  const setSettingsCenterTab = useIDEStore((s) => s.setSettingsCenterTab)
+  const setIntentShellFocusTasksPath = useIDEStore((s) => s.setIntentShellFocusTasksPath)
 
-  const { runFirstOpenSpecTask, runFirstRunnableSpecTask } = useSpecTaskActions(notify)
+  const { runFirstOpenSpecTask, runFirstRunnableSpecTask, specQueueDeps } = useSpecTaskActions(notify)
+  const autopilot = useAutopilotLite(runFirstOpenSpecTask)
   const specStatus = useMemo(() => buildSpecStatusSummary(files), [files])
+  const intentShellEnabled = useIDEStore((s) => s.intentShellEnabled)
+  const intentShellActive = shouldShowIntentShell(files, intentShellEnabled)
 
   const projectRulesPreview = extractProjectRules(
     collectRulesSources(
@@ -342,6 +370,8 @@ export function PanelHost({
 
   const setShowTemplateModal = useIDEStore((s) => s.setShowTemplateModal)
   const setShowSpecStudio = useIDEStore((s) => s.setShowSpecStudio)
+  const acceptanceEditorPath = useIDEStore((s) => s.acceptanceEditorPath)
+  const setAcceptanceEditorPath = useIDEStore((s) => s.setAcceptanceEditorPath)
   const setShowShareModal = useIDEStore((s) => s.setShowShareModal)
   const setShowAuthModal = useIDEStore((s) => s.setShowAuthModal)
   const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
@@ -354,16 +384,18 @@ export function PanelHost({
   const setShowWorkspaceManager = useIDEStore((s) => s.setShowWorkspaceManager)
   const setShowWorkspacePanel = useIDEStore((s) => s.setShowWorkspacePanel)
   const setShowThemeSelector = useIDEStore((s) => s.setShowThemeSelector)
+  const setShowWeeklyRecap = useIDEStore((s) => s.setShowWeeklyRecap)
 
   const applySpecStudioBundle = useCallback(
-    (bundle: ReturnType<typeof createSpecStudioBundle>) => {
+    (bundle: ReturnType<typeof assembleFormalizationBundle>, templateId?: SpecStudioTemplateId) => {
       const nextFiles = [...files]
       for (const item of bundle.files) {
+        const lang = item.path.endsWith('.ts') || item.path.endsWith('.tsx') ? 'typescript' : 'markdown'
         const existingIndex = nextFiles.findIndex((file) => file.name === item.path)
         if (existingIndex >= 0) {
-          nextFiles[existingIndex] = { ...nextFiles[existingIndex], content: item.content, language: 'markdown' }
+          nextFiles[existingIndex] = { ...nextFiles[existingIndex], content: item.content, language: lang }
         } else {
-          nextFiles.push({ name: item.path, content: item.content, language: 'markdown' })
+          nextFiles.push({ name: item.path, content: item.content, language: lang })
         }
       }
       setFiles(nextFiles)
@@ -371,8 +403,68 @@ export function PanelHost({
       if (firstSpecIndex >= 0) setActiveFile(firstSpecIndex)
       setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
       notify('success', t('specStudio.createdToast'), bundle.tasksPath)
+
+      if (templateId === 'course-capstone') {
+        void launchCapstoneAfterCreate({
+          tasksPath: bundle.tasksPath,
+          specSlug: bundle.specSlug,
+          filesSnapshot: nextFiles,
+          language,
+          deps: specQueueDeps,
+          applyWorkspaceMode,
+          setFocusTasksPath: setIntentShellFocusTasksPath,
+          onBeforeOpenChat: () => setShowSpecStudio(false),
+          openChatPanel,
+          notify,
+          t,
+        })
+      }
     },
-    [files, notify, setActiveFile, setEditorTarget, setFiles, t],
+    [
+      applyWorkspaceMode,
+      files,
+      language,
+      notify,
+      openChatPanel,
+      setActiveFile,
+      setEditorTarget,
+      setFiles,
+      setIntentShellFocusTasksPath,
+      setShowSpecStudio,
+      specQueueDeps,
+      t,
+    ],
+  )
+
+  const openAcceptanceEditor = useCallback(
+    (tasksPath: string) => {
+      const acceptancePath = acceptancePathFromTasksPath(tasksPath)
+      const targetIndex = files.findIndex((file) => file.name === acceptancePath)
+      if (targetIndex < 0) return
+      setAcceptanceEditorPath(acceptancePath)
+      closeSettingsPanel()
+    },
+    [closeSettingsPanel, files, setAcceptanceEditorPath],
+  )
+
+  const openAcceptanceMarkdown = useCallback(
+    (acceptancePath: string) => {
+      const targetIndex = files.findIndex((file) => file.name === acceptancePath)
+      if (targetIndex < 0) return
+      setActiveFile(targetIndex)
+      setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+      setAcceptanceEditorPath(null)
+    },
+    [files, setAcceptanceEditorPath, setActiveFile, setEditorTarget],
+  )
+
+  const saveAcceptanceContent = useCallback(
+    (acceptancePath: string, content: string) => {
+      setFiles(
+        files.map((file) => (file.name === acceptancePath ? { ...file, content } : file)),
+      )
+    },
+    [files, setFiles],
   )
 
   const createLinkedPlanFromSpec = useCallback(
@@ -419,7 +511,14 @@ export function PanelHost({
     {
       id: 'share',
       show: showShareModal,
-      render: () => <ShareModal files={files} onImport={onImportFiles} onClose={() => setShowShareModal(false)} />,
+      render: () => (
+        <ShareModal
+          files={files}
+          onImport={onImportFiles}
+          onClose={() => setShowShareModal(false)}
+          initialTab={shareModalTab}
+        />
+      ),
     },
     {
       id: 'ai-settings',
@@ -456,6 +555,16 @@ export function PanelHost({
   return (
     <>
       {registryPanels.map((panel) => (panel.show ? <div key={panel.id}>{panel.render()}</div> : null))}
+
+      {acceptanceEditorPath ? (
+        <AcceptanceEditorModal
+          acceptancePath={acceptanceEditorPath}
+          content={files.find((file) => file.name === acceptanceEditorPath)?.content ?? ''}
+          onSave={(content) => saveAcceptanceContent(acceptanceEditorPath, content)}
+          onOpenMarkdown={() => openAcceptanceMarkdown(acceptanceEditorPath)}
+          onClose={() => setAcceptanceEditorPath(null)}
+        />
+      ) : null}
 
       {showAuthModal && (
         <AuthModal
@@ -533,6 +642,14 @@ export function PanelHost({
         onOpenWorkspaceImport={openWorkspacePanelModal}
         onOpenThemeSelector={openThemeSelector}
         onOpenWelcome={openWelcomeScreen}
+        onApplyWorkspaceMode={applyWorkspaceMode}
+        onSessionResume={onSessionResume}
+        onOpenWeeklyRecap={() => setShowWeeklyRecap(true)}
+        onOpenShareProgress={() => {
+          useIDEStore.getState().setShareModalTab('progress')
+          setShowShareModal(true)
+        }}
+        onRunAutopilotNext={autopilot.suggestion ? autopilot.runNext : undefined}
         onOpenDebug={openDebugPanel}
         onStartDebug={onStartDebug}
         onStopDebug={onStopDebug}
@@ -722,14 +839,7 @@ export function PanelHost({
             setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
             closeSettingsPanel()
           }}
-          onOpenSpecAcceptance={(tasksPath) => {
-            const acceptancePath = tasksPath.replace(/[\\/]tasks\.md$/i, '/acceptance.md')
-            const targetIndex = files.findIndex((file) => file.name === acceptancePath)
-            if (targetIndex < 0) return
-            setActiveFile(targetIndex)
-            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
-            closeSettingsPanel()
-          }}
+          onOpenSpecAcceptance={openAcceptanceEditor}
           onOpenSpecHooks={(tasksPath) => {
             const hooksPath = hooksPathFromTasksPath(tasksPath)
             const targetIndex = files.findIndex((file) => file.name === hooksPath)
@@ -760,6 +870,14 @@ export function PanelHost({
             closeSettingsPanel()
             openSpecStudio()
           }}
+          onOpenIntentPath={(path) => {
+            const targetIndex = files.findIndex((file) => file.name === path)
+            if (targetIndex < 0) return
+            setActiveFile(targetIndex)
+            setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+            closeSettingsPanel()
+          }}
+          specDriftReports={specDriftReports}
           planItems={planItems}
           planLinkCounts={planLinkCounts}
           planTemplates={planTemplates}
@@ -886,6 +1004,22 @@ export function PanelHost({
                       return
                     }
 
+                    const batchGate = gatePlanBackgroundBatch(
+                      currentPlan ?? 'free',
+                      prepared.steps.length,
+                    )
+                    if (!batchGate.ok) {
+                      if (batchGate.reason === 'upgrade-required') {
+                        setShowSubscriptionModal(true)
+                        notify(
+                          'info',
+                          t('plan.host.runBackgroundUpgrade.title'),
+                          t('plan.host.runBackgroundUpgrade.detail'),
+                        )
+                      }
+                      return
+                    }
+
                     const preview = prepared.steps
                       .slice(0, 8)
                       .map((s) => `- ${s.text}`)
@@ -894,9 +1028,15 @@ export function PanelHost({
                       title: t('plan.host.runBackgroundConfirm.title'),
                       message: t('plan.host.runBackgroundConfirm.message', {
                         path,
-                        count: prepared.steps.length,
+                        count: batchGate.truncated ? batchGate.effectiveCount : prepared.steps.length,
                         preview,
                         more: prepared.steps.length > 8 ? t('plan.host.runConfirm.more') : '',
+                        capNote: batchGate.truncated
+                          ? t('plan.host.runBackgroundBatchCap.note', {
+                              requested: prepared.steps.length,
+                              batch: batchGate.batchMax,
+                            })
+                          : '',
                       }),
                       confirmText: t('plan.host.runBackgroundConfirm.confirm'),
                     })
@@ -1202,6 +1342,8 @@ export function PanelHost({
             })()
           }}
           onClose={closeSettingsPanel}
+          initialTab={settingsCenterTab}
+          onInitialTabConsumed={() => setSettingsCenterTab(null)}
         />
       )}
 
@@ -1288,6 +1430,13 @@ export function PanelHost({
         onRunFirstSpecTask={
           specStatus.runnableTasksPath ? () => runFirstRunnableSpecTask() : undefined
         }
+        onRunAutopilotNext={autopilot.suggestion ? autopilot.runNext : undefined}
+        autopilotTaskPreview={
+          autopilot.suggestion?.taskText ? autopilot.suggestion.taskText.slice(0, 48) : null
+        }
+        autopilotOpenCount={autopilot.openTaskCount}
+        intentShellActive={intentShellActive}
+        onOpenIntentGraph={specStatus.specCount > 0 ? openSettingsToIntentGraph : undefined}
       />
 
       {showWelcome && (
@@ -1304,9 +1453,20 @@ export function PanelHost({
           onOpenGit={() => closeWelcomeAnd(openGitPanel)}
           onOpenCollaboration={() => closeWelcomeAnd(openCollaborationDialog)}
           onRegister={() => closeWelcomeAnd(openRegisterDialog)}
-          onOpenSpecStudio={() => closeWelcomeAnd(openSpecStudio)}
+          onOpenSpecStudio={(prefill) => closeWelcomeAnd(() => openSpecStudio(prefill))}
+          onStartIntentDemo={() => {
+            closeWelcomeAnd(() => {
+              const bundle = createSpecStudioBundle('demo-onboarding', 'intent-demo', language)
+              applySpecStudioBundle(bundle, 'demo-onboarding')
+              runFirstOpenSpecTask(bundle.tasksPath, { onBeforeOpenChat: () => setShowSpecStudio(false) })
+              notify('info', t('intent.demo.started.title'), t('intent.demo.started.detail'))
+            })
+          }}
+          onStartLearningPath={onStartLearningPath}
         />
       )}
+
+      {showWeeklyRecap ? <WeeklyRecapModal onClose={() => setShowWeeklyRecap(false)} /> : null}
     </>
   )
 }

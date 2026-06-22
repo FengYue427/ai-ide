@@ -7,6 +7,8 @@ import {
   patchToggleAuxiliary,
   patchToggleGitPanel,
 } from '../lib/workbenchLayout'
+import { saveIntentShellPreference } from '../lib/intentShellFeatures'
+import { trackSubscriptionModalOpen, type ConversionSource } from '../lib/conversionTracking'
 import { useIDEStore } from '../store/ideStore'
 
 export function useUIActions() {
@@ -23,7 +25,9 @@ export function useUIActions() {
   const setShowNewFileInput = useIDEStore((s) => s.setShowNewFileInput)
   const setShowPluginManager = useIDEStore((s) => s.setShowPluginManager)
   const setShowSettingsCenter = useIDEStore((s) => s.setShowSettingsCenter)
+  const setSettingsCenterTab = useIDEStore((s) => s.setSettingsCenterTab)
   const setShowShareModal = useIDEStore((s) => s.setShowShareModal)
+  const setShareModalTab = useIDEStore((s) => s.setShareModalTab)
   const setShowSnippetLibrary = useIDEStore((s) => s.setShowSnippetLibrary)
   const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
   const setShowTerminal = useIDEStore((s) => s.setShowTerminal)
@@ -35,6 +39,7 @@ export function useUIActions() {
   const setShowSpecStudio = useIDEStore((s) => s.setShowSpecStudio)
   const setSpecStudioPrefill = useIDEStore((s) => s.setSpecStudioPrefill)
   const setShowThemeSelector = useIDEStore((s) => s.setShowThemeSelector)
+  const setIntentShellEnabled = useIDEStore((s) => s.setIntentShellEnabled)
 
   const showSearchPanel = useIDEStore((s) => s.showSearchPanel)
   const showPreview = useIDEStore((s) => s.showPreview)
@@ -99,9 +104,29 @@ export function useUIActions() {
   )
 
   const openSettingsPanel = useCallback(() => setShowSettingsCenter(true), [setShowSettingsCenter])
-  const openShareDialog = useCallback(() => setShowShareModal(true), [setShowShareModal])
+
+  const openSettingsToIntentGraph = useCallback(() => {
+    setSettingsCenterTab('features')
+    setShowSettingsCenter(true)
+  }, [setSettingsCenterTab, setShowSettingsCenter])
+
+  const toggleIntentShell = useCallback(() => {
+    const next = !useIDEStore.getState().intentShellEnabled
+    saveIntentShellPreference(next)
+    setIntentShellEnabled(next)
+  }, [setIntentShellEnabled])
+  const openShareDialog = useCallback(
+    (tab: 'share' | 'progress' | 'history' | 'import' = 'share') => {
+      setShareModalTab(tab)
+      setShowShareModal(true)
+    },
+    [setShareModalTab, setShowShareModal],
+  )
   const openSnippetPanel = useCallback(() => setShowSnippetLibrary(true), [setShowSnippetLibrary])
-  const openSubscriptionDialog = useCallback(() => setShowSubscriptionModal(true), [setShowSubscriptionModal])
+  const openSubscriptionDialog = useCallback((source: ConversionSource = 'unknown') => {
+    trackSubscriptionModalOpen(source)
+    setShowSubscriptionModal(true)
+  }, [setShowSubscriptionModal])
   const openTerminalPanel = useCallback(() => {
     setShowTerminal(true)
     setBottomPanelTab('terminal')
@@ -160,6 +185,8 @@ export function useUIActions() {
     openPreviewPanel,
     openSearchPanel,
     openSettingsPanel,
+    openSettingsToIntentGraph,
+    toggleIntentShell,
     openShareDialog,
     openSnippetPanel,
     openSubscriptionDialog,

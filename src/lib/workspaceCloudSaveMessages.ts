@@ -34,11 +34,22 @@ export function formatWorkspaceCloudSaveDetail(
 export function workspaceCloudSaveToast(
   result: WorkspaceCloudSaveResult,
   t: TranslateFn,
-): { kind: 'info' | 'error'; title: string; detail?: string } | null {
+): { kind: 'info' | 'error'; title: string; detail?: string; suggestUpgrade?: boolean } | null {
   if (result.ok) {
     const detail = formatWorkspaceCloudSaveDetail(result.summary, t)
     if (!detail) return null
     return { kind: 'info', title: t('workspace.cloudSave.partialTitle'), detail }
+  }
+
+  if (result.reason === 'storage_limit_reached') {
+    return {
+      kind: 'error',
+      title: t('workspace.cloudSave.storageLimitTitle'),
+      detail: t('workspace.cloudSave.storageLimitDetail', {
+        limitGb: String(result.limitGb ?? '5'),
+      }),
+      suggestUpgrade: true,
+    }
   }
 
   if (result.reason === 'payload_too_large') {

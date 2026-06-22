@@ -17,7 +17,14 @@ export interface LocalizablePlan {
 export function localizePlan<T extends LocalizablePlan>(plan: T, t: TranslateFn): T {
   if (!isPlanId(plan.name)) return plan
   const id = plan.name
-  const featureKeys = [`subscription.plan.${id}.f1`, `subscription.plan.${id}.f2`, `subscription.plan.${id}.f3`] as const
+  const featureKeys = [
+    `subscription.plan.${id}.f1`,
+    `subscription.plan.${id}.f2`,
+    `subscription.plan.${id}.f3`,
+    `subscription.plan.${id}.f4`,
+    `subscription.plan.${id}.f5`,
+    `subscription.plan.${id}.f6`,
+  ] as const
   return {
     ...plan,
     displayName: t(`subscription.plan.${id}.name` as TranslationKey),

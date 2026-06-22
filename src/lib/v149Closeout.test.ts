@@ -10,7 +10,17 @@ const DOCS_ROOT = join(process.cwd(), 'docs')
 
 describe('v149Closeout', () => {
   it('keeps slim docs footprint after v1.7 cleanup', () => {
-    expect(existsSync(join(DOCS_ROOT, 'DEPLOY_ALIYUN_CN.md'))).toBe(true)
+    const p0Docs = [
+      'DEPLOY_ALIYUN_CN.md',
+      'CN_LAUNCH_P0.md',
+      'ENV_PRODUCTION.md',
+      'OBSERVABILITY.md',
+      'PLAN_SYSTEM_QUICKSTART.md',
+      'RELEASE_RUNBOOK.md',
+    ]
+    for (const name of p0Docs) {
+      expect(existsSync(join(DOCS_ROOT, name))).toBe(true)
+    }
   })
 
   it('keeps runtime modules importable (stub/schema only)', () => {

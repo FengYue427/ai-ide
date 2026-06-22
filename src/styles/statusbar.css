@@ -62,3 +62,28 @@
   border-color: color-mix(in srgb, var(--accent-color) 28%, var(--border-color));
   background: color-mix(in srgb, var(--accent-color) 8%, transparent);
 }
+
+.status-pill--filename {
+  max-width: min(32vw, 200px);
+}
+
+.status-pill--filename span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-pill--icp {
+  text-decoration: none;
+  color: var(--text-secondary);
+}
+
+.status-pill--icp:hover {
+  color: var(--accent-color);
+}
+
+@media (max-width: 960px) {
+  .status-pill--hide-narrow {
+    display: none;
+  }
+}

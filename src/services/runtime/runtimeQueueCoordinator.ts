@@ -4,10 +4,14 @@ import { isDesktopApp, getDesktopApi } from '../desktopBridge'
 import { isAideRuntimeProductionEnabled } from '../../lib/v15Features'
 import type { FileItem } from '../../types/file'
 import { useIDEStore, type QueuedSpecBackfill, type QueuedSpecExecution } from '../../store/ideStore'
+import { runGroundingGate } from '../intentOs/groundingGateService'
+import { runGroundingGateV2 } from '../intentOs/groundingGateV2Service'
+import { isTierCEnabled } from '../../lib/intentOsTierC'
+import { scanSpecDrift } from '../intentOs/specDriftService'
 import { verifyAcceptanceAsync } from './acceptanceRunner'
 import { formatAcceptanceVerifyFailures } from './acceptanceVerifyMessages'
 import { readHooksContentFromFiles, runHooksForEvent } from './hookRunner'
-import { publishSpecQueueIntent, publishVerifyFail } from './runtimeActivityPublishers'
+import { publishGroundingBlock, publishSpecQueueIntent, publishVerifyFail } from './runtimeActivityPublishers'
 import {
   enqueueSpecRuntimeIntent,
   type OrchestratorFilesUpdater,
@@ -81,6 +85,22 @@ export async function enqueueSpecTaskViaRuntime(
   },
   deps: SpecQueueCoordinatorDeps,
 ): Promise<{ accepted: boolean; pauseReason?: string }> {
+  const grounding = isTierCEnabled('groundingGateV2')
+    ? runGroundingGateV2(deps.getFiles(), input.tasksPath, input.taskText)
+    : runGroundingGate(deps.getFiles(), input.tasksPath, input.taskText)
+  if (!grounding.ok) {
+    const summary = grounding.summary ?? 'grounding failed'
+    publishGroundingBlock(input.tasksPath, input.taskText, summary)
+    useIDEStore.getState().setLastGroundingBlock({
+      reason: summary,
+      taskPath: input.tasksPath,
+      taskText: input.taskText,
+    })
+    return { accepted: false, pauseReason: summary }
+  }
+
+  useIDEStore.getState().setLastGroundingBlock(null)
+
   if (!isAideRuntimeProductionEnabled()) {
     publishSpecQueueIntent(input.tasksPath, input.taskText)
     deps.setQueuedSpecBackfill({
@@ -112,22 +132,9 @@ export async function onSpecQueueItemSucceeded(
   backfill: QueuedSpecBackfill,
   deps: SpecQueueCoordinatorDeps,
 ): Promise<{ verifyOk: boolean; verifyDetail?: string; enqueueIntents: RuntimeIntent[] }> {
-  if (!isAideRuntimeProductionEnabled()) {
-    return { verifyOk: true, enqueueIntents: [] }
-  }
-
   const files = deps.getFiles()
-  const specName = specNameFromTasksPath(backfill.taskPath)
-  const hooksContent = readHooksContentFromFiles(files, backfill.taskPath)
   const acceptanceContent =
     files.find((file) => file.name === backfill.specAcceptancePath)?.content ?? ''
-
-  const afterHooks = await runHooksForEvent({
-    event: 'queue.after',
-    specName,
-    tasksPath: backfill.taskPath,
-    hooksYamlContent: hooksContent,
-  })
 
   const verify = await verifyAcceptanceAsync(acceptanceContent, {
     isDesktop: isDesktopApp(),
@@ -136,6 +143,25 @@ export async function onSpecQueueItemSucceeded(
       if (!api?.runCommand) return { exitCode: 1 }
       return api.runCommand('', command)
     },
+  })
+
+  if (!isAideRuntimeProductionEnabled()) {
+    deps.setFiles(
+      upsertRuntimeStateInFiles(deps.getFiles(), {
+        activeSpecPath: backfill.taskPath,
+      }),
+    )
+    return { verifyOk: verify.ok, verifyDetail: verify.ok ? undefined : formatAcceptanceVerifyFailures(verify), enqueueIntents: [] }
+  }
+
+  const specName = specNameFromTasksPath(backfill.taskPath)
+  const hooksContent = readHooksContentFromFiles(files, backfill.taskPath)
+
+  const afterHooks = await runHooksForEvent({
+    event: 'queue.after',
+    specName,
+    tasksPath: backfill.taskPath,
+    hooksYamlContent: hooksContent,
   })
 
   const verifyHooks = verify.ok
@@ -186,6 +212,11 @@ export async function onAgentFilesApplied(
   deps: Pick<SpecQueueCoordinatorDeps, 'getFiles' | 'setFiles'>,
   activeTasksPath?: string | null,
 ): Promise<void> {
+  if (activeTasksPath) {
+    const drift = scanSpecDrift(deps.getFiles(), activeTasksPath)
+    useIDEStore.getState().setSpecDriftReport(activeTasksPath, drift)
+  }
+
   if (!isAideRuntimeProductionEnabled() || !activeTasksPath) return
 
   const specName = specNameFromTasksPath(activeTasksPath)

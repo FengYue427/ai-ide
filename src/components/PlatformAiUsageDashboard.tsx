@@ -3,11 +3,13 @@ import { useI18n } from '../i18n'
 import { isByokLegacyAllowed } from '../lib/v15Features'
 import type { PlatformUsageDashboard } from '../services/platformUsageDashboardService'
 import { QuotaIndicator } from './ui/QuotaIndicator'
+import { UsageEntitlementsSummary } from './UsageEntitlementsSummary'
 
 interface PlatformAiUsageDashboardProps {
   data: PlatformUsageDashboard
   onRefresh?: () => void
   refreshing?: boolean
+  onUpgrade?: () => void
 }
 
 function maxBarValue(daily: PlatformUsageDashboard['daily']): number {
@@ -28,6 +30,7 @@ export function PlatformAiUsageDashboard({
   data,
   onRefresh,
   refreshing = false,
+  onUpgrade,
 }: PlatformAiUsageDashboardProps) {
   const { t } = useI18n()
   const platformOnly = !isByokLegacyAllowed()
@@ -58,6 +61,10 @@ export function PlatformAiUsageDashboard({
       </p>
 
       <QuotaIndicator quota={data.quota} showPlan compact={false} className="platform-usage-dashboard__quota" />
+
+      {data.entitlements ? (
+        <UsageEntitlementsSummary entitlements={data.entitlements} onUpgrade={onUpgrade} />
+      ) : null}
 
       {data.quotaNearLimit && !data.quota.allowed ? null : data.quotaNearLimit ? (
         <div

@@ -21,6 +21,22 @@
   overflow: hidden;
 }
 
+.workbench-editor-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workbench-editor-row {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .workbench-auxiliary {
   width: var(--workbench-auxiliary-width);
   flex-shrink: 0;
@@ -106,7 +122,6 @@
 
 @media (max-width: 1100px) {
   :root {
-    --workbench-auxiliary-width: 300px;
     --workbench-editor-min-width: 360px;
   }
 }

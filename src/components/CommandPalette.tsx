@@ -5,6 +5,10 @@ import { workspaceContextService } from '../services/workspaceContextService'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import type { RunNpmScriptHandler } from '../lib/npmScriptRun'
+import { isSessionResumeStale, loadSessionResume } from '../lib/sessionResume'
+import { getSessionResumeMaxAgeMs } from '../lib/clientPlanEntitlements'
+import { canUseEntitlement } from '../lib/planFeatureGate'
+import { WORKSPACE_MODES, type WorkspaceMode } from '../lib/workspaceMode'
 import { InlineStatePanel } from './InlineStatePanel'
 import type { FileItem } from '../types/file'
 import {
@@ -24,6 +28,9 @@ import {
   GitBranch,
   Home,
   Link2,
+  BarChart3,
+  History,
+  LayoutGrid,
   Moon,
   Package,
   Palette,
@@ -88,6 +95,11 @@ interface CommandPaletteProps {
   onOpenWorkspaceImport: () => void
   onOpenThemeSelector: () => void
   onOpenWelcome: () => void
+  onApplyWorkspaceMode?: (mode: WorkspaceMode) => void
+  onSessionResume?: () => void
+  onOpenWeeklyRecap?: () => void
+  onOpenShareProgress?: () => void
+  onRunAutopilotNext?: () => void
   onRunNpmScript?: RunNpmScriptHandler
   onOpenDebug?: () => void
   onStartDebug?: () => void
@@ -137,6 +149,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   onOpenWorkspaceImport,
   onOpenThemeSelector,
   onOpenWelcome,
+  onApplyWorkspaceMode,
+  onSessionResume,
+  onOpenWeeklyRecap,
+  onOpenShareProgress,
+  onRunAutopilotNext,
   onRunNpmScript,
   onOpenDebug,
   onStartDebug,
@@ -154,6 +171,92 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   const [indexVersion, setIndexVersion] = useState(() => projectIndexManager.getVersion())
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
+  const currentPlan = useIDEStore((s) => s.currentPlan)
+  const fullLinkageCommands = canUseEntitlement('fullLinkageCommands')
+  const sessionResumeSnapshot = useMemo(() => loadSessionResume(), [])
+  const canSessionResume =
+    !!onSessionResume &&
+    !!sessionResumeSnapshot &&
+    !isSessionResumeStale(sessionResumeSnapshot, getSessionResumeMaxAgeMs(currentPlan ?? 'free'))
+
+  const workspaceModeCommands: Command[] = useMemo(() => {
+    if (!onApplyWorkspaceMode) return []
+    const labelKeys = {
+      code: 'workspaceMode.code',
+      plan: 'workspaceMode.plan',
+      execute: 'workspaceMode.execute',
+      review: 'workspaceMode.review',
+    } as const
+    return WORKSPACE_MODES.map((mode) => ({
+      id: `workspace-mode-${mode}`,
+      title: t(labelKeys[mode]),
+      subtitle: t('command.workspaceMode.sub'),
+      icon: <LayoutGrid size={18} />,
+      category: t('command.workspaceMode'),
+      action: () => {
+        onApplyWorkspaceMode(mode)
+        onClose()
+      },
+    }))
+  }, [onApplyWorkspaceMode, onClose, t])
+
+  const experienceCommands: Command[] = useMemo(() => {
+    const items: Command[] = []
+    const linkageCategory = t('command.cat.linkage')
+    if (canSessionResume) {
+      items.push({
+        id: 'session-resume',
+        title: t('command.sessionResume'),
+        subtitle: t('command.sessionResume.sub'),
+        icon: <History size={18} />,
+        category: linkageCategory,
+        action: () => {
+          onSessionResume?.()
+          onClose()
+        },
+      })
+    }
+    if (onRunAutopilotNext && fullLinkageCommands) {
+      items.push({
+        id: 'linkage-autopilot',
+        title: t('command.linkage.autopilot'),
+        subtitle: t('command.linkage.autopilot.sub'),
+        icon: <Sparkles size={18} />,
+        category: linkageCategory,
+        action: () => {
+          onRunAutopilotNext()
+          onClose()
+        },
+      })
+    }
+    if (onOpenShareProgress && fullLinkageCommands) {
+      items.push({
+        id: 'linkage-share-progress',
+        title: t('command.linkage.shareProgress'),
+        subtitle: t('command.linkage.shareProgress.sub'),
+        icon: <Share2 size={18} />,
+        category: linkageCategory,
+        action: () => {
+          onOpenShareProgress()
+          onClose()
+        },
+      })
+    }
+    if (onOpenWeeklyRecap && fullLinkageCommands) {
+      items.push({
+        id: 'weekly-recap',
+        title: t('command.weeklyRecap'),
+        subtitle: t('command.weeklyRecap.sub'),
+        icon: <BarChart3 size={18} />,
+        category: linkageCategory,
+        action: () => {
+          onOpenWeeklyRecap()
+          onClose()
+        },
+      })
+    }
+    return items
+  }, [canSessionResume, currentPlan, fullLinkageCommands, onClose, onOpenShareProgress, onOpenWeeklyRecap, onRunAutopilotNext, onSessionResume, t])
 
   useEffect(() => projectIndexManager.subscribe(() => setIndexVersion(projectIndexManager.getVersion())), [])
 
@@ -212,6 +315,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   const commands: Command[] = useMemo(
     () => [
+      ...experienceCommands,
+      ...workspaceModeCommands,
       ...files.map((file, index) => ({
         id: `file-${index}`,
         title: file.name,
@@ -681,6 +786,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
     ],
     [
       autoSaveEnabled,
+      experienceCommands,
+      workspaceModeCommands,
       files,
       onClose,
       onExportFile,
@@ -714,6 +821,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       onOpenWorkspaceImport,
       onOpenThemeSelector,
       onOpenWelcome,
+      onOpenShareProgress,
+      onRunAutopilotNext,
       onOpenDebug,
       onStartDebug,
       onStopDebug,
@@ -786,50 +895,21 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   return (
     <div className="command-palette-overlay" onClick={onClose}>
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '720px',
-          maxHeight: '560px',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          borderRadius: '20px',
-          border: '1px solid var(--border-color)',
-          background: 'color-mix(in srgb, var(--bg-primary) 96%, transparent)',
-          boxShadow: '0 28px 60px rgba(0, 0, 0, 0.4)',
-        }}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div
-          style={{
-            padding: '18px 20px',
-            borderBottom: '1px solid var(--border-color)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}
-        >
-          <Search size={20} style={{ color: 'var(--text-secondary)' }} />
+      <div className="command-palette" onClick={(event) => event.stopPropagation()}>
+        <div className="command-palette__search">
+          <Search size={20} className="command-palette__search-icon" />
           <input
             type="text"
+            className="command-palette__input"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder={t('command.placeholder')}
             autoFocus
-            style={{
-              flex: 1,
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-primary)',
-              fontSize: '16px',
-              outline: 'none',
-            }}
           />
           <kbd className="status-pill">ESC</kbd>
         </div>
 
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <div className="command-palette__list">
           {filteredCommands.length === 0 ? (
             <InlineStatePanel
               compact
@@ -841,19 +921,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           ) : (
             Object.entries(groupedCommands).map(([category, categoryCommands]) => (
               <div key={category}>
-                <div
-                  style={{
-                    padding: '10px 20px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    color: 'var(--text-secondary)',
-                    letterSpacing: '0.08em',
-                    background: 'var(--bg-secondary)',
-                  }}
-                >
-                  {category}
-                </div>
+                <div className="command-palette__category">{category}</div>
                 {categoryCommands.map((command) => {
                   const currentIndex = commandIndex
                   const isSelected = currentIndex === selectedIndex
@@ -861,30 +929,19 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                   return (
                     <button
                       key={command.id}
+                      type="button"
+                      className={`command-palette__item${isSelected ? ' command-palette__item--selected' : ''}`}
                       onClick={command.action}
                       onMouseEnter={() => setSelectedIndex(currentIndex)}
-                      style={{
-                        width: '100%',
-                        padding: '14px 20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        background: isSelected ? 'color-mix(in srgb, var(--accent-color) 18%, transparent)' : 'transparent',
-                        color: 'var(--text-primary)',
-                        border: 'none',
-                        borderBottom: '1px solid color-mix(in srgb, var(--border-color) 60%, transparent)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                      }}
                     >
-                      <span style={{ opacity: isSelected ? 1 : 0.75 }}>{command.icon}</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 700 }}>{command.title}</div>
-                        {command.subtitle && (
-                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '3px' }}>{command.subtitle}</div>
-                        )}
+                      <span className="command-palette__item-icon">{command.icon}</span>
+                      <div className="command-palette__item-body">
+                        <div className="command-palette__item-title">{command.title}</div>
+                        {command.subtitle ? (
+                          <div className="command-palette__item-subtitle">{command.subtitle}</div>
+                        ) : null}
                       </div>
-                      {command.shortcut && <kbd className="status-pill">{command.shortcut}</kbd>}
+                      {command.shortcut ? <kbd className="status-pill">{command.shortcut}</kbd> : null}
                     </button>
                   )
                 })}
@@ -893,17 +950,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           )}
         </div>
 
-        <div
-          style={{
-            padding: '12px 20px',
-            borderTop: '1px solid var(--border-color)',
-            display: 'flex',
-            gap: '14px',
-            flexWrap: 'wrap',
-            color: 'var(--text-secondary)',
-            fontSize: '12px',
-          }}
-        >
+        <div className="command-palette__footer">
           <span>{t('command.footer.enter')}</span>
           <span>{t('command.footer.navigate')}</span>
           <span>{t('command.footer.close')}</span>

@@ -74,7 +74,9 @@ import {
   saveQueuedSpecExecutions,
 } from '../services/specQueuePersistenceService'
 import { useSpecQueueCoordinatorDeps } from './useSpecQueueCoordinatorDeps'
+import { useIDEStore } from '../store/ideStore'
 import { onSpecQueueItemSucceeded } from '../services/runtime/runtimeQueueCoordinator'
+import { isIntentDemoSpecPath } from '../services/intentOs/intentDemoAcceptanceService'
 import type { QueuedSpecBackfill, QueuedPlanExecution, QueuedSpecExecution } from '../store/ideStore'
 import type {
   FailedPlanExecution,
@@ -286,19 +288,45 @@ export function useChatSendOrchestrator(params: UseChatSendOrchestratorParams) {
   )
 
   const specQueueDeps = useSpecQueueCoordinatorDeps()
+  const setVerifyingSpecBackfill = useIDEStore((s) => s.setVerifyingSpecBackfill)
 
   const finishSpecQueueItem = useCallback(
-    async (backfill: QueuedSpecBackfill) => {
+    async (backfill: QueuedSpecBackfill, executionPrompt: string): Promise<boolean> => {
       const result = await onSpecQueueItemSucceeded(backfill, specQueueDeps)
       if (!result.verifyOk) {
+        setFailedSpecExecution({
+          prompt: executionPrompt,
+          backfill,
+          error: result.verifyDetail ?? t('runtime.verifyFail.detail'),
+        })
+        setQueueFailureStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
         notify?.(
           'error',
           t('runtime.verifyFail.title'),
           result.verifyDetail ?? t('runtime.verifyFail.detail'),
         )
+        return false
+      }
+      setFailedSpecExecution(null)
+      if (isIntentDemoSpecPath(backfill.taskPath)) {
+        notify?.('success', t('intent.demo.reportGuide.title'), t('intent.demo.reportGuide.detail'))
+      }
+      return true
+    },
+    [notify, setFailedSpecExecution, setQueueFailureStats, specQueueDeps, t],
+  )
+
+  const verifySpecQueueItem = useCallback(
+    async (backfill: QueuedSpecBackfill, executionPrompt: string): Promise<boolean> => {
+      setQueuedSpecBackfill(null)
+      setVerifyingSpecBackfill(backfill)
+      try {
+        return await finishSpecQueueItem(backfill, executionPrompt)
+      } finally {
+        setVerifyingSpecBackfill(null)
       }
     },
-    [notify, specQueueDeps, t],
+    [finishSpecQueueItem, setQueuedSpecBackfill, setVerifyingSpecBackfill],
   )
 
   const generateFilesFromResponse = useCallback(
@@ -613,19 +641,25 @@ export function useChatSendOrchestrator(params: UseChatSendOrchestratorParams) {
 
           if (queuedSpecBackfill) {
             const specBackfill = queuedSpecBackfill
+            const executionPrompt = buildSpecExecutionPrompt(
+              specBackfill.taskPath,
+              specBackfill.taskText,
+              language,
+            )
             appendExecutionToSpecAcceptance(
               specBackfill.specAcceptancePath,
               specBackfill.taskText,
               assistantContent,
               executionRunId,
             )
-            setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
-            setRecentDoneQueueItems((prev) => [
-              { kind: 'spec' as const, text: specBackfill.taskText },
-              ...prev,
-            ].slice(0, 5))
-            setFailedSpecExecution(null)
-            void finishSpecQueueItem(specBackfill)
+            const verified = await verifySpecQueueItem(specBackfill, executionPrompt)
+            if (verified) {
+              setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
+              setRecentDoneQueueItems((prev) => [
+                { kind: 'spec' as const, text: specBackfill.taskText },
+                ...prev,
+              ].slice(0, 5))
+            }
           }
 
           if (queuedPlanBackfill) {
@@ -806,19 +840,25 @@ export function useChatSendOrchestrator(params: UseChatSendOrchestratorParams) {
 
         if (queuedSpecBackfill) {
           const specBackfill = queuedSpecBackfill
+          const executionPrompt = buildSpecExecutionPrompt(
+            specBackfill.taskPath,
+            specBackfill.taskText,
+            language,
+          )
           appendExecutionToSpecAcceptance(
             specBackfill.specAcceptancePath,
             specBackfill.taskText,
             assistantContent,
             executionRunId,
           )
-          setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
-          setRecentDoneQueueItems((prev) => [
-            { kind: 'spec' as const, text: specBackfill.taskText },
-            ...prev,
-          ].slice(0, 5))
-          setFailedSpecExecution(null)
-          void finishSpecQueueItem(specBackfill)
+          const verified = await verifySpecQueueItem(specBackfill, executionPrompt)
+          if (verified) {
+            setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
+            setRecentDoneQueueItems((prev) => [
+              { kind: 'spec' as const, text: specBackfill.taskText },
+              ...prev,
+            ].slice(0, 5))
+          }
         }
 
         if (queuedPlanBackfill) {
@@ -952,7 +992,7 @@ export function useChatSendOrchestrator(params: UseChatSendOrchestratorParams) {
       setQueueSuccessStats,
       setRecentDoneQueueItems,
       setFailedSpecExecution,
-      finishSpecQueueItem,
+      verifySpecQueueItem,
       setFiles,
       setQueuedPlanBackfill,
       setFailedPlanExecution,

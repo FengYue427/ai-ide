@@ -3,7 +3,7 @@ import { Building2, Check, Crown, Loader2, Zap } from 'lucide-react'
 import { hasCheckoutPayment } from '../../lib/billing/checkout'
 import { preferCnBillingCheckout } from '../../lib/billing/billingRegion'
 import { isOverseasCheckoutDeferred } from '../../lib/billing/overseasCheckout'
-import { getPlanDisplayQuote } from '../../lib/billing/plans'
+import { getPlanDisplayQuote, planLimitsByName } from '../../lib/billing/plans'
 import { localizePlans } from '../lib/localizePlan'
 import { pickApiResponseMessage } from '../lib/apiUserMessage'
 import { buildSubscriptionPricingNote } from '../lib/subscriptionPricingNote'
@@ -47,6 +47,10 @@ interface SubscriptionModalProps {
 }
 
 function buildFallbackPlans(t: (key: TranslationKey) => string): Plan[] {
+  const limits = planLimitsByName()
+  const featureKeys = (plan: 'free' | 'pro' | 'enterprise') =>
+    ([1, 2, 3, 4, 5, 6] as const).map((n) => t(`subscription.plan.${plan}.f${n}` as TranslationKey))
+
   return [
     {
       id: 'free',
@@ -55,12 +59,8 @@ function buildFallbackPlans(t: (key: TranslationKey) => string): Plan[] {
       description: t('subscription.plan.free.desc'),
       price: 0,
       currency: 'CNY',
-      features: [
-        t('subscription.plan.free.f1'),
-        t('subscription.plan.free.f2'),
-        t('subscription.plan.free.f3'),
-      ],
-      limits: { aiRequestsPerDay: 200, workspaces: -1, storageGB: 30 },
+      features: featureKeys('free'),
+      limits: limits.free,
     },
     {
       id: 'pro',
@@ -69,12 +69,8 @@ function buildFallbackPlans(t: (key: TranslationKey) => string): Plan[] {
       description: t('subscription.plan.pro.desc'),
       price: 9.99,
       currency: 'USD',
-      features: [
-        t('subscription.plan.pro.f1'),
-        t('subscription.plan.pro.f2'),
-        t('subscription.plan.pro.f3'),
-      ],
-      limits: { aiRequestsPerDay: 2000, workspaces: -1, storageGB: 30 },
+      features: featureKeys('pro'),
+      limits: limits.pro,
     },
     {
       id: 'enterprise',
@@ -83,12 +79,8 @@ function buildFallbackPlans(t: (key: TranslationKey) => string): Plan[] {
       description: t('subscription.plan.enterprise.desc'),
       price: 19.99,
       currency: 'USD',
-      features: [
-        t('subscription.plan.enterprise.f1'),
-        t('subscription.plan.enterprise.f2'),
-        t('subscription.plan.enterprise.f3'),
-      ],
-      limits: { aiRequestsPerDay: -1, workspaces: -1, storageGB: 100 },
+      features: featureKeys('enterprise'),
+      limits: limits.enterprise,
     },
   ]
 }
@@ -96,15 +88,15 @@ function buildFallbackPlans(t: (key: TranslationKey) => string): Plan[] {
 const planVisuals: Record<string, { icon: React.ReactNode; headClass: string }> = {
   free: {
     headClass: 'subscription-plan-head--free',
-    icon: <Zap size={22} />,
+    icon: <Zap size={18} />,
   },
   pro: {
     headClass: 'subscription-plan-head--pro',
-    icon: <Crown size={22} />,
+    icon: <Crown size={18} />,
   },
   enterprise: {
     headClass: 'subscription-plan-head--enterprise',
-    icon: <Building2 size={22} />,
+    icon: <Building2 size={18} />,
   },
 }
 
@@ -159,11 +151,12 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     devMock: false,
     publicWelfare: false,
   })
+  const preferCnyDisplay = useMemo(() => preferCnBillingCheckout(language), [language])
   const useCnCheckout = useMemo(
     () =>
-      preferCnBillingCheckout(language) &&
+      preferCnyDisplay &&
       (paymentMethods.alipay || paymentMethods.wechat),
-    [language, paymentMethods.alipay, paymentMethods.wechat],
+    [preferCnyDisplay, paymentMethods.alipay, paymentMethods.wechat],
   )
   const overseasCheckoutDeferred = useMemo(
     () => isOverseasCheckoutDeferred(paymentMethods, useCnCheckout),
@@ -461,7 +454,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
     <ModalShell
       title={t('subscription.title')}
       onClose={onClose}
-      className="modal--wide"
+      className="modal--wide modal--subscription"
       bodyClassName="modal-body--grid"
       ariaLabel={t('subscription.title')}
     >
@@ -594,9 +587,15 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
 
                 const isPopular = plan.name === 'pro'
                 const priceQuote = getPlanDisplayQuote(plan, {
-                  preferCny: useCnCheckout,
-                  freeLabel: t('subscription.checkout.free'),
+                  preferCny: preferCnyDisplay,
+                  freeLabel: t('subscription.price.free'),
                 })
+                const ctaDisabled =
+                  !!processingPlanId ||
+                  isCurrent ||
+                  (paymentMethods.publicWelfare && plan.price > 0) ||
+                  (overseasCheckoutDeferred && plan.price > 0 && !useCnCheckout)
+                const ctaActionable = !ctaDisabled && plan.price > 0
 
                 return (
                   <div
@@ -662,7 +661,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                       <div className="subscription-features-grid">
                         {plan.features.map((feature) => (
                           <div key={feature} className="subscription-feature-row">
-                            <Check size={15} className="subscription-feature-check" />
+                            <Check size={14} className="subscription-feature-check" />
                             <span>{feature}</span>
                           </div>
                         ))}
@@ -671,14 +670,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose, currentP
                       <div className="subscription-plan-footer">
                         <button
                           type="button"
-                          className={`subscription-plan-cta ${isCurrent ? 'btn btn-secondary' : 'btn btn-primary'}`}
+                          className={`subscription-plan-cta btn ${ctaActionable ? 'btn-primary' : 'btn-secondary'}`}
                           onClick={() => void handleSubscribe(plan.id, plan.name)}
-                          disabled={
-                            !!processingPlanId ||
-                            isCurrent ||
-                            (paymentMethods.publicWelfare && plan.price > 0) ||
-                            (overseasCheckoutDeferred && plan.price > 0 && !useCnCheckout)
-                          }
+                          disabled={ctaDisabled}
                         >
                           {isProcessing ? (
                             <>

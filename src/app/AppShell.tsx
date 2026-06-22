@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { FeedbackCenter } from '../components/FeedbackCenter'
 import { DesktopReturnPrompt } from '../components/DesktopReturnPrompt'
 import { PluginModal } from '../components/PluginModal'
@@ -55,7 +55,40 @@ import { loadWorkspaceByRef } from '../services/workspaceLoader'
 import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { stageAllInWorkspace } from '../lib/gitQuickActions'
+import { useIntentQueueRail } from '../hooks/useIntentQueueRail'
+import { useAutopilotLite } from '../hooks/useAutopilotLite'
 import { useSpecTaskActions } from '../hooks/useSpecTaskActions'
+import { useIntentShellNarrowLayout } from '../hooks/useIntentShellNarrowLayout'
+import { useWorkspaceMode } from '../hooks/useWorkspaceMode'
+import { useSessionResumeSync } from '../hooks/useSessionResumeSync'
+import { useLearningPathProgressSync } from '../hooks/useLearningPathProgressSync'
+import { useAideLinkEmitters } from '../hooks/useAideLinkEmitters'
+import { useProjectLayoutSync } from '../hooks/useProjectLayoutSync'
+import { TodayFocusBar } from '../components/TodayFocusBar'
+import { readCapstoneFunnel } from '../lib/capstoneFunnel'
+import type { LearningPath } from '../lib/learningPaths'
+import { markLearningPathStarted } from '../lib/learningPathProgress'
+import {
+  clearSessionResumeDismiss,
+  isSessionResumeBarDismissed,
+  isSessionResumeStale,
+  loadSessionResume,
+} from '../lib/sessionResume'
+import { getSessionResumeMaxAgeMs } from '../lib/clientPlanEntitlements'
+import { getActiveAuxiliarySlot } from '../lib/workbenchLayout'
+import { saveIntentShellPreference, shouldShowIntentShell } from '../lib/intentShellFeatures'
+import { buildSpecStatusSummary } from '../lib/specStatusSummary'
+import { inferSuggestedWorkspaceMode, isPlanFilePath } from '../lib/workspaceModeSuggestions'
+
+const IntentShellBar = lazy(() =>
+  import('../components/IntentShellBar').then((m) => ({ default: m.IntentShellBar })),
+)
+const IntentShellLeftRail = lazy(() =>
+  import('../components/IntentShellLeftRail').then((m) => ({ default: m.IntentShellLeftRail })),
+)
+const IntentShellQueueRail = lazy(() =>
+  import('../components/IntentShellQueueRail').then((m) => ({ default: m.IntentShellQueueRail })),
+)
 import type { EditorTheme } from '../store/ideStore'
 
 export function AppShell() {
@@ -70,6 +103,7 @@ export function AppShell() {
   const collaborationMemberRole = useIDEStore((s) => s.collaborationMemberRole)
   const requestFormatDocument = useIDEStore((s) => s.requestFormatDocument)
   const currentUser = useIDEStore((s) => s.currentUser)
+  const currentPlan = useIDEStore((s) => s.currentPlan)
   const setFiles = useIDEStore((s) => s.setFiles)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
   const closeGitDiffTab = useIDEStore((s) => s.closeGitDiffTab)
@@ -85,13 +119,107 @@ export function AppShell() {
   const setTheme = useIDEStore((s) => s.setTheme)
   const setAutoSaveEnabled = useIDEStore((s) => s.setAutoSaveEnabled)
   const setShowWelcome = useIDEStore((s) => s.setShowWelcome)
+  const setIntentShellFocusTasksPath = useIDEStore((s) => s.setIntentShellFocusTasksPath)
   const showWelcome = useIDEStore((s) => s.showWelcome)
+  const setAcceptanceEditorPath = useIDEStore((s) => s.setAcceptanceEditorPath)
+  const intentShellEnabled = useIDEStore((s) => s.intentShellEnabled)
+  const setIntentShellEnabled = useIDEStore((s) => s.setIntentShellEnabled)
+  const intentShellRailTab = useIDEStore((s) => s.intentShellRailTab)
+  const setIntentShellRailTab = useIDEStore((s) => s.setIntentShellRailTab)
+  const intentShellGraphOpen = useIDEStore((s) => s.intentShellGraphOpen)
+  const setIntentShellGraphOpen = useIDEStore((s) => s.setIntentShellGraphOpen)
+  const intentShellQueueRailOpen = useIDEStore((s) => s.intentShellQueueRailOpen)
+  const setIntentShellQueueRailOpen = useIDEStore((s) => s.setIntentShellQueueRailOpen)
   const debugSessionPhase = useIDEStore((s) => s.debugSession.phase)
+
+  const queuedSpecExecutions = useIDEStore((s) => s.queuedSpecExecutions)
+  const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
+  const verifyingSpecBackfill = useIDEStore((s) => s.verifyingSpecBackfill)
 
   const { toasts, confirmRequest, dismissToast, notify, requestConfirm, resolveConfirm } = useAppFeedback()
   useBackgroundJobsTracker(notify)
   const ui = useUIActions()
+  const { workspaceMode, applyWorkspaceMode, initWorkspaceMode } = useWorkspaceMode()
+  const [showResumeBar, setShowResumeBar] = useState(() => !isSessionResumeBarDismissed())
+  const sessionSnapshot = useMemo(() => loadSessionResume(), [])
+  useSessionResumeSync(!showWelcome)
+  useLearningPathProgressSync(files, !showWelcome)
+  useAideLinkEmitters(!showWelcome)
+  useProjectLayoutSync(files, !showWelcome)
+
+  useEffect(() => {
+    initWorkspaceMode()
+  }, [initWorkspaceMode])
+
+  const handleSessionResume = useCallback(() => {
+    const snap = loadSessionResume()
+    if (!snap || isSessionResumeStale(snap, getSessionResumeMaxAgeMs(currentPlan ?? 'free'))) return
+    setShowWelcome(false)
+    applyWorkspaceMode(snap.workspaceMode)
+    if (snap.activeFileName) {
+      const idx = files.findIndex((f) => f.name === snap.activeFileName)
+      if (idx >= 0) setActiveFile(idx)
+    }
+    if (snap.activeSpecPath) setIntentShellFocusTasksPath(snap.activeSpecPath)
+    clearSessionResumeDismiss()
+    setShowResumeBar(false)
+  }, [applyWorkspaceMode, currentPlan, files, setActiveFile, setIntentShellFocusTasksPath, setShowWelcome])
+
+  const handleStartLearningPath = useCallback(
+    (path: LearningPath) => {
+      markLearningPathStarted(path.id)
+      ui.closeWelcomeAnd(() => {
+        applyWorkspaceMode(path.suggestedMode)
+        ui.openSpecStudio({ specName: path.specName, templateId: path.templateId })
+      })
+    },
+    [applyWorkspaceMode, ui],
+  )
   const { runFirstOpenSpecTask } = useSpecTaskActions(notify)
+  const autopilot = useAutopilotLite(runFirstOpenSpecTask)
+  const intentShellOn = shouldShowIntentShell(files, intentShellEnabled)
+  const intentShellNarrow = useIntentShellNarrowLayout(intentShellOn)
+  const {
+    shellVisible: intentQueueVisible,
+    panelProps: intentQueuePanelProps,
+    replayManifest,
+    replayLocked,
+    restoreFromProof,
+    focusTasksPath,
+  } = useIntentQueueRail({ notify, openChatPanel: ui.openChatPanel })
+
+  const openIntentShellPath = useCallback(
+    (path: string) => {
+      const normalized = path.replace(/\\/g, '/')
+      if (normalized.endsWith('/acceptance.md')) {
+        setAcceptanceEditorPath(normalized)
+        return
+      }
+      const idx = files.findIndex((file) => file.name.replace(/\\/g, '/') === normalized)
+      if (idx >= 0) {
+        setActiveFile(idx)
+        setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+        return
+      }
+      notify('info', t('tasksPanel.fileMissing'), normalized)
+    },
+    [files, notify, setAcceptanceEditorPath, setActiveFile, setEditorTarget, t],
+  )
+
+  const openCapstoneDoc = useCallback(
+    (specSlug: string, doc: 'tasks' | 'acceptance') => {
+      applyWorkspaceMode(doc === 'tasks' ? 'execute' : 'review')
+      openIntentShellPath(`.aide/specs/${specSlug}/${doc}.md`)
+    },
+    [applyWorkspaceMode, openIntentShellPath],
+  )
+
+  const runCapstoneNext = useCallback(() => {
+    const funnel = readCapstoneFunnel()
+    if (!funnel) return
+    applyWorkspaceMode('execute')
+    runFirstOpenSpecTask(`.aide/specs/${funnel.specSlug}/tasks.md`)
+  }, [applyWorkspaceMode, runFirstOpenSpecTask])
 
   const handleOpenRecentWorkspace = async (workspaceId: string) => {
     setShowWelcome(false)
@@ -143,6 +271,31 @@ export function AppShell() {
   useProjectIndexSync()
   const gitStatus = useGitStatus(fs, files)
   const gitWriteDisabled = Boolean(collaborationRoomId && !collabRoleCanWrite(collaborationMemberRole))
+
+  const specStatus = useMemo(() => buildSpecStatusSummary(files), [files])
+  const suggestedWorkspaceMode = useMemo(
+    () =>
+      inferSuggestedWorkspaceMode({
+        activeFileName: files[activeFile]?.name ?? null,
+        workspaceMode,
+        queueActive:
+          !!queuedSpecBackfill || !!verifyingSpecBackfill || queuedSpecExecutions.length > 0,
+        openTaskCount: specStatus.openTaskCount,
+        gitModifiedCount: gitStatus.modifiedCount + gitStatus.unstagedCount,
+        planFileOpen: isPlanFilePath(files[activeFile]?.name),
+      }),
+    [
+      activeFile,
+      files,
+      gitStatus.modifiedCount,
+      gitStatus.unstagedCount,
+      queuedSpecBackfill,
+      queuedSpecExecutions.length,
+      specStatus.openTaskCount,
+      verifyingSpecBackfill,
+      workspaceMode,
+    ],
+  )
 
   const handleStageAll = useCallback(async () => {
     if (!fs) {
@@ -274,16 +427,24 @@ export function AppShell() {
 
   const [showFileSidebar, setShowFileSidebar] = useState(true)
   const isNarrowViewport = useNarrowViewport()
-  const { sidebarWidth, rightPanelWidth, setSidebarWidth, setRightPanelWidth, resetSidebarWidth, resetRightPanelWidth } = usePanelWidth()
+  const { sidebarWidth, rightPanelWidth, auxiliaryWidth, intentShellLeftWidth, intentShellQueueWidth, setSidebarWidth, setRightPanelWidth, setAuxiliaryWidth, setIntentShellLeftWidth, setIntentShellQueueWidth, resetSidebarWidth, resetRightPanelWidth, resetAuxiliaryWidth, resetIntentShellLeftWidth, resetIntentShellQueueWidth } = usePanelWidth()
   const sidebarResize = usePanelResize(sidebarWidth, setSidebarWidth, 'right')
   const rightPanelResize = usePanelResize(rightPanelWidth, setRightPanelWidth, 'left')
+  const auxiliaryResize = usePanelResize(auxiliaryWidth, setAuxiliaryWidth, 'right')
+  const intentShellLeftResize = usePanelResize(intentShellLeftWidth, setIntentShellLeftWidth, 'right')
+  const intentShellQueueResize = usePanelResize(intentShellQueueWidth, setIntentShellQueueWidth, 'left')
 
   // Narrow screen: auto-hide sidebar when right panel or auxiliary is open
   const showSearchPanel = useIDEStore((s) => s.showSearchPanel)
   const showPreview = useIDEStore((s) => s.showPreview)
+  const showCodeReview = useIDEStore((s) => s.showCodeReview)
+  const showPerformance = useIDEStore((s) => s.showPerformance)
   const showChatPanel = useIDEStore((s) => s.showChatPanel)
   const showGitPanel = useIDEStore((s) => s.showGitPanel)
-  const auxiliaryActive = showSearchPanel || showPreview
+  const auxiliaryOpen =
+    getActiveAuxiliarySlot({ showSearchPanel, showPreview, showCodeReview, showPerformance }) !== 'none'
+  const rightDockOpen = showChatPanel || showGitPanel
+  const auxiliaryActive = auxiliaryOpen
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -328,10 +489,33 @@ export function AppShell() {
         onOpenSettings={ui.openSettingsPanel}
         onOpenWelcome={ui.openWelcomeScreen}
         onOpenAuth={ui.openAuthDialog}
-        onOpenSubscription={ui.openSubscriptionDialog}
+        onOpenSubscription={() => ui.openSubscriptionDialog('toolbar')}
+        workspaceMode={workspaceMode}
+        onWorkspaceModeChange={applyWorkspaceMode}
         requestConfirm={requestConfirm}
         notify={notify}
       />
+
+      {!showWelcome ? (
+        <>
+          <TodayFocusBar
+            workspaceMode={workspaceMode}
+            specSlug={specStatus.activeSpecSlug}
+            openTaskCount={specStatus.openTaskCount}
+            sessionSnapshot={sessionSnapshot}
+            showResume={showResumeBar}
+            suggestedMode={suggestedWorkspaceMode}
+            onContinueSession={handleSessionResume}
+            onDismissResume={() => setShowResumeBar(false)}
+            onApplySuggestedMode={applyWorkspaceMode}
+            onSaveProof={intentQueuePanelProps.onSaveProof}
+            onOpenShare={() => ui.openShareDialog('progress')}
+            onCapstoneOpenTasks={(slug) => openCapstoneDoc(slug, 'tasks')}
+            onCapstoneOpenAcceptance={(slug) => openCapstoneDoc(slug, 'acceptance')}
+            onCapstoneRunNext={runCapstoneNext}
+          />
+        </>
+      ) : null}
 
       <div className="workspace-body">
         <ActivityBar
@@ -386,24 +570,97 @@ export function AppShell() {
           ) : null}
 
           <div className="workbench-center">
-            <WorkbenchAuxiliaryHost
-              files={files}
-              onSearchNavigate={handleSearchNavigate}
-              onSearchReplace={handleSearchReplace}
-              onCloseAuxiliary={ui.closeAuxiliaryPanel}
-              onTestsGenerated={handleTestsGenerated}
-              isRunning={runtimeBusy}
-              output={output}
-            />
+            {auxiliaryOpen ? (
+              <>
+                <WorkbenchAuxiliaryHost
+                  files={files}
+                  onSearchNavigate={handleSearchNavigate}
+                  onSearchReplace={handleSearchReplace}
+                  onCloseAuxiliary={ui.closeAuxiliaryPanel}
+                  onTestsGenerated={handleTestsGenerated}
+                  isRunning={runtimeBusy}
+                  output={output}
+                />
+                <PanelResizeHandle
+                  edge="right"
+                  onPointerDown={auxiliaryResize.onResizePointerDown}
+                  onPointerMove={auxiliaryResize.onResizePointerMove}
+                  onPointerUp={auxiliaryResize.onResizePointerUp}
+                  onDoubleClick={resetAuxiliaryWidth}
+                  ariaLabel={t('panel.resizeAuxiliary')}
+                />
+              </>
+            ) : null}
 
             <div
               className={[
                 'workbench-editor-column',
-                isNarrowViewport && (showChatPanel || showGitPanel) ? 'workbench-editor-column--panel-drawer' : '',
+                intentShellOn ? 'workbench-editor-column--intent-shell' : '',
+                isNarrowViewport && rightDockOpen ? 'workbench-editor-column--panel-drawer' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
             >
+              {intentShellOn ? (
+                <Suspense fallback={null}>
+                <IntentShellBar
+                  onOpenPath={openIntentShellPath}
+                  onSaveProof={intentQueuePanelProps.onSaveProof}
+                  onRunAutopilotNext={autopilot.suggestion ? autopilot.runNext : undefined}
+                  autopilotTaskPreview={
+                    autopilot.suggestion?.taskText
+                      ? autopilot.suggestion.taskText.slice(0, 48)
+                      : null
+                  }
+                  autopilotOpenCount={autopilot.openTaskCount}
+                  autopilotQuota={autopilot.quota}
+                  autopilotQuotaBlocked={autopilot.quotaBlocked}
+                  lastGroundingBlock={intentQueuePanelProps.lastGroundingBlock}
+                  onDismissGroundingBlock={intentQueuePanelProps.onDismissGroundingBlock}
+                  narrowLayout={intentShellNarrow}
+                  railTab={intentShellRailTab}
+                  onRailTabChange={setIntentShellRailTab}
+                  graphRailOpen={intentShellGraphOpen}
+                  queueRailOpen={intentShellQueueRailOpen}
+                  onReopenGraph={() => setIntentShellGraphOpen(true)}
+                  onReopenQueue={() => setIntentShellQueueRailOpen(true)}
+                  onToggleShell={() => {
+                    saveIntentShellPreference(false)
+                    setIntentShellEnabled(false)
+                  }}
+                />
+                </Suspense>
+              ) : null}
+              <div className="workbench-editor-body">
+                <div
+                  className={[
+                    'workbench-editor-row',
+                    intentShellNarrow ? 'workbench-editor-row--intent-shell-narrow' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+              {intentShellOn && intentShellGraphOpen ? (
+                <Suspense fallback={null}>
+                <IntentShellLeftRail
+                  focusTasksPath={focusTasksPath}
+                  highlightTaskText={autopilot.suggestion?.taskText ?? null}
+                  onOpenPath={openIntentShellPath}
+                  drawerOpen={!intentShellNarrow || intentShellRailTab === 'graph'}
+                  onClose={() => setIntentShellGraphOpen(false)}
+                />
+                </Suspense>
+              ) : null}
+              {intentShellOn && intentShellGraphOpen && !intentShellNarrow ? (
+                <PanelResizeHandle
+                  edge="right"
+                  onPointerDown={intentShellLeftResize.onResizePointerDown}
+                  onPointerMove={intentShellLeftResize.onResizePointerMove}
+                  onPointerUp={intentShellLeftResize.onResizePointerUp}
+                  onDoubleClick={resetIntentShellLeftWidth}
+                  ariaLabel={t('panel.resizeIntentGraph')}
+                />
+              ) : null}
               <div className="workspace">
                 <EditorLayout
           isReady={isReady}
@@ -496,22 +753,53 @@ export function AppShell() {
         />
               </div>
 
-              <PanelResizeHandle
-                edge="left"
-                onPointerDown={rightPanelResize.onResizePointerDown}
-                onPointerMove={rightPanelResize.onResizePointerMove}
-                onPointerUp={rightPanelResize.onResizePointerUp}
-                onDoubleClick={resetRightPanelWidth}
-                ariaLabel="Resize right panel"
-              />
-              <RightPanel
-                fs={fs}
-                notify={notify}
-                onCloseGit={ui.closeGitPanel}
-                onCloseChat={ui.closeChatPanel}
-                onOpenAuth={ui.openAuthDialog}
-                onOpenSubscription={ui.openSubscriptionDialog}
-              />
+              {intentShellOn && intentQueueVisible && intentShellQueueRailOpen && !intentShellNarrow ? (
+                <PanelResizeHandle
+                  edge="left"
+                  onPointerDown={intentShellQueueResize.onResizePointerDown}
+                  onPointerMove={intentShellQueueResize.onResizePointerMove}
+                  onPointerUp={intentShellQueueResize.onResizePointerUp}
+                  onDoubleClick={resetIntentShellQueueWidth}
+                  ariaLabel={t('panel.resizeIntentQueue')}
+                />
+              ) : null}
+              {intentShellOn && intentQueueVisible && intentShellQueueRailOpen ? (
+                <Suspense fallback={null}>
+                <IntentShellQueueRail
+                  panelProps={intentQueuePanelProps}
+                  replayAvailable={Boolean(replayManifest)}
+                  replayLocked={replayLocked}
+                  onRestoreFromProof={restoreFromProof}
+                  onUpgrade={currentUser ? () => ui.openSubscriptionDialog('settings') : undefined}
+                  onOpenChat={ui.openChatPanel}
+                  drawerOpen={!intentShellNarrow || intentShellRailTab === 'queue'}
+                  onClose={() => setIntentShellQueueRailOpen(false)}
+                />
+                </Suspense>
+              ) : null}
+              </div>
+
+              {rightDockOpen ? (
+                <>
+                  <PanelResizeHandle
+                    edge="left"
+                    onPointerDown={rightPanelResize.onResizePointerDown}
+                    onPointerMove={rightPanelResize.onResizePointerMove}
+                    onPointerUp={rightPanelResize.onResizePointerUp}
+                    onDoubleClick={resetRightPanelWidth}
+                    ariaLabel="Resize right panel"
+                  />
+                  <RightPanel
+                    fs={fs}
+                    notify={notify}
+                    onCloseGit={ui.closeGitPanel}
+                    onCloseChat={ui.closeChatPanel}
+                    onOpenAuth={ui.openAuthDialog}
+                    onOpenSubscription={() => ui.openSubscriptionDialog('toolbar')}
+                  />
+                </>
+              ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -538,6 +826,7 @@ export function AppShell() {
         closeSettingsPanel={ui.closeSettingsPanel}
         openNewFileInput={ui.openNewFileInput}
         openSettingsPanel={ui.openSettingsPanel}
+        openSettingsToIntentGraph={ui.openSettingsToIntentGraph}
         openGitPanel={ui.openGitPanel}
         openShareDialog={ui.openShareDialog}
         openChatPanel={ui.openChatPanel}
@@ -572,6 +861,9 @@ export function AppShell() {
         gitUnstaged={gitStatus.unstagedCount}
         gitStageAllDisabled={gitWriteDisabled}
         onStageAll={handleStageAll}
+        applyWorkspaceMode={applyWorkspaceMode}
+        onSessionResume={handleSessionResume}
+        onStartLearningPath={handleStartLearningPath}
       />
 
       <FeedbackCenter

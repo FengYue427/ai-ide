@@ -1,4 +1,10 @@
 import { planLimitsByName } from '../../lib/billing/plans'
+import {
+  getClientEntitlements,
+  getClientEffectivePlanName,
+  isClientEntitlementEnabled,
+} from '../lib/clientPlanEntitlements'
+import type { EntitlementFeature } from '../../lib/billing/entitlements'
 import { readJsonResponse, apiFetch } from './apiUtils'
 
 export interface Plan {
@@ -100,18 +106,22 @@ class SubscriptionService {
     return this.currentPlan
   }
 
-  // 检查功能是否可用
-  canUseFeature(_feature: keyof typeof defaultLimits.free): boolean {
-    // 简化版本：Pro 及以上全部可用
-    if (this.currentPlan === 'enterprise') return true
-    if (this.currentPlan === 'pro') return true
-    // free 计划有具体限制
-    return false
+  getEffectivePlanName(): string {
+    return getClientEffectivePlanName(this.currentPlan)
+  }
+
+  getEntitlements() {
+    return getClientEntitlements(this.currentPlan)
+  }
+
+  canUseFeature(feature: EntitlementFeature): boolean {
+    return isClientEntitlementEnabled(this.currentPlan, feature)
   }
 
   // 获取使用量限制
   getLimits(): { aiRequestsPerDay: number; workspaces: number; storageGB: number } {
-    return defaultLimits[this.currentPlan] || defaultLimits.free
+    const effective = getClientEffectivePlanName(this.currentPlan)
+    return defaultLimits[effective] || defaultLimits.free
   }
 
   // 订阅计划变更
@@ -131,7 +141,7 @@ class SubscriptionService {
   // 检查是否超过 AI 用量限制
   async checkAIQuota(isLoggedIn = false): Promise<{ allowed: boolean; remaining: number }> {
     const { fetchAIQuota } = await import('./usageService')
-    const quota = await fetchAIQuota(this.currentPlan, isLoggedIn)
+    const quota = await fetchAIQuota(this.getEffectivePlanName(), isLoggedIn)
     return {
       allowed: quota.allowed,
       remaining: Number.isFinite(quota.remaining) ? quota.remaining : Infinity,

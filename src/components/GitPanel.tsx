@@ -37,6 +37,13 @@ import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import { InlineStatePanel } from './InlineStatePanel'
 import { GitHunkStagePanel } from './GitHunkStagePanel'
+import { GitSpecCommitBanner } from './GitSpecCommitBanner'
+import { AutopilotQuotaBar } from './AutopilotQuotaBar'
+import { LinkageAutopilotHint } from './LinkageAutopilotHint'
+import { useWorkspaceMode } from '../hooks/useWorkspaceMode'
+import { useAutopilotLite } from '../hooks/useAutopilotLite'
+import { isTierCEnabled } from '../lib/intentOsTierC'
+import { useSpecTaskActions } from '../hooks/useSpecTaskActions'
 import { workspaceContextService } from '../services/workspaceContextService'
 import styles from './GitPanel.module.css'
 
@@ -67,6 +74,18 @@ const GitPanel: React.FC<GitPanelProps> = ({
   notify,
 }) => {
   const { t, locale } = useI18n()
+  const { applyWorkspaceMode } = useWorkspaceMode()
+  const { runFirstOpenSpecTask } = useSpecTaskActions(
+    useCallback(
+      (kind, title, detail) => {
+        notify?.(kind, title, detail)
+      },
+      [notify],
+    ),
+  )
+  const autopilot = useAutopilotLite(runFirstOpenSpecTask)
+  const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
+  const autopilotEnabled = isTierCEnabled('autopilotLite')
   const [status, setStatus] = useState<gitService.GitStatus[]>([])
   const [commits, setCommits] = useState<gitService.GitCommit[]>([])
   const [commitMessage, setCommitMessage] = useState('')
@@ -494,6 +513,15 @@ const GitPanel: React.FC<GitPanelProps> = ({
         ))}
       </div>
 
+      {autopilotEnabled ? (
+        <AutopilotQuotaBar
+          quota={autopilot.quota}
+          quotaBlocked={autopilot.quotaBlocked}
+          onUpgrade={() => setShowSubscriptionModal(true)}
+          compact
+        />
+      ) : null}
+
       {activeTab === 'changes' && (
         <div className={styles.content}>
           {error && (
@@ -599,6 +627,17 @@ const GitPanel: React.FC<GitPanelProps> = ({
 
               {!readOnly ? (
                 <div className={styles.commitSection}>
+                  <LinkageAutopilotHint
+                    gitModifiedCount={staged.length + unstaged.length}
+                    onRunAutopilot={autopilot.suggestion ? autopilot.runNext : undefined}
+                  />
+                  <GitSpecCommitBanner
+                    onOpenTasks={() => {
+                      useIDEStore.getState().setShowTerminal(true)
+                      useIDEStore.getState().setBottomPanelTab('tasks')
+                    }}
+                    onSwitchReviewMode={() => applyWorkspaceMode('review')}
+                  />
                   <input
                     type="text"
                     value={commitMessage}

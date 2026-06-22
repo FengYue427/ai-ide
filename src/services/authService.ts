@@ -31,9 +31,15 @@ export type WorkspaceCloudSaveResult =
   | { ok: true; summary?: WorkspaceSanitizeSummary }
   | {
       ok: false
-      reason: 'not_logged_in' | 'payload_too_large' | 'http_error' | 'network_error'
+      reason:
+        | 'not_logged_in'
+        | 'payload_too_large'
+        | 'storage_limit_reached'
+        | 'http_error'
+        | 'network_error'
       status?: number
       summary?: WorkspaceSanitizeSummary
+      limitGb?: number
     }
 
 const USER_KEY = 'user'
@@ -371,6 +377,19 @@ class AuthService {
       })
 
       if (res.status === 413) {
+        const body = await readJsonResponse<{ errorKey?: string; limitGb?: string | number }>(res).catch(
+          () => null,
+        )
+        if (body?.errorKey === 'api.storage.limitReached') {
+          const limitGb = Number(body.limitGb)
+          return {
+            ok: false,
+            reason: 'storage_limit_reached',
+            status: 413,
+            limitGb: Number.isFinite(limitGb) ? limitGb : undefined,
+            summary: sanitized.summary,
+          }
+        }
         return {
           ok: false,
           reason: 'payload_too_large',

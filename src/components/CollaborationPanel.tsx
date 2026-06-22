@@ -7,6 +7,7 @@ import { applyCollabRoomSnapshot, endCollabSession } from '../lib/collabRoomStat
 import { collabRoleLabel, type CollabMemberRole } from '../lib/collabPermissions'
 import { shouldUseLivekitSignaling } from '../services/collab/collabYjsProviderTypes'
 import { authService } from '../services/authService'
+import { canUseEntitlement } from '../lib/planFeatureGate'
 import { useCollabConnection } from '../hooks/useCollabConnection'
 import {
   createCollabRoom,
@@ -47,6 +48,7 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
   const [joinRole, setJoinRole] = useState<'editor' | 'viewer'>('editor')
   const apiMembers = useIDEStore((s) => s.collaborationRoomMembers) ?? []
   const storeMemberRole = useIDEStore((s) => s.collaborationMemberRole)
+  const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
 
   useEffect(() => {
     unifiedStorage.get<string>(COLLAB_USERNAME_KEY, '').then((saved) => {
@@ -115,10 +117,15 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
         setError(t('collab.m1.loginRequired'))
         return
       }
+      if (!canUseEntitlement('collabHost')) {
+        setShowSubscriptionModal(true)
+        return
+      }
       setBusy(true)
       try {
-        const { room, error: apiError } = await createCollabRoom(undefined, t)
+        const { room, error: apiError, status } = await createCollabRoom(undefined, t)
         if (apiError || !room) {
+          if (status === 403) setShowSubscriptionModal(true)
           setError(apiError ?? t('collab.m1.createFailed'))
           return
         }
@@ -175,8 +182,13 @@ const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ onClose }) => {
       setBusy(true)
       try {
         if (!nextRoomId) {
+          if (!canUseEntitlement('collabHost')) {
+            setShowSubscriptionModal(true)
+            return
+          }
           const created = await createCollabRoom(undefined, t)
           if (created.error || !created.room) {
+            if (created.status === 403) setShowSubscriptionModal(true)
             setError(created.error ?? t('collab.m1.createFailed'))
             return
           }

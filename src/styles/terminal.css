@@ -197,11 +197,17 @@
 
 .bottom-panel-tabs {
   display: flex;
+  align-items: center;
   gap: 4px;
   padding: 6px 10px 0;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+}
+
+.bottom-panel-close {
+  margin-left: auto;
+  margin-bottom: 4px;
 }
 
 .bottom-panel-tab {

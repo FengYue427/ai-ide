@@ -1,0 +1,273 @@
+:root {
+  --intent-shell-left-width: 240px;
+  --intent-shell-queue-width: 300px;
+}
+
+.workbench-editor-column--intent-shell {
+  flex-direction: column;
+}
+
+.workbench-editor-row {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.intent-shell-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--accent-color) 6%, var(--bg-secondary));
+  flex-shrink: 0;
+}
+
+.intent-shell-bar__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.intent-shell-bar__chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.intent-shell-bar__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.intent-shell-bar__action--warn {
+  border-color: color-mix(in srgb, var(--warning-color) 35%, var(--border-color));
+  color: var(--warning-color);
+}
+
+.intent-shell-bar__action--accent {
+  border-color: color-mix(in srgb, var(--accent-color) 35%, var(--border-color));
+  color: var(--accent-color);
+}
+
+.intent-shell-bar__drift {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.intent-shell-bar__drift-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--warning-color);
+}
+
+.intent-grounding-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(360px, 40vw);
+  font-size: 10px;
+  color: var(--danger-color);
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--danger-color) 30%, var(--border-color));
+}
+
+.intent-grounding-inline .intent-grounding-banner__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  margin: 0;
+}
+
+.intent-grounding-inline .intent-grounding-banner__reason {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.intent-grounding-inline .intent-grounding-banner__dismiss {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.intent-shell-bar__toggle {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.intent-shell-left {
+  width: var(--intent-shell-left-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.intent-shell-left__header,
+.intent-shell-queue__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.intent-shell-rail__close {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.intent-shell-left__body,
+.intent-shell-queue__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+}
+
+.intent-shell-queue {
+  width: var(--intent-shell-queue-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.intent-shell-queue__chat {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 8px;
+}
+
+.intent-shell-queue__replay {
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.intent-graph-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.intent-graph-shell__replay-badge {
+  font-size: 10px;
+  color: var(--accent-color);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+.intent-graph-shell-empty__text {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1100px) {
+  .workbench-editor-row--intent-shell-narrow {
+    position: relative;
+  }
+
+  .workbench-editor-row--intent-shell-narrow .workspace {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .intent-shell-left,
+  .intent-shell-queue {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 30;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
+    transform: translateX(-110%);
+    transition: transform 0.2s ease;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .intent-shell-queue {
+    right: 0;
+    left: auto;
+    transform: translateX(110%);
+  }
+
+  .intent-shell-left--drawer-open {
+    transform: translateX(0);
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .intent-shell-queue--drawer-open {
+    transform: translateX(0);
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .intent-shell-bar__tabs {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: 4px;
+  }
+
+  .intent-shell-bar__tab {
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 10px;
+    cursor: pointer;
+  }
+
+  .intent-shell-bar__tab--active {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  }
+}
+
+.intent-shell-bar__tabs {
+  display: none;
+}

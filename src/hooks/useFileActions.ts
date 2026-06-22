@@ -4,6 +4,10 @@ import type { TranslateFn } from '../i18n'
 import type { FileItem } from '../types/file'
 import { workspaceContextService } from '../services/workspaceContextService'
 import { clearSemanticSearchCache } from '../services/semanticSearchService'
+import { applyIntentShareFromImportedFiles } from '../services/intentOs/intentShareImportService'
+import { isPlanGatedTierCEnabled } from '../lib/planFeatureGate'
+import { saveIntentShellPreference } from '../lib/intentShellFeatures'
+import { useIDEStore } from '../store/ideStore'
 
 type Notify = (kind: 'success' | 'error' | 'info', title: string, detail?: string) => void
 
@@ -52,6 +56,21 @@ export function useFileActions({
       setActiveFile(0)
       setShowDropZone(false)
       notify('success', t('notify.filesImported'), t('notify.filesImportedDetail', { count: filesWithLang.length }))
+      if (isPlanGatedTierCEnabled('intentShareImport')) {
+        const focus = applyIntentShareFromImportedFiles(filesWithLang)
+        if (focus) {
+          const store = useIDEStore.getState()
+          store.setIntentShellFocusTasksPath(focus.focusTasksPath)
+          store.setIntentReplayGraphOverlay(focus.snapshot.graph)
+          store.setIntentShellEnabled(true)
+          saveIntentShellPreference(true)
+          notify(
+            'info',
+            t('share.intent.imported.title'),
+            t('share.intent.imported.detail', { summary: focus.summary }),
+          )
+        }
+      }
     },
     [getLanguageFromExt, notify, setActiveFile, setFiles, setShowDropZone, t],
   )

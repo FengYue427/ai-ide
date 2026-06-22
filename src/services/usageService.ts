@@ -3,6 +3,7 @@ import { serviceText } from '../lib/serviceI18n'
 import type { QuotaCheck } from './aiService'
 import { readJsonResponse, apiFetch } from './apiUtils'
 import { trackEvent } from '../lib/observability'
+import { emitQuotaBlocked, maybeEmitQuotaNearLimit } from '../lib/quotaLinkEvents'
 
 const USAGE_KEY = 'ai-usage-today'
 const USAGE_DATE_KEY = 'ai-usage-date'
@@ -123,6 +124,7 @@ export async function fetchAIQuota(currentPlan: string, isLoggedIn: boolean): Pr
     if (response.ok && data?.quota) {
       const quota = { ...data.quota, plan: data.quota.plan || currentPlan }
       cacheServerQuota(quota)
+      maybeEmitQuotaNearLimit(quota)
       return quota
     }
   } catch {
@@ -152,8 +154,10 @@ export async function ensureAIQuotaAllowed(
 ): Promise<QuotaCheck> {
   const quota = await fetchAIQuota(currentPlan, isLoggedIn)
   if (!quota.allowed) {
+    emitQuotaBlocked(quota)
     throw new QuotaExceededError(quota)
   }
+  maybeEmitQuotaNearLimit(quota)
   return quota
 }
 
@@ -191,10 +195,9 @@ export async function recordAIUsageEvent(
     if (response.status === 429) {
       const data = await readJsonResponse<{ quota?: QuotaCheck }>(response)
       trackEvent('usage.ai.quota_exceeded', { quota: data?.quota })
-      if (data?.quota) {
-        throw new QuotaExceededError(data.quota)
-      }
-      throw new QuotaExceededError(await fetchAIQuota(currentPlan, true))
+      const quota = data?.quota ?? (await fetchAIQuota(currentPlan, true))
+      emitQuotaBlocked(quota)
+      throw new QuotaExceededError(quota)
     }
     if (!response.ok) {
       throw new QuotaSyncError()
@@ -202,6 +205,7 @@ export async function recordAIUsageEvent(
     const data = await readJsonResponse<{ quota?: QuotaCheck }>(response)
     if (data?.quota) {
       cacheServerQuota(data.quota)
+      maybeEmitQuotaNearLimit(data.quota)
     }
   } catch (error) {
     if (error instanceof QuotaExceededError || error instanceof QuotaSyncError) throw error

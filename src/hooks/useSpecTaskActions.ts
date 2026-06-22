@@ -50,7 +50,7 @@ export function useSpecTaskActions(notify: SpecTaskNotify) {
         if (!result.accepted) {
           notify(
             'error',
-            t('runtime.queuePaused.title'),
+            t('intent.grounding.title'),
             result.pauseReason ?? t('runtime.queuePaused.detail'),
           )
           return

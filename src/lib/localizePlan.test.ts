@@ -15,7 +15,8 @@ describe('localizePlan', () => {
       t,
     )
     expect(plan.displayName).toBe('Pro')
-    expect(plan.description).toContain('$9.99')
-    expect(plan.features[0]).toBe('2000 weighted quota units / day')
+    expect(plan.description).toContain('Autopilot')
+    expect(plan.features[0]).toBe('All platform AI tiers + 2000 quota / day')
+    expect(plan.features).toHaveLength(6)
   })
 })

@@ -1,0 +1,104 @@
+/* Command palette — extracted from inline styles in CommandPalette.tsx */
+
+.command-palette {
+  width: 100%;
+  max-width: 720px;
+  max-height: 560px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-primary) 96%, transparent);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.4);
+}
+
+.command-palette__search {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.command-palette__search-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.command-palette__input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 16px;
+  outline: none;
+}
+
+.command-palette__list {
+  flex: 1;
+  overflow: auto;
+}
+
+.command-palette__category {
+  padding: 10px 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  background: var(--bg-secondary);
+}
+
+.command-palette__item {
+  width: 100%;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  color: var(--text-primary);
+  border: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.command-palette__item--selected {
+  background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+}
+
+.command-palette__item-icon {
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.command-palette__item--selected .command-palette__item-icon {
+  opacity: 1;
+}
+
+.command-palette__item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.command-palette__item-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.command-palette__item-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+
+.command-palette__footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 12px;
+}

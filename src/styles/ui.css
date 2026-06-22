@@ -41,12 +41,15 @@
 
 .modal--wide {
   width: min(1080px, 96vw);
-  max-height: 90vh;
 }
 
-.modal--wide .modal-body {
-  overflow-y: auto;
-  max-height: calc(90vh - 64px);
+.modal--subscription {
+  width: min(960px, 96vw);
+}
+
+.modal--subscription .modal-body {
+  padding: 16px;
+  gap: 12px;
 }
 
 .modal--compact {

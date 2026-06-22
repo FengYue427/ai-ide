@@ -1,7 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useI18n } from '../i18n'
+import { gatePlanBackgroundBatch } from '../lib/planBackgroundBatchGate'
+import { getClientEntitlements } from '../lib/clientPlanEntitlements'
 import { filterPlanCatalog, sortPlanCatalog, type PlanCatalogItem, type PlanCatalogSort } from '../services/planCatalogService'
 import type { PlanTemplateItem } from '../services/planTemplateService'
+import { useIDEStore } from '../store/ideStore'
+import { UpgradeEntitlementHint } from './UpgradeEntitlementHint'
 
 interface PlansSectionProps {
   plans: PlanCatalogItem[]
@@ -49,6 +53,14 @@ export function PlansSection({
   onDuplicatePlan,
 }: PlansSectionProps) {
   const { t } = useI18n()
+  const currentPlan = useIDEStore((s) => s.currentPlan)
+  const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
+  const jobEntitlements = useMemo(
+    () => getClientEntitlements(currentPlan ?? 'free'),
+    [currentPlan],
+  )
+  const batchMax = jobEntitlements.backgroundJobsBatchMax
+  const isTeamPlan = jobEntitlements.planName === 'enterprise'
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState<PlanCatalogSort>('recent-exec')
   const [visibleCount, setVisibleCount] = useState(8)
@@ -62,10 +74,47 @@ export function PlansSection({
   const selectedCount = (path: string) =>
     Object.values(selectedSteps[path] ?? {}).filter(Boolean).length
 
+  const openUpgrade = useCallback(() => setShowSubscriptionModal(true), [setShowSubscriptionModal])
+
+  const runPlanInBackground = useCallback(
+    (path: string, steps: Array<{ text: string; line?: number }>) => {
+      if (!onRunPlanInBackground) return
+      const gate = gatePlanBackgroundBatch(currentPlan ?? 'free', steps.length)
+      if (!gate.ok) {
+        if (gate.reason === 'upgrade-required') openUpgrade()
+        return
+      }
+      onRunPlanInBackground(path, steps)
+    },
+    [currentPlan, onRunPlanInBackground, openUpgrade],
+  )
+
   return (
     <div className="settings-card settings-card--grid">
       <div className="settings-row-title">{t('plan.catalog.title')}</div>
       <div className="settings-row-desc">{t('plan.catalog.desc')}</div>
+      {onRunPlanInBackground ? (
+        <div
+          className={`plan-batch-quota${isTeamPlan ? ' plan-batch-quota--team' : ''}`}
+          data-testid="plan-batch-quota"
+        >
+          <span>
+            {batchMax === 0
+              ? t('plan.catalog.batchQuotaFree')
+              : t('plan.catalog.batchQuotaPaid', { batch: batchMax })}
+          </span>
+          {isTeamPlan ? (
+            <span className="plan-batch-quota__team-badge">{t('entitlements.card.teamPlus')}</span>
+          ) : (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={openUpgrade}>
+              {batchMax === 0 ? t('backgroundJobs.upgradePro') : t('entitlements.card.upgradeTeam')}
+            </button>
+          )}
+        </div>
+      ) : null}
+      {onRunPlanInBackground && batchMax === 0 ? (
+        <UpgradeEntitlementHint compact feature="planBatch" onUpgrade={openUpgrade} />
+      ) : null}
       {onCreateFromTemplate && planTemplates.length > 0 ? (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
           <select
@@ -233,7 +282,7 @@ export function PlansSection({
                         const selected = plan.stepItems
                           .filter((step) => selectedMap[`${step.line}-${step.text}`])
                           .map((step) => ({ text: step.text, line: step.line }))
-                        onRunPlanInBackground(
+                        runPlanInBackground(
                           plan.path,
                           selected.length > 0
                             ? selected
@@ -264,7 +313,7 @@ export function PlansSection({
                       type="button"
                       className="btn btn-secondary"
                       onClick={() =>
-                        onRunPlanInBackground(
+                        runPlanInBackground(
                           plan.path,
                           plan.stepItems.map((step) => ({ text: step.text, line: step.line })),
                         )

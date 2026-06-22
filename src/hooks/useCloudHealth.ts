@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isSelfHostedDeploy } from '../lib/deployContext'
 import { apiFetch } from '../services/apiUtils'
 
 const SLOW_MS = 6_000
@@ -42,13 +43,16 @@ export function useCloudHealth(): CloudHealthState {
   return state
 }
 
-/** Show CN / vercel.app network guidance on welcome. */
+/** Show network guidance on welcome (vercel.app vs self-hosted). */
 export function shouldShowNetworkTips(
   cloud: CloudHealthState,
   desktop: boolean,
 ): boolean {
   if (desktop) return false
   if (cloud.status === 'loading') return false
+  if (isSelfHostedDeploy()) {
+    return cloud.status === 'degraded' || cloud.slow === true
+  }
   if (cloud.status === 'degraded') return true
   return cloud.slow === true
 }

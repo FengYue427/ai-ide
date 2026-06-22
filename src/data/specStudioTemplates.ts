@@ -14,6 +14,8 @@ export type SpecStudioTemplateId =
   | 'python-service'
   | 'git-release'
   | 'ai-agent-task'
+  | 'demo-onboarding'
+  | 'course-capstone'
 
 export interface SpecStudioTemplateMeta {
   id: SpecStudioTemplateId
@@ -95,6 +97,20 @@ export const SPEC_STUDIO_TEMPLATES: SpecStudioTemplateMeta[] = [
     descKey: 'specStudio.template.ai-agent-task.desc',
     tags: ['agent', 'multi-file'],
   },
+  {
+    id: 'demo-onboarding',
+    stack: 'general',
+    titleKey: 'specStudio.template.demo-onboarding.title',
+    descKey: 'specStudio.template.demo-onboarding.desc',
+    tags: ['demo', 'intent', 'onboarding'],
+  },
+  {
+    id: 'course-capstone',
+    stack: 'general',
+    titleKey: 'specStudio.template.course-capstone.title',
+    descKey: 'specStudio.template.course-capstone.desc',
+    tags: ['course', 'capstone', 'pack'],
+  },
 ]
 
 function normalizeSpecName(specName: string): string {
@@ -148,6 +164,12 @@ export function buildSpecStudioTemplateFiles(
   }
   if (templateId === 'git-release') {
     return buildGitReleaseSpec(base, slug, date, locale)
+  }
+  if (templateId === 'demo-onboarding') {
+    return buildDemoOnboardingSpec(base, slug, date, locale)
+  }
+  if (templateId === 'course-capstone') {
+    return buildCourseCapstoneSpec(base, slug, date, locale)
   }
   return buildAiAgentTaskSpec(base, slug, date, locale)
 }
@@ -359,6 +381,62 @@ function buildAiAgentTaskSpec(base: string, slug: string, date: string, _locale:
     {
       path: `${base}/acceptance.md`,
       content: `# Acceptance\n\n- [ ] All tasks checked\n- [ ] Agent summary matches diff\n- [ ] Hooks green or documented skips\n`,
+    },
+  ]
+}
+
+function buildDemoOnboardingSpec(base: string, slug: string, date: string, locale: Language): SpecTemplateFile[] {
+  const title = zhEn(locale, 'Intent OS 60 秒演示', 'Intent OS 60s demo')
+  return [
+    {
+      path: `${base}/requirements.md`,
+      content: `# ${title}\n\n- Spec: ${slug}\n- Date: ${date}\n\n## Goals\n\n- 创建一个最小 \`src/demo.ts\` 导出 greet 函数\n- 通过 acceptance 验收后再进入下一任务\n\n## Non-goals\n\n- 不引入外部依赖\n`,
+    },
+    {
+      path: `${base}/design.md`,
+      content: `# Design\n\n## Files\n\n- \`src/demo.ts\` — export function greet(name: string): string\n\n## Verification\n\n- acceptance.md 勾选 + 可选 npm test\n`,
+    },
+    {
+      path: `${base}/tasks.md`,
+      content: `# Tasks\n\n- [ ] 创建 \`src/demo.ts\` 并实现 greet\n- [ ] 在 acceptance.md 勾选「greet 返回 Hello\"\n`,
+    },
+    {
+      path: `${base}/acceptance.md`,
+      content: `# Acceptance\n\n- [ ] \`src/demo.ts\` 存在且导出 greet\n- [ ] greet(\"AI IDE\") 返回包含 Hello\n`,
+    },
+    {
+      path: 'src/demo.ts',
+      content: `// Intent OS demo — implement greet\nexport function greet(name: string): string {\n  return ''\n}\n`,
+    },
+  ]
+}
+
+function buildCourseCapstoneSpec(base: string, slug: string, date: string, locale: Language): SpecTemplateFile[] {
+  const title = zhEn(locale, '课设/竞赛 Capstone', 'Course / competition capstone')
+  return [
+    {
+      path: `${base}/requirements.md`,
+      content: `# Requirements · ${title}\n\n- Spec: ${slug}\n- Date: ${date}\n\n## EARS-style goals\n\n- WHEN 用户提交表单 THEN 系统 SHALL 校验并持久化\n- WHEN 查询列表 THEN 系统 SHALL 返回分页结果\n- WHEN 运行测试 THEN 全部 acceptance 项 SHALL 通过\n\n## Deliverables\n\n- \`src/\` 可运行代码\n- \`.aide/reports/proof-*.md\` 证明包（Intent OS）\n`,
+    },
+    {
+      path: `${base}/design.md`,
+      content: `# Design\n\n## Modules\n\n- \`src/api/\` HTTP 层\n- \`src/domain/\` 业务逻辑\n- \`tests/\` 自动化测试\n\n## Milestones\n\n1. 脚手架 + 第一条 API\n2. 核心业务 + 测试\n3. 验收 + Proof-of-Done 报告\n`,
+    },
+    {
+      path: `${base}/tasks.md`,
+      content: `# Tasks\n\n- [ ] 初始化 \`src/index.ts\` 与 \`tests/smoke.test.ts\`\n- [ ] 实现核心 API（见 requirements）\n- [ ] 补齐单元测试并通过 \`npm run test:local\`\n- [ ] 勾选 acceptance.md 并生成 Proof 报告\n`,
+    },
+    {
+      path: `${base}/acceptance.md`,
+      content: `# Acceptance\n\n- [ ] \`npm run test:local\` 通过\n- [ ] requirements 中 3 条 EARS 行为均有测试覆盖\n- [ ] 已保存 \`.aide/reports/proof-${slug}-*.md\`\n\n\`\`\`aide-acceptance\n- npm run test:local\n\`\`\`\n`,
+    },
+    {
+      path: 'src/index.ts',
+      content: `// Capstone starter — replace with your implementation\nexport function healthCheck(): string {\n  return 'ok'\n}\n`,
+    },
+    {
+      path: 'tests/smoke.test.ts',
+      content: `import { describe, expect, it } from 'vitest'\nimport { healthCheck } from '../src/index'\n\ndescribe('capstone smoke', () => {\n  it('boots', () => {\n    expect(healthCheck()).toBe('ok')\n  })\n})\n`,
     },
   ]
 }

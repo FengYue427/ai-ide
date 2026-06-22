@@ -211,6 +211,21 @@ export function generateShareUrl(id: string): string {
   return url.toString()
 }
 
+export function generateShareProgressUrl(id: string): string {
+  const url = new URL(generateShareUrl(id))
+  url.searchParams.set('view', 'progress')
+  return url.toString()
+}
+
+export function extractShareIdFromLocation(search = window.location.search): string | null {
+  return new URLSearchParams(search).get('share')
+}
+
+export function isShareProgressView(search = window.location.search): boolean {
+  const params = new URLSearchParams(search)
+  return params.get('view') === 'progress' && !!params.get('share')
+}
+
 export function exportAsJson(files: { name: string; content: string }[]): string {
   return JSON.stringify({ files, exportedAt: new Date().toISOString() }, null, 2)
 }

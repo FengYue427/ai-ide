@@ -1,32 +1,31 @@
 import { memo } from 'react'
 import { useI18n } from '../i18n'
-import type { QueuedPlanExecution, QueuedSpecExecution } from '../store/ideStore'
+import type {
+  FailedPlanExecution,
+  FailedSpecExecution,
+  LastGroundingBlock,
+  QueuedPlanExecution,
+  QueuedSpecBackfill,
+  QueuedSpecExecution,
+  RecentDoneQueueItem,
+} from '../store/ideStore'
 import type { ChatSessionStatus } from '../services/chatSessionOrchestrator'
 import type { RuntimeQueuePauseState } from '../services/runtime/runtimeQueuePause'
 import { QueuePreviewList } from './QueuePreviewList'
+import { SpecVerificationQueueList } from './SpecVerificationQueueList'
+import { IntentGroundingBanner } from './intent/IntentGroundingBanner'
+import { IntentDemoVerifyBanner } from './IntentDemoVerifyBanner'
 
-export interface FailedPlanExecution {
-  prompt: string
-  backfill: QueuedPlanExecution['backfill']
-  error: string
-}
+export type { FailedPlanExecution, FailedSpecExecution, RecentDoneQueueItem } from '../store/ideStore'
 
-export interface FailedSpecExecution {
-  prompt: string
-  backfill: QueuedSpecExecution['backfill']
-  error: string
-}
-
-export interface RecentDoneQueueItem {
-  kind: 'plan' | 'spec'
-  text: string
-}
-
-interface TaskQueuePanelProps {
+export interface TaskQueuePanelProps {
   sessionStatus: ChatSessionStatus
   runId: string | null
   activeQueueTask: string | null
   queuedChatPrompt: string | null
+  queuedSpecBackfill: QueuedSpecBackfill | null
+  verifyingSpecBackfill: QueuedSpecBackfill | null
+  lastGroundingBlock: LastGroundingBlock | null
   queuedPlanExecutions: QueuedPlanExecution[]
   queuedSpecExecutions: QueuedSpecExecution[]
   sendQueue: Array<{ text: string }>
@@ -39,6 +38,7 @@ interface TaskQueuePanelProps {
   onResumeRuntimeQueue: () => void
   onExportReport: () => void
   onSaveReport: () => void
+  onSaveProof?: () => void
   onOpenLatestReport: () => void
   onRestoreFromLatestReport: () => void
   onResetFailureStats: () => void
@@ -49,6 +49,10 @@ interface TaskQueuePanelProps {
   onSkipFailedPlan: () => void
   onRetryFailedSpec: () => void
   onSkipFailedSpec: () => void
+  onDismissGroundingBlock?: () => void
+  showIntentDemoVerifyBanner?: boolean
+  onMarkIntentDemoComplete?: () => void
+  onOpenIntentGraph?: () => void
 }
 
 export const TaskQueuePanel = memo(function TaskQueuePanel({
@@ -68,6 +72,7 @@ export const TaskQueuePanel = memo(function TaskQueuePanel({
   onResumeRuntimeQueue,
   onExportReport,
   onSaveReport,
+  onSaveProof,
   onOpenLatestReport,
   onRestoreFromLatestReport,
   onResetFailureStats,
@@ -78,6 +83,13 @@ export const TaskQueuePanel = memo(function TaskQueuePanel({
   onSkipFailedPlan,
   onRetryFailedSpec,
   onSkipFailedSpec,
+  queuedSpecBackfill,
+  verifyingSpecBackfill,
+  lastGroundingBlock,
+  onDismissGroundingBlock,
+  showIntentDemoVerifyBanner = false,
+  onMarkIntentDemoComplete,
+  onOpenIntentGraph,
 }: TaskQueuePanelProps) {
   const { t } = useI18n()
 
@@ -94,8 +106,19 @@ export const TaskQueuePanel = memo(function TaskQueuePanel({
         background: 'var(--bg-secondary)',
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: 'var(--text-primary)' }}>
-        {t('queue.panel.title')}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{t('queue.panel.title')}</div>
+        {onOpenIntentGraph ? (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ padding: '2px 8px', fontSize: 11 }}
+            data-testid="queue-open-intent-graph"
+            onClick={onOpenIntentGraph}
+          >
+            {t('intent.graph.openShort')}
+          </button>
+        ) : null}
       </div>
       {runtimeQueuePause ? (
         <div
@@ -124,6 +147,12 @@ export const TaskQueuePanel = memo(function TaskQueuePanel({
           </button>
         </div>
       ) : null}
+      {lastGroundingBlock ? (
+        <IntentGroundingBanner
+          block={lastGroundingBlock}
+          onDismiss={onDismissGroundingBlock}
+        />
+      ) : null}
       <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>
         {t('queue.panel.sessionStatus', { status: sessionStatus })}
         {runId ? ` · ${runId}` : ''}
@@ -135,6 +164,17 @@ export const TaskQueuePanel = memo(function TaskQueuePanel({
         <button type="button" className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 11 }} onClick={onSaveReport}>
           {t('queue.panel.saveReport')}
         </button>
+        {onSaveProof ? (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ padding: '4px 8px', fontSize: 11 }}
+            data-testid="queue-save-proof"
+            onClick={onSaveProof}
+          >
+            {t('intent.proof.saveAction')}
+          </button>
+        ) : null}
         <button type="button" className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 11 }} onClick={onOpenLatestReport}>
           {t('queue.panel.openLatestReport')}
         </button>
@@ -191,6 +231,19 @@ export const TaskQueuePanel = memo(function TaskQueuePanel({
             text: queuedChatPrompt.slice(0, 60) + (queuedChatPrompt.length > 60 ? '…' : ''),
           })}
         </div>
+      ) : null}
+      {showIntentDemoVerifyBanner && onMarkIntentDemoComplete ? (
+        <IntentDemoVerifyBanner onMarkLevelComplete={onMarkIntentDemoComplete} />
+      ) : null}
+      {queuedSpecExecutions.length > 0 || queuedSpecBackfill || verifyingSpecBackfill || failedSpecExecution ? (
+        <SpecVerificationQueueList
+          activeBackfill={queuedSpecBackfill}
+          verifyingBackfill={verifyingSpecBackfill}
+          activeTaskLabel={activeQueueTask}
+          pending={queuedSpecExecutions}
+          failed={failedSpecExecution}
+          recentPassed={recentDoneQueueItems}
+        />
       ) : null}
       {queuedSpecExecutions.length > 0 || queuedPlanExecutions.length > 0 ? (
         <div style={{ marginBottom: 6 }}>

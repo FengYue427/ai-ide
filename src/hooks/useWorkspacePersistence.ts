@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { createTranslator, type Language } from '../i18n'
 import { canFormatFile, formatFileContent, isEditorWritableForFormat } from '../lib/editorFormat'
 import { workspaceCloudSaveToast } from '../lib/workspaceCloudSaveMessages'
+import { handleWorkspaceCloudSaveFailure } from '../lib/workspaceCloudSaveUi'
 import type { ToastKind } from '../components/FeedbackCenter'
 import { authService, type User as AuthUser } from '../services/authService'
 import { cloudSyncService } from '../services/cloudSyncService'
@@ -97,6 +98,10 @@ export function useWorkspacePersistence({
 
       if (currentUser) {
         const saveResult = await authService.saveWorkspace(ideFiles, { theme }, 'default')
+        if (!saveResult.ok && saveResult.reason === 'storage_limit_reached') {
+          handleWorkspaceCloudSaveFailure(saveResult, t, notify)
+          return
+        }
         const toast = workspaceCloudSaveToast(saveResult, t)
         if (toast && notify) {
           const now = Date.now()

@@ -3,6 +3,7 @@ import { Check, Clock, Cloud, Download, Folder, FolderOpen, HardDrive, RotateCcw
 import { cloudSyncService, type WorkspaceBackup } from '../services/cloudSyncService'
 import { previewWorkspaceCloudSync } from '../lib/workspaceCloudPreview'
 import { workspaceCloudSaveToast } from '../lib/workspaceCloudSaveMessages'
+import { handleWorkspaceCloudSaveFailure } from '../lib/workspaceCloudSaveUi'
 import {
   deleteWorkspaceEntry,
   listWorkspaceEntries,
@@ -145,13 +146,20 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
     )
 
     if (!result.ok) {
-      const cloudToast =
-        result.cloudResult && !result.cloudResult.ok
-          ? workspaceCloudSaveToast(result.cloudResult, t)
-          : null
-      const detail = cloudToast?.detail ?? result.error
-      setMessage({ type: 'error', text: result.error || t('wm.saveFailed') })
-      notify('error', cloudToast?.title ?? t('wm.saveFailed'), detail)
+      if (result.cloudResult && !result.cloudResult.ok) {
+        handleWorkspaceCloudSaveFailure(result.cloudResult, t, notify)
+        if (result.cloudResult.reason !== 'storage_limit_reached') {
+          const cloudToast = workspaceCloudSaveToast(result.cloudResult, t)
+          const detail = cloudToast?.detail ?? result.error
+          setMessage({ type: 'error', text: result.error || t('wm.saveFailed') })
+          notify('error', cloudToast?.title ?? t('wm.saveFailed'), detail)
+        } else {
+          setMessage({ type: 'error', text: t('workspace.cloudSave.storageLimitTitle') })
+        }
+      } else {
+        setMessage({ type: 'error', text: result.error || t('wm.saveFailed') })
+        notify('error', t('wm.saveFailed'), result.error)
+      }
       return
     }
 

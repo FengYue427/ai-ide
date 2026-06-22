@@ -43,6 +43,16 @@ describe('shareService', () => {
     expect(generateShareUrl('abc12345')).toBe('https://ai-ide-flame.vercel.app/?share=abc12345')
   })
 
+  it('generateShareProgressUrl adds view=progress', async () => {
+    const { getApiBaseUrl } = await import('../services/apiUtils')
+    vi.mocked(getApiBaseUrl).mockReturnValue('https://ai-ide-flame.vercel.app')
+    vi.stubGlobal('window', { location: { href: 'https://ai-ide-flame.vercel.app/' } })
+    const { generateShareProgressUrl } = await import('./shareService')
+    expect(generateShareProgressUrl('abc12345')).toBe(
+      'https://ai-ide-flame.vercel.app/?share=abc12345&view=progress',
+    )
+  })
+
   it('createShare uses cloud slug when API succeeds', async () => {
     const { getApiBaseUrl, apiFetch } = await import('../services/apiUtils')
     vi.mocked(getApiBaseUrl).mockReturnValue('https://ai-ide-flame.vercel.app')

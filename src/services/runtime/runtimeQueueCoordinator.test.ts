@@ -18,7 +18,9 @@ vi.mock('../desktopBridge', () => ({
 }))
 
 function createDeps(overrides?: Partial<SpecQueueCoordinatorDeps>): SpecQueueCoordinatorDeps {
-  let files: FileLike[] = [{ name: '.aide/specs/demo/tasks.md', content: '# Demo', language: 'markdown' }]
+  let files: FileLike[] = [
+    { name: '.aide/specs/demo/tasks.md', content: '- [ ] Implement login', language: 'markdown' },
+  ]
   let backfill: QueuedSpecBackfill | null = null
   const executions: Array<{ prompt: string; backfill: QueuedSpecBackfill }> = []
 

@@ -4,12 +4,14 @@ import { McpSettingsSection } from './McpSettingsSection'
 import { ProjectRulesSection } from './ProjectRulesSection'
 import { ProjectTasksSection } from './ProjectTasksSection'
 import { SpecCatalogSection } from './SpecCatalogSection'
+import { IntentGraphPanel } from './IntentGraphPanel'
 import { PlansSection } from './PlansSection'
 import { ReportsSection } from './ReportsSection'
 import { PlanOverviewSection } from './PlanOverviewSection'
 import { McpToolsBrowser } from './McpToolsBrowser'
 import { PlatformAiUsageDashboard } from './PlatformAiUsageDashboard'
 import { QuotaIndicator } from './ui/QuotaIndicator'
+import { PlanEntitlementsCard } from './PlanEntitlementsCard'
 import { Toggle } from './ui/Toggle'
 import {
   Bot,
@@ -124,6 +126,8 @@ interface SettingsCenterProps {
   onCreateSpecHooks?: (tasksPath: string, specName: string) => void
   onRunFirstOpenSpecTask?: (tasksPath: string) => void
   onOpenSpecStudio?: () => void
+  onOpenIntentPath?: (path: string) => void
+  specDriftReports?: Record<string, import('../services/intentOs/specDriftService').SpecDriftReport>
   planItems?: PlanCatalogItem[]
   planLinkCounts?: Record<string, number>
   planTemplates?: PlanTemplateItem[]
@@ -157,6 +161,8 @@ interface SettingsCenterProps {
   onRestoreReport?: (path: string) => void
   onOpenLatestReport?: () => void
   onClose: () => void
+  initialTab?: SettingTab | null
+  onInitialTabConsumed?: () => void
 }
 
 type SettingTab = 'ai' | 'appearance' | 'editor' | 'features' | 'advanced'
@@ -195,6 +201,8 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onCreateSpecHooks,
   onRunFirstOpenSpecTask,
   onOpenSpecStudio,
+  onOpenIntentPath,
+  specDriftReports = {},
   planItems = [],
   planLinkCounts = {},
   planTemplates = [],
@@ -221,12 +229,16 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
   onRestoreReport,
   onOpenLatestReport,
   onClose,
+  initialTab = null,
+  onInitialTabConsumed,
 }) => {
   const planCatalogRef = useRef<HTMLDivElement>(null)
   const reportCatalogRef = useRef<HTMLDivElement>(null)
+  const intentGraphRef = useRef<HTMLDivElement>(null)
   const { t } = useI18n()
   const currentPlan = useIDEStore((s) => s.currentPlan)
   const currentUser = useIDEStore((s) => s.currentUser)
+  const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
   const [activeTab, setActiveTab] = useState<SettingTab>('ai')
   const [localAIConfig, setLocalAIConfig] = useState(aiConfig)
   const [localAutoSave, setLocalAutoSave] = useState(autoSaveEnabled)
@@ -240,6 +252,15 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
     remaining: 50,
     plan: currentPlan,
   })
+
+  useEffect(() => {
+    if (!initialTab) return
+    setActiveTab(initialTab)
+    onInitialTabConsumed?.()
+    if (initialTab === 'features') {
+      queueMicrotask(() => intentGraphRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    }
+  }, [initialTab, onInitialTabConsumed])
   const persistMcpRef = useRef<(() => Promise<void>) | null>(null)
   const persistAgentRef = useRef<(() => Promise<void>) | null>(null)
   const [semanticSearchEnabled, setSemanticSearchEnabledState] = useState(isSemanticSearchEnabled)
@@ -482,11 +503,17 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
               <>
                 <QuotaIndicator quota={quota} showPlan compact={false} />
 
+                <PlanEntitlementsCard
+                  planName={currentPlan}
+                  onUpgrade={currentUser ? () => setShowSubscriptionModal(true) : undefined}
+                />
+
                 {showPlatformUsageDashboard && platformUsageDashboard.state.status === 'ready' ? (
                   <PlatformAiUsageDashboard
                     data={platformUsageDashboard.state.data}
                     onRefresh={platformUsageDashboard.refresh}
                     refreshing={platformUsageDashboard.refreshing}
+                    onUpgrade={currentUser ? () => setShowSubscriptionModal(true) : undefined}
                   />
                 ) : null}
 
@@ -1018,7 +1045,14 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                   />
                 ) : null}
                 {onCreateSpec && onOpenSpecsRoot && onOpenSpecTasks && onOpenSpecAcceptance && onRunFirstOpenSpecTask ? (
-                  <SpecCatalogSection
+                  <>
+                    <div ref={intentGraphRef}>
+                      <IntentGraphPanel
+                        focusTasksPath={runtimeStatePreview?.activeSpecPath ?? null}
+                        onOpenPath={onOpenIntentPath}
+                      />
+                    </div>
+                    <SpecCatalogSection
                     language={localLanguage}
                     specs={specCatalogItems}
                     specHooksPreviews={specHooksPreviews}
@@ -1035,7 +1069,9 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                     onCreateSpecHooks={onCreateSpecHooks}
                     onRunFirstOpenTask={onRunFirstOpenSpecTask}
                     onOpenSpecStudio={onOpenSpecStudio}
+                    specDriftReports={specDriftReports}
                   />
+                  </>
                 ) : null}
                 {planOverview ? (
                   <PlanOverviewSection
@@ -1113,14 +1149,6 @@ const SettingsCenter: React.FC<SettingsCenterProps> = ({
                       {t('settings.advanced.reset')}
                     </button>
                   </div>
-                </div>
-
-                <div className="settings-card settings-card--row">
-                  <div>
-                    <div className="settings-row-title">{t('settings.advanced.experimental')}</div>
-                    <div className="settings-row-desc">{t('settings.advanced.experimentalDesc')}</div>
-                  </div>
-                  <span className="settings-badge settings-badge--muted">{t('settings.badge.comingSoon')}</span>
                 </div>
               </>
             )}

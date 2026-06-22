@@ -1,7 +1,10 @@
 /* Workspace Manager modal */
-.wm-modal {
+.modal.wm-modal {
   width: min(920px, 96vw);
-  max-height: 88vh;
+  max-height: min(88vh, calc(100dvh - 32px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .wm-modal-title {
@@ -13,7 +16,11 @@
 .wm-body {
   display: grid;
   gap: var(--space-4);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .wm-panel {

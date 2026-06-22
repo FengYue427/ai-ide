@@ -1,0 +1,115 @@
+.modal--acceptance-editor {
+  width: min(640px, 94vw);
+}
+
+.acceptance-editor-path {
+  margin: 0;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.acceptance-editor-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.acceptance-editor-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.acceptance-editor-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.acceptance-editor-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.acceptance-editor-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.acceptance-editor-check input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.acceptance-editor-text--done {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+.acceptance-editor-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.acceptance-editor-hint {
+  color: var(--warning-color);
+}
+
+.acceptance-editor-result {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  font-size: 13px;
+}
+
+.acceptance-editor-result--ok {
+  border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--success-color) 10%, transparent);
+  color: var(--success-color);
+}
+
+.acceptance-editor-result--fail {
+  border-color: color-mix(in srgb, var(--danger-color) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--danger-color) 8%, transparent);
+  color: var(--danger-color);
+}
+
+.acceptance-editor-result-detail {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.acceptance-editor-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.acceptance-editor-footer .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

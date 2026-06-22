@@ -87,6 +87,18 @@
   box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
 }
 
+.auth-logo--image {
+  background: color-mix(in srgb, var(--bg-tertiary) 70%, transparent);
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+}
+
+.auth-logo--image img {
+  display: block;
+  width: 32px;
+  height: 32px;
+}
+
 .auth-title {
   font-size: 24px;
   font-weight: 600;
@@ -134,6 +146,13 @@
   background: color-mix(in srgb, var(--success-color) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--success-color) 28%, var(--border-color));
   color: var(--success-color);
+}
+
+.auth-alert-info {
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 24%, var(--border-color));
+  color: var(--text-secondary);
+  animation: none;
 }
 
 .auth-alert-icon {

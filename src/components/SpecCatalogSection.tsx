@@ -12,6 +12,7 @@ import type { SpecHooksPreview } from '../services/runtime/specHooksPreview'
 import { deriveSpecExecutionStatus, type SpecExecutionStatus } from '../services/runtime/runtimeState'
 import { formatRuntimeStateDisplayLines } from '../services/runtime/runtimeStateDisplay'
 import type { RuntimeStatePreview } from '../services/runtime/runtimeStatePreview'
+import type { SpecDriftItem, SpecDriftReport } from '../services/intentOs/specDriftService'
 
 interface SpecCatalogSectionProps {
   language: Language
@@ -19,6 +20,7 @@ interface SpecCatalogSectionProps {
   specLinkCounts?: Record<string, number>
   specSources?: Record<string, string[]>
   specPlanLinks?: Record<string, PlanSpecLink[]>
+  specDriftReports?: Record<string, SpecDriftReport>
   specHooksPreviews?: Record<string, SpecHooksPreview>
   runtimeStatePreview?: RuntimeStatePreview | null
   onCreateSpec: (name: string, language: Language) => void
@@ -38,6 +40,7 @@ export function SpecCatalogSection({
   specLinkCounts = {},
   specSources = {},
   specPlanLinks = {},
+  specDriftReports = {},
   specHooksPreviews = {},
   runtimeStatePreview = null,
   onCreateSpec,
@@ -72,6 +75,21 @@ export function SpecCatalogSection({
         return t('spec.catalog.status.inProgress')
       default:
         return t('spec.catalog.status.idle')
+    }
+  }
+
+  const formatDriftItem = (item: SpecDriftItem): string => {
+    switch (item.kind) {
+      case 'open-task':
+        return t('intent.drift.openTasks', { count: String(item.count ?? 0) })
+      case 'open-acceptance':
+        return t('intent.drift.openAcceptance', { count: String(item.count ?? 0) })
+      case 'missing-path':
+        return item.path
+          ? t('intent.drift.missingPath', { path: item.path })
+          : item.message
+      default:
+        return item.message
     }
   }
 
@@ -209,6 +227,7 @@ export function SpecCatalogSection({
                 spec.lastExecutedAt,
                 activeSpecPath,
               )
+              const drift = specDriftReports[spec.tasksPath]
               return (
               <div
                 key={spec.tasksPath}
@@ -241,6 +260,34 @@ export function SpecCatalogSection({
                     ? ` · ${t('spec.catalog.sourceLinks', { count: String(specLinkCounts[spec.tasksPath]) })}`
                     : ''}
                 </div>
+                {drift && drift.severity !== 'none' ? (
+                  <div
+                    className={`intent-drift-banner intent-drift-banner--${drift.severity === 'warn' ? 'warn' : 'info'}`}
+                    data-testid={`spec-drift-${spec.specName}`}
+                  >
+                    <div className="intent-drift-banner__body">
+                      <span>
+                        {t('intent.drift.title')}: {drift.items.map((item) => formatDriftItem(item)).join(' · ')}
+                      </span>
+                      <div className="intent-drift-banner__actions">
+                        <button
+                          type="button"
+                          className="btn btn-secondary intent-drift-banner__btn"
+                          onClick={() => onOpenSpecTasks(spec.tasksPath)}
+                        >
+                          tasks
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary intent-drift-banner__btn"
+                          onClick={() => onOpenSpecAcceptance(spec.tasksPath)}
+                        >
+                          acceptance
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
                 {spec.lastHookLogLine ? (
                   <div
                     data-testid={`spec-hook-log-${spec.specName}`}
@@ -274,7 +321,12 @@ export function SpecCatalogSection({
                   <button type="button" className="btn btn-secondary" onClick={() => onOpenSpecTasks(spec.tasksPath)}>
                     tasks
                   </button>
-                  <button type="button" className="btn btn-secondary" onClick={() => onOpenSpecAcceptance(spec.tasksPath)}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    data-testid={`spec-open-acceptance-${spec.specName}`}
+                    onClick={() => onOpenSpecAcceptance(spec.tasksPath)}
+                  >
                     acceptance
                   </button>
                   {spec.hasHooks && onOpenSpecHooks ? (

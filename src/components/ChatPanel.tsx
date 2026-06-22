@@ -41,6 +41,7 @@ import { collectSearchableFiles } from '../services/searchService'
 import { McpToolLogPanel } from './McpToolLogPanel'
 import { useI18n } from '../i18n'
 import { isAiConfigured, isAiGatewayEnabled } from '../lib/aiPlatformMode'
+import { shouldShowIntentShell } from '../lib/intentShellFeatures'
 import { useIDEStore } from '../store/ideStore'
 import { appendSpecsContext, collectSpecSources } from '../services/specsService'
 import type { McpToolLogEntry } from '../services/mcpAgentBridge'
@@ -72,7 +73,19 @@ import {
   getRuntimeQueuePause,
   subscribeRuntimeQueuePause,
 } from '../services/runtime/runtimeQueuePause'
-import type { FailedPlanExecution, FailedSpecExecution, RecentDoneQueueItem } from './TaskQueuePanel'
+import {
+  applySpecBundleToFiles,
+  promoteConversationToSpecBundle,
+} from '../services/intentOs/vibeToSpecService'
+import {
+  isIntentDemoSpecPath,
+  markIntentDemoLevelComplete,
+} from '../services/intentOs/intentDemoAcceptanceService'
+import { onSpecQueueItemSucceeded } from '../services/runtime/runtimeQueueCoordinator'
+import { enqueueFirstOpenSpecTaskViaRuntime } from '../services/specTaskExecutionService'
+import { useSpecQueueCoordinatorDeps } from '../hooks/useSpecQueueCoordinatorDeps'
+import { patchOpenChatPanel } from '../lib/workbenchLayout'
+import { PromoteToSpecModal } from './PromoteToSpecModal'
 
 const CHAT_MESSAGES_STORAGE_KEY = 'ai-ide:chat-messages'
 const CHAT_INPUT_STORAGE_KEY = 'ai-ide:chat-input'
@@ -141,6 +154,9 @@ ${t('ai.chat.prompt')}`
   const queuedChatPrompt = useIDEStore((s) => s.queuedChatPrompt)
   const setQueuedChatPrompt = useIDEStore((s) => s.setQueuedChatPrompt)
   const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
+  const verifyingSpecBackfill = useIDEStore((s) => s.verifyingSpecBackfill)
+  const lastGroundingBlock = useIDEStore((s) => s.lastGroundingBlock)
+  const setLastGroundingBlock = useIDEStore((s) => s.setLastGroundingBlock)
   const setQueuedSpecBackfill = useIDEStore((s) => s.setQueuedSpecBackfill)
   const queuedSpecExecutions = useIDEStore((s) => s.queuedSpecExecutions)
   const setQueuedSpecExecutions = useIDEStore((s) => s.setQueuedSpecExecutions)
@@ -152,9 +168,16 @@ ${t('ai.chat.prompt')}`
   const setQueuedPlanExecutions = useIDEStore((s) => s.setQueuedPlanExecutions)
   const setFiles = useIDEStore((s) => s.setFiles)
   const setActiveFile = useIDEStore((s) => s.setActiveFile)
+  const setEditorTarget = useIDEStore((s) => s.setEditorTarget)
+  const setSpecStudioPrefill = useIDEStore((s) => s.setSpecStudioPrefill)
+  const setShowSpecStudio = useIDEStore((s) => s.setShowSpecStudio)
+  const setSettingsCenterTab = useIDEStore((s) => s.setSettingsCenterTab)
+  const setShowSettingsCenter = useIDEStore((s) => s.setShowSettingsCenter)
+  const setRightPanelView = useIDEStore((s) => s.setRightPanelView)
+  const specQueueDeps = useSpecQueueCoordinatorDeps()
+  const [promoteModal, setPromoteModal] = useState<{ messageIndex: number; defaultName: string } | null>(null)
   const setAgentApplyQueue = useIDEStore((s) => s.setAgentApplyQueue)
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
-  const setRightPanelView = useIDEStore((s) => s.setRightPanelView)
   const setShowChatPanel = useIDEStore((s) => s.setShowChatPanel)
   const setShowGitPanel = useIDEStore((s) => s.setShowGitPanel)
   const backgroundAgentOn = isBackgroundAgentEnabled()
@@ -218,11 +241,18 @@ ${t('ai.chat.prompt')}`
   const [mcpToolEntries, setMcpToolEntries] = useState<McpToolLogEntry[]>([])
   const [subscriptionExpiredBanner, setSubscriptionExpiredBanner] = useState<string | null>(null)
   const [payloadWarning, setPayloadWarning] = useState<ChatPayloadWarning | null>(null)
-  const [failedPlanExecution, setFailedPlanExecution] = useState<FailedPlanExecution | null>(null)
-  const [failedSpecExecution, setFailedSpecExecution] = useState<FailedSpecExecution | null>(null)
-  const [queueFailureStats, setQueueFailureStats] = useState({ plan: 0, spec: 0 })
-  const [queueSuccessStats, setQueueSuccessStats] = useState({ plan: 0, spec: 0 })
-  const [recentDoneQueueItems, setRecentDoneQueueItems] = useState<RecentDoneQueueItem[]>([])
+  const failedPlanExecution = useIDEStore((s) => s.failedPlanExecution)
+  const failedSpecExecution = useIDEStore((s) => s.failedSpecExecution)
+  const setFailedPlanExecution = useIDEStore((s) => s.setFailedPlanExecution)
+  const setFailedSpecExecution = useIDEStore((s) => s.setFailedSpecExecution)
+  const queueFailureStats = useIDEStore((s) => s.queueFailureStats)
+  const setQueueFailureStats = useIDEStore((s) => s.setQueueFailureStats)
+  const queueSuccessStats = useIDEStore((s) => s.queueSuccessStats)
+  const setQueueSuccessStats = useIDEStore((s) => s.setQueueSuccessStats)
+  const recentDoneQueueItems = useIDEStore((s) => s.recentDoneQueueItems)
+  const setRecentDoneQueueItems = useIDEStore((s) => s.setRecentDoneQueueItems)
+  const intentShellEnabled = useIDEStore((s) => s.intentShellEnabled)
+  const hideIntentShellQueue = shouldShowIntentShell(editorFiles, intentShellEnabled)
   const [queueSessionStatsHydrated, setQueueSessionStatsHydrated] = useState(false)
   const [indexVersion, setIndexVersion] = useState(() => projectIndexManager.getVersion())
   const indexStats = useMemo(() => projectIndexManager.getIndexStats(), [indexVersion])
@@ -632,6 +662,7 @@ ${t('ai.chat.prompt')}`
   const {
     exportQueueReport,
     saveQueueReportToWorkspace,
+    saveProofOfDoneToWorkspace,
     openLatestQueueReport,
     restoreQueueFromLatestReport,
   } = useChatQueueReport({
@@ -695,6 +726,116 @@ ${t('ai.chat.prompt')}`
     }
     void handleSend(prompt)
   }, [handleSend, loading, messages, setQueuedPlanBackfill])
+
+  const handlePromoteToSpec = useCallback(
+    (messageIndex: number) => {
+      const turns = messages
+        .slice(0, messageIndex + 1)
+        .filter((message) => !message.isError)
+        .map((message) => ({ role: message.role, content: message.content }))
+      const firstUser = turns.find((message) => message.role === 'user')
+      const defaultName = (firstUser?.content.split('\n')[0] ?? 'from-chat').slice(0, 48).trim()
+      setPromoteModal({ messageIndex, defaultName })
+    },
+    [messages],
+  )
+
+  const handlePromoteConfirm = useCallback(
+    (options: { specName: string; runFirstTask: boolean; openStudio: boolean }) => {
+      if (!promoteModal) return
+      const turns = messages
+        .slice(0, promoteModal.messageIndex + 1)
+        .filter((message) => !message.isError)
+        .map((message) => ({ role: message.role, content: message.content }))
+      const bundle = promoteConversationToSpecBundle({
+        messages: turns,
+        specName: options.specName,
+        locale: language === 'en-US' ? 'en-US' : 'zh-CN',
+      })
+      const applied = applySpecBundleToFiles(editorFiles, bundle.files)
+      setFiles(applied.files)
+      if (applied.firstIndex >= 0) setActiveFile(applied.firstIndex)
+      setEditorTarget({ line: 1, column: 1, nonce: Date.now() })
+      setSpecStudioPrefill({ specName: bundle.specSlug, templateId: 'ai-agent-task' })
+      notify?.('success', t('intent.promote.success'), applied.tasksPath ?? bundle.tasksPath)
+      setPromoteModal(null)
+
+      if (options.openStudio) {
+        setShowSpecStudio(true)
+      }
+      if (options.runFirstTask && bundle.tasksPath) {
+        void enqueueFirstOpenSpecTaskViaRuntime(
+          { tasksPath: bundle.tasksPath, language: language === 'en-US' ? 'en-US' : 'zh-CN' },
+          specQueueDeps,
+        ).then((result) => {
+          if (!result.ok || !result.accepted) {
+            notify?.(
+              'error',
+              t('runtime.queuePaused.title'),
+              result.ok ? result.pauseReason : t('spec.host.noOpenTask.detail'),
+            )
+            return
+          }
+          useIDEStore.setState(patchOpenChatPanel())
+          setRightPanelView('chat')
+        })
+      }
+    },
+    [
+      editorFiles,
+      language,
+      messages,
+      notify,
+      promoteModal,
+      setActiveFile,
+      setEditorTarget,
+      setFiles,
+      setRightPanelView,
+      setShowSpecStudio,
+      setSpecStudioPrefill,
+      specQueueDeps,
+      t,
+    ],
+  )
+
+  const openIntentGraph = useCallback(() => {
+    setSettingsCenterTab('features')
+    setShowSettingsCenter(true)
+  }, [setSettingsCenterTab, setShowSettingsCenter])
+
+  const handleMarkIntentDemoComplete = useCallback(async () => {
+    if (!failedSpecExecution || !isIntentDemoSpecPath(failedSpecExecution.backfill.taskPath)) return
+    const marked = markIntentDemoLevelComplete(editorFiles, failedSpecExecution.backfill)
+    if (!marked.ok) {
+      notify?.('info', t('intent.demo.markBlocked.title'), t('intent.demo.markBlocked.detail'))
+      return
+    }
+    setFiles(marked.files)
+    const verify = await onSpecQueueItemSucceeded(failedSpecExecution.backfill, specQueueDeps)
+    if (!verify.verifyOk) {
+      setFailedSpecExecution({
+        ...failedSpecExecution,
+        error: verify.verifyDetail ?? t('runtime.verifyFail.detail'),
+      })
+      return
+    }
+    setFailedSpecExecution(null)
+    setQueueSuccessStats((prev) => ({ ...prev, spec: prev.spec + 1 }))
+    setRecentDoneQueueItems((prev) =>
+      [{ kind: 'spec' as const, text: failedSpecExecution.backfill.taskText }, ...prev].slice(0, 5),
+    )
+    notify?.('success', t('intent.demo.reportGuide.title'), t('intent.demo.reportGuide.detail'))
+  }, [
+    editorFiles,
+    failedSpecExecution,
+    notify,
+    setFiles,
+    setFailedSpecExecution,
+    setQueueSuccessStats,
+    setRecentDoneQueueItems,
+    specQueueDeps,
+    t,
+  ])
 
   const {
     mentionHits,
@@ -781,6 +922,7 @@ ${t('ai.chat.prompt')}`
         onSaveRun={() => void saveCurrentRun()}
         onReplayLastRun={() => void replayLastRun()}
         onExportRunMarkdown={exportRunMarkdown}
+        onPromoteToSpec={handlePromoteToSpec}
       />
 
       {pendingAgentChanges && pendingAgentChanges.length > 0 && onGenerateFiles ? (
@@ -818,6 +960,9 @@ ${t('ai.chat.prompt')}`
         queuedChatPrompt={queuedChatPrompt}
         queuedPlanExecutions={queuedPlanExecutions}
         queuedSpecExecutions={queuedSpecExecutions}
+        queuedSpecBackfill={queuedSpecBackfill}
+        verifyingSpecBackfill={verifyingSpecBackfill}
+        lastGroundingBlock={lastGroundingBlock}
         sendQueue={sendQueue}
         queueFailureStats={queueFailureStats}
         queueSuccessStats={queueSuccessStats}
@@ -831,6 +976,7 @@ ${t('ai.chat.prompt')}`
         }}
         onExportReport={exportQueueReport}
         onSaveReport={saveQueueReportToWorkspace}
+        onSaveProof={() => saveProofOfDoneToWorkspace()}
         onOpenLatestReport={openLatestQueueReport}
         onRestoreFromLatestReport={restoreQueueFromLatestReport}
         onResetFailureStats={() => setQueueFailureStats({ plan: 0, spec: 0 })}
@@ -851,6 +997,13 @@ ${t('ai.chat.prompt')}`
           void handleSend(failedSpecExecution.prompt)
         }}
         onSkipFailedSpec={() => setFailedSpecExecution(null)}
+        showIntentDemoVerifyBanner={
+          Boolean(failedSpecExecution && isIntentDemoSpecPath(failedSpecExecution.backfill.taskPath))
+        }
+        onMarkIntentDemoComplete={() => void handleMarkIntentDemoComplete()}
+        onOpenIntentGraph={openIntentGraph}
+        onDismissGroundingBlock={() => setLastGroundingBlock(null)}
+        hideWhenIntentShell={hideIntentShellQueue}
       />
 
       <ChatInputComposer
@@ -886,6 +1039,13 @@ ${t('ai.chat.prompt')}`
         onBackgroundRun={() => void handleBackgroundRun()}
       />
 
+      {promoteModal ? (
+        <PromoteToSpecModal
+          defaultSpecName={promoteModal.defaultName}
+          onClose={() => setPromoteModal(null)}
+          onConfirm={handlePromoteConfirm}
+        />
+      ) : null}
     </div>
   )
 }

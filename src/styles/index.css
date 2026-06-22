@@ -12,6 +12,7 @@
 @import './chat.css';
 @import './background-jobs.css';
 @import './settings.css';
+@import './command-palette.css';
 @import './overlays.css';
 @import './modals.css';
 @import './spec-studio.css';
@@ -26,3 +27,7 @@
 @import './responsive.css';
 @import './statusbar.css';
 @import './activity-line.css';
+@import './acceptance-editor.css';
+@import './intent-os.css';
+@import './intent-shell.css';
+@import './aide-experience.css';

@@ -15,6 +15,8 @@ import { useI18n } from '../i18n'
 import { usePublicWelfare } from '../hooks/usePublicWelfare'
 import { authService } from '../services/authService'
 import { useIDEStore } from '../store/ideStore'
+import { WorkspaceModeSwitcher } from '../components/WorkspaceModeSwitcher'
+import type { WorkspaceMode } from '../lib/workspaceMode'
 import { getWorkspaceLimitSnapshot } from '../services/workspaceLimits'
 import { preferCnBillingCheckout } from '../../lib/billing/billingRegion'
 import { findPlanByName, formatPlanPrice } from '../../lib/billing/plans'
@@ -32,6 +34,8 @@ interface AppToolbarProps {
   onOpenSubscription: () => void
   requestConfirm: (request: ConfirmRequest) => Promise<boolean>
   notify: (kind: ToastKind, title: string, detail?: string) => void
+  workspaceMode: WorkspaceMode
+  onWorkspaceModeChange: (mode: WorkspaceMode) => void
 }
 
 export function AppToolbar({
@@ -46,6 +50,8 @@ export function AppToolbar({
   onOpenSubscription,
   requestConfirm,
   notify,
+  workspaceMode,
+  onWorkspaceModeChange,
 }: AppToolbarProps) {
   const { t, language } = useI18n()
   const logoUrl = resolveAppLogo()
@@ -99,6 +105,8 @@ export function AppToolbar({
           </button>
         ))}
       </div>
+
+      <WorkspaceModeSwitcher mode={workspaceMode} onChange={onWorkspaceModeChange} />
 
       <div className="toolbar-spacer" />
 

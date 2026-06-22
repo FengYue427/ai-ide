@@ -24,6 +24,13 @@ select {
   font: inherit;
 }
 
+button {
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
 .app {
   display: flex;
   flex-direction: column;

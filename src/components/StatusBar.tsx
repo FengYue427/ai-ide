@@ -5,6 +5,7 @@ import {
   Bot,
   CheckCircle2,
   CircleDot,
+  GitBranch,
   Globe,
   Monitor,
   Radio,
@@ -19,6 +20,7 @@ import { useI18n } from '../i18n'
 import { collabRoleLabel } from '../lib/collabPermissions'
 import { normalizeLanguage } from '../lib/language'
 import { getPlatformSurface, resolveRuntimeStatusKind } from '../lib/platformParity'
+import { resolveIcpBeian } from '../lib/deployContext'
 import { shouldShowWorkspacePerformanceHint } from '../lib/welcomeOnboarding'
 import { useCollabSignalingDisplay } from '../hooks/useCollabSignalingDisplay'
 import { useIDEStore } from '../store/ideStore'
@@ -56,6 +58,12 @@ interface StatusBarProps {
   specOpenTaskCount?: number
   onOpenSpecStudio?: () => void
   onRunFirstSpecTask?: () => void
+  onOpenIntentGraph?: () => void
+  onRunAutopilotNext?: () => void
+  autopilotTaskPreview?: string | null
+  autopilotOpenCount?: number
+  /** Intent Shell 开启时隐藏重复的 Spec/Autopilot/Graph 入口 */
+  intentShellActive?: boolean
 }
 
 const pillClass = (extra = '') => ['status-pill', extra].filter(Boolean).join(' ')
@@ -89,6 +97,11 @@ const StatusBar: React.FC<StatusBarProps> = ({
   specOpenTaskCount = 0,
   onOpenSpecStudio,
   onRunFirstSpecTask,
+  onOpenIntentGraph,
+  onRunAutopilotNext,
+  autopilotTaskPreview,
+  autopilotOpenCount = 0,
+  intentShellActive = false,
 }) => {
   const { t } = useI18n()
   const collaborationRoomId = useIDEStore((s) => s.collaborationRoomId)
@@ -149,10 +162,12 @@ const StatusBar: React.FC<StatusBarProps> = ({
         ? 'status-pill--warning'
         : 'status-pill--success'
 
+  const icpBeian = resolveIcpBeian()
+
   return (
     <div className="app-status-bar">
       <div className="app-status-bar__cluster">
-        <div className={pillClass('status-pill--ghost')}>
+        <div className={pillClass('status-pill--ghost status-pill--filename')}>
           {isModified ? (
             <CircleDot size={12} color="var(--warning-color)" />
           ) : (
@@ -187,7 +202,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
         </div>
 
         {showPerformanceHint ? (
-          <div className={pillClass('status-pill--warning')} title={t('status.performance.hint')}>
+          <div
+            className={`${pillClass('status-pill--warning')} status-pill--hide-narrow`}
+            title={t('status.performance.hint')}
+          >
             <Activity size={12} />
             <span>{t('status.performance.hint')}</span>
           </div>
@@ -273,7 +291,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
               <Sparkles size={12} />
               <span>{t('status.spec.count', { count: specCount, open: specOpenTaskCount })}</span>
             </button>
-            {specOpenTaskCount > 0 && onRunFirstSpecTask ? (
+            {specOpenTaskCount > 0 && onRunFirstSpecTask && !intentShellActive ? (
               <button
                 type="button"
                 onClick={onRunFirstSpecTask}
@@ -283,6 +301,34 @@ const StatusBar: React.FC<StatusBarProps> = ({
               >
                 <CheckSquare size={12} />
                 <span>{t('status.spec.run')}</span>
+              </button>
+            ) : null}
+            {onRunAutopilotNext && autopilotTaskPreview && !intentShellActive ? (
+              <button
+                type="button"
+                onClick={onRunAutopilotNext}
+                className={pillClass('status-pill--action status-pill--accent')}
+                data-testid="status-autopilot-next"
+                title={autopilotTaskPreview}
+              >
+                <Sparkles size={12} />
+                <span>
+                  {autopilotOpenCount > 1
+                    ? t('intent.autopilot.runNextWithCount', { count: autopilotOpenCount })
+                    : t('intent.autopilot.runNext')}
+                </span>
+              </button>
+            ) : null}
+            {onOpenIntentGraph && !intentShellActive ? (
+              <button
+                type="button"
+                onClick={onOpenIntentGraph}
+                className={pillClass('status-pill--action')}
+                data-testid="status-intent-graph"
+                title={t('intent.graph.openTitle')}
+              >
+                <GitBranch size={12} />
+                <span>{t('intent.graph.openShort')}</span>
               </button>
             ) : null}
           </>
@@ -332,10 +378,21 @@ const StatusBar: React.FC<StatusBarProps> = ({
           {isAIConnected ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
         </button>
 
-        <div className={pillClass()}>
+        <div className={`${pillClass()} status-pill--hide-narrow`}>
           <Globe size={12} />
           <span>{localeLabel}</span>
         </div>
+
+        {icpBeian ? (
+          <a
+            href="https://beian.miit.gov.cn/"
+            target="_blank"
+            rel="noreferrer"
+            className={`${pillClass()} status-pill--icp`}
+          >
+            {icpBeian}
+          </a>
+        ) : null}
 
         <button type="button" onClick={onOpenSettings} className={pillClass('status-pill--action')} title={t('status.settingsTitle')}>
           <Settings2 size={12} />

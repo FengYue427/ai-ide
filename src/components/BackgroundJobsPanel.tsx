@@ -28,6 +28,8 @@ import {
 } from '../services/backgroundJobsApiService'
 import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { useIDEStore } from '../store/ideStore'
+import { getClientEntitlements } from '../lib/clientPlanEntitlements'
+import { UpgradeEntitlementHint } from './UpgradeEntitlementHint'
 
 const POLL_MS = 5_000
 
@@ -57,6 +59,14 @@ export default function BackgroundJobsPanel({
   const setShowAgentApplyModal = useIDEStore((s) => s.setShowAgentApplyModal)
   const setBackgroundJobsActiveCount = useIDEStore((s) => s.setBackgroundJobsActiveCount)
   const currentPlan = useIDEStore((s) => s.currentPlan)
+  const jobEntitlements = useMemo(
+    () => getClientEntitlements(currentPlan ?? 'free'),
+    [currentPlan],
+  )
+  const isTeamPlan = jobEntitlements.planName === 'enterprise'
+  const batchMax = jobEntitlements.backgroundJobsBatchMax
+  const unlimitedLabel = t('subscription.unlimited')
+  const formatJobLimit = (value: number) => (value < 0 ? unlimitedLabel : String(value))
   const [jobs, setJobs] = useState<SerializedBackgroundJob[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -245,9 +255,43 @@ export default function BackgroundJobsPanel({
 
   return (
     <div className="background-jobs-panel">
+      <div
+        className={`background-jobs-panel__quota${isTeamPlan ? ' background-jobs-panel__quota--team' : ''}`}
+        data-testid="background-jobs-quota"
+      >
+        <span>
+          {jobEntitlements.planName === 'free'
+            ? t('backgroundJobs.limitsFree', {
+                daily: jobEntitlements.backgroundJobsPerDay,
+                concurrent: jobEntitlements.backgroundJobsMaxActive,
+              })
+            : jobEntitlements.planName === 'pro'
+              ? t('backgroundJobs.limitsPro', {
+                  daily: jobEntitlements.backgroundJobsPerDay,
+                  concurrent: jobEntitlements.backgroundJobsMaxActive,
+                  batch: batchMax,
+                })
+              : t('backgroundJobs.limitsTeam', {
+                  daily: formatJobLimit(jobEntitlements.backgroundJobsPerDay),
+                  concurrent: jobEntitlements.backgroundJobsMaxActive,
+                  batch: batchMax,
+                })}
+        </span>
+        {isTeamPlan ? (
+          <span className="background-jobs-panel__team-badge">{t('entitlements.card.teamPlus')}</span>
+        ) : null}
+        {!isTeamPlan && onOpenSubscription ? (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenSubscription}>
+            {batchMax === 0 ? t('backgroundJobs.upgradePro') : t('entitlements.card.upgradeTeam')}
+          </button>
+        ) : null}
+      </div>
+      {batchMax === 0 ? (
+        <UpgradeEntitlementHint compact feature="planBatch" onUpgrade={onOpenSubscription} />
+      ) : null}
       <div className="background-jobs-panel__toolbar">
         <span className="background-jobs-panel__hint">
-          {currentPlan === 'free' ? t('backgroundJobs.hintFree') : t('backgroundJobs.hint')}
+          {t('backgroundJobs.hint')}
         </span>
         <div className="background-jobs-panel__toolbar-actions">
           <label className="background-jobs-notify-toggle" title={t('backgroundJobs.autoMarkPlanStep')}>

@@ -7,6 +7,7 @@ import {
   FolderOpen,
   GitBranch,
   Globe,
+  GraduationCap,
   Palette,
   Play,
   Plus,
@@ -15,14 +16,26 @@ import {
   Terminal,
 } from 'lucide-react'
 import { isAiGatewayEnabled } from '../lib/aiPlatformMode'
+import { CapstoneFunnelDashboard } from './CapstoneFunnelDashboard'
+import { resetCapstoneFunnelMetrics } from '../lib/capstoneFunnelMetrics'
+import { trackCapstoneFunnelStep } from '../lib/conversionTracking'
 import { shouldShowNetworkTips, useCloudHealth } from '../hooks/useCloudHealth'
-import { getPublicAppOrigin, resolveAppLogo } from '../lib/appOrigin'
+import { getPublicAppOrigin, isCustomAppOrigin, resolveAppLogo } from '../lib/appOrigin'
+import {
+  isIpDeployHost,
+  isSelfHostedDeploy,
+  resolveIcpBeian,
+} from '../lib/deployContext'
 import { resolveAppUrl } from '../lib/externalNavigation'
 import { dismissWelcomeOnboarding, shouldShowWelcomeOnboarding } from '../lib/welcomeOnboarding'
+import type { LearningPath } from '../lib/learningPaths'
 import { useI18n } from '../i18n'
 import { isDesktopApp } from '../services/desktopBridge'
 import type { TranslationKey } from '../i18n'
 import { InlineStatePanel } from './InlineStatePanel'
+import { LearningPathsSection } from './LearningPathsSection'
+import { WelcomePlanComparison } from './WelcomePlanComparison'
+import { isPublicWelfareClient } from '../lib/publicWelfare'
 
 interface RecentProject {
   id: string
@@ -44,7 +57,9 @@ interface WelcomeScreenProps {
   onOpenGit?: () => void
   onOpenCollaboration?: () => void
   onRegister?: () => void
-  onOpenSpecStudio?: () => void
+  onOpenSpecStudio?: (prefill?: { specName?: string; templateId?: string }) => void
+  onStartIntentDemo?: () => void
+  onStartLearningPath?: (path: LearningPath) => void
   shortcuts?: { key: string; action: string }[]
 }
 
@@ -78,13 +93,26 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onOpenCollaboration,
   onRegister,
   onOpenSpecStudio,
+  onStartIntentDemo,
+  onStartLearningPath,
   shortcuts: shortcutsProp,
 }) => {
   const { t, locale } = useI18n()
   const [showOnboarding, setShowOnboarding] = useState(() => shouldShowWelcomeOnboarding())
   const cloudHealth = useCloudHealth()
   const showNetworkTips = shouldShowNetworkTips(cloudHealth, isDesktopApp())
+  const showCnBetaBanner = isIpDeployHost()
   const appOrigin = getPublicAppOrigin()
+  const footerOriginLabel = useMemo(() => {
+    if (!appOrigin) return null
+    if (isIpDeployHost()) return t('welcome.appUrlIp', { url: appOrigin })
+    if (isCustomAppOrigin(appOrigin)) return t('welcome.appUrlSelfHosted', { url: appOrigin })
+    return t('welcome.appUrl', { url: appOrigin })
+  }, [appOrigin, t])
+  const networkTipsKey = isSelfHostedDeploy()
+    ? ('welcome.networkTipsSelfHosted' as const)
+    : ('welcome.networkTips' as const)
+  const icpBeian = resolveIcpBeian()
   const legalPrivacy = resolveAppUrl(
     locale === 'en-US' ? '/legal/privacy-en.html' : '/legal/privacy.html',
   )
@@ -250,7 +278,30 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               </div>
             </div>
             <p className="welcome-lead">{t('welcome.lead')}</p>
+            {onStartIntentDemo ? (
+              <button
+                type="button"
+                className="welcome-intent-hero-cta"
+                data-testid="welcome-intent-demo-hero"
+                onClick={onStartIntentDemo}
+              >
+                <Sparkles size={18} />
+                {t('welcome.pathIntentHero')}
+                <ArrowRight size={16} />
+              </button>
+            ) : null}
             <div className="welcome-dual-path" data-testid="welcome-dual-path">
+              {onStartIntentDemo ? (
+                <button
+                  type="button"
+                  className="welcome-dual-path__card welcome-dual-path__card--intent welcome-dual-path__card--primary"
+                  data-testid="welcome-intent-demo"
+                  onClick={onStartIntentDemo}
+                >
+                  <strong>{t('welcome.pathIntentTitle')}</strong>
+                  <span>{t('welcome.pathIntentDesc')}</span>
+                </button>
+              ) : null}
               <button type="button" className="welcome-dual-path__card" onClick={onNewProject}>
                 <strong>{t('welcome.pathLocalTitle')}</strong>
                 <span>{t('welcome.pathLocalDesc')}</span>
@@ -266,6 +317,32 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 </button>
               ) : null}
             </div>
+            {onOpenSpecStudio ? (
+              <button
+                type="button"
+                className="welcome-capstone-spotlight"
+                data-testid="welcome-capstone-spotlight"
+                onClick={() => {
+                  resetCapstoneFunnelMetrics('capstone')
+                  trackCapstoneFunnelStep('welcome_click', { specSlug: 'capstone' })
+                  onOpenSpecStudio({ templateId: 'course-capstone', specName: 'capstone' })
+                }}
+              >
+                <div className="welcome-capstone-spotlight__icon">
+                  <GraduationCap size={22} />
+                </div>
+                <div className="welcome-capstone-spotlight__body">
+                  <strong>{t('welcome.capstone.title')}</strong>
+                  <span>{t('welcome.capstone.desc')}</span>
+                </div>
+                <ArrowRight size={18} className="welcome-capstone-spotlight__arrow" />
+              </button>
+            ) : null}
+            {onOpenSpecStudio ? (
+              <CapstoneFunnelDashboard
+                onResume={() => onOpenSpecStudio({ templateId: 'course-capstone', specName: 'capstone' })}
+              />
+            ) : null}
             {isAiGatewayEnabled() && onRegister ? (
               <div className="welcome-platform-cta" data-testid="welcome-platform-cta">
                 <p className="welcome-platform-cta-text">{t('welcome.platformCta')}</p>
@@ -323,9 +400,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           </p>
         )}
 
+        {showCnBetaBanner ? (
+          <p className="welcome-cloud-banner welcome-cloud-banner--info" role="note">
+            {t('welcome.cnBetaBanner')}
+          </p>
+        ) : null}
+
         {showNetworkTips && (
           <p className="welcome-cloud-banner welcome-cloud-banner--info" role="status">
-            {t('welcome.networkTips')}
+            {t(networkTipsKey)}
           </p>
         )}
 
@@ -421,6 +504,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 />
               )}
             </div>
+
+            {onStartLearningPath ? <LearningPathsSection onStartPath={onStartLearningPath} /> : null}
+
+            {!isPublicWelfareClient() ? (
+              <div className="welcome-panel welcome-panel--muted">
+                <WelcomePlanComparison />
+              </div>
+            ) : null}
           </section>
 
           <section className="welcome-side">
@@ -471,7 +562,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </main>
 
         <footer className="welcome-footer">
-          {appOrigin ? <span>{t('welcome.appUrl', { url: appOrigin })}</span> : null}
+          {footerOriginLabel ? <span>{footerOriginLabel}</span> : null}
           {(() => {
             const version = (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim()
             if (!version || !/^1\.\d+\.\d+(\.\d+)?$/i.test(version)) return null
@@ -495,6 +586,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {t('welcome.footer.browser')}
           </a>
           <span>{t('welcome.footer.aiNote')}</span>
+          {icpBeian ? (
+            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer">
+              {icpBeian}
+            </a>
+          ) : null}
         </footer>
       </div>
     </div>

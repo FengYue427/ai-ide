@@ -1,5 +1,5 @@
 import { useEffect, type CSSProperties, type FC, type ReactNode } from 'react'
-import { Bug, CheckSquare, Package, TerminalSquare } from 'lucide-react'
+import { Bug, CheckSquare, Package, TerminalSquare, X } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { useBottomPanelPersistence } from '../hooks/useBottomPanelPersistence'
 import { useBottomPanelResize } from '../hooks/useBottomPanelResize'
@@ -68,6 +68,7 @@ const BottomPanel: FC<BottomPanelProps> = ({
   const height = useIDEStore((s) => s.bottomPanelHeight)
   const setBottomPanelTab = useIDEStore((s) => s.setBottomPanelTab)
   const setBottomPanelHeight = useIDEStore((s) => s.setBottomPanelHeight)
+  const setShowTerminal = useIDEStore((s) => s.setShowTerminal)
 
   useBottomPanelPersistence()
 
@@ -185,6 +186,15 @@ const BottomPanel: FC<BottomPanelProps> = ({
             </button>
           )
         })}
+        <button
+          type="button"
+          className="panel-close-btn bottom-panel-close"
+          onClick={() => setShowTerminal(false)}
+          aria-label={t('bottomPanel.close')}
+          title={t('bottomPanel.close')}
+        >
+          <X size={14} />
+        </button>
       </div>
       <div className="bottom-panel-body" role="tabpanel">
         {panes[tab]}

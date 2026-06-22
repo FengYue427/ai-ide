@@ -69,7 +69,7 @@ export function useAppBootstrap() {
     const roomId = params.get('room')
     const { setFiles, setShowCollaboration } = useIDEStore.getState()
 
-    if (shareId) {
+    if (shareId && params.get('view') !== 'progress') {
       void loadShareById(shareId).then((shareData) => {
         if (shareData) {
           setFiles(shareData.files)

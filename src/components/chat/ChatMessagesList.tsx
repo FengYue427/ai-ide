@@ -23,6 +23,7 @@ export interface ChatMessagesListProps {
   onSaveRun: () => void
   onReplayLastRun: () => void
   onExportRunMarkdown: () => void
+  onPromoteToSpec?: (messageIndex: number) => void
 }
 
 export const ChatMessagesList = memo(function ChatMessagesList({
@@ -36,6 +37,7 @@ export const ChatMessagesList = memo(function ChatMessagesList({
   onSaveRun,
   onReplayLastRun,
   onExportRunMarkdown,
+  onPromoteToSpec,
 }: ChatMessagesListProps) {
   const { t } = useI18n()
 
@@ -56,6 +58,9 @@ export const ChatMessagesList = memo(function ChatMessagesList({
         const canRetry = isAssistant && !isWelcome && !message.isError && index > 0
         const canContinue =
           isAssistant && !isWelcome && !message.isError && index === lastAssistantIndex && !loading
+
+        const canPromote =
+          !isAssistant && !message.isError && index > 0 && Boolean(onPromoteToSpec)
 
         return (
           <div key={index} className={`chat-msg-stack ${isAssistant ? '' : 'chat-msg-stack--user'}`}>
@@ -88,9 +93,11 @@ export const ChatMessagesList = memo(function ChatMessagesList({
                 role={message.role}
                 canRetry={canRetry}
                 canContinue={canContinue}
+                canPromote={canPromote}
                 onCopy={() => void onCopyMessage(message.content)}
                 onRetry={canRetry ? () => onRetryFromIndex(index) : undefined}
                 onContinue={canContinue ? onContinueConversation : undefined}
+                onPromote={canPromote ? () => onPromoteToSpec?.(index) : undefined}
               />
             ) : null}
           </div>

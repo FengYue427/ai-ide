@@ -8,8 +8,12 @@ import type { RecentProject } from '../services/recentFilesService'
 import { openGitDiffTabState, type OpenGitDiffTabInput } from '../lib/openGitDiffTab'
 import type { GitDiffTab } from '../types/editorTab'
 import type { FileItem } from '../types/file'
+import type { SpecDriftReport } from '../services/intentOs/specDriftService'
+import type { IntentGraph } from '../services/intentOs/intentGraphService'
 import type { WorkspaceRoot } from '../types/workspaceRoot'
 import { isMultiRootWorkspaceEnabled } from '../lib/v12Features'
+import { loadWorkspaceMode, type WorkspaceMode } from '../lib/workspaceMode'
+import { loadIntentShellPreference } from '../lib/intentShellFeatures'
 import {
   createWorkspaceRoot,
   defaultWorkspaceRoot,
@@ -217,9 +221,25 @@ export interface IDEState {
   }> | null
   queuedChatPrompt: string | null
   queuedSpecBackfill: QueuedSpecBackfill | null
+  verifyingSpecBackfill: QueuedSpecBackfill | null
+  lastGroundingBlock: LastGroundingBlock | null
   queuedSpecExecutions: QueuedSpecExecution[]
   queuedPlanBackfill: QueuedPlanBackfill | null
   queuedPlanExecutions: QueuedPlanExecution[]
+  specDriftReports: Record<string, SpecDriftReport>
+  failedSpecExecution: FailedSpecExecution | null
+  failedPlanExecution: FailedPlanExecution | null
+  queueFailureStats: { plan: number; spec: number }
+  queueSuccessStats: { plan: number; spec: number }
+  recentDoneQueueItems: RecentDoneQueueItem[]
+  intentShellEnabled: boolean
+  intentShellFocusTasksPath: string | null
+  intentReplayGraphOverlay: IntentGraph | null
+  intentShellRailTab: 'graph' | 'queue'
+  intentShellGraphOpen: boolean
+  intentShellQueueRailOpen: boolean
+  workspaceMode: WorkspaceMode
+  showWeeklyRecap: boolean
 
   showNewFileInput: boolean
   showTerminal: boolean
@@ -233,7 +253,9 @@ export interface IDEState {
   showTemplateModal: boolean
   showSpecStudio: boolean
   specStudioPrefill: { specName?: string; templateId?: string } | null
+  acceptanceEditorPath: string | null
   showShareModal: boolean
+  shareModalTab: 'share' | 'progress' | 'history' | 'import'
   showGitPanel: boolean
   showAISettings: boolean
   showImportModal: boolean
@@ -247,6 +269,7 @@ export interface IDEState {
   showSnippetLibrary: boolean
   showPerformance: boolean
   showSettingsCenter: boolean
+  settingsCenterTab: 'ai' | 'appearance' | 'editor' | 'features' | 'advanced' | null
   showCommandPalette: boolean
   showChatPanel: boolean
   rightPanelView: RightPanelView
@@ -305,11 +328,32 @@ export interface IDEState {
   ) => void
   setQueuedChatPrompt: (prompt: string | null) => void
   setQueuedSpecBackfill: (backfill: QueuedSpecBackfill | null) => void
+  setVerifyingSpecBackfill: (backfill: QueuedSpecBackfill | null) => void
+  setLastGroundingBlock: (block: LastGroundingBlock | null) => void
   setQueuedSpecExecutions: (items: QueuedSpecExecution[]) => void
   shiftQueuedSpecExecution: () => QueuedSpecExecution | null
   setQueuedPlanBackfill: (backfill: QueuedPlanBackfill | null) => void
   setQueuedPlanExecutions: (items: QueuedPlanExecution[]) => void
   shiftQueuedPlanExecution: () => QueuedPlanExecution | null
+  setSpecDriftReport: (tasksPath: string, report: SpecDriftReport) => void
+  clearSpecDriftReport: (tasksPath: string) => void
+  setFailedSpecExecution: (
+    value: FailedSpecExecution | null | ((prev: FailedSpecExecution | null) => FailedSpecExecution | null),
+  ) => void
+  setFailedPlanExecution: (
+    value: FailedPlanExecution | null | ((prev: FailedPlanExecution | null) => FailedPlanExecution | null),
+  ) => void
+  setQueueFailureStats: (value: { plan: number; spec: number } | ((prev: { plan: number; spec: number }) => { plan: number; spec: number })) => void
+  setQueueSuccessStats: (value: { plan: number; spec: number } | ((prev: { plan: number; spec: number }) => { plan: number; spec: number })) => void
+  setRecentDoneQueueItems: (value: RecentDoneQueueItem[] | ((prev: RecentDoneQueueItem[]) => RecentDoneQueueItem[])) => void
+  setIntentShellEnabled: (enabled: boolean) => void
+  setIntentShellFocusTasksPath: (path: string | null) => void
+  setIntentReplayGraphOverlay: (graph: IntentGraph | null) => void
+  setIntentShellRailTab: (tab: 'graph' | 'queue') => void
+  setIntentShellGraphOpen: (open: boolean) => void
+  setIntentShellQueueRailOpen: (open: boolean) => void
+  setWorkspaceMode: (mode: WorkspaceMode) => void
+  setShowWeeklyRecap: (show: boolean) => void
 
   setShowNewFileInput: (show: BooleanUpdater) => void
   setShowTerminal: (show: BooleanUpdater) => void
@@ -330,7 +374,9 @@ export interface IDEState {
   setShowTemplateModal: (show: boolean) => void
   setShowSpecStudio: (show: boolean) => void
   setSpecStudioPrefill: (prefill: { specName?: string; templateId?: string } | null) => void
+  setAcceptanceEditorPath: (path: string | null) => void
   setShowShareModal: (show: boolean) => void
+  setShareModalTab: (tab: 'share' | 'progress' | 'history' | 'import') => void
   setShowGitPanel: (show: BooleanUpdater) => void
   setShowAISettings: (show: boolean) => void
   setShowImportModal: (show: boolean) => void
@@ -344,6 +390,7 @@ export interface IDEState {
   setShowSnippetLibrary: (show: boolean) => void
   setShowPerformance: (show: boolean) => void
   setShowSettingsCenter: (show: boolean) => void
+  setSettingsCenterTab: (tab: IDEState['settingsCenterTab']) => void
   setShowCommandPalette: (show: boolean) => void
   setShowChatPanel: (show: boolean) => void
   setRightPanelView: (view: RightPanelView) => void
@@ -369,6 +416,12 @@ export interface QueuedSpecBackfill {
   specAcceptancePath: string
 }
 
+export interface LastGroundingBlock {
+  reason: string
+  taskPath: string
+  taskText?: string
+}
+
 export interface QueuedSpecExecution {
   prompt: string
   backfill: QueuedSpecBackfill
@@ -383,6 +436,23 @@ export interface QueuedPlanBackfill {
 export interface QueuedPlanExecution {
   prompt: string
   backfill: QueuedPlanBackfill
+}
+
+export interface FailedSpecExecution {
+  prompt: string
+  backfill: QueuedSpecBackfill
+  error: string
+}
+
+export interface FailedPlanExecution {
+  prompt: string
+  backfill: QueuedPlanBackfill
+  error: string
+}
+
+export interface RecentDoneQueueItem {
+  kind: 'plan' | 'spec'
+  text: string
 }
 
 export const useIDEStore = create<IDEState>()((set) => ({
@@ -418,9 +488,25 @@ export const useIDEStore = create<IDEState>()((set) => ({
   collaborationRoomMembers: null,
   queuedChatPrompt: null,
   queuedSpecBackfill: null,
+  verifyingSpecBackfill: null,
+  lastGroundingBlock: null,
   queuedSpecExecutions: [],
   queuedPlanBackfill: null,
   queuedPlanExecutions: [],
+  specDriftReports: {},
+  failedSpecExecution: null,
+  failedPlanExecution: null,
+  queueFailureStats: { plan: 0, spec: 0 },
+  queueSuccessStats: { plan: 0, spec: 0 },
+  recentDoneQueueItems: [],
+  intentShellEnabled: loadIntentShellPreference(),
+  intentShellFocusTasksPath: null,
+  intentReplayGraphOverlay: null,
+  intentShellRailTab: 'queue',
+  intentShellGraphOpen: true,
+  intentShellQueueRailOpen: true,
+  workspaceMode: loadWorkspaceMode(),
+  showWeeklyRecap: false,
 
   showNewFileInput: false,
   showTerminal: false,
@@ -434,7 +520,9 @@ export const useIDEStore = create<IDEState>()((set) => ({
   showTemplateModal: false,
   showSpecStudio: false,
   specStudioPrefill: null,
+  acceptanceEditorPath: null,
   showShareModal: false,
+  shareModalTab: 'share' as const,
   showGitPanel: false,
   showAISettings: false,
   showImportModal: false,
@@ -448,6 +536,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   showSnippetLibrary: false,
   showPerformance: false,
   showSettingsCenter: false,
+  settingsCenterTab: null,
   showCommandPalette: false,
   showChatPanel: false,
   rightPanelView: 'chat',
@@ -634,6 +723,8 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setCollaborationRoomMembers: (collaborationRoomMembers) => set({ collaborationRoomMembers }),
   setQueuedChatPrompt: (queuedChatPrompt) => set({ queuedChatPrompt }),
   setQueuedSpecBackfill: (queuedSpecBackfill) => set({ queuedSpecBackfill }),
+  setVerifyingSpecBackfill: (verifyingSpecBackfill) => set({ verifyingSpecBackfill }),
+  setLastGroundingBlock: (lastGroundingBlock) => set({ lastGroundingBlock }),
   setQueuedSpecExecutions: (queuedSpecExecutions) => set({ queuedSpecExecutions }),
   shiftQueuedSpecExecution: () => {
     let shifted: QueuedSpecExecution | null = null
@@ -657,6 +748,46 @@ export const useIDEStore = create<IDEState>()((set) => ({
     })
     return shifted
   },
+  setSpecDriftReport: (tasksPath, report) =>
+    set((state) => ({
+      specDriftReports: { ...state.specDriftReports, [tasksPath.replace(/\\/g, '/')]: report },
+    })),
+  clearSpecDriftReport: (tasksPath) =>
+    set((state) => {
+      const key = tasksPath.replace(/\\/g, '/')
+      if (!state.specDriftReports[key]) return state
+      const next = { ...state.specDriftReports }
+      delete next[key]
+      return { specDriftReports: next }
+    }),
+  setFailedSpecExecution: (value) =>
+    set((state) => ({
+      failedSpecExecution: typeof value === 'function' ? value(state.failedSpecExecution) : value,
+    })),
+  setFailedPlanExecution: (value) =>
+    set((state) => ({
+      failedPlanExecution: typeof value === 'function' ? value(state.failedPlanExecution) : value,
+    })),
+  setQueueFailureStats: (value) =>
+    set((state) => ({
+      queueFailureStats: typeof value === 'function' ? value(state.queueFailureStats) : value,
+    })),
+  setQueueSuccessStats: (value) =>
+    set((state) => ({
+      queueSuccessStats: typeof value === 'function' ? value(state.queueSuccessStats) : value,
+    })),
+  setRecentDoneQueueItems: (value) =>
+    set((state) => ({
+      recentDoneQueueItems: typeof value === 'function' ? value(state.recentDoneQueueItems) : value,
+    })),
+  setIntentShellEnabled: (intentShellEnabled) => set({ intentShellEnabled }),
+  setIntentShellFocusTasksPath: (intentShellFocusTasksPath) => set({ intentShellFocusTasksPath }),
+  setIntentReplayGraphOverlay: (intentReplayGraphOverlay) => set({ intentReplayGraphOverlay }),
+  setIntentShellRailTab: (intentShellRailTab) => set({ intentShellRailTab }),
+  setIntentShellGraphOpen: (intentShellGraphOpen) => set({ intentShellGraphOpen }),
+  setIntentShellQueueRailOpen: (intentShellQueueRailOpen) => set({ intentShellQueueRailOpen }),
+  setWorkspaceMode: (workspaceMode) => set({ workspaceMode }),
+  setShowWeeklyRecap: (showWeeklyRecap) => set({ showWeeklyRecap }),
 
   setShowNewFileInput: (value) =>
     set((state) => ({ showNewFileInput: resolveBoolean(value, state.showNewFileInput) })),
@@ -702,7 +833,9 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setShowTemplateModal: (showTemplateModal) => set({ showTemplateModal }),
   setShowSpecStudio: (showSpecStudio) => set({ showSpecStudio }),
   setSpecStudioPrefill: (specStudioPrefill) => set({ specStudioPrefill }),
+  setAcceptanceEditorPath: (acceptanceEditorPath) => set({ acceptanceEditorPath }),
   setShowShareModal: (showShareModal) => set({ showShareModal }),
+  setShareModalTab: (shareModalTab) => set({ shareModalTab }),
   setShowGitPanel: (value) =>
     set((state) => ({ showGitPanel: resolveBoolean(value, state.showGitPanel) })),
   setShowAISettings: (showAISettings) => set({ showAISettings }),
@@ -717,6 +850,7 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setShowSnippetLibrary: (showSnippetLibrary) => set({ showSnippetLibrary }),
   setShowPerformance: (showPerformance) => set({ showPerformance }),
   setShowSettingsCenter: (showSettingsCenter) => set({ showSettingsCenter }),
+  setSettingsCenterTab: (settingsCenterTab) => set({ settingsCenterTab }),
   setShowCommandPalette: (showCommandPalette) => set({ showCommandPalette }),
   setShowChatPanel: (showChatPanel) => set({ showChatPanel }),
   setRightPanelView: (rightPanelView) => set({ rightPanelView }),
@@ -741,3 +875,17 @@ export const useIDEStore = create<IDEState>()((set) => ({
     })),
   setPluginModal: (pluginModal) => set({ pluginModal }),
 }))
+
+export function exposeIDEStoreForE2E(): void {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return
+  if (localStorage.getItem('ai-ide:e2e-harness') !== '1') return
+  ;(window as Window & { __AIDE_IDE_STORE__?: { setState: typeof useIDEStore.setState; getState: typeof useIDEStore.getState } }).__AIDE_IDE_STORE__ =
+    {
+      setState: useIDEStore.setState,
+      getState: useIDEStore.getState,
+    }
+}
+
+if (typeof window !== 'undefined') {
+  exposeIDEStoreForE2E()
+}

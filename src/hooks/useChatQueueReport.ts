@@ -5,6 +5,14 @@ import {
   upsertQueueReportFile,
   type QueueExecutionReportInput,
 } from '../services/queueExecutionReportService'
+import {
+  buildProofOfDoneHtml,
+  buildProofOfDoneMarkdown,
+  buildProofReportPaths,
+  resolveProofTasksPath,
+  upsertProofReportFiles,
+} from '../services/intentOs/proofOfDoneReportService'
+import { canUseEntitlement } from '../lib/planFeatureGate'
 import { findLatestReportPath } from '../services/reportCatalogService'
 import {
   buildQueueRestoreFromReport,
@@ -179,6 +187,40 @@ export function useChatQueueReport({
     notify?.('success', t('chat.report.savedTitle'), t('chat.report.savedDetail', { path }))
   }, [buildQueueReportInput, notify, setActiveFile, setFiles, t])
 
+  const saveProofOfDoneToWorkspace = useCallback(
+    (tasksPath?: string | null) => {
+      const recentSpecTasks = recentDoneQueueItems.filter((row) => row.kind === 'spec').map((row) => row.text)
+      const resolved = resolveProofTasksPath(editorFiles, recentSpecTasks, tasksPath)
+      if (!resolved) {
+        notify?.('info', t('intent.proof.noSpec.title'), t('intent.proof.noSpec.detail'))
+        return
+      }
+      const input = {
+        tasksPath: resolved,
+        files: editorFiles,
+        completedTasks: recentSpecTasks,
+        runId,
+      }
+      const includeHtml = canUseEntitlement('proofHtmlExport')
+      const markdown = buildProofOfDoneMarkdown(input)
+      const html = includeHtml ? buildProofOfDoneHtml(input) : ''
+      const paths = buildProofReportPaths(resolved)
+      setFiles((prev) => {
+        const result = upsertProofReportFiles(prev, markdown, html, paths, { includeHtml })
+        setActiveFile(result.mdIndex)
+        return result.files
+      })
+      notify?.(
+        'success',
+        t('intent.proof.saved.title'),
+        includeHtml
+          ? t('intent.proof.saved.detail', { path: paths.md })
+          : t('intent.proof.saved.markdownOnly', { path: paths.md }),
+      )
+    },
+    [editorFiles, notify, recentDoneQueueItems, runId, setActiveFile, setFiles, t],
+  )
+
   const openLatestQueueReport = useCallback(() => {
     const path = findLatestReportPath(editorFiles.map((f) => ({ name: f.name, content: f.content })))
     if (!path) {
@@ -318,6 +360,7 @@ export function useChatQueueReport({
   return {
     exportQueueReport,
     saveQueueReportToWorkspace,
+    saveProofOfDoneToWorkspace,
     openLatestQueueReport,
     restoreQueueFromLatestReport,
   }

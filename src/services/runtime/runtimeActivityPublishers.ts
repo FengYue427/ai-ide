@@ -55,3 +55,17 @@ export function publishSpecQueueIntent(tasksPath: string, taskText: string): voi
     ...(specName ? { spec: specName } : {}),
   })
 }
+
+export function publishGroundingBlock(tasksPath: string, taskText: string, detail: string): void {
+  const specName = specNameFromTasksPath(tasksPath)
+  publishRuntimeEvent({
+    type: 'grounding.block',
+    at: new Date().toISOString(),
+    message: detail,
+    meta: {
+      tasksPath,
+      taskText: taskText.slice(0, 80),
+      ...(specName ? { spec: specName } : {}),
+    },
+  })
+}

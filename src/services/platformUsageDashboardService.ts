@@ -1,6 +1,18 @@
 import type { QuotaCheck } from './aiService'
 import { apiFetch, readJsonResponse } from './apiUtils'
 
+export type UsageEntitlementsPayload = {
+  plan: string
+  unlocked: string[]
+  locked: string[]
+  nearLimits: Array<{
+    id: 'aiQuota' | 'autopilot' | 'backgroundJobs' | 'shares' | 'workspaces'
+    used: number
+    limit: number
+    percent: number
+  }>
+}
+
 export type UsageDayBucket = {
   date: string
   platform: number
@@ -22,6 +34,7 @@ export type PlatformUsageDashboard = {
   quotaUsagePercent: number
   quotaNearLimit: boolean
   platformProvider?: string
+  entitlements?: UsageEntitlementsPayload
 }
 
 export async function fetchPlatformUsageDashboard(
