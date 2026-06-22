@@ -88,3 +88,28 @@ export function loadEnvLocalOrExit() {
   }
   return loaded
 }
+
+/** migrate deploy: .env.local → .env.production → .env.aliyun TARGET_* */
+export function loadEnvForDbOrExit() {
+  loadEnvLocal()
+  if (!process.env.DATABASE_URL?.trim()) {
+    loadProductionEnv()
+  }
+  if (!process.env.DATABASE_URL?.trim()) {
+    const aliyunPath = join(root, '.env.aliyun')
+    if (existsSync(aliyunPath)) {
+      loadEnvFromFile(aliyunPath)
+      const target =
+        process.env.TARGET_DATABASE_URL?.trim() || process.env.RDS_DATABASE_URL?.trim()
+      if (target && !process.env.DATABASE_URL?.trim()) {
+        process.env.DATABASE_URL = target
+      }
+    }
+  }
+  if (!process.env.DATABASE_URL?.trim()) {
+    console.error(
+      '❌ DATABASE_URL not set — .env.local / .env.production / .env.aliyun TARGET_DATABASE_URL',
+    )
+    process.exit(1)
+  }
+}

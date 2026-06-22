@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react'
 const root = dirname(fileURLToPath(import.meta.url))
 const appVersion = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version as string
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   base: './',
   define: {
@@ -18,7 +18,8 @@ export default defineConfig({
     format: 'es',
   },
   build: {
-    outDir: 'dist',
+    // electron 模式用独立目录，避免 Windows 上 dist/ 被占用 (EPERM)
+    outDir: mode === 'electron' ? 'dist-electron-ui' : 'dist',
     assetsDir: 'assets',
     sourcemap: false,
     minify: 'esbuild',
@@ -61,4 +62,4 @@ export default defineConfig({
       'Cross-Origin-Opener-Policy': 'same-origin',
     }
   }
-})
+}))

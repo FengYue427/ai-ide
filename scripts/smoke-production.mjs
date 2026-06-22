@@ -18,6 +18,7 @@ const checks = [
   { name: 'health', path: '/api/health', expectOk: true },
   { name: 'session', path: '/api/auth/session', expectOk: true },
   { name: 'workspaces 401', path: '/api/workspaces', expectStatus: 401 },
+  { name: 'shares 401', path: '/api/shares', expectStatus: 401 },
   { name: 'subscription anonymous', path: '/api/subscription', expectSubscriptionFree: true },
   { name: 'index', path: '/', expectOk: true },
 ]
@@ -65,7 +66,7 @@ for (const check of checks) {
         detail += ` — ${smokeHealthVersionHint(json.version)}`
       }
       if (!dbOk) {
-        detail += ' — set DATABASE_URL on Vercel (Neon pooler, sslmode=require)'
+        detail += ' — check DATABASE_URL (Neon or Aliyun RDS) and run db:migrate:deploy'
       }
       if (Array.isArray(json?.hints) && json.hints.length > 0) {
         detail += ` | ${json.hints[0]}`

@@ -7,7 +7,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [1.6.0] — 2026-06-07 · 上市就绪 GA（进行中）
+## [1.7.0] — 2026-06-11 · 阿里云 P0 · 桌面/Web 对齐 · 云端分享
+
+### Added
+
+- **云端分享 API**：`ProjectShare` 模型 · `POST/GET /api/shares` · `ShareModal` 历史 Tab（云端 + 本地）
+- **桌面/Web parity**：`getPublicAppOrigin` · legal/signup/logo 静态资源 · OAuth 自动探测 · `ai-ide://` 支付/OAuth 回壳
+- **计费 UX**：Pro **¥39** / Team **¥79**（`formatPlanPrice preferCny`）· 桌面 `VITE_PUBLIC_WELFARE=false`
+- **ChatPanel 拆分**：`useChatSendOrchestrator` · `src/components/chat/*`
+- **E2E**：`share-cloud` · `desktop-billing-return` · `desktop-deep-link-return`
+- **阿里云 P0 文档**：`docs/CN_LAUNCH_P0.md` · `docs/ENV_PRODUCTION.md` · `docs/OBSERVABILITY.md` · `scripts/aliyun-p0-preflight.mjs`
+
+### Changed
+
+- **migrate-if-db**：`CollaborationRoom` 已存在时仍执行 `prisma migrate deploy`
+- **生产 Flag 默认**：Spec/Runtime/Activity Line · Tab++ · `VITE_GA_LIVE`（见 `.env.production.example`）
+- **README** 收敛至现存文档；移除失效 doc 链接
+
+See [docs/CN_LAUNCH_P0.md](docs/CN_LAUNCH_P0.md) · [docs/DEPLOY_ALIYUN_CN.md](docs/DEPLOY_ALIYUN_CN.md)
+
+---
+
+## [1.6.0] — 2026-06-07 · 上市就绪 GA
 
 ### Added
 

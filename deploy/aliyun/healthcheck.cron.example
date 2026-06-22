@@ -1,0 +1,7 @@
+# AI IDE — 每小时健康探测（可选，crontab -e）
+# 失败时写入日志；可配合阿里云云监控 HTTP 探测
+
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+5 * * * * curl -fsS --max-time 15 "https://YOUR_DOMAIN/api/health" | grep -q '"status":"ok"' || echo "$(date -Is) health FAIL" >> /var/log/ai-ide-health.log

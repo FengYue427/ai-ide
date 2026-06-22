@@ -44,6 +44,14 @@
     "verify:env:v16": "node scripts/verify-env.mjs --production --v16-production --require-cn-billing",
     "v16:preflight": "node scripts/v16-preflight.mjs",
     "cn:preflight": "node scripts/cn-preflight.mjs",
+    "aliyun:p0": "node scripts/aliyun-p0-preflight.mjs",
+    "aliyun:build": "node scripts/aliyun-build.mjs",
+    "aliyun:sync": "node scripts/aliyun-sync.mjs",
+    "aliyun:remote-install": "node scripts/aliyun-remote-install.mjs",
+    "aliyun:deploy": "node scripts/aliyun-deploy.mjs",
+    "aliyun:nginx": "node scripts/aliyun-render-nginx.mjs",
+    "aliyun:post-beian": "node scripts/aliyun-post-beian.mjs",
+    "db:migrate:neon-to-rds": "node scripts/db-migrate-neon-to-rds.mjs",
     "start:api:production": "tsx scripts/start-api-production.mjs",
     "verify:stripe:prices": "tsx scripts/verify-stripe-prices.ts",
     "verify:paddle:prices": "tsx scripts/verify-paddle-prices.ts",
@@ -103,7 +111,7 @@
     "electron:pack": "node scripts/electron-pack.mjs",
     "electron:pack:installer": "node scripts/electron-builder-run.mjs --win nsis --publish never",
     "electron:pack:mac": "node scripts/electron-builder-run.mjs --mac dmg zip --publish never",
-    "electron:pack:offline": "npm run build:electron && node scripts/electron-builder-run.mjs --win portable --publish never",
+    "electron:pack:offline": "node scripts/electron-pack.mjs",
     "electron:publish": "node scripts/electron-publish.mjs"
   },
   "dependencies": {

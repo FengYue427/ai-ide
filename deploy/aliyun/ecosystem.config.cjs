@@ -4,8 +4,8 @@ module.exports = {
     {
       name: 'ai-ide-api',
       cwd: '/opt/ai-ide',
-      script: 'node_modules/.bin/tsx',
-      args: 'scripts/local-dev-server.ts',
+      script: 'scripts/local-dev-server.ts',
+      interpreter: './node_modules/.bin/tsx',
       env: {
         NODE_ENV: 'production',
         API_PORT: '3001',

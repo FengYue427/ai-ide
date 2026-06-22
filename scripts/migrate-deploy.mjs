@@ -5,11 +5,11 @@
 import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { loadEnvLocalOrExit } from './load-env-local.mjs'
+import { loadEnvForDbOrExit } from './load-env-local.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-loadEnvLocalOrExit()
+loadEnvForDbOrExit()
 
 console.log('=== prisma migrate deploy ===')
 console.log('Target:', process.env.DATABASE_URL.replace(/:[^:@/]+@/, ':****@'))

@@ -3,6 +3,7 @@
  */
 import { app, BrowserWindow, dialog, ipcMain, Menu, session, shell } from 'electron'
 import { spawn } from 'child_process'
+import { existsSync } from 'fs'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
@@ -91,7 +92,11 @@ function devServerUrl() {
 }
 
 function localDistIndexUrl() {
-  const indexHtml = path.join(__dirname, '..', 'dist', 'index.html')
+  const root = path.join(__dirname, '..')
+  const uiDir = existsSync(path.join(root, 'dist-electron-ui', 'index.html'))
+    ? 'dist-electron-ui'
+    : 'dist'
+  const indexHtml = path.join(root, uiDir, 'index.html')
   return pathToFileURL(indexHtml).href
 }
 

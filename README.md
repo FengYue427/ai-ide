@@ -1,173 +1,71 @@
 # ⚡ AI IDE
 
-开源 AI 原生轻量 IDE，支持浏览器开箱使用与 Agent 驱动的多文件改造。
+开源 AI 原生轻量 IDE：**浏览器开箱** + **Electron 桌面**，以 **Plan → Spec → 队列 → 报告** 为核心工作流。
 
-**当前版本：v1.7.0**（视觉/i18n/响应式抛光 · 桌面/浏览器能力对照）· [CHANGELOG](./CHANGELOG.md) · [国内部署](./docs/DEPLOY_ALIYUN_CN.md)
-
-## v1.4.x（做到 1.4.9 再开 v1.5）
-
-- **1.4.1～1.4.5**：Tab++/Runtime RFC · spike · hooks schema
-- **1.4.6～1.4.8**：深化抛光 · Activity RFC
-- **1.4.9**：v1.4 收官 · v1.5 启动门
-- 详表：[ROADMAP_V1.4.x_PATCHES.md](./docs/ROADMAP_V1.4.x_PATCHES.md) · 执行：[NEXT_EXECUTION.md](./docs/NEXT_EXECUTION.md)
-
-## v1.5.0 规划（1.4.9 门后 · 零宣传）
-
-- **Tab++** · **AIDE Runtime** · **Activity Line** — [ROADMAP_V1.5.md](./docs/ROADMAP_V1.5.md) · [AIDE_RUNTIME.md](./docs/AIDE_RUNTIME.md)
-
-## v1.4.0 生产级填坑（GA）
-
-- **F1–F7**：Tab P95 · 2k 索引/Worker · Git hunk stage · 桌面壳 · 后台 Agent · MCP/插件 · 平台 GA
-- 环境变量：[V1.4_ENV.md](./docs/V1.4_ENV.md) · 发版说明：[RELEASE_NOTES_v1.4.0.md](./docs/RELEASE_NOTES_v1.4.0.md)
-
-## v1.3 世代（已收官）
-
-- Python/TS 导航 · 索引 2.0 · Agent 可靠 · Git 轻抛光 — [ROADMAP_V1.3.md](./docs/ROADMAP_V1.3.md)
-
-## v1.2.9 引用与运维（GA）
-
-- **引用**：`ReferencesPeekBar` 与 TS Worker 行号对齐 · opener 保留列号
-- **Chat**：MCP 表计按已连接工具数动态预留（上限 12KB）
-- **插件**：`GET /api/plugins/publish/reviews?status=pending` · 单条只读查询 · 设置页审核筛选
-
-详见 [RELEASE_NOTES_v1.2.9.md](./docs/RELEASE_NOTES_v1.2.9.md) · 下一迭代 [V1.3_KICKOFF.md](./docs/V1.3_KICKOFF.md)
+**当前版本：v1.7.0** · [CHANGELOG](./CHANGELOG.md) · [国内 P0 清单](./docs/CN_LAUNCH_P0.md) · [阿里云部署](./docs/DEPLOY_ALIYUN_CN.md)
 
 | 入口 | 链接 |
-|--|--|
+|------|------|
 | 在线体验 | https://ai-ide-flame.vercel.app |
-| Releases | https://github.com/FengYue427/ai-ide/releases |
-| 最新桌面包 | https://github.com/FengYue427/ai-ide/releases/latest |
+| Releases / 桌面包 | https://github.com/FengYue427/ai-ide/releases |
 | 问题反馈 | https://github.com/FengYue427/ai-ide/issues |
 
-## v1.2.0 工作区与插件市场（GA）
+## 核心能力
 
-- **多根工作区**：侧栏根切换 · 按根 autosave（`VITE_MULTI_ROOT`，默认关）
-- **大文件树**：≥250 折叠 · ≥500 虚拟滚动
-- **插件信任**：Ed25519 签名 · 市场 `trustTier` · 发布 API 草案
+- **Plan / Spec**：多计划目录、Spec Studio 模板、双队列执行、`.aide/reports` 可恢复 → [快速上手](./docs/PLAN_SYSTEM_QUICKSTART.md)
+- **Agent**：多文件改造、Diff 预览应用、MCP 工具桥、Plan Mode
+- **编辑器**：Monaco、Tab++ 补全、全局检索、WebContainer 终端（浏览器）/ 原生 PTY（桌面）
+- **云端分享**：`POST /api/shares` · 链接 `?share=<slug>` 跨浏览器恢复
+- **订阅**：国内 Pro **¥39** / Team **¥79**（支付宝）· 平台 AI + BYOK
+- **桌面壳**：OAuth / 支付 `ai-ide://` 回跳 · 离线 UI + 远程 API
 
-详见 [RELEASE_NOTES_v1.2.0.md](./docs/RELEASE_NOTES_v1.2.0.md) · 开关 [V1.2_ENV.md](./docs/V1.2_ENV.md) · **上架清单** [LAUNCH_V1.2.0_FULL.md](./docs/LAUNCH_V1.2.0_FULL.md)
-
-## v1.1.1 计划系统（GA）
-
-完整流程：**写计划 → 映射 Spec → 队列执行 → 报告留档 → 可恢复**。快速上手：[docs/PLAN_SYSTEM_QUICKSTART.md](./docs/PLAN_SYSTEM_QUICKSTART.md)
-
-- **Plan**：多计划目录、模板创建、步骤执行队列、复制/手动标记完成
-- **Spec**：目录管理、映射并执行、Spec 执行队列
-- **报告**：保存到 `.aide/reports/`、目录管理、预览后恢复队列、批量清理
-- **溯源**：Plan ↔ Spec 来源展示与一键跳转
-- **可观测**：任务队列面板、成功/失败统计、长队列预览展开
-- **工作区**：`.aide` 一键同步到 AI 索引（缓解编辑器与索引不一致）
-
-Agent 默认常开；队列与 Chat 草稿支持本地持久化。
-
-## v1.1.2 后台 Agent（MVP）
-
-关页后服务端继续执行 Agent 任务。快速上手：[docs/BACKGROUND_AGENT_QUICKSTART.md](./docs/BACKGROUND_AGENT_QUICKSTART.md)
-
-- **提交**：Chat Agent 模式 → **后台运行**（需登录 + `VITE_BACKGROUND_AGENT=true`）
-- **查看**：右栏 **后台任务** Tab（轮询、取消、预览 Diff）
-- **结果**：写入**云工作区**（默认 `default`）；Free 2 次/日，Pro 更高配额
-- **运维**：Cron `/api/jobs/process`；本地 `npm run jobs:process`
-
-生产默认关闭后台 Agent UI；启用见 [V1.1_FEATURE_FLAGS.md](./docs/V1.1_FEATURE_FLAGS.md)。
-
-## v1.1.3 协作 M1
-
-邀请队友进入房间，共编云工作区。详见 [docs/RELEASE_NOTES_v1.1.3.md](./docs/RELEASE_NOTES_v1.1.3.md)
-
-- **房间**：登录后创建/加入（`VITE_COLLAB_M1_SIGNAL=true`）
-- **重连**：断网 ≈30s 内自动重连（Yjs + WebRTC）
-- **权限**：host / editor / viewer（只读锁定编辑器）
-- **运维**：`npx prisma migrate deploy`；可选 `LIVEKIT_*` / `COLLAB_SIGNALING_URL`
-
-生产默认关闭协作 M1；启用见 [V1.1.3_ENV.md](./docs/V1.1.3_ENV.md)。
+生产默认关闭：协作 M1、后台 Agent UI（见 [ENV_PRODUCTION.md](./docs/ENV_PRODUCTION.md)）。
 
 ## 快速开始
 
 ```bash
 npm install
-npm run dev
+npm run dev:stack    # API :3001 + 前端 :3000
 ```
 
-默认前端开发地址：`http://localhost:3000`
+带数据库：`cp .env.local.example .env.local` → `npm run db:neon` → `npm run dev:stack`
 
-## 本地开发模式
-
-| 命令 | 用途 |
-|--|--|
-| `npm run dev` | 前端热更新（Vite） |
-| `npm run dev:api` | 本地 API 服务 |
-| `npm run dev:stack` | API + 前端并行启动 |
-| `npm run dev:full` | 使用 Vercel CLI 启动全链路 |
-| `npm run preview` | 预览生产构建 |
-
-### 带数据库联调（推荐 Neon）
-
-```bash
-cp .env.local.example .env.local
-npm run db:neon
-npm run dev:stack
-```
-
-文档参考：`docs/NEON_SETUP.md`、`docs/LOCAL_DEV.md`、`docs/VERCEL_SETUP.md`
-
-## 测试与发布校验
+## 测试与发布
 
 ```bash
 npm run test:local
-npm run test:all
 npm run check:release
+npm run deploy                    # Vercel 生产
+npm run smoke:production -- https://ai-ide-flame.vercel.app
 ```
 
-发布与回滚流程：`docs/RELEASE_RUNBOOK.md`
-
-## 功能概览
-
-### AI 与 Agent
-- 多模型 BYOK 对话
-- Workspace 上下文 + `@` 引用
-- Agent 多文件编辑与差异应用
-- **后台 Agent**（v1.1.2）：服务端任务 + 云工作区回写（特性开关）
-- Plan Mode（先计划后执行）
-- MCP 工具桥接与后续回合
-
-### 计划与规格（Plan/Spec）— v1.1.1
-- `.aide/plans` 多计划 + 内置/自定义模板
-- Plan / Spec 双队列、映射并执行、失败重试与跳过
-- `.aide/reports` 执行报告与恢复预览
-- Plan ↔ Spec 溯源（`.aide/meta/plan-spec-links.json`）
-- 设置中心：计划总览、Plan/Spec/报告目录
-
-### 编辑器与工程能力
-- Monaco Editor、全局检索、命令面板
-- WebContainer 运行与终端
-- 工作区保存/导入/导出
-- 协作与基础 Git 面板（**v1.1.3**：服务端房间 + 角色权限，特性开关）
+发布流程：[RELEASE_RUNBOOK.md](./docs/RELEASE_RUNBOOK.md)
 
 ## 部署
 
-推荐 Vercel（前端 + `/api`）。常用命令：
+| 场景 | 文档 |
+|------|------|
+| Vercel + Neon（当前） | `npm run build:deploy && npm run deploy` |
+| 阿里云备案 + RDS | [DEPLOY_ALIYUN_CN.md](./docs/DEPLOY_ALIYUN_CN.md) · `npm run aliyun:deploy -- --with-env` |
+| 环境变量 | [ENV_PRODUCTION.md](./docs/ENV_PRODUCTION.md) |
+| 监控 / Cron / Sentry | [OBSERVABILITY.md](./docs/OBSERVABILITY.md) |
+
+桌面便携版：
 
 ```bash
-npm run build:deploy
-npm run deploy
+npm run electron:pack:offline
+# 产物 release/AI-IDE-*-win-portable.exe
 ```
-
-手工静态部署仅覆盖前端能力，不含 serverless API。
 
 ## 文档导航
 
-- 版本记录：`CHANGELOG.md`
-- 路线图：`docs/ROADMAP.md`
-- 计划系统快速上手：`docs/PLAN_SYSTEM_QUICKSTART.md`
-- v1.1.1 GA 清单：`docs/V1.1.1_GA_EXECUTION.md`
-- v1.1.2 后台 Agent：`docs/BACKGROUND_AGENT_QUICKSTART.md` · `docs/V1.1.2_GA_EXECUTION.md`
-- v1.1.3 协作 M1：`docs/RELEASE_NOTES_v1.1.3.md` · `docs/V1.1.3_ENV.md`
-- 下一执行阶段：`docs/NEXT_EXECUTION.md`
-- 发布运行手册：`docs/RELEASE_RUNBOOK.md`
-- 对外发布素材：`docs/publish/README.md`
+- [CN_LAUNCH_P0.md](./docs/CN_LAUNCH_P0.md) — 迁阿里云前必做
+- [PLAN_SYSTEM_QUICKSTART.md](./docs/PLAN_SYSTEM_QUICKSTART.md)
+- [RELEASE_RUNBOOK.md](./docs/RELEASE_RUNBOOK.md)
+- [ENV_PRODUCTION.md](./docs/ENV_PRODUCTION.md)
+- [OBSERVABILITY.md](./docs/OBSERVABILITY.md)
+- [DEPLOY_ALIYUN_CN.md](./docs/DEPLOY_ALIYUN_CN.md)
 
 ## License
 
 MIT
-

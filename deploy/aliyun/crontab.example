@@ -1,5 +1,6 @@
 # AI IDE — 阿里云 ECS crontab（crontab -e）
 # 将 YOUR_DOMAIN、CRON_SECRET 替换为实际值
+# 可选健康探测：deploy/aliyun/healthcheck.cron.example
 
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin

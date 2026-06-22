@@ -259,7 +259,7 @@ async function buildHealthCheck(options) {
     payload.status = "degraded";
     payload.database = "not_configured";
     payload.hints = [
-      "Set DATABASE_URL on Vercel (Neon pooler URL with sslmode=require).",
+      "Set DATABASE_URL (Neon pooler with sslmode=require, or Aliyun RDS internal URL).",
       "Set AUTH_SECRET (32+ random chars) and APP_URL to your deployment origin."
     ];
     return { payload, statusCode: 503 };
@@ -272,8 +272,8 @@ async function buildHealthCheck(options) {
     payload.status = "degraded";
     payload.database = "unavailable";
     payload.hints = [
-      "Verify Neon project is active and DATABASE_URL uses the pooler host.",
-      "Redeploy after changing env vars; run npm run smoke:production."
+      "Verify DATABASE_URL (Neon pooler or Aliyun RDS whitelist + credentials).",
+      "Run npm run db:migrate:deploy; then npm run smoke:production."
     ];
     return { payload, statusCode: 503 };
   }
@@ -314,6 +314,7 @@ function getReleaseVersion() {
   try {
     const here = dirname(fileURLToPath(import.meta.url));
     const candidates = [
+      join(process.cwd(), "package.json"),
       join(here, "..", "..", "..", "package.json"),
       join(here, "..", "package.json")
     ];
@@ -333,7 +334,7 @@ var FALLBACK, cached;
 var init_releaseVersion = __esm({
   "lib/api/releaseVersion.ts"() {
     "use strict";
-    FALLBACK = "1.5.9";
+    FALLBACK = "1.7.0";
     cached = null;
   }
 });
@@ -366,7 +367,221 @@ var init_pemKey = __esm({
   }
 });
 
+// lib/billing/publicWelfare.ts
+function isPublicWelfareMode() {
+  const raw = process.env.PUBLIC_WELFARE_MODE?.trim().toLowerCase();
+  if (raw === "true" || raw === "1" || raw === "yes") return true;
+  if (raw === "false" || raw === "0" || raw === "no") return false;
+  return false;
+}
+function effectivePlanName(actualPlan) {
+  if (!isPublicWelfareMode()) return actualPlan;
+  return PUBLIC_WELFARE_PLAN;
+}
+var PUBLIC_WELFARE_PLAN, PUBLIC_WELFARE_NOTE_ZH;
+var init_publicWelfare = __esm({
+  "lib/billing/publicWelfare.ts"() {
+    "use strict";
+    PUBLIC_WELFARE_PLAN = "pro";
+    PUBLIC_WELFARE_NOTE_ZH = "\u516C\u76CA\u514D\u8D39 IDE\uFF1A\u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\uFF0C\u5E73\u53F0 AI \u914D\u989D\u5DF2\u653E\u5BBD\u3002\u6B22\u8FCE BYOK \u4F7F\u7528\u81EA\u6709\u6A21\u578B Key\u3002";
+  }
+});
+
+// lib/billing/entitlements.ts
+function normalizePlanName(planName) {
+  const normalized = planName.trim().toLowerCase();
+  if (normalized === "pro" || normalized === "enterprise") return normalized;
+  return "free";
+}
+function getEntitlements(planName) {
+  return ENTITLEMENTS_BY_PLAN[normalizePlanName(planName)];
+}
+function getEffectiveEntitlements(actualPlanName) {
+  return getEntitlements(effectivePlanName(actualPlanName));
+}
+function isEntitlementEnabled(planName, feature) {
+  return getEffectiveEntitlements(planName).features[feature];
+}
+function getShareTtlMs(planName) {
+  const days = getEffectiveEntitlements(planName).shareTtlDays;
+  return days * 24 * 60 * 60 * 1e3;
+}
+function getMaxSharesForPlan(planName) {
+  return getEffectiveEntitlements(planName).maxShares;
+}
+function getStorageEntitlementLimitGb(planName) {
+  return getEffectiveEntitlements(planName).storageGB;
+}
+function getBackgroundJobLimits(planName) {
+  const e = getEffectiveEntitlements(planName);
+  return {
+    dailyLimit: e.backgroundJobsPerDay,
+    maxActive: e.backgroundJobsMaxActive,
+    batchMax: e.backgroundJobsBatchMax
+  };
+}
+function assertEntitlementFeature(planName, feature) {
+  if (isEntitlementEnabled(planName, feature)) return { ok: true };
+  return { ok: false, requiredPlan: FEATURE_MINIMUM_PLAN[feature], feature };
+}
+function getPlanMarketingFeatures(planName) {
+  const e = getEntitlements(planName);
+  if (e.planName === "free") {
+    return [
+      "\u5E73\u53F0 AI \xB7 \u7ECF\u6D4E\u6A21\u578B\uFF08Flash / Lite\uFF09",
+      "3 \u4E2A\u4E91\u5DE5\u4F5C\u533A \xB7 5 \u6761 Share\uFF087 \u5929\uFF09",
+      "Plan / Spec / Git \u57FA\u7840\u95ED\u73AF",
+      "\u6BCF\u65E5 200 \u52A0\u6743 AI \u914D\u989D",
+      "\u540E\u53F0 Agent 2 \u6B21/\u65E5",
+      "Autopilot 3 \u6B21/\u65E5 \xB7 \u8BC1\u660E\u5305 Markdown"
+    ];
+  }
+  if (e.planName === "pro") {
+    return [
+      "\u5168\u6863\u5E73\u53F0 AI + 2000 \u914D\u989D/\u65E5",
+      "Autopilot \u4E0D\u9650 \xB7 Intent \u5168\u8054\u52A8",
+      "\u8BC1\u660E\u5305 MD+HTML \xB7 \u5468\u56DE\u987E\u5BFC\u51FA",
+      "20 \u5DE5\u4F5C\u533A \xB7 Share 90 \u5929",
+      "\u540E\u53F0 Agent 100 \u6B21/\u65E5 \xB7 \u5E76\u53D1 5",
+      "\u534F\u4F5C\u4E3B\u6301 \xB7 intent-share \u5BFC\u5165"
+    ];
+  }
+  return [
+    "AI \u914D\u989D\u4E0D\u9650",
+    "\u4E13\u4E1A\u7248\u5168\u90E8\u95ED\u73AF\u80FD\u529B",
+    "100 \u6761 Share \xB7 365 \u5929\u6709\u6548",
+    "\u540E\u53F0 Agent 300 \u6B21/\u65E5 \xB7 \u6279\u91CF 20",
+    "\u534F\u4F5C\u623F\u95F4\u6700\u591A 10 \u4EBA",
+    "Share \u8FDB\u5EA6\u5173\u6CE8 \xB7 \u672C\u5730\u66F4\u65B0\u63D0\u9192",
+    "100GB \u4E91\u5B58\u50A8 \xB7 \u4F18\u5148\u652F\u6301"
+  ];
+}
+function getPlanLimitsFromEntitlements(planName) {
+  const e = getEntitlements(planName);
+  return {
+    aiRequestsPerDay: e.aiRequestsPerDay,
+    workspaces: e.workspaces,
+    storageGB: e.storageGB
+  };
+}
+var FREE_ENTITLEMENTS, PRO_ENTITLEMENTS, ENTERPRISE_ENTITLEMENTS, ENTITLEMENTS_BY_PLAN, FEATURE_MINIMUM_PLAN;
+var init_entitlements = __esm({
+  "lib/billing/entitlements.ts"() {
+    "use strict";
+    init_publicWelfare();
+    FREE_ENTITLEMENTS = {
+      planName: "free",
+      aiRequestsPerDay: 200,
+      workspaces: 3,
+      storageGB: 5,
+      backgroundJobsPerDay: 2,
+      backgroundJobsMaxActive: 1,
+      backgroundJobsBatchMax: 0,
+      autopilotRunsPerDay: 3,
+      maxShares: 5,
+      shareTtlDays: 7,
+      collabMaxParticipants: 0,
+      features: {
+        allModelTiers: false,
+        autopilotUnlimited: false,
+        intentFullLinkage: false,
+        proofHtmlExport: false,
+        weeklyRecapExport: false,
+        intentShareImport: false,
+        collabHost: false,
+        shareProgressComments: false,
+        shareProgressWatch: false,
+        fullSessionResume: false,
+        fullLinkageCommands: false
+      }
+    };
+    PRO_ENTITLEMENTS = {
+      planName: "pro",
+      aiRequestsPerDay: 2e3,
+      workspaces: 20,
+      storageGB: 30,
+      backgroundJobsPerDay: 100,
+      backgroundJobsMaxActive: 5,
+      backgroundJobsBatchMax: 5,
+      autopilotRunsPerDay: -1,
+      maxShares: 30,
+      shareTtlDays: 90,
+      collabMaxParticipants: 4,
+      features: {
+        allModelTiers: true,
+        autopilotUnlimited: true,
+        intentFullLinkage: true,
+        proofHtmlExport: true,
+        weeklyRecapExport: true,
+        intentShareImport: true,
+        collabHost: true,
+        shareProgressComments: true,
+        shareProgressWatch: false,
+        fullSessionResume: true,
+        fullLinkageCommands: true
+      }
+    };
+    ENTERPRISE_ENTITLEMENTS = {
+      planName: "enterprise",
+      aiRequestsPerDay: -1,
+      workspaces: -1,
+      storageGB: 100,
+      backgroundJobsPerDay: 300,
+      backgroundJobsMaxActive: 10,
+      backgroundJobsBatchMax: 20,
+      autopilotRunsPerDay: -1,
+      maxShares: 100,
+      shareTtlDays: 365,
+      collabMaxParticipants: 10,
+      features: {
+        allModelTiers: true,
+        autopilotUnlimited: true,
+        intentFullLinkage: true,
+        proofHtmlExport: true,
+        weeklyRecapExport: true,
+        intentShareImport: true,
+        collabHost: true,
+        shareProgressComments: true,
+        shareProgressWatch: true,
+        fullSessionResume: true,
+        fullLinkageCommands: true
+      }
+    };
+    ENTITLEMENTS_BY_PLAN = {
+      free: FREE_ENTITLEMENTS,
+      pro: PRO_ENTITLEMENTS,
+      enterprise: ENTERPRISE_ENTITLEMENTS
+    };
+    FEATURE_MINIMUM_PLAN = {
+      allModelTiers: "pro",
+      autopilotUnlimited: "pro",
+      intentFullLinkage: "pro",
+      proofHtmlExport: "pro",
+      weeklyRecapExport: "pro",
+      intentShareImport: "pro",
+      collabHost: "pro",
+      shareProgressComments: "pro",
+      shareProgressWatch: "enterprise",
+      fullSessionResume: "pro",
+      fullLinkageCommands: "pro"
+    };
+  }
+});
+
 // lib/billing/plans.ts
+function buildPlanDefinition(id, displayName, description, price, priceCny) {
+  return {
+    id,
+    name: id,
+    displayName,
+    description,
+    price,
+    currency: "USD",
+    priceCny,
+    features: getPlanMarketingFeatures(id),
+    limits: getPlanLimitsFromEntitlements(id)
+  };
+}
 function getBillablePlanNames() {
   return BILLING_PLANS.filter((plan) => plan.name !== "free").map((plan) => plan.name);
 }
@@ -374,7 +589,7 @@ function findPlanByName(name) {
   return BILLING_PLANS.find((plan) => plan.name === name || plan.id === name);
 }
 function getPlanLimits(planName) {
-  return findPlanByName(planName)?.limits ?? BILLING_PLANS[0].limits;
+  return getPlanLimitsFromEntitlements(planName);
 }
 function getWorkspaceLimit(planName) {
   return getPlanLimits(planName).workspaces;
@@ -435,58 +650,19 @@ var STRIPE_USD_PRO, STRIPE_USD_ENTERPRISE, BILLING_PLANS;
 var init_plans = __esm({
   "lib/billing/plans.ts"() {
     "use strict";
+    init_entitlements();
     STRIPE_USD_PRO = 9.99;
     STRIPE_USD_ENTERPRISE = 19.99;
     BILLING_PLANS = [
-      {
-        id: "free",
-        name: "free",
-        displayName: "\u514D\u8D39\u7248",
-        description: "\u4E2A\u4EBA\u5B66\u4E60\u4E0E\u65E5\u5E38\u5C0F\u9879\u76EE",
-        price: 0,
-        currency: "USD",
-        features: [
-          "\u5E73\u53F0 AI \u5BF9\u8BDD\uFF08\u767B\u5F55\u5373\u7528\uFF0C\u7ECF\u6D4E\u6A21\u578B\uFF09",
-          "\u6BCF\u65E5 200 \u52A0\u6743\u914D\u989D\u5355\u4F4D",
-          "\u65E0\u9650\u4E91\u5DE5\u4F5C\u533A",
-          "30GB \u4E91\u5B58\u50A8\u989D\u5EA6\uFF08\u89C4\u5212\uFF09"
-        ],
-        limits: { aiRequestsPerDay: 200, workspaces: -1, storageGB: 30 }
-      },
-      {
-        id: "pro",
-        name: "pro",
-        displayName: "\u4E13\u4E1A\u7248",
-        description: "\u9AD8\u9891\u4E2A\u4EBA\u5F00\u53D1\u8005\uFF0C\u5168\u6A21\u578B\u5E73\u53F0 AI",
-        price: STRIPE_USD_PRO,
-        currency: "USD",
-        priceCny: 39,
-        features: [
-          "\u5E73\u53F0 AI + Agent\uFF08\u5168\u6863\u6A21\u578B\uFF09",
-          "\u6BCF\u65E5 2000 \u52A0\u6743\u914D\u989D\u5355\u4F4D",
-          "\u65E0\u9650\u4E91\u5DE5\u4F5C\u533A",
-          "30GB \u4E91\u5B58\u50A8\u989D\u5EA6\uFF08\u89C4\u5212\uFF09",
-          "Stripe \u8BA2\u9605"
-        ],
-        limits: { aiRequestsPerDay: 2e3, workspaces: -1, storageGB: 30 }
-      },
-      {
-        id: "enterprise",
-        name: "enterprise",
-        displayName: "\u56E2\u961F\u7248",
-        description: "\u5C0F\u56E2\u961F\u4E0E\u91CD\u5EA6\u7528\u6237\uFF0C\u914D\u989D\u51E0\u4E4E\u4E0D\u9650",
-        price: STRIPE_USD_ENTERPRISE,
-        currency: "USD",
-        priceCny: 79,
-        features: [
-          "\u4E13\u4E1A\u7248\u5168\u90E8\u80FD\u529B",
-          "AI \u914D\u989D\u4E0D\u9650\uFF08-1\uFF09",
-          "\u65E0\u9650\u4E91\u5DE5\u4F5C\u533A",
-          "100GB \u4E91\u5B58\u50A8\u989D\u5EA6\uFF08\u89C4\u5212\uFF09",
-          "\u4F18\u5148\u652F\u6301\uFF08\u89C4\u5212\uFF09"
-        ],
-        limits: { aiRequestsPerDay: -1, workspaces: -1, storageGB: 100 }
-      }
+      buildPlanDefinition("free", "\u514D\u8D39\u7248", "\u4E2A\u4EBA\u5B66\u4E60\u4E0E\u65E5\u5E38\u5C0F\u9879\u76EE", 0, void 0),
+      buildPlanDefinition("pro", "\u4E13\u4E1A\u7248", "\u4E2A\u4EBA\u5DE5\u7A0B\u95ED\u73AF \u2014 Autopilot \xB7 \u8BC1\u660E\u5305 \xB7 \u5168\u6863 AI", STRIPE_USD_PRO, 39),
+      buildPlanDefinition(
+        "enterprise",
+        "\u56E2\u961F\u7248",
+        "\u534F\u4F5C\u4EA4\u4ED8 \u2014 \u957F\u94FE Share \xB7 \u6279\u91CF Agent \xB7 \u56E2\u961F\u623F\u95F4",
+        STRIPE_USD_ENTERPRISE,
+        79
+      )
     ];
   }
 });
@@ -1111,26 +1287,6 @@ var init_paddle = __esm({
   }
 });
 
-// lib/billing/publicWelfare.ts
-function isPublicWelfareMode() {
-  const raw = process.env.PUBLIC_WELFARE_MODE?.trim().toLowerCase();
-  if (raw === "true" || raw === "1" || raw === "yes") return true;
-  if (raw === "false" || raw === "0" || raw === "no") return false;
-  return false;
-}
-function effectivePlanName(actualPlan) {
-  if (!isPublicWelfareMode()) return actualPlan;
-  return PUBLIC_WELFARE_PLAN;
-}
-var PUBLIC_WELFARE_PLAN, PUBLIC_WELFARE_NOTE_ZH;
-var init_publicWelfare = __esm({
-  "lib/billing/publicWelfare.ts"() {
-    "use strict";
-    PUBLIC_WELFARE_PLAN = "pro";
-    PUBLIC_WELFARE_NOTE_ZH = "\u516C\u76CA\u514D\u8D39 IDE\uFF1A\u4E0D\u6536\u53D6\u8BA2\u9605\u8D39\uFF0C\u5E73\u53F0 AI \u914D\u989D\u5DF2\u653E\u5BBD\u3002\u6B22\u8FCE BYOK \u4F7F\u7528\u81EA\u6709\u6A21\u578B Key\u3002";
-  }
-});
-
 // lib/billing/billingMode.ts
 function isDevBillingAllowed() {
   if (isPublicWelfareMode()) return false;
@@ -1561,6 +1717,8 @@ var init_apiMessagesJa_generated = __esm({
       "api.collab.joinForbidden": "Cannot join with that role",
       "api.collab.joined": "\u53C2\u52A0ed \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 \u30EB\u30FC\u30E0",
       "api.collab.kickFailed": "\u5931\u6557 to remove member",
+      "api.collab.hostRequiresUpgrade": "Hosting \u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 \u30EB\u30FC\u30E0 requires Pro or Team",
+      "api.collab.roomFull": "\u30B3\u30E9\u30DC\u30EC\u30FC\u30B7\u30E7\u30F3 \u30EB\u30FC\u30E0 is full (limit {limit})",
       "api.share.created": "Share link created",
       "api.share.deleted": "Share deleted",
       "api.share.listFailed": "\u5931\u6557 to list shares",
@@ -1591,6 +1749,19 @@ var init_apiMessagesJa_generated = __esm({
       "api.handlerNotFound": "Handler not found",
       "api.job.batchCreated": "\u4F5C\u6210d {created}/{requested} background jobs",
       "api.job.batchEmpty": "Batch job list is empty",
+      "api.job.batchRequiresUpgrade": "Batch queue requires Pro or Team",
+      "api.entitlement.upgradeRequired": "This feature requires a plan upgrade",
+      "api.entitlement.allModelTiers": "All platform AI tiers require Pro or Team",
+      "api.entitlement.autopilot": "Daily Autopilot limit reached. Upgrade to Pro for unlimited Spec queue runs.",
+      "api.entitlement.intentLinkage": "Full Intent linkage requires Pro or Team",
+      "api.entitlement.proofHtml": "HTML proof export requires Pro or Team",
+      "api.entitlement.weeklyRecap": "Weekly recap export requires Pro or Team",
+      "api.entitlement.intentShare": "Sharing intent-share snapshots requires Pro or Team",
+      "api.entitlement.collabHost": "Hosting collaboration rooms requires Pro or Team",
+      "api.entitlement.shareProgressComments": "Share progress comments require Pro or Team",
+      "api.entitlement.shareProgressWatch": "Watching Share progress updates requires Team",
+      "api.entitlement.fullSessionResume": "Full session resume requires Pro or Team",
+      "api.autopilot.dailyLimitUpgrade": "Daily Autopilot limit reached. Upgrade to Pro for unlimited Spec queue runs.",
       "api.job.cancelFailed": "\u5931\u6557 to cancel job",
       "api.job.cancelled": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u30B8\u30E7\u30D6 cancelled",
       "api.job.concurrentLimit": "Too many active background jobs (max {limit})",
@@ -1669,7 +1840,8 @@ var init_apiMessagesJa_generated = __esm({
       "api.workspace.saveFailed": "\u5931\u6557 to save \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
       "api.workspace.saved": "\u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9 saved",
       "api.workspace.settingsFieldTooLarge": "The settings field is too large",
-      "api.workspace.settingsInvalid": "Invalid settings format"
+      "api.workspace.settingsInvalid": "Invalid settings format",
+      "api.storage.limitReached": "Cloud storage limit reached ({limitGb} GB). Upgrade to Pro or Team."
     };
   }
 });
@@ -1750,6 +1922,7 @@ var init_apiMessages = __esm({
         "api.workspace.fileNameInvalid": "\u6587\u4EF6\u540D\u65E0\u6548",
         "api.workspace.fileContentTooLarge": "\u6587\u4EF6\u5185\u5BB9\u8FC7\u5927",
         "api.workspace.settingsInvalid": "settings \u683C\u5F0F\u65E0\u6548",
+        "api.storage.limitReached": "\u4E91\u5B58\u50A8\u5DF2\u8FBE\u4E0A\u9650\uFF08{limitGb} GB\uFF09\uFF0C\u8BF7\u5347\u7EA7\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
         "api.checkout.missingPlanId": "\u7F3A\u5C11 planId",
         "api.checkout.freeNoCheckout": "\u514D\u8D39\u8BA1\u5212\u65E0\u9700\u7ED3\u8D26",
         "api.checkout.invalidPlan": "\u65E0\u6548\u7684\u8BA1\u5212",
@@ -1804,8 +1977,21 @@ var init_apiMessages = __esm({
         "api.job.dailyLimitUpgrade": "\u514D\u8D39\u7248\u6BCF\u65E5\u540E\u53F0\u4EFB\u52A1\u4E0A\u9650\u4E3A {limit} \u6B21\uFF0C\u8BF7\u5347\u7EA7\u4E13\u4E1A\u7248",
         "api.job.concurrentLimit": "\u8FDB\u884C\u4E2D\u7684\u540E\u53F0\u4EFB\u52A1\u8FC7\u591A\uFF08\u6700\u591A {limit} \u4E2A\uFF09",
         "api.job.concurrentLimitUpgrade": "\u514D\u8D39\u7248\u540C\u65F6\u53EA\u80FD\u6709 {limit} \u4E2A\u540E\u53F0\u4EFB\u52A1\uFF0C\u8BF7\u7B49\u5F85\u5B8C\u6210\u6216\u5347\u7EA7\u4E13\u4E1A\u7248",
+        "api.autopilot.dailyLimitUpgrade": "\u4ECA\u65E5 Autopilot \u6B21\u6570\u5DF2\u7528\u5B8C\uFF0C\u5347\u7EA7\u4E13\u4E1A\u7248\u53EF\u65E0\u9650\u63A8\u8FDB Spec \u961F\u5217",
         "api.job.batchEmpty": "\u6279\u91CF\u4EFB\u52A1\u5217\u8868\u4E3A\u7A7A",
+        "api.job.batchRequiresUpgrade": "\u6279\u91CF\u5165\u961F\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
         "api.job.batchCreated": "\u5DF2\u521B\u5EFA {created}/{requested} \u4E2A\u540E\u53F0\u4EFB\u52A1",
+        "api.entitlement.upgradeRequired": "\u6B64\u529F\u80FD\u9700\u8981\u5347\u7EA7\u5957\u9910",
+        "api.entitlement.allModelTiers": "\u5168\u6863\u5E73\u53F0 AI \u6A21\u578B\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
+        "api.entitlement.autopilot": "\u4ECA\u65E5 Autopilot \u6B21\u6570\u5DF2\u7528\u5B8C\uFF0C\u5347\u7EA7\u4E13\u4E1A\u7248\u53EF\u65E0\u9650\u63A8\u8FDB Spec \u961F\u5217",
+        "api.entitlement.intentLinkage": "Intent \u5168\u8054\u52A8\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
+        "api.entitlement.proofHtml": "HTML \u8BC1\u660E\u5305\u5BFC\u51FA\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
+        "api.entitlement.weeklyRecap": "\u5468\u56DE\u987E\u5BFC\u51FA\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
+        "api.entitlement.intentShare": "\u5206\u4EAB intent-share \u5FEB\u7167\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
+        "api.entitlement.collabHost": "\u4E3B\u6301\u534F\u4F5C\u623F\u95F4\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
+        "api.entitlement.shareProgressComments": "Share \u8FDB\u5EA6\u5907\u6CE8\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
+        "api.entitlement.shareProgressWatch": "\u5173\u6CE8 Share \u8FDB\u5EA6\u66F4\u65B0\u9700\u56E2\u961F\u7248",
+        "api.entitlement.fullSessionResume": "\u5B8C\u6574\u4F1A\u8BDD\u6062\u590D\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248",
         "api.collab.roomCreated": "\u534F\u4F5C\u623F\u95F4\u5DF2\u521B\u5EFA",
         "api.collab.joined": "\u5DF2\u52A0\u5165\u534F\u4F5C\u623F\u95F4",
         "api.collab.listFailed": "\u83B7\u53D6\u534F\u4F5C\u623F\u95F4\u5217\u8868\u5931\u8D25",
@@ -1828,6 +2014,8 @@ var init_apiMessages = __esm({
         "api.collab.roleUpdateFailed": "\u66F4\u65B0\u6210\u5458\u89D2\u8272\u5931\u8D25",
         "api.collab.memberKicked": "\u5DF2\u79FB\u51FA\u6210\u5458",
         "api.collab.kickFailed": "\u79FB\u51FA\u6210\u5458\u5931\u8D25",
+        "api.collab.hostRequiresUpgrade": "\u534F\u4F5C\u4E3B\u6301\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248\uFF0C\u8BF7\u5347\u7EA7\u540E\u521B\u5EFA\u623F\u95F4",
+        "api.collab.roomFull": "\u534F\u4F5C\u623F\u95F4\u4EBA\u6570\u5DF2\u6EE1\uFF08\u4E0A\u9650 {limit} \u4EBA\uFF09",
         "api.share.created": "\u5206\u4EAB\u94FE\u63A5\u5DF2\u521B\u5EFA",
         "api.share.deleted": "\u5206\u4EAB\u5DF2\u5220\u9664",
         "api.share.listFailed": "\u83B7\u53D6\u5206\u4EAB\u5217\u8868\u5931\u8D25",
@@ -1912,6 +2100,7 @@ var init_apiMessages = __esm({
         "api.workspace.fileNameInvalid": "Invalid file name",
         "api.workspace.fileContentTooLarge": "File content is too large",
         "api.workspace.settingsInvalid": "Invalid settings format",
+        "api.storage.limitReached": "Cloud storage limit reached ({limitGb} GB). Upgrade to Pro or Team for more space.",
         "api.checkout.missingPlanId": "Missing planId",
         "api.checkout.freeNoCheckout": "Free plan does not require checkout",
         "api.checkout.invalidPlan": "Invalid plan",
@@ -1966,8 +2155,21 @@ var init_apiMessages = __esm({
         "api.job.dailyLimitUpgrade": "Free plan allows {limit} background jobs per day. Upgrade to Pro.",
         "api.job.concurrentLimit": "Too many active background jobs (max {limit})",
         "api.job.concurrentLimitUpgrade": "Free plan allows {limit} active background job at a time. Wait or upgrade to Pro.",
+        "api.autopilot.dailyLimitUpgrade": "Daily Autopilot limit reached. Upgrade to Pro for unlimited Spec queue runs.",
         "api.job.batchEmpty": "Batch job list is empty",
+        "api.job.batchRequiresUpgrade": "Batch queue requires Pro or Team",
         "api.job.batchCreated": "Created {created}/{requested} background jobs",
+        "api.entitlement.upgradeRequired": "This feature requires a plan upgrade",
+        "api.entitlement.allModelTiers": "All platform AI tiers require Pro or Team",
+        "api.entitlement.autopilot": "Daily Autopilot limit reached. Upgrade to Pro for unlimited Spec queue runs.",
+        "api.entitlement.intentLinkage": "Full Intent linkage requires Pro or Team",
+        "api.entitlement.proofHtml": "HTML proof export requires Pro or Team",
+        "api.entitlement.weeklyRecap": "Weekly recap export requires Pro or Team",
+        "api.entitlement.intentShare": "Sharing intent-share snapshots requires Pro or Team",
+        "api.entitlement.collabHost": "Hosting collaboration rooms requires Pro or Team",
+        "api.entitlement.shareProgressComments": "Share progress comments require Pro or Team",
+        "api.entitlement.shareProgressWatch": "Watching Share progress updates requires Team",
+        "api.entitlement.fullSessionResume": "Full session resume requires Pro or Team",
         "api.collab.roomCreated": "Collaboration room created",
         "api.collab.joined": "Joined collaboration room",
         "api.collab.listFailed": "Failed to list collaboration rooms",
@@ -1990,6 +2192,8 @@ var init_apiMessages = __esm({
         "api.collab.roleUpdateFailed": "Failed to update member role",
         "api.collab.memberKicked": "Member removed from room",
         "api.collab.kickFailed": "Failed to remove member",
+        "api.collab.hostRequiresUpgrade": "Hosting collaboration rooms requires Pro or Team \u2014 upgrade to create a room",
+        "api.collab.roomFull": "Collaboration room is full (limit {limit} participants)",
         "api.share.created": "Share link created",
         "api.share.deleted": "Share deleted",
         "api.share.listFailed": "Failed to list shares",
@@ -2067,7 +2271,16 @@ function localizedSuccessResponse(req, key, body = { success: true }, status = 2
 }
 function localizedErrorResponse(req, key, status = 400, params, headers) {
   const locale = resolveRequestLocale(req);
-  return jsonResponse({ error: apiMessage(key, locale, params), errorKey: key }, status, headers);
+  const payload = {
+    error: apiMessage(key, locale, params),
+    errorKey: key
+  };
+  if (params) {
+    for (const [name, value] of Object.entries(params)) {
+      payload[name] = String(value);
+    }
+  }
+  return jsonResponse(payload, status, headers);
 }
 function authJsonError(req, key, status) {
   const locale = resolveRequestLocale(req);
@@ -3099,6 +3312,53 @@ var init_usageDb = __esm({
   }
 });
 
+// lib/billing/workspaceStorageEntitlement.ts
+function getStorageLimitBytes(planName) {
+  return getStorageEntitlementLimitGb(planName) * BYTES_PER_GB;
+}
+function estimateWorkspacePayloadBytes2(filesPayload, settingsPayload) {
+  return Buffer.byteLength(filesPayload, "utf8") + Buffer.byteLength(settingsPayload, "utf8");
+}
+async function getUserCloudStorageBytes(userId) {
+  const rows = await prisma.userWorkspace.findMany({
+    where: { userId },
+    select: { files: true, settings: true }
+  });
+  let total = 0;
+  for (const row of rows) {
+    total += estimateWorkspacePayloadBytes2(row.files ?? "[]", row.settings ?? "{}");
+  }
+  return total;
+}
+async function assertCloudStorageWithinLimit(userId, planName, nextPayloadBytes, options) {
+  const limit = getStorageLimitBytes(planName);
+  const limitGb = getStorageEntitlementLimitGb(planName);
+  let used = await getUserCloudStorageBytes(userId);
+  if (options?.replacingWorkspaceName) {
+    const existing = await prisma.userWorkspace.findUnique({
+      where: { userId_name: { userId, name: options.replacingWorkspaceName } },
+      select: { files: true, settings: true }
+    });
+    if (existing) {
+      used -= estimateWorkspacePayloadBytes2(existing.files ?? "[]", existing.settings ?? "{}");
+    }
+  }
+  const projected = used + nextPayloadBytes;
+  if (projected > limit) {
+    return { ok: false, used: projected, limit, limitGb };
+  }
+  return { ok: true };
+}
+var BYTES_PER_GB;
+var init_workspaceStorageEntitlement = __esm({
+  "lib/billing/workspaceStorageEntitlement.ts"() {
+    "use strict";
+    init_entitlements();
+    init_prisma();
+    BYTES_PER_GB = 1024 * 1024 * 1024;
+  }
+});
+
 // lib/api/handlers/workspaces/index.ts
 var workspaces_exports = {};
 __export(workspaces_exports, {
@@ -3144,8 +3404,8 @@ async function POST7(req) {
     }
     const existing = await getWorkspaceByName(auth.user.id, workspaceName);
     if (!existing) {
-      const planName = await resolveUserPlanName(auth.user.id);
-      const workspaceLimit = getWorkspaceLimit(planName);
+      const planName2 = await resolveUserPlanName(auth.user.id);
+      const workspaceLimit = getWorkspaceLimit(planName2);
       if (workspaceLimit !== -1) {
         const used = await countUserWorkspaces(auth.user.id);
         if (used >= workspaceLimit) {
@@ -3154,6 +3414,18 @@ async function POST7(req) {
           });
         }
       }
+    }
+    const filesPayload = typeof files === "string" ? files : JSON.stringify(files ?? []);
+    const settingsPayload = typeof settings === "string" ? settings : JSON.stringify(settings ?? {});
+    const planName = await resolveUserPlanName(auth.user.id);
+    const payloadBytes = estimateWorkspacePayloadBytes2(filesPayload, settingsPayload);
+    const storageCheck = await assertCloudStorageWithinLimit(auth.user.id, planName, payloadBytes, {
+      replacingWorkspaceName: existing ? workspaceName : void 0
+    });
+    if (!storageCheck.ok) {
+      return localizedErrorResponse(req, "api.storage.limitReached", 413, {
+        limitGb: storageCheck.limitGb
+      });
     }
     const workspace = await upsertWorkspace(
       auth.user.id,
@@ -3189,6 +3461,7 @@ var init_workspaces = __esm({
     init_workspacesService();
     init_plans();
     init_usageDb();
+    init_workspaceStorageEntitlement();
     init_rateLimit();
     init_rateLimitKv();
     init_rateLimitResponse();
@@ -4764,6 +5037,163 @@ var init_ai = __esm({
   }
 });
 
+// lib/billing/autopilotUsage.ts
+function startOfUtcDay2() {
+  const now = /* @__PURE__ */ new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+function getAutopilotDailyLimit(planName) {
+  return getEffectiveEntitlements(planName).autopilotRunsPerDay;
+}
+async function getAutopilotUsageCountToday(userId) {
+  return getUsageCountForDay(userId, [AUTOPILOT_USAGE_TYPE], 0);
+}
+function buildAutopilotQuotaSnapshot(planName, used) {
+  const limit = getAutopilotDailyLimit(planName);
+  if (limit < 0) {
+    return {
+      allowed: true,
+      used,
+      limit,
+      remaining: Number.POSITIVE_INFINITY,
+      plan: planName,
+      unlimited: true
+    };
+  }
+  return {
+    allowed: used < limit,
+    used,
+    limit,
+    remaining: Math.max(0, limit - used),
+    plan: planName,
+    unlimited: false
+  };
+}
+async function resolvePlanTx(userId, db) {
+  const subscription = await db.subscription.findUnique({
+    where: { userId },
+    include: { plan: true }
+  });
+  return effectivePlanName(subscription?.plan.name ?? "free");
+}
+async function countTodayTx(userId, db) {
+  const aggregate = await db.usageRecord.aggregate({
+    where: {
+      userId,
+      type: AUTOPILOT_USAGE_TYPE,
+      createdAt: { gte: startOfUtcDay2() }
+    },
+    _sum: { amount: true }
+  });
+  return aggregate._sum.amount ?? 0;
+}
+async function getAutopilotQuotaForUser(userId) {
+  const plan = await resolveUserPlanName(userId);
+  const used = await getAutopilotUsageCountToday(userId);
+  return buildAutopilotQuotaSnapshot(plan, used);
+}
+async function consumeAutopilotRun(userId) {
+  if (!prismaSupportsTransactions()) {
+    return consumeAutopilotRunSequential(userId);
+  }
+  return prisma.$transaction(async (tx) => {
+    const plan = await resolvePlanTx(userId, tx);
+    const used = await countTodayTx(userId, tx);
+    const limit = getAutopilotDailyLimit(plan);
+    if (limit >= 0 && used + 1 > limit) {
+      return { ok: false, quota: buildAutopilotQuotaSnapshot(plan, used) };
+    }
+    await tx.usageRecord.create({
+      data: { userId, type: AUTOPILOT_USAGE_TYPE, amount: 1 }
+    });
+    const newUsed = await countTodayTx(userId, tx);
+    return { ok: true, quota: buildAutopilotQuotaSnapshot(plan, newUsed) };
+  });
+}
+async function consumeAutopilotRunSequential(userId) {
+  const plan = await resolveUserPlanName(userId);
+  const used = await getAutopilotUsageCountToday(userId);
+  const limit = getAutopilotDailyLimit(plan);
+  if (limit >= 0 && used + 1 > limit) {
+    return { ok: false, quota: buildAutopilotQuotaSnapshot(plan, used) };
+  }
+  await prisma.usageRecord.create({
+    data: { userId, type: AUTOPILOT_USAGE_TYPE, amount: 1 }
+  });
+  const newUsed = await getAutopilotUsageCountToday(userId);
+  return { ok: true, quota: buildAutopilotQuotaSnapshot(plan, newUsed) };
+}
+var AUTOPILOT_USAGE_TYPE;
+var init_autopilotUsage = __esm({
+  "lib/billing/autopilotUsage.ts"() {
+    "use strict";
+    init_entitlements();
+    init_publicWelfare();
+    init_usageDb();
+    init_prisma();
+    init_prismaTransactions();
+    AUTOPILOT_USAGE_TYPE = "autopilot_run";
+  }
+});
+
+// lib/api/handlers/usage/autopilot.ts
+var autopilot_exports = {};
+__export(autopilot_exports, {
+  GET: () => GET13,
+  POST: () => POST20
+});
+async function GET13(req) {
+  try {
+    const user = await optionalAuth(req);
+    if (!user) {
+      return jsonResponse({ source: "anonymous", quota: null });
+    }
+    const quota = await getAutopilotQuotaForUser(user.id);
+    return jsonResponse({ source: "server", quota });
+  } catch (error) {
+    console.error("[Usage Autopilot GET] error:", error);
+    return localizedErrorResponse(req, "api.usage.readFailed", 500);
+  }
+}
+async function POST20(req) {
+  try {
+    const auth = await requireAuth(req);
+    if (!auth.ok) return auth.response;
+    const rate = await checkRateLimitDistributed(req, {
+      ...resolveRateLimitOptions("usage:ai"),
+      suffix: auth.user.id
+    });
+    if (!rate.allowed) return rateLimitErrorResponse(req, rate);
+    const result = await consumeAutopilotRun(auth.user.id);
+    if (!result.ok) {
+      return jsonResponse(
+        {
+          errorKey: "api.autopilot.dailyLimitUpgrade",
+          source: "server",
+          quota: result.quota
+        },
+        429
+      );
+    }
+    return jsonResponse({ source: "server", quota: result.quota });
+  } catch (error) {
+    console.error("[Usage Autopilot POST] error:", error);
+    return localizedErrorResponse(req, "api.usage.writeFailed", 500);
+  }
+}
+var init_autopilot = __esm({
+  "lib/api/handlers/usage/autopilot.ts"() {
+    "use strict";
+    init_http();
+    init_localizedError();
+    init_rateLimit();
+    init_rateLimitKv();
+    init_rateLimitResponse();
+    init_requireAuth();
+    init_autopilotUsage();
+  }
+});
+
 // lib/billing/quotaUsageHints.ts
 function isUnlimitedQuotaLimit(limit) {
   return limit < 0 || !Number.isFinite(limit);
@@ -4819,7 +5249,8 @@ function buildPlatformUsageDashboard(params) {
     costEstimatePeriodUsd: estimatePlatformCostUsd(platformPeriodTotal),
     quotaUsagePercent: usagePercent,
     quotaNearLimit: isQuotaNearLimit(params.quota.used, params.quota.limit),
-    platformProvider: params.platformProvider
+    platformProvider: params.platformProvider,
+    entitlements: params.entitlements
   };
 }
 var init_usageDashboard = __esm({
@@ -4830,12 +5261,89 @@ var init_usageDashboard = __esm({
   }
 });
 
+// lib/billing/dashboardEntitlements.ts
+function getCollabMaxParticipants(planName) {
+  return getEffectiveEntitlements(planName).collabMaxParticipants;
+}
+async function assertCanHostCollabRoom(userId) {
+  const planName = await resolveUserPlanName(userId);
+  const result = assertEntitlementFeature(planName, "collabHost");
+  if (result.ok) return { ok: true };
+  return { ok: false, requiredPlan: result.requiredPlan };
+}
+function buildDashboardEntitlements(planName, entitlements, options) {
+  const unlocked = [];
+  const locked = [];
+  for (const feature of TRACKED_FEATURES) {
+    if (entitlements.features[feature]) unlocked.push(feature);
+    else locked.push(feature);
+  }
+  const nearLimits = [];
+  const aiQuota = options?.aiQuota;
+  if (aiQuota && aiQuota.limit > 0) {
+    const percent = Math.round(aiQuota.used / aiQuota.limit * 100);
+    if (percent >= 80) {
+      nearLimits.push({
+        id: "aiQuota",
+        used: aiQuota.used,
+        limit: aiQuota.limit,
+        percent
+      });
+    }
+  }
+  const autopilot = options?.autopilotQuota;
+  if (autopilot && !autopilot.unlimited && autopilot.limit > 0) {
+    const percent = Math.round(autopilot.used / autopilot.limit * 100);
+    if (percent >= 80) {
+      nearLimits.push({
+        id: "autopilot",
+        used: autopilot.used,
+        limit: autopilot.limit,
+        percent
+      });
+    }
+  }
+  if (entitlements.backgroundJobsPerDay > 0) {
+    nearLimits.push({
+      id: "backgroundJobs",
+      used: 0,
+      limit: entitlements.backgroundJobsPerDay,
+      percent: 0
+    });
+  }
+  return {
+    plan: planName,
+    unlocked,
+    locked,
+    nearLimits: nearLimits.filter((item) => item.id === "aiQuota" || item.id === "autopilot" || item.percent >= 80)
+  };
+}
+var TRACKED_FEATURES;
+var init_dashboardEntitlements = __esm({
+  "lib/billing/dashboardEntitlements.ts"() {
+    "use strict";
+    init_entitlements();
+    init_entitlements();
+    init_usageDb();
+    TRACKED_FEATURES = [
+      "autopilotUnlimited",
+      "proofHtmlExport",
+      "weeklyRecapExport",
+      "intentShareImport",
+      "collabHost",
+      "shareProgressComments",
+      "intentFullLinkage",
+      "allModelTiers"
+    ];
+  }
+});
+
 // lib/api/handlers/usage/dashboard.ts
 var dashboard_exports = {};
 __export(dashboard_exports, {
-  GET: () => GET13
+  GET: () => GET14
 });
-async function GET13(req) {
+async function GET14(req) {
   try {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
@@ -4844,16 +5352,23 @@ async function GET13(req) {
     const platformToday = await getUsageCountForDay(auth.user.id, [AI_USAGE_PLATFORM_TYPE], 0);
     const otherToday = await getUsageCountForDay(auth.user.id, [AI_USAGE_TYPE], 0);
     const daily = await getAiUsageDailyBuckets(auth.user.id, DASHBOARD_DAYS);
+    const quota = buildQuotaSnapshot(plan, used);
+    const autopilotQuota = await getAutopilotQuotaForUser(auth.user.id);
+    const entitlements = buildDashboardEntitlements(plan, getEffectiveEntitlements(plan), {
+      aiQuota: quota,
+      autopilotQuota
+    });
     const platformRoute = resolvePlatformAiRoute();
     const platformProvider = isPlatformAiConfigured() && platformRoute.ok ? platformRoute.route.provider : void 0;
     return jsonResponse(
       buildPlatformUsageDashboard({
-        quota: buildQuotaSnapshot(plan, used),
+        quota,
         platformToday,
         otherToday,
         daily,
         periodDays: DASHBOARD_DAYS,
-        platformProvider
+        platformProvider,
+        entitlements
       })
     );
   } catch (error) {
@@ -4870,6 +5385,9 @@ var init_dashboard = __esm({
     init_requireAuth();
     init_platformConfig();
     init_usageDashboard();
+    init_dashboardEntitlements();
+    init_entitlements();
+    init_autopilotUsage();
     init_usageDb();
     DASHBOARD_DAYS = 7;
   }
@@ -5187,7 +5705,7 @@ var init_modelWeights = __esm({
 // lib/api/handlers/ai/chat.ts
 var chat_exports = {};
 __export(chat_exports, {
-  POST: () => POST20
+  POST: () => POST21
 });
 function isBasicChatMessage(message) {
   if (!message || typeof message !== "object") return false;
@@ -5204,7 +5722,7 @@ function hasValidMessages(messages) {
     return ["assistant", "tool"].includes(row.role);
   });
 }
-async function POST20(req) {
+async function POST21(req) {
   try {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
@@ -5349,9 +5867,9 @@ var init_mcpProxy = __esm({
 // lib/api/handlers/mcp/proxy.ts
 var proxy_exports = {};
 __export(proxy_exports, {
-  POST: () => POST21
+  POST: () => POST22
 });
-async function POST21(request) {
+async function POST22(request) {
   const auth = await requireAuth(request);
   if (!auth.ok) return auth.response;
   let body;
@@ -5490,9 +6008,9 @@ var init_pluginPublishQueue = __esm({
 // lib/api/handlers/plugins/publishReviewById.ts
 var publishReviewById_exports = {};
 __export(publishReviewById_exports, {
-  GET: () => GET14
+  GET: () => GET15
 });
-async function GET14(req, ctx) {
+async function GET15(req, ctx) {
   if (!isPluginPublishEnabled()) {
     return jsonResponse({ review: null, publishEnabled: false });
   }
@@ -5529,7 +6047,7 @@ var init_publishReviewById = __esm({
 // lib/api/handlers/plugins/publishReviews.ts
 var publishReviews_exports = {};
 __export(publishReviews_exports, {
-  GET: () => GET15
+  GET: () => GET16
 });
 function parseStatusFilter(req) {
   const status = new URL(req.url).searchParams.get("status")?.trim().toLowerCase();
@@ -5557,7 +6075,7 @@ function mergePluginPublishReviews(memoryReviews, dbReviews, limit) {
   }
   return [...byId.values()].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)).slice(0, limit);
 }
-async function GET15(req) {
+async function GET16(req) {
   if (!isPluginPublishEnabled()) {
     return jsonResponse({ reviews: [], publishEnabled: false });
   }
@@ -5706,9 +6224,9 @@ var init_pluginPublishService = __esm({
 // lib/api/handlers/plugins/publish.ts
 var publish_exports = {};
 __export(publish_exports, {
-  POST: () => POST22
+  POST: () => POST23
 });
-async function POST22(req) {
+async function POST23(req) {
   if (!isPluginPublishEnabled()) {
     return localizedErrorResponse(req, "api.plugin.publishDisabled", 503);
   }
@@ -5774,7 +6292,7 @@ function normalizeJobListLimit(raw) {
   if (n > MAX_JOB_LIST_LIMIT) return MAX_JOB_LIST_LIMIT;
   return n;
 }
-var MAX_JOB_PROMPT_CHARS, MAX_JOB_REPO_KEY_CHARS, DEFAULT_JOB_LIST_LIMIT, MAX_JOB_LIST_LIMIT, MAX_BACKGROUND_JOBS_BATCH, MAX_JOB_RUNTIME_MS, DEFAULT_JOBS_PER_CRON_TICK;
+var MAX_JOB_PROMPT_CHARS, MAX_JOB_REPO_KEY_CHARS, DEFAULT_JOB_LIST_LIMIT, MAX_JOB_LIST_LIMIT, MAX_JOB_RUNTIME_MS, DEFAULT_JOBS_PER_CRON_TICK;
 var init_backgroundJobTypes = __esm({
   "lib/api/backgroundJobTypes.ts"() {
     "use strict";
@@ -5782,7 +6300,6 @@ var init_backgroundJobTypes = __esm({
     MAX_JOB_REPO_KEY_CHARS = 256;
     DEFAULT_JOB_LIST_LIMIT = 50;
     MAX_JOB_LIST_LIMIT = 100;
-    MAX_BACKGROUND_JOBS_BATCH = 25;
     MAX_JOB_RUNTIME_MS = 30 * 60 * 1e3;
     DEFAULT_JOBS_PER_CRON_TICK = 1;
   }
@@ -5923,7 +6440,7 @@ var init_backgroundJobsService = __esm({
 });
 
 // lib/api/backgroundJobEntitlement.ts
-function startOfUtcDay2() {
+function startOfUtcDay3() {
   const now = /* @__PURE__ */ new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
@@ -5931,7 +6448,7 @@ function isPaidPlan(planName) {
   return planName === "pro" || planName === "enterprise";
 }
 async function countBackgroundJobsCreatedToday(userId) {
-  const since = startOfUtcDay2();
+  const since = startOfUtcDay3();
   return prisma.backgroundJob.count({
     where: { userId, createdAt: { gte: since } }
   });
@@ -5942,10 +6459,13 @@ async function countActiveBackgroundJobs(userId) {
   });
 }
 function backgroundJobDailyLimit(planName) {
-  return isPaidPlan(planName) ? PAID_BACKGROUND_JOBS_PER_DAY : FREE_BACKGROUND_JOBS_PER_DAY;
+  return getBackgroundJobLimits(planName).dailyLimit;
 }
 function backgroundJobMaxActive(planName) {
-  return isPaidPlan(planName) ? PAID_BACKGROUND_JOBS_MAX_ACTIVE : FREE_BACKGROUND_JOBS_MAX_ACTIVE;
+  return getBackgroundJobLimits(planName).maxActive;
+}
+function backgroundJobBatchMax(planName) {
+  return getBackgroundJobLimits(planName).batchMax;
 }
 async function assertCanCreateBackgroundJob(userId, planName) {
   const dailyLimit = backgroundJobDailyLimit(planName);
@@ -5974,25 +6494,21 @@ async function assertCanCreateBackgroundJob(userId, planName) {
   }
   return { ok: true };
 }
-var FREE_BACKGROUND_JOBS_PER_DAY, FREE_BACKGROUND_JOBS_MAX_ACTIVE, PAID_BACKGROUND_JOBS_PER_DAY, PAID_BACKGROUND_JOBS_MAX_ACTIVE;
 var init_backgroundJobEntitlement = __esm({
   "lib/api/backgroundJobEntitlement.ts"() {
     "use strict";
+    init_entitlements();
     init_prisma();
-    FREE_BACKGROUND_JOBS_PER_DAY = 2;
-    FREE_BACKGROUND_JOBS_MAX_ACTIVE = 1;
-    PAID_BACKGROUND_JOBS_PER_DAY = 100;
-    PAID_BACKGROUND_JOBS_MAX_ACTIVE = 5;
   }
 });
 
 // lib/api/handlers/jobs/index.ts
 var jobs_exports = {};
 __export(jobs_exports, {
-  GET: () => GET16,
-  POST: () => POST23
+  GET: () => GET17,
+  POST: () => POST24
 });
-async function GET16(req) {
+async function GET17(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -6007,7 +6523,7 @@ async function GET16(req) {
     return localizedErrorResponse(req, "api.job.listFailed", 500);
   }
 }
-async function POST23(req) {
+async function POST24(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -6060,12 +6576,64 @@ var init_jobs = __esm({
   }
 });
 
+// lib/billing/entitlementsUser.ts
+async function assertEntitlementForUser(userId, feature) {
+  const planName = await resolveUserPlanName(userId);
+  return assertEntitlementFeature(planName, feature);
+}
+var init_entitlementsUser = __esm({
+  "lib/billing/entitlementsUser.ts"() {
+    "use strict";
+    init_usageDb();
+    init_entitlements();
+  }
+});
+
+// lib/api/entitlementGuard.ts
+async function requireEntitlementForUser(req, userId, feature) {
+  const check = await assertEntitlementForUser(userId, feature);
+  if (check.ok) return null;
+  const key = ENTITLEMENT_API_ERROR_KEYS[feature];
+  return localizedErrorResponse(req, key, 403, {
+    feature: check.feature,
+    requiredPlan: check.requiredPlan
+  });
+}
+async function requireBackgroundBatchForUser(req, userId) {
+  const planName = await resolveUserPlanName(userId);
+  if (getBackgroundJobLimits(planName).batchMax > 0) return null;
+  return localizedErrorResponse(req, "api.job.batchRequiresUpgrade", 403);
+}
+var ENTITLEMENT_API_ERROR_KEYS;
+var init_entitlementGuard = __esm({
+  "lib/api/entitlementGuard.ts"() {
+    "use strict";
+    init_entitlements();
+    init_entitlementsUser();
+    init_usageDb();
+    init_localizedError();
+    ENTITLEMENT_API_ERROR_KEYS = {
+      allModelTiers: "api.entitlement.allModelTiers",
+      autopilotUnlimited: "api.entitlement.autopilot",
+      intentFullLinkage: "api.entitlement.intentLinkage",
+      proofHtmlExport: "api.entitlement.proofHtml",
+      weeklyRecapExport: "api.entitlement.weeklyRecap",
+      intentShareImport: "api.entitlement.intentShare",
+      collabHost: "api.entitlement.collabHost",
+      shareProgressComments: "api.entitlement.shareProgressComments",
+      shareProgressWatch: "api.entitlement.shareProgressWatch",
+      fullSessionResume: "api.entitlement.fullSessionResume",
+      fullLinkageCommands: "api.entitlement.intentLinkage"
+    };
+  }
+});
+
 // lib/api/handlers/jobs/batch.ts
 var batch_exports = {};
 __export(batch_exports, {
-  POST: () => POST24
+  POST: () => POST25
 });
-async function POST24(req) {
+async function POST25(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -6078,7 +6646,11 @@ async function POST24(req) {
     if (!Array.isArray(rawPrompts) || rawPrompts.length === 0) {
       return localizedErrorResponse(req, "api.job.batchEmpty", 400);
     }
-    const prompts = rawPrompts.filter((p) => typeof p === "string").map((p) => p.trim()).filter(Boolean).slice(0, MAX_BACKGROUND_JOBS_BATCH);
+    const batchDenied = await requireBackgroundBatchForUser(req, auth.user.id);
+    if (batchDenied) return batchDenied;
+    const planName = await resolveUserPlanName(auth.user.id);
+    const batchCap = backgroundJobBatchMax(planName);
+    const prompts = rawPrompts.filter((p) => typeof p === "string").map((p) => p.trim()).filter(Boolean).slice(0, batchCap);
     if (prompts.length === 0) {
       return localizedErrorResponse(req, "api.job.batchEmpty", 400);
     }
@@ -6089,7 +6661,6 @@ async function POST24(req) {
         return localizedErrorResponse(req, validationError, 400);
       }
     }
-    const planName = await resolveUserPlanName(auth.user.id);
     const jobs = [];
     let created = 0;
     let skipped = 0;
@@ -6133,6 +6704,7 @@ var init_batch = __esm({
     init_backgroundJobEntitlement();
     init_backgroundJobTypes();
     init_usageDb();
+    init_entitlementGuard();
     MAX_JOB_BODY_BYTES2 = 512e3;
   }
 });
@@ -6245,7 +6817,93 @@ var init_translations = __esm({
     translations = {
       "zh-CN": {
         "app.name": "AI IDE",
-        "app.tagline": "\u6D4F\u89C8\u5668\u5185\u5F00\u53D1\u3001\u8FD0\u884C\u4E0E AI \u534F\u4F5C",
+        "app.tagline": "\u591A\u529F\u80FD AI \u667A\u80FD\u5F00\u53D1\u7A7A\u95F4",
+        "workspaceMode.title": "\u5DE5\u4F5C\u6A21\u5F0F",
+        "workspaceMode.code": "\u7F16\u7801",
+        "workspaceMode.plan": "\u89C4\u5212",
+        "workspaceMode.execute": "\u6267\u884C",
+        "workspaceMode.review": "\u5BA1\u67E5",
+        "sessionResume.title": "\u7EE7\u7EED\u4E0A\u6B21\u5DE5\u4F5C",
+        "sessionResume.continue": "\u7EE7\u7EED",
+        "sessionResume.generic": "\u6062\u590D\u4E0A\u6B21\u7684\u6587\u4EF6\u4E0E Spec \u4E0A\u4E0B\u6587",
+        "sessionResume.spec": "Spec \xB7 {slug}",
+        "sessionResume.openTasks": "{count} \u9879\u5F85\u529E",
+        "sessionResume.file": "\u6587\u4EF6 \xB7 {name}",
+        "learningPath.sectionTitle": "\u5B66\u4E60\u8DEF\u5F84",
+        "learningPath.sectionDesc": "\u6309\u6808\u6A21\u677F\u5FEB\u901F\u8FDB\u5165 Plan \u2192 Spec \u2192 \u6267\u884C\u95ED\u73AF\u3002",
+        "learningPath.duration": "\u7EA6 {min} \u5206\u949F",
+        "learningPath.intentDemo.title": "Intent 60 \u79D2\u5165\u95E8",
+        "learningPath.intentDemo.desc": "\u6700\u5C0F Demo Pack\uFF0C\u4F53\u9A8C\u961F\u5217\u4E0E\u9A8C\u6536\u3002",
+        "learningPath.nodeApi.title": "Node API \u8FED\u4EE3",
+        "learningPath.nodeApi.desc": "\u4ECE Spec Studio \u521B\u5EFA API \u9879\u76EE\u9AA8\u67B6\u3002",
+        "learningPath.python.title": "Python \u670D\u52A1",
+        "learningPath.python.desc": "\u89C4\u5212\u5E76\u5B9E\u73B0\u4E00\u4E2A\u540E\u7AEF\u670D\u52A1 Spec\u3002",
+        "learningPath.aiAgent.title": "Agent \u4EFB\u52A1",
+        "learningPath.aiAgent.desc": "\u7528 Agent \u6A21\u5F0F\u5B8C\u6210 Spec \u4EFB\u52A1\u94FE\u3002",
+        "learningPath.statusInProgress": "\u8FDB\u884C\u4E2D",
+        "learningPath.statusCompleted": "\u5DF2\u5B8C\u6210",
+        "weeklyRecap.title": "\u672C\u5468\u56DE\u987E",
+        "weeklyRecap.doneTasks": "\u5DF2\u5B8C\u6210\u4EFB\u52A1",
+        "weeklyRecap.openTasks": "\u5F85\u529E\u4EFB\u52A1",
+        "weeklyRecap.proofReports": "\u8BC1\u660E\u5305",
+        "weeklyRecap.specs": "Spec \u6570",
+        "weeklyRecap.recentProofs": "\u6700\u8FD1\u8BC1\u660E\u5305",
+        "weeklyRecap.empty": "\u6682\u65E0\u62A5\u544A\u3002\u5B8C\u6210 Spec \u9A8C\u6536\u540E\u53EF\u4FDD\u5B58\u8BC1\u660E\u5305\u3002",
+        "weeklyRecap.copyMarkdown": "\u590D\u5236 Markdown",
+        "weeklyRecap.export": "\u5BFC\u51FA .md",
+        "gitSpecCommit.hint": "\u5F53\u524D Spec \u4ECD\u6709 {count} \u9879\u672A\u9A8C\u6536\uFF08{slug}\uFF09\uFF0C\u63D0\u4EA4\u524D\u5EFA\u8BAE\u786E\u8BA4 acceptance\u3002",
+        "gitSpecCommit.openTasks": "\u67E5\u770B\u4EFB\u52A1",
+        "gitSpecCommit.reviewMode": "\u5207\u6362\u5BA1\u67E5\u6A21\u5F0F",
+        "todayFocus.title": "\u4ECA\u65E5\u7126\u70B9",
+        "todayFocus.mode": "\u6A21\u5F0F \xB7 {mode}",
+        "todayFocus.spec": "Spec \xB7 {slug}",
+        "todayFocus.openTasks": "{count} \u9879\u5F85\u529E",
+        "todayFocus.applyMode": "\u5207\u6362\u5230{mode}",
+        "todayFocus.proofReadyHint": "{slug} \u5DF2\u9A8C\u6536\uFF0C\u53EF\u4FDD\u5B58\u8BC1\u660E\u5305",
+        "linkage.proofReady": "{slug} \u5DF2\u9A8C\u6536\uFF0C\u53EF\u4FDD\u5B58\u8BC1\u660E\u5305\u5E76\u5206\u4EAB\u8FDB\u5EA6",
+        "linkage.shareProgress": "\u5206\u4EAB\u8FDB\u5EA6",
+        "linkage.autopilotHint": "\u5DE5\u4F5C\u533A\u5E72\u51C0\uFF0CSpec \u4ECD\u6709\u5F85\u529E \u2014 \u8BD5\u8BD5 Autopilot \u4E0B\u4E00\u9879",
+        "command.cat.linkage": "\u8054\u52A8",
+        "command.linkage.autopilot": "Autopilot \u4E0B\u4E00 Spec \u4EFB\u52A1",
+        "command.linkage.autopilot.sub": "Git \u5E72\u51C0\u65F6\u5FEB\u901F\u63A8\u8FDB\u961F\u5217",
+        "command.linkage.shareProgress": "\u6253\u5F00\u5206\u4EAB\u8FDB\u5EA6",
+        "command.linkage.shareProgress.sub": "\u53EA\u8BFB\u8FDB\u5EA6\u94FE\u63A5\u4E0E\u8BC1\u660E\u5305\u9884\u89C8",
+        "weeklyRecap.learningPathsCompleted": "\u5DF2\u5B8C\u6210\u5B66\u4E60\u8DEF\u5F84",
+        "weeklyRecap.learningPathsInProgress": "\u8FDB\u884C\u4E2D\u5B66\u4E60\u8DEF\u5F84",
+        "shareProgress.watch": "\u5173\u6CE8\u8FDB\u5EA6\u66F4\u65B0",
+        "shareProgress.watchUpdated": "\u6709\u66F4\u65B0 \xB7 \u53D6\u6D88\u5173\u6CE8",
+        "shareProgress.updateBanner": "\u81EA\u4F60\u4E0A\u6B21\u67E5\u770B\u4EE5\u6765\uFF0CSpec \u8FDB\u5EA6\u6216\u8BC1\u660E\u5305\u6709\u53D8\u5316\u3002",
+        "shareProgress.graphTruncated": "\u5DF2\u5C55\u793A {shown} / {total} \u4E2A\u8282\u70B9",
+        "shareProgress.unwatch": "\u53D6\u6D88\u5173\u6CE8",
+        "shareProgress.specTree": "Intent \u56FE\u8C31",
+        "shareProgress.specProgress": "{done}/{total} \u5DF2\u9A8C\u6536",
+        "shareProgress.comments": "\u534F\u4F5C\u8005\u5907\u6CE8",
+        "shareProgress.commentsEmpty": "\u6682\u65E0\u5907\u6CE8",
+        "shareProgress.commentAuthor": "\u6635\u79F0",
+        "shareProgress.commentBody": "\u5199\u4E0B\u8FDB\u5EA6\u53CD\u9988\u2026",
+        "shareProgress.commentSubmit": "\u6DFB\u52A0\u5907\u6CE8",
+        "activityLine.rhythm.idle": "\u7A7A\u95F2",
+        "activityLine.rhythm.planning": "\u89C4\u5212\u4E2D",
+        "activityLine.rhythm.executing": "\u6267\u884C\u4E2D",
+        "activityLine.rhythm.verify": "\u5F85\u9A8C\u6536",
+        "activityLine.rhythm.failed": "\u5931\u8D25\u5F85\u5904\u7406",
+        "activityLine.rhythm.review": "\u5BA1\u67E5/\u4EA4\u4ED8",
+        "command.workspaceMode": "\u5207\u6362\u5DE5\u4F5C\u6A21\u5F0F",
+        "command.workspaceMode.sub": "\u7F16\u7801 \xB7 \u89C4\u5212 \xB7 \u6267\u884C \xB7 \u5BA1\u67E5",
+        "command.sessionResume": "\u7EE7\u7EED\u4E0A\u6B21\u5DE5\u4F5C",
+        "command.sessionResume.sub": "\u6062\u590D\u6587\u4EF6\u4E0E Spec \u7126\u70B9",
+        "command.weeklyRecap": "\u672C\u5468\u56DE\u987E",
+        "command.weeklyRecap.sub": "\u4EFB\u52A1\u3001Spec \u4E0E\u8BC1\u660E\u5305\u7EDF\u8BA1",
+        "share.tab.progress": "\u8FDB\u5EA6\u5FEB\u7167",
+        "share.progress.readonlyTitle": "\u53EA\u8BFB\u8FDB\u5EA6\u89C6\u56FE",
+        "share.progress.readonlyDesc": "\u534F\u4F5C\u8005\u53EF\u901A\u8FC7\u5206\u4EAB\u94FE\u63A5\u67E5\u770B Intent \u5FEB\u7167\uFF0C\u65E0\u9700\u5B8C\u6574 IDE \u6743\u9650\u3002",
+        "share.progress.proofPreview": "\u8BC1\u660E\u5305\u9884\u89C8",
+        "share.progress.noProof": "\u5C1A\u65E0\u8BC1\u660E\u5305 HTML\u3002\u9A8C\u6536\u901A\u8FC7\u540E\u53EF\u5728 Shell \u9876\u680F\u4FDD\u5B58\u3002",
+        "share.progress.copyLink": "\u590D\u5236\u53EA\u8BFB\u8FDB\u5EA6\u94FE\u63A5",
+        "share.progress.linkHint": "\u5728\u300C\u5206\u4EAB\u300D\u9875\u751F\u6210\u94FE\u63A5\u540E\uFF0C\u53EF\u5728\u6B64\u590D\u5236\u53EA\u8BFB\u8FDB\u5EA6 URL\uFF08?view=progress\uFF09\u3002",
+        "shareProgress.loading": "\u6B63\u5728\u52A0\u8F7D\u8FDB\u5EA6\u5FEB\u7167\u2026",
+        "shareProgress.notFound": "\u672A\u627E\u5230\u8BE5\u5206\u4EAB\uFF0C\u6216\u94FE\u63A5\u5DF2\u5931\u6548\u3002",
+        "shareProgress.openFullIde": "\u5728 IDE \u4E2D\u6253\u5F00",
         "workspaceRoot.label": "\u5DE5\u4F5C\u533A\u6839",
         "workspaceRoot.add": "\u6DFB\u52A0\u5DE5\u4F5C\u533A\u6839",
         "workspaceRoot.remove": "\u79FB\u9664\u5F53\u524D\u6839",
@@ -6384,6 +7042,85 @@ var init_translations = __esm({
         "welcome.cloudDegraded": "\u4E91\u7AEF\u6570\u636E\u5E93\u6682\u4E0D\u53EF\u7528\uFF1A\u6CE8\u518C/\u4E91\u5DE5\u4F5C\u533A\u53EF\u80FD\u5931\u8D25\u3002\u4F60\u4ECD\u53EF\u4F7F\u7528 BYOK \u4E0E\u672C\u5730\u7F16\u8F91\uFF1B\u7EF4\u62A4\u8005\u8BF7\u68C0\u67E5\u90E8\u7F72\u73AF\u5883\u53D8\u91CF\u3002",
         "welcome.cloudDegradedPlatform": "\u4E91\u7AEF\u6570\u636E\u5E93\u6682\u4E0D\u53EF\u7528\uFF1A\u6CE8\u518C/\u4E91\u5DE5\u4F5C\u533A\u53EF\u80FD\u5931\u8D25\u3002\u672C\u5730\u7F16\u8F91\u4ECD\u53EF\u7528\uFF1B\u7EF4\u62A4\u8005\u8BF7\u68C0\u67E5 DATABASE_URL \u4E0E AUTH_SECRET\u3002",
         "welcome.networkTips": "\u9875\u9762\u52A0\u8F7D\u6162\u6216 API \u8D85\u65F6\uFF1F\u56FD\u5185\u8BBF\u95EE vercel.app \u53EF\u80FD\u4E0D\u7A33\u5B9A\u3002\u53EF\u7A0D\u540E\u91CD\u8BD5\u3001\u66F4\u6362\u7F51\u7EDC\uFF0C\u6216\u4E0B\u8F7D Windows/macOS \u684C\u9762\u7248\u3002\u81EA\u5B9A\u4E49\u57DF\u540D\u89C1 docs/CUSTOM_DOMAIN.md\u3002",
+        "welcome.networkTipsSelfHosted": "\u8FDE\u63A5\u8F83\u6162\uFF1F\u8BF7\u786E\u8BA4\u4F7F\u7528 https \u8BBF\u95EE\uFF0C\u5E76\u5728\u6D4F\u89C8\u5668\u4E2D\u4FE1\u4EFB\u81EA\u7B7E\u540D\u8BC1\u4E66\uFF08WebContainer \u9700\u8981\u5B89\u5168\u4E0A\u4E0B\u6587\uFF09\u3002\u5907\u6848\u901A\u8FC7\u540E\u57DF\u540D\u4E0E\u6B63\u5F0F\u8BC1\u4E66\u4F1A\u81EA\u52A8\u5207\u6362\u3002",
+        "welcome.cnBetaBanner": "\u56FD\u5185\u5185\u6D4B\u7AD9\uFF08\u5907\u6848\u4E2D\uFF09\uFF1A\u5F53\u524D\u901A\u8FC7 IP + \u81EA\u7B7E\u540D\u8BC1\u4E66\u8BBF\u95EE\u3002\u8D26\u53F7\u4E0E\u6D77\u5916\u7AD9\u4E0D\u4E92\u901A\uFF0C\u8BF7\u5728\u6B64\u91CD\u65B0\u6CE8\u518C\u3002",
+        "welcome.appUrlIp": "\u56FD\u5185\u5185\u6D4B \xB7 \u5F53\u524D\u5730\u5740\uFF1A{url}",
+        "welcome.appUrlSelfHosted": "\u81EA\u5EFA\u90E8\u7F72 \xB7 {url}",
+        "intent.promote.action": "\u6C89\u6DC0\u4E3A Spec",
+        "intent.promote.modalTitle": "\u6C89\u6DC0\u4E3A Spec",
+        "intent.promote.modalLead": "\u5C06\u5BF9\u8BDD\u4E0A\u4E0B\u6587\u5199\u5165 .aide/specs/ \u56DB\u4EF6\u5957\uFF0C\u53EF\u9009\u7ACB\u5373\u8DD1\u7B2C\u4E00\u5173\u3002",
+        "intent.promote.confirm": "\u521B\u5EFA Spec",
+        "intent.promote.runFirstTask": "\u521B\u5EFA\u540E\u7ACB\u5373\u8DD1\u7B2C\u4E00\u5173\u4EFB\u52A1",
+        "intent.promote.openStudio": "\u521B\u5EFA\u540E\u6253\u5F00 Spec Studio",
+        "intent.promote.specNamePrompt": "Spec \u540D\u79F0\uFF08\u5C06\u5199\u5165 .aide/specs/\uFF09",
+        "intent.promote.success": "\u5DF2\u6C89\u6DC0\u4E3A Spec",
+        "intent.queue.title": "\u9A8C\u6536\u4F18\u5148\u961F\u5217",
+        "intent.queue.stage.pending": "\u5F85\u6267\u884C",
+        "intent.queue.stage.running": "\u6267\u884C\u4E2D",
+        "intent.queue.stage.verify": "\u5F85\u9A8C\u6536",
+        "intent.queue.stage.passed": "\u5DF2\u901A\u8FC7",
+        "intent.queue.stage.failed": "\u5931\u8D25",
+        "intent.graph.title": "\u610F\u56FE\u56FE\u8C31",
+        "intent.graph.desc": "Plan \u6B65\u9AA4\u3001Spec \u4EFB\u52A1\u4E0E acceptance \u7684\u6EAF\u6E90\u5173\u7CFB\uFF08\u7B80\u7248\uFF09\u3002",
+        "intent.graph.empty": "\u6682\u65E0\u94FE\u63A5\u3002\u5148\u521B\u5EFA Spec\uFF0C\u6216\u5C06 Plan \u6620\u5C04\u5230 Spec \u4EFB\u52A1\u3002",
+        "intent.graph.group.plan": "Plan",
+        "intent.graph.group.tasks": "Spec \u4EFB\u52A1",
+        "intent.graph.group.acceptance": "\u9A8C\u6536",
+        "intent.graph.openTitle": "\u6253\u5F00\u610F\u56FE\u56FE\u8C31\uFF08\u8BBE\u7F6E \u2192 \u529F\u80FD\uFF09",
+        "intent.graph.openShort": "\u610F\u56FE\u56FE\u8C31",
+        "intent.shell.barTitle": "Intent Shell",
+        "intent.shell.graphTitle": "\u610F\u56FE\u56FE\u8C31",
+        "intent.shell.queueTitle": "\u9A8C\u6536\u961F\u5217",
+        "intent.shell.openChat": "\u6253\u5F00 Chat",
+        "intent.shell.saveProof": "\u4FDD\u5B58\u8BC1\u660E\u5305",
+        "intent.shell.hide": "\u6536\u8D77 Shell",
+        "intent.shell.reopenGraph": "\u663E\u793A\u56FE\u8C31",
+        "intent.shell.reopenQueue": "\u663E\u793A\u961F\u5217",
+        "intent.shell.stage.idle": "\u961F\u5217\u7A7A\u95F2",
+        "intent.shell.stage.running": "\u6267\u884C\u4E2D",
+        "intent.shell.stage.verify": "\u5F85\u9A8C\u6536",
+        "intent.shell.stage.failed": "\u9A8C\u6536\u5931\u8D25",
+        "intent.replay.restoreProof": "\u4ECE\u8BC1\u660E\u5305\u6062\u590D",
+        "intent.replay.restored.title": "\u5DF2\u52A0\u8F7D\u8BC1\u660E\u5305\u4E0A\u4E0B\u6587",
+        "intent.replay.restored.detail": "\u5DF2\u805A\u7126 Spec\u300C{slug}\u300D\u5E76\u5C1D\u8BD5\u6062\u590D\u961F\u5217\u3002",
+        "intent.replay.overlayBadge": "\u8BC1\u660E\u5305\u56FE\u8C31\u5FEB\u7167",
+        "intent.autopilot.runNext": "Autopilot \xB7 \u4E0B\u4E00\u5173",
+        "intent.autopilot.runNextWithCount": "Autopilot \xB7 \u4E0B\u4E00\u5173 ({count} \u9879\u5F85\u529E)",
+        "autopilot.quota.unlimited": "Autopilot \u4E0D\u9650",
+        "autopilot.quota.remaining": "\u4ECA\u65E5 Autopilot {used}/{limit} \u6B21 \xB7 \u5269\u4F59 {remaining}",
+        "autopilot.quota.blocked": "\u4ECA\u65E5 Autopilot \u5DF2\u7528\u5B8C ({used}/{limit})",
+        "intent.drift.action.open-tasks": "\u6253\u5F00 tasks",
+        "intent.drift.action.open-acceptance": "\u6253\u5F00 acceptance",
+        "intent.drift.action.open-file": "\u6253\u5F00\u5F15\u7528\u6587\u4EF6",
+        "intent.drift.action.open-proof": "\u6253\u5F00\u8BC1\u660E\u5305",
+        "intent.drift.action.open-requirements": "\u66F4\u65B0 requirements",
+        "intent.drift.action.open-design": "\u67E5\u770B design",
+        "intent.drift.title": "Drift \u63D0\u793A",
+        "intent.drift.openTasks": "\u4ECD\u6709 {count} \u6761\u672A\u5B8C\u6210\u4EFB\u52A1",
+        "intent.drift.openAcceptance": "\u4ECD\u6709 {count} \u6761 acceptance \u672A\u52FE\u9009",
+        "intent.drift.missingPath": "\u5F15\u7528\u8DEF\u5F84\u4E0D\u5B58\u5728\uFF1A{path}",
+        "intent.grounding.title": "Grounding \u5DF2\u62E6\u622A\u5165\u961F",
+        "intent.grounding.dismiss": "\u77E5\u9053\u4E86",
+        "intent.grounding.v2.detail": "\u4EFB\u52A1\u5F15\u7528\u7684\u7B26\u53F7\u5728\u4EE3\u7801\u5E93\u4E2D\u4E0D\u5B58\u5728\uFF08{count} \u5904\uFF09",
+        "intent.grounding.missingPath": "\u5F15\u7528\u8DEF\u5F84\u4E0D\u5B58\u5728\uFF1A{path}",
+        "intent.demo.verifyBanner.title": "Demo \u5F85\u9A8C\u6536",
+        "intent.demo.verifyBanner.desc": "\u82E5 greet \u5DF2\u5B9E\u73B0\uFF0C\u53EF\u4E00\u952E\u52FE\u9009 acceptance \u5E76\u7EE7\u7EED\u961F\u5217\u3002",
+        "intent.demo.verifyBanner.action": "\u4E00\u952E\u6807\u8BB0\u672C\u5173\u5B8C\u6210",
+        "intent.demo.markBlocked.title": "\u6682\u65E0\u6CD5\u6807\u8BB0\u5B8C\u6210",
+        "intent.demo.markBlocked.detail": "\u8BF7\u786E\u8BA4 src/demo.ts \u5DF2\u5BFC\u51FA greet \u4E14\u8FD4\u56DE\u5305\u542B Hello\u3002",
+        "intent.demo.reportGuide.title": "\u672C\u5173\u5DF2\u901A\u8FC7",
+        "intent.proof.saveAction": "\u4FDD\u5B58\u8BC1\u660E\u5305",
+        "intent.proof.saved.title": "\u8BC1\u660E\u5305\u5DF2\u4FDD\u5B58",
+        "intent.proof.saved.detail": "\u5DF2\u5199\u5165 {path} \u4E0E\u540C\u76EE\u5F55 HTML \u7248\u672C",
+        "intent.proof.saved.markdownOnly": "\u5DF2\u5199\u5165 Markdown \u8BC1\u660E\u5305 {path}\uFF08HTML \u9700\u4E13\u4E1A\u7248\uFF09",
+        "intent.proof.noSpec.title": "\u6682\u65E0\u53EF\u8BC1\u660E\u7684 Spec",
+        "intent.proof.noSpec.detail": "\u8BF7\u5148\u5B8C\u6210 Spec \u4EFB\u52A1\u6216\u4ECE Intent \u6F14\u793A\u5F00\u59CB\u3002",
+        "intent.demo.reportGuide.detail": "\u4E0B\u4E00\u6B65\uFF1A\u70B9\u300C\u4FDD\u5B58\u8BC1\u660E\u5305\u300D\u7559\u5B58 diff + \u9A8C\u6536\u8F93\u51FA\u3002",
+        "intent.demo.started.title": "Intent \u6F14\u793A\u5DF2\u542F\u52A8",
+        "intent.demo.started.detail": "Agent \u5C06\u5B8C\u6210 greet \u4EFB\u52A1\u3002\u9A8C\u6536\u901A\u8FC7\u540E\u70B9\u300C\u4FDD\u5B58\u5230 .aide/reports\u300D\uFF1B\u8BBE\u7F6E \u2192 \u610F\u56FE\u56FE\u8C31\u53EF\u67E5\u770B\u6EAF\u6E90\u3002",
+        "welcome.pathIntentTitle": "\u4ECE Intent \u6F14\u793A\u5F00\u59CB",
+        "welcome.pathIntentDesc": "60 \u79D2\u4F53\u9A8C Spec \u2192 \u961F\u5217 \u2192 \u9A8C\u6536\u95ED\u73AF\uFF08Demo Pack\uFF09\u3002",
+        "welcome.pathIntentHero": "60 \u79D2 Intent \u6F14\u793A",
         "welcome.title": "\u66F4\u5FEB\u8FDB\u5165\u601D\u8DEF\uFF0C\u66F4\u5C11\u6D88\u8017\u5728\u73AF\u5883\u4E0A",
         "welcome.lead": "\u6253\u5F00\u6587\u4EF6\u3001\u4E0E AI \u534F\u4F5C\u3001\u8FD0\u884C\u4EE3\u7801\u3001\u7BA1\u7406\u5DE5\u4F5C\u533A\uFF0C\u5168\u90E8\u5728\u4E00\u4E2A\u8F7B\u91CF\u754C\u9762\u91CC\u5B8C\u6210\u3002\u4ECE\u4E0B\u9762\u7684\u5165\u53E3\u76F4\u63A5\u5F00\u59CB\u5DE5\u4F5C\uFF0C\u4E0D\u7528\u5148\u7A7F\u8FC7\u4E00\u5C42\u8BF4\u660E\u9875\u3002",
         "welcome.platformCta": "\u514D\u8D39\u6CE8\u518C\u5373\u53EF\u4F7F\u7528\u5E73\u53F0 AI\uFF0C\u65E0\u9700\u81EA\u5907 DeepSeek / OpenAI API Key\uFF08\u7C7B\u4F3C Cursor \u5F00\u7BB1\u5373\u7528\uFF09\u3002",
@@ -6438,6 +7175,7 @@ var init_translations = __esm({
         "welcome.footer.browser": "\u6D4F\u89C8\u5668\u80FD\u529B\u8BF4\u660E",
         "welcome.footer.aiNote": "AI \u5BF9\u8BDD\u4E0E API Key \u7531\u60A8\u9009\u62E9\u7684\u6A21\u578B\u670D\u52A1\u5546\u76F4\u63A5\u5904\u7406\u3002",
         "welcome.appUrl": "\u5F53\u524D\u8BBF\u95EE\u5730\u5740\uFF1A{url}",
+        "auth.cnAccountHint": "\u56FD\u5185\u7AD9\u4E0E\u6D77\u5916\u7AD9\u8D26\u53F7\u4E0D\u4E92\u901A\u3002\u82E5\u66FE\u5728 ai-ide-flame.vercel.app \u6CE8\u518C\uFF0C\u8BF7\u5728\u6B64\u7528\u90AE\u7BB1\u6CE8\u518C\u65B0\u8D26\u53F7\u3002",
         "auth.title.login": "\u6B22\u8FCE\u56DE\u6765",
         "auth.title.register": "\u521B\u5EFA\u8D26\u53F7",
         "auth.title.forgot": "\u627E\u56DE\u5BC6\u7801",
@@ -6762,6 +7500,7 @@ var init_translations = __esm({
         "subscription.limit.storage": "\u5B58\u50A8\u7A7A\u95F4",
         "subscription.perDay": " / \u5929",
         "subscription.perMonth": "/\u6708",
+        "subscription.price.free": "\u514D\u8D39",
         "subscription.unit.workspaces": " \u4E2A",
         "subscription.checkout.redirect": "\u8DF3\u8F6C\u652F\u4ED8...",
         "subscription.checkout.current": "\u5F53\u524D\u4F7F\u7528\u4E2D",
@@ -6792,18 +7531,75 @@ var init_translations = __esm({
         "subscription.plan.free.name": "\u514D\u8D39\u7248",
         "subscription.plan.free.desc": "\u4E2A\u4EBA\u5B66\u4E60\u4E0E\u65E5\u5E38\u5C0F\u9879\u76EE\uFF1B\u767B\u5F55\u5373\u7528\u5E73\u53F0 AI\u3002",
         "subscription.plan.free.f1": "\u5E73\u53F0 AI \xB7 \u7ECF\u6D4E\u6A21\u578B\uFF08Flash / Lite\uFF09",
-        "subscription.plan.free.f2": "\u65E0\u9650\u4E91\u5DE5\u4F5C\u533A",
-        "subscription.plan.free.f3": "\u6BCF\u65E5 200 \u52A0\u6743\u914D\u989D\u5355\u4F4D",
+        "subscription.plan.free.f2": "3 \u4E2A\u4E91\u5DE5\u4F5C\u533A \xB7 5 \u6761 Share\uFF087 \u5929\uFF09",
+        "subscription.plan.free.f3": "Plan / Spec / Git \u57FA\u7840\u95ED\u73AF",
+        "subscription.plan.free.f4": "\u6BCF\u65E5 200 \u52A0\u6743 AI \u914D\u989D",
+        "subscription.plan.free.f5": "\u540E\u53F0 Agent 2 \u6B21/\u65E5",
+        "subscription.plan.free.f6": "Autopilot 3 \u6B21/\u65E5 \xB7 \u8BC1\u660E\u5305 Markdown",
         "subscription.plan.pro.name": "\u4E13\u4E1A\u7248",
-        "subscription.plan.pro.desc": "\u9AD8\u9891\u4E2A\u4EBA\u5F00\u53D1\u8005\uFF0C$9.99/\u6708\u3002",
-        "subscription.plan.pro.f1": "\u6BCF\u65E5 2000 \u52A0\u6743\u914D\u989D\u5355\u4F4D",
-        "subscription.plan.pro.f2": "\u65E0\u9650\u5DE5\u4F5C\u533A",
-        "subscription.plan.pro.f3": "Stripe \u5B89\u5168\u8BA2\u9605",
+        "subscription.plan.pro.desc": "\u4E2A\u4EBA\u5DE5\u7A0B\u95ED\u73AF \u2014 Autopilot \xB7 \u8BC1\u660E\u5305 \xB7 \u5168\u6863 AI",
+        "subscription.plan.pro.f1": "\u5168\u6863\u5E73\u53F0 AI + 2000 \u914D\u989D/\u65E5",
+        "subscription.plan.pro.f2": "Autopilot \u4E0D\u9650 \xB7 Intent \u5168\u8054\u52A8",
+        "subscription.plan.pro.f3": "\u8BC1\u660E\u5305 MD+HTML \xB7 \u5468\u56DE\u987E\u5BFC\u51FA",
+        "subscription.plan.pro.f4": "20 \u5DE5\u4F5C\u533A \xB7 Share 90 \u5929",
+        "subscription.plan.pro.f5": "\u540E\u53F0 Agent 100 \u6B21/\u65E5 \xB7 \u5E76\u53D1 5",
+        "subscription.plan.pro.f6": "\u534F\u4F5C\u4E3B\u6301 \xB7 intent-share \u5BFC\u5165",
         "subscription.plan.enterprise.name": "\u56E2\u961F\u7248",
-        "subscription.plan.enterprise.desc": "\u5C0F\u56E2\u961F\u4E0E\u91CD\u5EA6\u7528\u6237\uFF0C$19.99/\u6708\u3002",
-        "subscription.plan.enterprise.f1": "\u914D\u989D\u4E0D\u9650",
-        "subscription.plan.enterprise.f2": "\u65E0\u9650\u5DE5\u4F5C\u533A",
-        "subscription.plan.enterprise.f3": "\u56E2\u961F\u80FD\u529B\uFF08\u89C4\u5212\uFF09",
+        "subscription.plan.enterprise.desc": "\u534F\u4F5C\u4EA4\u4ED8 \u2014 \u957F\u94FE Share \xB7 \u6279\u91CF Agent \xB7 \u56E2\u961F\u623F\u95F4",
+        "subscription.plan.enterprise.f1": "AI \u914D\u989D\u4E0D\u9650",
+        "subscription.plan.enterprise.f2": "\u4E13\u4E1A\u7248\u5168\u90E8\u95ED\u73AF\u80FD\u529B",
+        "subscription.plan.enterprise.f3": "100 \u6761 Share \xB7 365 \u5929\u6709\u6548",
+        "subscription.plan.enterprise.f4": "\u540E\u53F0 Agent 300 \u6B21/\u65E5 \xB7 \u6279\u91CF 20",
+        "subscription.plan.enterprise.f5": "\u534F\u4F5C\u623F\u95F4\u6700\u591A 10 \u4EBA",
+        "subscription.plan.enterprise.f6": "Share \u8FDB\u5EA6\u5173\u6CE8 \xB7 100GB \u5B58\u50A8",
+        "entitlements.card.title": "\u5F53\u524D\u8BA1\u5212\u6743\u76CA",
+        "entitlements.card.planIs": "\u4F60\u6B63\u5728\u4F7F\u7528 {plan}",
+        "entitlements.card.upgrade": "\u5347\u7EA7\u4E13\u4E1A\u7248",
+        "entitlements.card.upgradeTeam": "\u5347\u7EA7\u56E2\u961F\u7248",
+        "entitlements.card.teamPlus": "\u56E2\u961F\u589E\u503C",
+        "entitlements.card.teamPerksLead": "\u76F8\u8F83\u4E13\u4E1A\u7248\uFF1A\u66F4\u9AD8\u914D\u989D\u3001\u66F4\u957F Share\u3001\u66F4\u5927\u534F\u4F5C\u4E0E\u5B58\u50A8",
+        "entitlements.highlight.aiQuota": "\u5E73\u53F0 AI \u65E5\u914D\u989D \xB7 {quota}",
+        "entitlements.highlight.workspaces": "\u4E91\u5DE5\u4F5C\u533A \xB7 {count} \u4E2A",
+        "entitlements.highlight.storage": "\u4E91\u5B58\u50A8 \xB7 {gb} GB",
+        "entitlements.highlight.autopilot": "Autopilot \xB7 {runs} \u6B21/\u65E5",
+        "entitlements.highlight.backgroundJobs": "\u540E\u53F0 Agent \xB7 {daily} \u6B21/\u65E5 \xB7 \u5E76\u53D1 {concurrent}",
+        "entitlements.highlight.intentLinkage": "Intent \u5168\u8054\u52A8\uFF08replay \xB7 drift \xB7 graph\uFF09",
+        "entitlements.highlight.proofExport": "\u8BC1\u660E\u5305 HTML \u5BFC\u51FA",
+        "entitlements.highlight.shares": "\u4E91 Share \xB7 {count} \u6761 \xB7 {days} \u5929\u6709\u6548",
+        "entitlements.highlight.collab": "\u534F\u4F5C\u4E3B\u6301 \xB7 \u6700\u591A {count} \u4EBA",
+        "entitlements.upgrade.proofHtml": "\u4E13\u4E1A\u7248\u53EF\u5BFC\u51FA\u53EF\u5206\u4EAB HTML \u8BC1\u660E\u5305",
+        "entitlements.upgrade.weeklyRecap": "\u4E13\u4E1A\u7248\u53EF\u590D\u5236/\u5BFC\u51FA\u5468\u56DE\u987E Markdown",
+        "entitlements.upgrade.intentShare": "\u4E13\u4E1A\u7248\u53EF\u5BFC\u5165 intent-share \u5FEB\u7167\u5E76\u6062\u590D\u7126\u70B9",
+        "entitlements.upgrade.intentLinkage": "\u4E13\u4E1A\u7248\u89E3\u9501 Intent \u5168\u8054\u52A8 \u2014 Drift \u4FEE\u590D \xB7 \u56FE\u8C31\u9AD8\u4EAE \xB7 \u8BC1\u660E\u5305\u56DE\u653E",
+        "entitlements.upgrade.autopilot": "\u4ECA\u65E5 Autopilot \u5DF2\u7528\u5B8C \u2014 \u4E13\u4E1A\u7248\u65E0\u9650\u63A8\u8FDB Spec \u961F\u5217",
+        "entitlements.upgrade.shareProgressComments": "\u4E13\u4E1A\u7248\u53EF\u5728 Share \u8FDB\u5EA6\u9875\u6DFB\u52A0\u534F\u4F5C\u8005\u5907\u6CE8",
+        "entitlements.upgrade.shareProgressWatch": "\u56E2\u961F\u7248\u53EF\u5173\u6CE8 Share \u8FDB\u5EA6\u66F4\u65B0\uFF08\u5907\u6848\u540E\u5C06\u652F\u6301\u90AE\u4EF6\u63D0\u9192\uFF09",
+        "entitlements.upgrade.collabHost": "\u4E13\u4E1A\u7248\u53EF\u4E3B\u6301\u534F\u4F5C\u623F\u95F4",
+        "entitlements.upgrade.planBatch": "\u4ECE Plan \u4E00\u952E\u591A\u6B65\u5165\u961F\u9700\u4E13\u4E1A\u7248\uFF1B\u56E2\u961F\u7248\u5355\u6B21\u6700\u591A 20 \u6B65",
+        "entitlements.upgrade.allModelTiers": "\u4E13\u4E1A\u7248\u53EF\u4F7F\u7528\u5168\u6863\u5E73\u53F0 AI \u6A21\u578B",
+        "entitlements.upgrade.fullSessionResume": "\u4E13\u4E1A\u7248\u53EF\u6062\u590D 7 \u5929\u5185\u7684\u5B8C\u6574\u4F1A\u8BDD\u4E0A\u4E0B\u6587",
+        "entitlements.feature.autopilotUnlimited": "Autopilot \u4E0D\u9650",
+        "entitlements.feature.proofHtmlExport": "\u8BC1\u660E\u5305 HTML \u5BFC\u51FA",
+        "entitlements.feature.weeklyRecapExport": "\u5468\u56DE\u987E\u5BFC\u51FA",
+        "entitlements.feature.intentShareImport": "intent-share \u5BFC\u5165",
+        "entitlements.feature.collabHost": "\u534F\u4F5C\u4E3B\u6301",
+        "entitlements.feature.shareProgressComments": "Share \u8FDB\u5EA6\u5907\u6CE8",
+        "entitlements.feature.shareProgressWatch": "Share \u8FDB\u5EA6\u5173\u6CE8",
+        "entitlements.feature.intentFullLinkage": "Intent \u5168\u8054\u52A8",
+        "entitlements.feature.allModelTiers": "\u5168\u6863\u5E73\u53F0 AI",
+        "shareProgress.commentsLoginRequired": "\u767B\u5F55\u5E76\u5347\u7EA7\u4E13\u4E1A\u7248\u540E\u53EF\u6DFB\u52A0\u534F\u4F5C\u8005\u5907\u6CE8",
+        "welcome.planComparison.title": "\u5957\u9910\u5BF9\u6BD4\uFF08\u7B80\u7248\uFF09",
+        "welcome.planComparison.recommended": "\u63A8\u8350",
+        "welcome.planComparison.team": "\u56E2\u961F\u589E\u503C",
+        "welcome.planComparison.footnote": "\u5B8C\u6574\u6743\u76CA\u89C1\u8BBE\u7F6E \u2192 \u8BA2\u9605\uFF1B\u4EF7\u683C\u4EE5\u7ED3\u8D26\u9875\u4E3A\u51C6\u3002",
+        "settings.ai.dashboardUnlocked": "\u5DF2\u89E3\u9501 {count} \u9879\u4E13\u4E1A\u80FD\u529B",
+        "settings.ai.dashboardLocked": "\u8FD8\u53EF\u89E3\u9501 {count} \u9879",
+        "settings.ai.dashboardNearLimit": "{label} \u5DF2\u7528 {percent}%\uFF08{used}/{limit}\uFF09",
+        "settings.ai.nearLimit.aiQuota": "AI \u914D\u989D",
+        "settings.ai.nearLimit.autopilot": "Autopilot",
+        "settings.ai.nearLimit.backgroundJobs": "\u540E\u53F0 Agent",
+        "settings.ai.nearLimit.shares": "Share \u6761\u6570",
+        "settings.ai.nearLimit.workspaces": "\u4E91\u5DE5\u4F5C\u533A",
         "command.placeholder": "\u547D\u4EE4 / \u6587\u4EF6\u540D\uFF0C\u6216 @ \u641C\u7D22\u7B26\u53F7\u4E0E\u6587\u4EF6",
         "command.empty.title": "\u6CA1\u6709\u627E\u5230\u5339\u914D\u547D\u4EE4",
         "command.empty.desc": "\u8BD5\u8BD5\u8F93\u5165\u6587\u4EF6\u540D\u3001\u529F\u80FD\u540D\uFF0C\u6216\u7528 @ \u641C\u7D22\u7B26\u53F7\uFF08\u5982 @login\uFF09\u3002",
@@ -7334,6 +8130,7 @@ var init_translations = __esm({
         "snippet.form.description": "\u63CF\u8FF0",
         "snippet.form.descriptionPlaceholder": "\u7B80\u77ED\u63CF\u8FF0\u8FD9\u4E2A\u7247\u6BB5\u7684\u7528\u9014",
         "snippet.form.tags": "\u6807\u7B7E",
+        "snippet.form.tagsPlaceholder": "react, hook, state",
         "snippet.form.code": "\u4EE3\u7801",
         "snippet.form.codePlaceholder": "\u5728\u8FD9\u91CC\u7C98\u8D34\u6216\u8F93\u5165\u4EE3\u7801\u7247\u6BB5",
         "snippet.form.update": "\u66F4\u65B0",
@@ -7497,6 +8294,9 @@ var init_translations = __esm({
         "panel.git.subtitle": "\u67E5\u770B\u6539\u52A8\u4E0E\u63D0\u4EA4\u5386\u53F2",
         "panel.debug.subtitle": "\u65AD\u70B9\u3001\u8C03\u7528\u6808\u4E0E\u6267\u884C\u63A7\u5236",
         "panel.close": "\u5173\u95ED\u9762\u677F",
+        "panel.resizeAuxiliary": "\u8C03\u6574\u8F85\u52A9\u9762\u677F\u5BBD\u5EA6",
+        "panel.resizeIntentGraph": "\u8C03\u6574\u610F\u56FE\u56FE\u8C31\u5BBD\u5EA6",
+        "panel.resizeIntentQueue": "\u8C03\u6574\u9A8C\u6536\u961F\u5217\u5BBD\u5EA6",
         "panel.chat.title": "AI \u52A9\u624B",
         "panel.chat.subtitle": "\u5F53\u524D\u6587\u4EF6\u4E0E\u5DE5\u4F5C\u533A\u534F\u4F5C",
         "panel.backgroundJobs.title": "\u540E\u53F0\u4EFB\u52A1",
@@ -7504,6 +8304,10 @@ var init_translations = __esm({
         "toolbar.backgroundJobs": "\u540E\u53F0\u4EFB\u52A1",
         "backgroundJobs.hint": "\u6BCF 5 \u79D2\u81EA\u52A8\u5237\u65B0\u8FDB\u884C\u4E2D\u7684\u4EFB\u52A1",
         "backgroundJobs.hintFree": "\u514D\u8D39\u7248\uFF1A\u6BCF\u65E5 2 \u6B21\u3001\u540C\u65F6 1 \u4E2A\u4EFB\u52A1\u3002\u5347\u7EA7\u4E13\u4E1A\u7248\u653E\u5BBD\u9650\u5236\u3002",
+        "backgroundJobs.limitsFree": "\u4ECA\u65E5\u914D\u989D {daily} \u6B21 \xB7 \u5E76\u53D1 {concurrent} \xB7 Plan \u6279\u91CF\u5165\u961F\u9700\u4E13\u4E1A\u7248",
+        "backgroundJobs.limitsPro": "\u4ECA\u65E5 {daily} \u6B21 \xB7 \u5E76\u53D1 {concurrent} \xB7 Plan \u6279\u91CF\u6700\u591A {batch} \u6B65",
+        "backgroundJobs.limitsTeam": "\u4ECA\u65E5 {daily} \u6B21 \xB7 \u5E76\u53D1 {concurrent} \xB7 Plan \u6279\u91CF\u6700\u591A {batch} \u6B65",
+        "backgroundJobs.batchProHint": "\u4ECE Plan \u4E00\u952E\u591A\u6B65\u5165\u961F\u9700\u4E13\u4E1A\u7248\uFF1B\u56E2\u961F\u7248\u5355\u6B21\u6700\u591A 20 \u6B65",
         "backgroundJobs.empty": "\u6682\u65E0\u540E\u53F0\u4EFB\u52A1\u3002\u5728 Chat Agent \u6A21\u5F0F\u70B9\u51FB\u300C\u540E\u53F0\u8FD0\u884C\u300D\u63D0\u4EA4\u3002",
         "backgroundJobs.loginRequired": "\u767B\u5F55\u540E\u53EF\u4F7F\u7528\u540E\u53F0 Agent",
         "backgroundJobs.login": "\u767B\u5F55",
@@ -7543,12 +8347,17 @@ var init_translations = __esm({
         "backgroundJobs.applyToIdeEmpty": "\u6CA1\u6709\u53EF\u5E94\u7528\u7684\u6587\u4EF6\u53D8\u66F4",
         "plan.catalog.runInBackground": "\u540E\u53F0\u8FD0\u884C",
         "plan.catalog.runAllInBackground": "\u5168\u90E8\u540E\u53F0\u8FD0\u884C ({count})",
+        "plan.catalog.batchQuotaFree": "Plan \u591A\u6B65\u540E\u53F0\u5165\u961F\u9700\u4E13\u4E1A\u7248\uFF1B\u514D\u8D39\u6863\u53EF\u5728\u540E\u53F0\u4EFB\u52A1\u9762\u677F\u624B\u52A8\u63D0\u4EA4\u5355\u6761",
+        "plan.catalog.batchQuotaPaid": "Plan \u6279\u91CF\u540E\u53F0\u5165\u961F\u5355\u6B21\u6700\u591A {batch} \u6B65",
+        "plan.host.runBackgroundUpgrade.title": "\u9700\u5347\u7EA7\u4E13\u4E1A\u7248",
+        "plan.host.runBackgroundUpgrade.detail": "\u4ECE Plan \u6279\u91CF\u63D0\u4EA4\u540E\u53F0\u4EFB\u52A1\u9700\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248\u3002",
+        "plan.host.runBackgroundBatchCap.note": "\n\n\u5355\u6B21\u6700\u591A\u5165\u961F {batch} \u6B65\uFF08\u5DF2\u9009 {requested} \u6B65\uFF0C\u8D85\u51FA\u90E8\u5206\u8BF7\u5206\u6279\u63D0\u4EA4\uFF09\u3002",
         "plan.host.runBackgroundAlreadyQueued.title": "\u6B65\u9AA4\u5DF2\u5728\u540E\u53F0\u961F\u5217",
         "plan.host.runBackgroundAlreadyQueued.detail": "\u6240\u9009\u6B65\u9AA4\u5DF2\u5728\u6392\u961F\u6216\u8FD0\u884C\u4E2D\uFF0C\u65E0\u9700\u91CD\u590D\u63D0\u4EA4\u3002",
         "plan.host.runBackgroundSkipped.title": "\u90E8\u5206\u6B65\u9AA4\u5DF2\u8DF3\u8FC7",
         "plan.host.runBackgroundSkipped.detail": "\u5DF2\u8DF3\u8FC7 {count} \u4E2A\u91CD\u590D\u6216\u5DF2\u5728\u961F\u5217\u4E2D\u7684\u6B65\u9AA4\u3002",
         "plan.host.runBackgroundConfirm.title": "\u63D0\u4EA4\u540E\u53F0\u4EFB\u52A1\uFF1F",
-        "plan.host.runBackgroundConfirm.message": "\u5C06\u628A {count} \u4E2A\u8BA1\u5212\u6B65\u9AA4\u63D0\u4EA4\u4E3A\u540E\u53F0\u4EFB\u52A1\uFF08{path}\uFF09\u3002\n\n{preview}{more}",
+        "plan.host.runBackgroundConfirm.message": "\u5C06\u628A {count} \u4E2A\u8BA1\u5212\u6B65\u9AA4\u63D0\u4EA4\u4E3A\u540E\u53F0\u4EFB\u52A1\uFF08{path}\uFF09\u3002\n\n{preview}{more}{capNote}",
         "plan.host.runBackgroundConfirm.confirm": "\u63D0\u4EA4\u540E\u53F0",
         "plan.host.runBackgroundQueued.title": "\u5DF2\u63D0\u4EA4\u540E\u53F0\u4EFB\u52A1",
         "plan.host.runBackgroundQueued.detail": "\u5DF2\u6392\u961F {count} \u4E2A\u6B65\u9AA4\uFF08{path}\uFF09",
@@ -7762,6 +8571,7 @@ var init_translations = __esm({
         "debug.phase.failed": "\u5931\u8D25",
         "bottomPanel.resize": "\u8C03\u6574\u5E95\u680F\u9AD8\u5EA6",
         "bottomPanel.resizeHint": "\u62D6\u52A8\u8C03\u6574\u9AD8\u5EA6\uFF1B\u53CC\u51FB\u6062\u590D\u9ED8\u8BA4",
+        "bottomPanel.close": "\u5173\u95ED\u5E95\u680F",
         "tasksPanel.emptyTitle": "\u6682\u65E0\u4EFB\u52A1\u6E05\u5355",
         "tasksPanel.emptyDesc": "\u521B\u5EFA .aide/tasks.md \u6216\u5728 .aide/specs/*/tasks.md \u4E2D\u6DFB\u52A0\u590D\u9009\u6846\u4EFB\u52A1\u3002",
         "tasksPanel.searchPlaceholder": "\u7B5B\u9009\u4EFB\u52A1\u6216\u8DEF\u5F84\u2026",
@@ -7956,6 +8766,9 @@ var init_translations = __esm({
         "share.localHint": "\u5F53\u524D\u4E3A\u672C\u5730\u5FEB\u7167\uFF0C\u4EC5\u5728\u672C\u6D4F\u89C8\u5668\u6709\u6548\uFF1B\u8054\u7F51\u540E\u4F1A\u4F18\u5148\u5C1D\u8BD5\u4E91\u7AEF\u5206\u4EAB\u3002",
         "share.cloudBadge": "\u4E91\u7AEF",
         "share.localBadge": "\u672C\u5730",
+        "share.loadFailed": "\u52A0\u8F7D\u5206\u4EAB\u5931\u8D25\uFF0C\u94FE\u63A5\u53EF\u80FD\u5DF2\u8FC7\u671F\u3002",
+        "share.loading": "\u52A0\u8F7D\u4E2D\u2026",
+        "share.historyLoading": "\u6B63\u5728\u540C\u6B65\u5206\u4EAB\u8BB0\u5F55\u2026",
         "share.generateLink": "\u751F\u6210\u5206\u4EAB\u94FE\u63A5",
         "share.exportJson": "\u5BFC\u51FA JSON",
         "share.linkReady": "\u94FE\u63A5\u5DF2\u751F\u6210\uFF0C\u73B0\u5728\u53EF\u4EE5\u590D\u5236\u6216\u91CD\u65B0\u751F\u6210\u3002",
@@ -7968,6 +8781,14 @@ var init_translations = __esm({
         "share.importHint": "\u7C98\u8D34\u5BFC\u51FA\u7684 JSON \u5185\u5BB9\u5373\u53EF\u6062\u590D\u9879\u76EE\u3002\u4E5F\u652F\u6301\u901A\u8FC7 URL \u53C2\u6570 `?share=xxx` \u8FDB\u5165\u5206\u4EAB\u6062\u590D\u6D41\u7A0B\u3002",
         "share.importProject": "\u5BFC\u5165\u9879\u76EE",
         "share.importFailed": "\u5BFC\u5165\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5 JSON \u7ED3\u6784\u662F\u5426\u6B63\u786E\u3002",
+        "share.intent.include": "\u9644\u5E26 Intent \u5FEB\u7167\uFF08Spec \u8FDB\u5EA6 + \u610F\u56FE\u56FE\u8C31\uFF09",
+        "share.intent.summary": "Intent \xB7 {summary}",
+        "share.intent.imported.title": "\u5DF2\u6062\u590D Intent \u4E0A\u4E0B\u6587",
+        "share.intent.imported.detail": "\u5DF2\u805A\u7126 {summary}\uFF0CIntent Shell \u5DF2\u5F00\u542F\u3002",
+        "share.intent.importHint": "\u5BFC\u5165\u7684\u9879\u76EE JSON \u82E5\u542B .aide/meta/intent-share.json\uFF0C\u5C06\u81EA\u52A8\u6062\u590D Spec \u7126\u70B9\u3002",
+        "share.intent.previewTitle": "Intent \u5FEB\u7167\u9884\u89C8",
+        "share.intent.applyFocus": "\u5E94\u7528 Intent \u7126\u70B9",
+        "share.intent.importInvalid": "\u4E0D\u662F\u6709\u6548\u7684 intent-share.json",
         "pay.title": "\u652F\u4ED8 \u2014 {plan}",
         "pay.aria": "\u56FD\u5185\u652F\u4ED8",
         "pay.summaryLabel": "\u5347\u7EA7\u5957\u9910",
@@ -8045,6 +8866,8 @@ var init_translations = __esm({
         "workspace.cloudSave.omittedInvalid": "\u8DF3\u8FC7\u65E0\u6548\u6587\u4EF6\u540D {count} \u4E2A",
         "workspace.cloudSave.failed413Title": "\u5DE5\u4F5C\u533A\u8FC7\u5927\uFF08413\uFF09",
         "workspace.cloudSave.failed413Detail": "\u8BF7\u5220\u9664\u5927\u6587\u4EF6\u6216\u4E8C\u8FDB\u5236\u8D44\u6E90\u540E\u624B\u52A8\u4FDD\u5B58\uFF1B\u672C\u5730\u81EA\u52A8\u4FDD\u5B58\u4ECD\u4FDD\u7559\u5B8C\u6574\u526F\u672C\u3002",
+        "workspace.cloudSave.storageLimitTitle": "\u4E91\u5B58\u50A8\u5DF2\u8FBE\u5957\u9910\u4E0A\u9650",
+        "workspace.cloudSave.storageLimitDetail": "\u5F53\u524D\u8BA1\u5212\u4E91\u5B58\u50A8\u4E0A\u9650\u4E3A {limitGb} GB\uFF0C\u5347\u7EA7\u4E13\u4E1A\u7248\u6216\u56E2\u961F\u7248\u53EF\u6269\u5BB9",
         "workspace.cloudSave.failedTitle": "\u4E91\u7AEF\u4FDD\u5B58\u5931\u8D25",
         "workspace.cloudSave.failedDetail": "\u8BF7\u68C0\u67E5\u7F51\u7EDC\uFF1B\u672C\u5730 IndexedDB \u4ECD\u4FDD\u7559\u81EA\u52A8\u4FDD\u5B58\u3002",
         "snippet.builtin.reactComponent.desc": "React \u51FD\u6570\u7EC4\u4EF6\u6A21\u677F",
@@ -8278,6 +9101,26 @@ var init_translations = __esm({
         "welcome.pathLocalDesc": "\u65E0\u9700\u767B\u5F55\uFF0C\u652F\u6301 BYOK \u4E0E\u672C\u5730\u7F16\u8F91",
         "welcome.pathCloudTitle": "\u767B\u5F55\u4E91\u8D26\u53F7",
         "welcome.pathCloudDesc": "\u540C\u6B65\u5DE5\u4F5C\u533A\u4E0E\u5E73\u53F0 AI \u914D\u989D",
+        "welcome.capstone.title": "\u8BFE\u8BBE / \u7ADE\u8D5B Capstone Pack",
+        "welcome.capstone.desc": "\u4E00\u952E\u751F\u6210\u56DB\u4EF6\u5957 + \u6D4B\u8BD5\u811A\u624B\u67B6 + \u8BC1\u660E\u9A8C\u6536 \u2014 \u9002\u5408\u8BFE\u7A0B\u8BBE\u8BA1\u4E0E\u7B54\u8FA9",
+        "capstone.funnel.reviewSpec": "\u8BFE\u8BBE Capstone \xB7 \u5148\u67E5\u770B {slug} \u7684\u4EFB\u52A1\u6E05\u5355",
+        "capstone.funnel.runTasks": "\u8BFE\u8BBE Capstone \xB7 {slug} \u8FD8\u6709\u5F85\u529E\u4EFB\u52A1",
+        "capstone.funnel.checkAcceptance": "\u8BFE\u8BBE Capstone \xB7 \u52FE\u9009 {slug} \u9A8C\u6536\u9879",
+        "capstone.funnel.actionReview": "\u6253\u5F00 tasks",
+        "capstone.funnel.actionRun": "\u8DD1\u4E0B\u4E00\u9879",
+        "capstone.funnel.actionAcceptance": "\u6253\u5F00\u9A8C\u6536",
+        "capstone.funnel.dashboard.title": "\u8BFE\u8BBE Capstone \u8FDB\u5EA6",
+        "capstone.funnel.dashboard.subtitle": "{slug} \xB7 \u5DF2\u5B8C\u6210 {percent}%",
+        "capstone.funnel.dashboard.resume": "\u7EE7\u7EED\u8BFE\u8BBE",
+        "capstone.funnel.metric.welcome": "\u4ECE Welcome \u5F00\u59CB",
+        "capstone.funnel.metric.created": "\u521B\u5EFA\u56DB\u4EF6\u5957",
+        "capstone.funnel.metric.autoLaunch": "\u8FDB\u5165\u6267\u884C\u6A21\u5F0F\u5E76\u9884\u586B Chat",
+        "capstone.funnel.metric.review": "\u67E5\u770B\u4EFB\u52A1\u6E05\u5355",
+        "capstone.funnel.metric.runTasks": "\u8DD1\u7B2C\u4E00\u9879\u4EFB\u52A1",
+        "capstone.funnel.metric.acceptance": "\u52FE\u9009\u9A8C\u6536\u9879",
+        "capstone.funnel.metric.completed": "\u8BC1\u660E\u5305\u5C31\u7EEA",
+        "capstone.launch.queued.title": "\u5DF2\u9884\u586B\u7B2C\u4E00\u9879\u8BFE\u8BBE\u4EFB\u52A1",
+        "capstone.launch.queued.detail": "Chat \u5DF2\u6253\u5F00\uFF1A{task}",
         "queue.preview.title": "\u961F\u5217\u9884\u89C8",
         "queue.preview.planTag": "Plan",
         "queue.preview.specTag": "Spec",
@@ -8363,6 +9206,30 @@ var init_translations = __esm({
         "specStudio.title": "Spec Studio",
         "specStudio.lead": "\u4E3A Node\u3001Java\u3001C++\u3001Git \u4E0E AI Agent \u4EFB\u52A1\u751F\u6210\u53EF\u6267\u884C Spec\uFF08requirements / design / tasks / acceptance + hooks\uFF09\u3002",
         "specStudio.nameLabel": "Spec \u540D\u79F0",
+        "specStudio.nameRequired": "\u8BF7\u5148\u586B\u5199 Spec \u540D\u79F0\uFF0C\u518D\u70B9\u51FB\u300C\u521B\u5EFA Spec\u300D\u3002",
+        "specStudio.wizard.label": "\u610F\u56FE\u5F62\u5F0F\u5316\u5411\u5BFC\u6B65\u9AA4",
+        "specStudio.wizard.back": "\u4E0A\u4E00\u6B65",
+        "specStudio.wizard.next": "\u4E0B\u4E00\u6B65",
+        "specStudio.wizard.step.intent": "\u610F\u56FE",
+        "specStudio.wizard.step.template": "\u6A21\u677F",
+        "specStudio.wizard.step.preview": "\u9884\u89C8\u4E0E\u7F16\u8F91",
+        "specStudio.wizard.contextName": "Spec\uFF1A{name}",
+        "specStudio.wizard.contextGoal": "\u76EE\u6807\uFF1A{goal}",
+        "specStudio.preview.tabsLabel": "\u56DB\u4EF6\u5957\u9884\u89C8",
+        "specStudio.preview.tab.requirements": "requirements",
+        "specStudio.preview.tab.design": "design",
+        "specStudio.preview.tab.tasks": "tasks",
+        "specStudio.preview.tab.acceptance": "acceptance",
+        "specStudio.preview.stats": "{files} \u4E2A\u6587\u4EF6 \xB7 {tasks} \u6761\u5F85\u529E \xB7 {acceptance} \u6761\u9A8C\u6536",
+        "acceptanceEditor.title": "\u9A8C\u6536\u7F16\u8F91\u5668",
+        "acceptanceEditor.lead": "\u52FE\u9009 acceptance.md \u4E2D\u7684\u9A8C\u6536\u9879\uFF1B\u5168\u90E8\u52FE\u9009\u540E\u53EF\u8FD0\u884C\u9A8C\u8BC1\u3002",
+        "acceptanceEditor.noCriteria": "\u672A\u627E\u5230 checkbox \u9A8C\u6536\u9879\u3002\u8BF7\u7528 Markdown \u6DFB\u52A0 `- [ ] \u63CF\u8FF0`\uFF0C\u6216\u70B9\u300C\u7F16\u8F91 Markdown\u300D\u3002",
+        "acceptanceEditor.openCount": "\u672A\u5B8C\u6210 {count} \u9879",
+        "acceptanceEditor.browserCommandHint": "\u6D4F\u89C8\u5668\u5185\u4EC5\u6821\u9A8C checkbox\uFF1B```aide-acceptance``` \u547D\u4EE4\u5757\u9700\u684C\u9762\u7AEF\u6267\u884C\u3002",
+        "acceptanceEditor.runVerify": "\u8FD0\u884C\u9A8C\u6536",
+        "acceptanceEditor.openMarkdown": "\u7F16\u8F91 Markdown",
+        "acceptanceEditor.verifyOk": "\u9A8C\u6536\u901A\u8FC7",
+        "acceptanceEditor.verifyFail": "\u9A8C\u6536\u672A\u901A\u8FC7",
         "specStudio.goalLabel": "\u76EE\u6807\uFF08\u4F9B AI \u5B8C\u5584 Spec\uFF09",
         "specStudio.goalPlaceholder": "\u4F8B\u5982\uFF1A\u4E3A\u767B\u5F55 API \u589E\u52A0 refresh token\uFF0C\u5E76\u8865\u96C6\u6210\u6D4B\u8BD5",
         "specStudio.filterStacks": "\u6309\u6280\u672F\u6808\u7B5B\u9009\u6A21\u677F",
@@ -8405,6 +9272,10 @@ var init_translations = __esm({
         "specStudio.template.git-release.desc": "Changelog\u3001\u7248\u672C\u53F7\u4E0E tag \u6E05\u5355",
         "specStudio.template.ai-agent-task.title": "AI Agent \u4EFB\u52A1",
         "specStudio.template.ai-agent-task.desc": "\u591A\u6587\u4EF6 Agent \u8BA1\u5212\u4E0E review hooks",
+        "specStudio.template.demo-onboarding.title": "Intent 60 \u79D2\u6F14\u793A",
+        "specStudio.template.demo-onboarding.desc": "\u6700\u5C0F Spec \u2192 \u961F\u5217 \u2192 acceptance \u95ED\u73AF\u6F14\u793A\u5305",
+        "specStudio.template.course-capstone.title": "\u8BFE\u8BBE Capstone Pack",
+        "specStudio.template.course-capstone.desc": "\u5B8C\u6574\u56DB\u4EF6\u5957 + \u6D4B\u8BD5\u811A\u624B\u67B6 + Proof \u9A8C\u6536\u9879",
         "command.specStudio": "Spec Studio",
         "command.specStudio.sub": "\u591A\u6808\u6A21\u677F\u521B\u5EFA\u53EF\u6267\u884C Spec",
         "command.runFirstSpecTask": "\u6267\u884C\u9996\u6761 Spec \u4EFB\u52A1",
@@ -8419,7 +9290,7 @@ var init_translations = __esm({
         "spec.workflow.tasksRecent": "Spec \u4EFB\u52A1\uFF08\u6700\u8FD1 8 \u6761\uFF09",
         "spec.workflow.runTask": "\u6267\u884C\u4EFB\u52A1",
         "spec.workflow.markDone": "\u6807\u8BB0\u5B8C\u6210",
-        "activityLine.title": "Activity Line",
+        "activityLine.title": "\u5DE5\u7A0B\u8282\u594F",
         "activityLine.expandHint": "\u70B9\u51FB\u5C55\u5F00",
         "activityLine.eventCount": "{count} \u6761\u4E8B\u4EF6",
         "activityLine.empty": "\u6682\u65E0\u8FD0\u884C\u4E8B\u4EF6",
@@ -8427,9 +9298,14 @@ var init_translations = __esm({
         "activityLine.hookStart": "Hook \u5F00\u59CB",
         "activityLine.hookEnd": "Hook \u7ED3\u675F",
         "activityLine.verifyFail": "\u9A8C\u6536\u5931\u8D25",
+        "activityLine.groundingBlock": "\u4E0A\u4E0B\u6587\u6821\u9A8C\u62E6\u622A",
         "activityLine.ok": "\u6210\u529F",
         "activityLine.fail": "\u5931\u8D25",
-        "settings.aideRuntime.stubCardTitle": "AIDE Runtime Stub",
+        "activityLine.quotaExceeded": "\u914D\u989D\u63A5\u8FD1\u4E0A\u9650 \xB7 {feature}",
+        "activityLine.quotaBlocked": "\u4ECA\u65E5 AI \u914D\u989D\u5DF2\u7528\u5B8C \xB7 \u53EF\u5347\u7EA7\u6269\u5BB9",
+        "activityLine.entitlementBlocked": "\u6743\u76CA\u53D7\u9650 \xB7 {feature}",
+        "activityLine.entitlementBlockedGeneric": "\u5F53\u524D\u529F\u80FD\u9700\u5347\u7EA7\u5957\u9910\u89E3\u9501",
+        "settings.aideRuntime.stubCardTitle": "\u5DE5\u7A0B\u8FD0\u884C\u65F6\uFF08\u9884\u89C8\uFF09",
         "settings.aideRuntime.productionCardTitle": "Activity Line",
         "settings.aideRuntime.engineProductionCardTitle": "AIDE Runtime",
         "settings.aideRuntime.stubCardDesc": "Activity Line \u4E0E orchestrator \u5904\u4E8E {mode} \u6A21\u5F0F\uFF1A\u4EC5\u8BB0\u5F55\u4E8B\u4EF6\uFF0C\u4E0D\u6392\u6C34\u961F\u5217\u3002\u5F00\u542F\uFF1AVITE_AIDE_RUNTIME_UI \u6216 session flag\u3002",
@@ -8542,7 +9418,93 @@ var init_translations = __esm({
       },
       "en-US": {
         "app.name": "AI IDE",
-        "app.tagline": "Build, run, and pair with AI in the browser",
+        "app.tagline": "Multi-capability AI developer space",
+        "workspaceMode.title": "Workspace mode",
+        "workspaceMode.code": "Code",
+        "workspaceMode.plan": "Plan",
+        "workspaceMode.execute": "Execute",
+        "workspaceMode.review": "Review",
+        "sessionResume.title": "Continue where you left off",
+        "sessionResume.continue": "Continue",
+        "sessionResume.generic": "Restore your last file and Spec context",
+        "sessionResume.spec": "Spec \xB7 {slug}",
+        "sessionResume.openTasks": "{count} open tasks",
+        "sessionResume.file": "File \xB7 {name}",
+        "learningPath.sectionTitle": "Learning paths",
+        "learningPath.sectionDesc": "Stack templates for Plan \u2192 Spec \u2192 execute loops.",
+        "learningPath.duration": "~{min} min",
+        "learningPath.intentDemo.title": "Intent 60s intro",
+        "learningPath.intentDemo.desc": "Minimal demo pack with queue and acceptance.",
+        "learningPath.nodeApi.title": "Node API iteration",
+        "learningPath.nodeApi.desc": "Create an API project from Spec Studio.",
+        "learningPath.python.title": "Python service",
+        "learningPath.python.desc": "Plan and implement a backend service Spec.",
+        "learningPath.aiAgent.title": "Agent task chain",
+        "learningPath.aiAgent.desc": "Run Spec tasks with Agent mode.",
+        "learningPath.statusInProgress": "In progress",
+        "learningPath.statusCompleted": "Completed",
+        "weeklyRecap.title": "Weekly recap",
+        "weeklyRecap.doneTasks": "Tasks done",
+        "weeklyRecap.openTasks": "Open tasks",
+        "weeklyRecap.proofReports": "Proof reports",
+        "weeklyRecap.specs": "Specs",
+        "weeklyRecap.recentProofs": "Recent proof HTML",
+        "weeklyRecap.empty": "No reports yet. Save a proof pack after acceptance passes.",
+        "weeklyRecap.copyMarkdown": "Copy Markdown",
+        "weeklyRecap.export": "Export .md",
+        "gitSpecCommit.hint": "Spec still has {count} open task(s) ({slug}). Review acceptance before commit.",
+        "gitSpecCommit.openTasks": "View tasks",
+        "gitSpecCommit.reviewMode": "Switch to review mode",
+        "todayFocus.title": "Today's focus",
+        "todayFocus.mode": "Mode \xB7 {mode}",
+        "todayFocus.spec": "Spec \xB7 {slug}",
+        "todayFocus.openTasks": "{count} open tasks",
+        "todayFocus.applyMode": "Switch to {mode}",
+        "todayFocus.proofReadyHint": "{slug} acceptance complete \u2014 save proof",
+        "linkage.proofReady": "{slug} acceptance complete \u2014 save proof and share progress",
+        "linkage.shareProgress": "Share progress",
+        "linkage.autopilotHint": "Clean git with open Spec tasks \u2014 try Autopilot next",
+        "command.cat.linkage": "Linkage",
+        "command.linkage.autopilot": "Autopilot next Spec task",
+        "command.linkage.autopilot.sub": "Advance the queue when git is clean",
+        "command.linkage.shareProgress": "Open share progress",
+        "command.linkage.shareProgress.sub": "Read-only progress URL and proof preview",
+        "weeklyRecap.learningPathsCompleted": "Learning paths completed",
+        "weeklyRecap.learningPathsInProgress": "Learning paths in progress",
+        "shareProgress.watch": "Watch for updates",
+        "shareProgress.watchUpdated": "Updated \xB7 Unwatch",
+        "shareProgress.updateBanner": "Spec progress or proof reports changed since your last visit.",
+        "shareProgress.graphTruncated": "Showing {shown} of {total} nodes",
+        "shareProgress.unwatch": "Unwatch",
+        "shareProgress.specTree": "Intent graph",
+        "shareProgress.specProgress": "{done}/{total} accepted",
+        "shareProgress.comments": "Collaborator notes",
+        "shareProgress.commentsEmpty": "No notes yet",
+        "shareProgress.commentAuthor": "Name",
+        "shareProgress.commentBody": "Leave progress feedback\u2026",
+        "shareProgress.commentSubmit": "Add note",
+        "activityLine.rhythm.idle": "Idle",
+        "activityLine.rhythm.planning": "Planning",
+        "activityLine.rhythm.executing": "Executing",
+        "activityLine.rhythm.verify": "Awaiting verify",
+        "activityLine.rhythm.failed": "Failed",
+        "activityLine.rhythm.review": "Review / deliver",
+        "command.workspaceMode": "Switch workspace mode",
+        "command.workspaceMode.sub": "Code \xB7 Plan \xB7 Execute \xB7 Review",
+        "command.sessionResume": "Continue last session",
+        "command.sessionResume.sub": "Restore file and Spec focus",
+        "command.weeklyRecap": "Weekly recap",
+        "command.weeklyRecap.sub": "Tasks, Specs, and proof stats",
+        "share.tab.progress": "Progress",
+        "share.progress.readonlyTitle": "Read-only progress view",
+        "share.progress.readonlyDesc": "Collaborators can view Intent snapshots from share links.",
+        "share.progress.proofPreview": "Proof preview",
+        "share.progress.noProof": "No proof HTML yet. Save from Shell after acceptance passes.",
+        "share.progress.copyLink": "Copy read-only progress link",
+        "share.progress.linkHint": "Generate a share link first, then copy the read-only progress URL (?view=progress).",
+        "shareProgress.loading": "Loading progress snapshot\u2026",
+        "shareProgress.notFound": "Share not found or link expired.",
+        "shareProgress.openFullIde": "Open in IDE",
         "workspaceRoot.label": "Workspace root",
         "workspaceRoot.add": "Add workspace root",
         "workspaceRoot.remove": "Remove current root",
@@ -8681,6 +9643,85 @@ var init_translations = __esm({
         "welcome.cloudDegraded": "Cloud database is unavailable \u2014 sign-in and cloud workspaces may fail. BYOK and local editing still work.",
         "welcome.cloudDegradedPlatform": "Cloud database is unavailable \u2014 sign-in and cloud workspaces may fail. Local editing still works; admins should check DATABASE_URL and AUTH_SECRET.",
         "welcome.networkTips": "Slow load or API timeouts? Access to vercel.app can be unstable in some regions. Retry later, switch networks, or install the Windows desktop app (local disk and terminal do not rely on browser file APIs). Custom domain planned in v1.0.8.",
+        "welcome.networkTipsSelfHosted": "Slow connection? Use https and accept the self-signed certificate in your browser (WebContainer requires a secure context). A custom domain and trusted certificate will apply after ICP filing completes.",
+        "welcome.cnBetaBanner": "China beta (ICP pending): served via IP and a self-signed certificate. Accounts are separate from the global site \u2014 register here.",
+        "welcome.appUrlIp": "China beta \xB7 {url}",
+        "welcome.appUrlSelfHosted": "Self-hosted \xB7 {url}",
+        "intent.promote.action": "Promote to Spec",
+        "intent.promote.modalTitle": "Promote to Spec",
+        "intent.promote.modalLead": "Write conversation context into .aide/specs/ bundle; optionally run the first task.",
+        "intent.promote.confirm": "Create Spec",
+        "intent.promote.runFirstTask": "Run first task after create",
+        "intent.promote.openStudio": "Open Spec Studio after create",
+        "intent.promote.specNamePrompt": "Spec name (saved under .aide/specs/)",
+        "intent.promote.success": "Promoted to Spec",
+        "intent.queue.title": "Verification-first queue",
+        "intent.queue.stage.pending": "Pending",
+        "intent.queue.stage.running": "Running",
+        "intent.queue.stage.verify": "Verify",
+        "intent.queue.stage.passed": "Passed",
+        "intent.queue.stage.failed": "Failed",
+        "intent.graph.title": "Intent graph",
+        "intent.graph.desc": "Trace Plan steps, Spec tasks, and acceptance (simplified).",
+        "intent.graph.empty": "No links yet. Create a Spec or map Plan steps to Spec tasks.",
+        "intent.graph.group.plan": "Plan",
+        "intent.graph.group.tasks": "Spec tasks",
+        "intent.graph.group.acceptance": "Acceptance",
+        "intent.graph.openTitle": "Open intent graph (Settings \u2192 Features)",
+        "intent.graph.openShort": "Intent graph",
+        "intent.shell.barTitle": "Intent Shell",
+        "intent.shell.graphTitle": "Intent graph",
+        "intent.shell.queueTitle": "Verify queue",
+        "intent.shell.openChat": "Open Chat",
+        "intent.shell.saveProof": "Save proof",
+        "intent.shell.hide": "Hide shell",
+        "intent.shell.reopenGraph": "Show graph",
+        "intent.shell.reopenQueue": "Show queue",
+        "intent.shell.stage.idle": "Queue idle",
+        "intent.shell.stage.running": "Running",
+        "intent.shell.stage.verify": "Awaiting verify",
+        "intent.shell.stage.failed": "Verify failed",
+        "intent.replay.restoreProof": "Restore from proof",
+        "intent.replay.restored.title": "Proof context loaded",
+        "intent.replay.restored.detail": 'Focused spec "{slug}" and attempted queue restore.',
+        "intent.replay.overlayBadge": "Proof graph snapshot",
+        "intent.autopilot.runNext": "Autopilot \xB7 Next",
+        "intent.autopilot.runNextWithCount": "Autopilot \xB7 Next ({count} open)",
+        "autopilot.quota.unlimited": "Unlimited Autopilot",
+        "autopilot.quota.remaining": "Autopilot {used}/{limit} today \xB7 {remaining} left",
+        "autopilot.quota.blocked": "Daily Autopilot limit reached ({used}/{limit})",
+        "intent.drift.action.open-tasks": "Open tasks",
+        "intent.drift.action.open-acceptance": "Open acceptance",
+        "intent.drift.action.open-file": "Open referenced file",
+        "intent.drift.action.open-proof": "Open proof",
+        "intent.drift.action.open-requirements": "Update requirements",
+        "intent.drift.action.open-design": "Open design",
+        "intent.drift.title": "Drift",
+        "intent.drift.openTasks": "{count} open task(s) remain",
+        "intent.drift.openAcceptance": "{count} acceptance item(s) unchecked",
+        "intent.drift.missingPath": "Missing path: {path}",
+        "intent.grounding.title": "Grounding blocked enqueue",
+        "intent.grounding.dismiss": "Dismiss",
+        "intent.grounding.v2.detail": "Task references symbol(s) missing from codebase ({count})",
+        "intent.grounding.missingPath": "Missing path: {path}",
+        "intent.demo.verifyBanner.title": "Demo awaiting verify",
+        "intent.demo.verifyBanner.desc": "If greet is implemented, mark acceptance and continue the queue.",
+        "intent.demo.verifyBanner.action": "Mark level complete",
+        "intent.demo.markBlocked.title": "Cannot mark complete yet",
+        "intent.demo.markBlocked.detail": "Ensure src/demo.ts exports greet and returns a string containing Hello.",
+        "intent.demo.reportGuide.title": "Level passed",
+        "intent.proof.saveAction": "Save proof bundle",
+        "intent.proof.saved.title": "Proof bundle saved",
+        "intent.proof.saved.detail": "Written to {path} plus HTML sibling",
+        "intent.proof.saved.markdownOnly": "Markdown proof saved to {path} (HTML requires Pro)",
+        "intent.proof.noSpec.title": "No spec to prove",
+        "intent.proof.noSpec.detail": "Complete a spec task or start the Intent demo first.",
+        "intent.demo.reportGuide.detail": "Next: click \u201CSave proof bundle\u201D for diff + acceptance output.",
+        "intent.demo.started.title": "Intent demo started",
+        "intent.demo.started.detail": "Agent will complete the greet task. After acceptance passes, save to .aide/reports; open Settings \u2192 Intent graph for traceability.",
+        "welcome.pathIntentTitle": "Start Intent demo",
+        "welcome.pathIntentDesc": "60s Spec \u2192 queue \u2192 acceptance loop (demo pack).",
+        "welcome.pathIntentHero": "60-second Intent demo",
         "welcome.title": "Get into flow faster, spend less time on setup",
         "welcome.lead": "Open files, pair with AI, run code, and manage workspaces in one lightweight UI. Pick an entry below and start\u2014no extra intro screen.",
         "welcome.platformCta": "Sign up free to use platform AI\u2014no DeepSeek or OpenAI API key required (Cursor-style out of the box).",
@@ -8735,6 +9776,7 @@ var init_translations = __esm({
         "welcome.footer.browser": "Browser capabilities",
         "welcome.footer.aiNote": "AI chat and API keys are handled by your chosen model provider.",
         "welcome.appUrl": "Current URL: {url}",
+        "auth.cnAccountHint": "China and global sites use separate accounts. If you signed up on ai-ide-flame.vercel.app, register a new account here with email.",
         "auth.title.login": "Welcome back",
         "auth.title.register": "Create account",
         "auth.title.forgot": "Reset password",
@@ -9059,6 +10101,7 @@ var init_translations = __esm({
         "subscription.limit.storage": "Storage",
         "subscription.perDay": " / day",
         "subscription.perMonth": "/mo",
+        "subscription.price.free": "Free",
         "subscription.unit.workspaces": "",
         "subscription.checkout.redirect": "Redirecting\u2026",
         "subscription.checkout.current": "Current plan",
@@ -9089,18 +10132,75 @@ var init_translations = __esm({
         "subscription.plan.free.name": "Free",
         "subscription.plan.free.desc": "Learning and small projects with platform AI after sign-in.",
         "subscription.plan.free.f1": "Platform AI \xB7 economy models (Flash / Lite)",
-        "subscription.plan.free.f2": "Unlimited cloud workspaces",
-        "subscription.plan.free.f3": "200 weighted quota units / day",
+        "subscription.plan.free.f2": "3 cloud workspaces \xB7 5 shares (7 days)",
+        "subscription.plan.free.f3": "Plan / Spec / Git basics",
+        "subscription.plan.free.f4": "200 weighted AI quota units / day",
+        "subscription.plan.free.f5": "2 background Agent runs / day",
+        "subscription.plan.free.f6": "Autopilot 3 runs / day \xB7 proof Markdown",
         "subscription.plan.pro.name": "Pro",
-        "subscription.plan.pro.desc": "Power users, $9.99/mo.",
-        "subscription.plan.pro.f1": "2000 weighted quota units / day",
-        "subscription.plan.pro.f2": "Unlimited workspaces",
-        "subscription.plan.pro.f3": "Secure Stripe subscription",
+        "subscription.plan.pro.desc": "Personal engineering loop \u2014 Autopilot \xB7 proof \xB7 all AI tiers",
+        "subscription.plan.pro.f1": "All platform AI tiers + 2000 quota / day",
+        "subscription.plan.pro.f2": "Unlimited Autopilot \xB7 full Intent linkage",
+        "subscription.plan.pro.f3": "Proof MD+HTML \xB7 weekly recap export",
+        "subscription.plan.pro.f4": "20 workspaces \xB7 90-day shares",
+        "subscription.plan.pro.f5": "100 background Agent runs / day \xB7 5 concurrent",
+        "subscription.plan.pro.f6": "Host collab \xB7 intent-share import",
         "subscription.plan.enterprise.name": "Team",
-        "subscription.plan.enterprise.desc": "Teams and heavy usage, $19.99/mo.",
-        "subscription.plan.enterprise.f1": "Unlimited quota",
-        "subscription.plan.enterprise.f2": "Unlimited workspaces",
-        "subscription.plan.enterprise.f3": "Team features (planned)",
+        "subscription.plan.enterprise.desc": "Collaborative delivery \u2014 long shares \xB7 batch Agent \xB7 rooms",
+        "subscription.plan.enterprise.f1": "Unlimited AI quota",
+        "subscription.plan.enterprise.f2": "All Pro loop features",
+        "subscription.plan.enterprise.f3": "100 shares \xB7 365-day TTL",
+        "subscription.plan.enterprise.f4": "300 Agent runs / day \xB7 batch 20",
+        "subscription.plan.enterprise.f5": "Collab rooms up to 10 people",
+        "subscription.plan.enterprise.f6": "Share progress watch \xB7 100GB storage",
+        "entitlements.card.title": "Your plan benefits",
+        "entitlements.card.planIs": "You are on {plan}",
+        "entitlements.card.upgrade": "Upgrade to Pro",
+        "entitlements.card.upgradeTeam": "Upgrade to Team",
+        "entitlements.card.teamPlus": "Team+",
+        "entitlements.card.teamPerksLead": "vs Pro: higher quotas, longer shares, larger collab & storage",
+        "entitlements.highlight.aiQuota": "Platform AI daily quota \xB7 {quota}",
+        "entitlements.highlight.workspaces": "Cloud workspaces \xB7 {count}",
+        "entitlements.highlight.storage": "Cloud storage \xB7 {gb} GB",
+        "entitlements.highlight.autopilot": "Autopilot \xB7 {runs} runs / day",
+        "entitlements.highlight.backgroundJobs": "Background Agent \xB7 {daily} / day \xB7 {concurrent} concurrent",
+        "entitlements.highlight.intentLinkage": "Full Intent linkage (replay \xB7 drift \xB7 graph)",
+        "entitlements.highlight.proofExport": "Proof package HTML export",
+        "entitlements.highlight.shares": "Cloud shares \xB7 {count} \xB7 {days}-day TTL",
+        "entitlements.highlight.collab": "Host collab \xB7 up to {count} people",
+        "entitlements.upgrade.proofHtml": "Pro exports shareable HTML proof bundles",
+        "entitlements.upgrade.weeklyRecap": "Pro can copy/export weekly recap Markdown",
+        "entitlements.upgrade.intentShare": "Pro imports intent-share snapshots and restores focus",
+        "entitlements.upgrade.intentLinkage": "Pro unlocks full Intent linkage \u2014 drift fixes \xB7 graph highlights \xB7 proof replay",
+        "entitlements.upgrade.autopilot": "Daily Autopilot limit reached \u2014 Pro runs the Spec queue without caps",
+        "entitlements.upgrade.shareProgressComments": "Pro can add collaborator notes on Share progress pages",
+        "entitlements.upgrade.shareProgressWatch": "Team can watch Share progress updates (email after ICP filing)",
+        "entitlements.upgrade.collabHost": "Pro can host collaboration rooms",
+        "entitlements.upgrade.planBatch": "Queue multiple Plan steps at once on Pro; Team allows up to 20 per batch",
+        "entitlements.upgrade.allModelTiers": "Pro unlocks all platform AI model tiers",
+        "entitlements.upgrade.fullSessionResume": "Pro restores full session context for up to 7 days",
+        "entitlements.feature.autopilotUnlimited": "Unlimited Autopilot",
+        "entitlements.feature.proofHtmlExport": "Proof HTML export",
+        "entitlements.feature.weeklyRecapExport": "Weekly recap export",
+        "entitlements.feature.intentShareImport": "intent-share import",
+        "entitlements.feature.collabHost": "Collab hosting",
+        "entitlements.feature.shareProgressComments": "Share progress notes",
+        "entitlements.feature.shareProgressWatch": "Share progress watch",
+        "entitlements.feature.intentFullLinkage": "Full Intent linkage",
+        "entitlements.feature.allModelTiers": "All platform AI tiers",
+        "shareProgress.commentsLoginRequired": "Sign in and upgrade to Pro to add collaborator notes",
+        "welcome.planComparison.title": "Plan comparison (brief)",
+        "welcome.planComparison.recommended": "Recommended",
+        "welcome.planComparison.team": "Team+",
+        "welcome.planComparison.footnote": "Full benefits in Settings \u2192 Subscription; checkout prices prevail.",
+        "settings.ai.dashboardUnlocked": "{count} pro capabilities unlocked",
+        "settings.ai.dashboardLocked": "{count} more to unlock",
+        "settings.ai.dashboardNearLimit": "{label} at {percent}% ({used}/{limit})",
+        "settings.ai.nearLimit.aiQuota": "AI quota",
+        "settings.ai.nearLimit.autopilot": "Autopilot",
+        "settings.ai.nearLimit.backgroundJobs": "Background Agent",
+        "settings.ai.nearLimit.shares": "Share count",
+        "settings.ai.nearLimit.workspaces": "Cloud workspaces",
         "command.placeholder": "Command, file name, or @ for symbols",
         "command.empty.title": "No matching commands",
         "command.empty.desc": "Try a file name, feature, or @search (e.g. @login).",
@@ -9631,6 +10731,7 @@ var init_translations = __esm({
         "snippet.form.description": "Description",
         "snippet.form.descriptionPlaceholder": "What this snippet is for",
         "snippet.form.tags": "Tags",
+        "snippet.form.tagsPlaceholder": "react, hook, state",
         "snippet.form.code": "Code",
         "snippet.form.codePlaceholder": "Paste or type snippet code",
         "snippet.form.update": "Update",
@@ -9794,6 +10895,9 @@ var init_translations = __esm({
         "panel.git.subtitle": "Changes and commit history",
         "panel.debug.subtitle": "Breakpoints, call stack, and execution control",
         "panel.close": "Close panel",
+        "panel.resizeAuxiliary": "Resize auxiliary panel",
+        "panel.resizeIntentGraph": "Resize intent graph panel",
+        "panel.resizeIntentQueue": "Resize verify queue panel",
         "panel.chat.title": "AI assistant",
         "panel.chat.subtitle": "Current file and workspace context",
         "panel.backgroundJobs.title": "Background jobs",
@@ -9801,6 +10905,10 @@ var init_translations = __esm({
         "toolbar.backgroundJobs": "Background",
         "backgroundJobs.hint": "Auto-refreshes every 5s while jobs are active",
         "backgroundJobs.hintFree": "Free: 2 jobs/day, 1 active at a time. Upgrade to Pro for higher limits.",
+        "backgroundJobs.limitsFree": "{daily} jobs/day \xB7 {concurrent} concurrent \xB7 Plan batch needs Pro",
+        "backgroundJobs.limitsPro": "{daily}/day \xB7 {concurrent} concurrent \xB7 Plan batch up to {batch} steps",
+        "backgroundJobs.limitsTeam": "{daily}/day \xB7 {concurrent} concurrent \xB7 Plan batch up to {batch} steps",
+        "backgroundJobs.batchProHint": "Queue multiple Plan steps at once on Pro; Team allows up to 20 per batch",
         "backgroundJobs.empty": "No background jobs yet. Use \u201CRun in background\u201D in Chat Agent mode.",
         "backgroundJobs.loginRequired": "Sign in to use background Agent",
         "backgroundJobs.login": "Sign in",
@@ -9840,12 +10948,17 @@ var init_translations = __esm({
         "backgroundJobs.applyToIdeEmpty": "No file changes to apply",
         "plan.catalog.runInBackground": "Run in background",
         "plan.catalog.runAllInBackground": "Run all in background ({count})",
+        "plan.catalog.batchQuotaFree": "Multi-step Plan background queue needs Pro; free tier can submit single jobs manually",
+        "plan.catalog.batchQuotaPaid": "Plan batch background queue: up to {batch} steps per submit",
+        "plan.host.runBackgroundUpgrade.title": "Pro required",
+        "plan.host.runBackgroundUpgrade.detail": "Batch Plan \u2192 background jobs requires Pro or Team.",
+        "plan.host.runBackgroundBatchCap.note": "\n\nUp to {batch} steps per batch ({requested} selected \u2014 submit the rest in another batch).",
         "plan.host.runBackgroundAlreadyQueued.title": "Steps already queued",
         "plan.host.runBackgroundAlreadyQueued.detail": "Selected steps are already queued or running; nothing new to submit.",
         "plan.host.runBackgroundSkipped.title": "Some steps skipped",
         "plan.host.runBackgroundSkipped.detail": "Skipped {count} duplicate or already-queued step(s).",
         "plan.host.runBackgroundConfirm.title": "Submit background jobs?",
-        "plan.host.runBackgroundConfirm.message": "Submit {count} plan step(s) as background jobs ({path}).\n\n{preview}{more}",
+        "plan.host.runBackgroundConfirm.message": "Submit {count} plan step(s) as background jobs ({path}).\n\n{preview}{more}{capNote}",
         "plan.host.runBackgroundConfirm.confirm": "Submit",
         "plan.host.runBackgroundQueued.title": "Background jobs queued",
         "plan.host.runBackgroundQueued.detail": "Queued {count} step(s) from {path}",
@@ -10059,6 +11172,7 @@ var init_translations = __esm({
         "debug.phase.failed": "Failed",
         "bottomPanel.resize": "Resize bottom panel",
         "bottomPanel.resizeHint": "Drag to resize; double-click to reset",
+        "bottomPanel.close": "Close bottom panel",
         "tasksPanel.emptyTitle": "No task checklists yet",
         "tasksPanel.emptyDesc": "Create .aide/tasks.md or add checkbox tasks under .aide/specs/*/tasks.md.",
         "tasksPanel.searchPlaceholder": "Filter tasks or paths\u2026",
@@ -10253,6 +11367,9 @@ var init_translations = __esm({
         "share.localHint": "Local snapshot only \u2014 this browser. Cloud share is used when online.",
         "share.cloudBadge": "Cloud",
         "share.localBadge": "Local",
+        "share.loadFailed": "Could not load share \u2014 the link may have expired.",
+        "share.loading": "Loading\u2026",
+        "share.historyLoading": "Syncing share history\u2026",
         "share.generateLink": "Generate share link",
         "share.exportJson": "Export JSON",
         "share.linkReady": "Link ready \u2014 copy or regenerate.",
@@ -10265,6 +11382,14 @@ var init_translations = __esm({
         "share.importHint": "Paste exported JSON to restore. You can also open `?share=xxx` in the URL.",
         "share.importProject": "Import project",
         "share.importFailed": "Import failed. Check the JSON structure.",
+        "share.intent.include": "Include Intent snapshot (spec progress + graph)",
+        "share.intent.summary": "Intent \xB7 {summary}",
+        "share.intent.imported.title": "Intent context restored",
+        "share.intent.imported.detail": "Focused {summary}; Intent Shell enabled.",
+        "share.intent.importHint": "Project JSON with .aide/meta/intent-share.json auto-restores spec focus.",
+        "share.intent.previewTitle": "Intent snapshot preview",
+        "share.intent.applyFocus": "Apply Intent focus",
+        "share.intent.importInvalid": "Not a valid intent-share.json",
         "pay.title": "Pay \u2014 {plan}",
         "pay.aria": "China payment",
         "pay.summaryLabel": "Plan",
@@ -10342,6 +11467,8 @@ var init_translations = __esm({
         "workspace.cloudSave.omittedInvalid": "skipped {count} invalid name(s)",
         "workspace.cloudSave.failed413Title": "Workspace too large (413)",
         "workspace.cloudSave.failed413Detail": "Remove large or binary files and save again. Local autosave still keeps the full copy.",
+        "workspace.cloudSave.storageLimitTitle": "Cloud storage plan limit reached",
+        "workspace.cloudSave.storageLimitDetail": "Your plan includes {limitGb} GB of cloud storage. Upgrade to Pro or Team for more.",
         "workspace.cloudSave.failedTitle": "Cloud save failed",
         "workspace.cloudSave.failedDetail": "Check your network. Local IndexedDB autosave is unchanged.",
         "snippet.builtin.reactComponent.desc": "React function component template",
@@ -10575,6 +11702,26 @@ var init_translations = __esm({
         "welcome.pathLocalDesc": "No sign-in \u2014 BYOK and local editing",
         "welcome.pathCloudTitle": "Sign in",
         "welcome.pathCloudDesc": "Sync workspaces and platform AI quota",
+        "welcome.capstone.title": "Course / competition Capstone Pack",
+        "welcome.capstone.desc": "One-click spec bundle + test scaffold + proof acceptance \u2014 built for coursework demos",
+        "capstone.funnel.reviewSpec": "Capstone \xB7 review tasks for {slug}",
+        "capstone.funnel.runTasks": "Capstone \xB7 {slug} still has open tasks",
+        "capstone.funnel.checkAcceptance": "Capstone \xB7 check acceptance for {slug}",
+        "capstone.funnel.actionReview": "Open tasks",
+        "capstone.funnel.actionRun": "Run next",
+        "capstone.funnel.actionAcceptance": "Open acceptance",
+        "capstone.funnel.dashboard.title": "Capstone progress",
+        "capstone.funnel.dashboard.subtitle": "{slug} \xB7 {percent}% complete",
+        "capstone.funnel.dashboard.resume": "Resume capstone",
+        "capstone.funnel.metric.welcome": "Started from Welcome",
+        "capstone.funnel.metric.created": "Spec bundle created",
+        "capstone.funnel.metric.autoLaunch": "Execute mode + Chat prefill",
+        "capstone.funnel.metric.review": "Review task list",
+        "capstone.funnel.metric.runTasks": "Run first task",
+        "capstone.funnel.metric.acceptance": "Check acceptance",
+        "capstone.funnel.metric.completed": "Proof ready",
+        "capstone.launch.queued.title": "First capstone task prefilled",
+        "capstone.launch.queued.detail": "Chat opened: {task}",
         "queue.preview.title": "Queue preview",
         "queue.preview.planTag": "Plan",
         "queue.preview.specTag": "Spec",
@@ -10660,6 +11807,30 @@ var init_translations = __esm({
         "specStudio.title": "Spec Studio",
         "specStudio.lead": "Generate executable Specs for Node, Java, C++, Git, and AI agent tasks (requirements / design / tasks / acceptance + hooks).",
         "specStudio.nameLabel": "Spec name",
+        "specStudio.nameRequired": "Enter a Spec name before clicking Create Spec.",
+        "specStudio.wizard.label": "Intent formalization wizard",
+        "specStudio.wizard.back": "Back",
+        "specStudio.wizard.next": "Next",
+        "specStudio.wizard.step.intent": "Intent",
+        "specStudio.wizard.step.template": "Template",
+        "specStudio.wizard.step.preview": "Preview & edit",
+        "specStudio.wizard.contextName": "Spec: {name}",
+        "specStudio.wizard.contextGoal": "Goal: {goal}",
+        "specStudio.preview.tabsLabel": "Bundle preview",
+        "specStudio.preview.tab.requirements": "requirements",
+        "specStudio.preview.tab.design": "design",
+        "specStudio.preview.tab.tasks": "tasks",
+        "specStudio.preview.tab.acceptance": "acceptance",
+        "specStudio.preview.stats": "{files} files \xB7 {tasks} open tasks \xB7 {acceptance} acceptance items",
+        "acceptanceEditor.title": "Acceptance editor",
+        "acceptanceEditor.lead": "Check off criteria in acceptance.md, then run verification.",
+        "acceptanceEditor.noCriteria": "No checkbox criteria found. Add `- [ ] description` in Markdown, or use Edit Markdown.",
+        "acceptanceEditor.openCount": "{count} item(s) open",
+        "acceptanceEditor.browserCommandHint": "Browser checks checkboxes only; ```aide-acceptance``` commands run on desktop.",
+        "acceptanceEditor.runVerify": "Run verification",
+        "acceptanceEditor.openMarkdown": "Edit Markdown",
+        "acceptanceEditor.verifyOk": "Acceptance passed",
+        "acceptanceEditor.verifyFail": "Acceptance failed",
         "specStudio.goalLabel": "Goal (for AI refine)",
         "specStudio.goalPlaceholder": "e.g. Add refresh token to login API with integration tests",
         "specStudio.filterStacks": "Filter templates by stack",
@@ -10702,6 +11873,10 @@ var init_translations = __esm({
         "specStudio.template.git-release.desc": "Changelog, version bump, tag checklist",
         "specStudio.template.ai-agent-task.title": "AI agent task",
         "specStudio.template.ai-agent-task.desc": "Multi-file agent plan with review hooks",
+        "specStudio.template.demo-onboarding.title": "Intent 60s demo",
+        "specStudio.template.demo-onboarding.desc": "Minimal Spec \u2192 queue \u2192 acceptance loop",
+        "specStudio.template.course-capstone.title": "Course capstone pack",
+        "specStudio.template.course-capstone.desc": "Full spec bundle + test scaffold + proof acceptance",
         "command.specStudio": "Spec Studio",
         "command.specStudio.sub": "Create executable Specs from stack templates",
         "command.runFirstSpecTask": "Run first open Spec task",
@@ -10724,8 +11899,13 @@ var init_translations = __esm({
         "activityLine.hookStart": "Hook start",
         "activityLine.hookEnd": "Hook end",
         "activityLine.verifyFail": "Verify failed",
+        "activityLine.groundingBlock": "Grounding blocked",
         "activityLine.ok": "ok",
         "activityLine.fail": "fail",
+        "activityLine.quotaExceeded": "Quota near limit \xB7 {feature}",
+        "activityLine.quotaBlocked": "Daily AI quota used up \xB7 upgrade for more",
+        "activityLine.entitlementBlocked": "Feature blocked \xB7 {feature}",
+        "activityLine.entitlementBlockedGeneric": "Upgrade your plan to unlock this feature",
         "settings.aideRuntime.stubCardTitle": "AIDE Runtime stub",
         "settings.aideRuntime.productionCardTitle": "Activity Line",
         "settings.aideRuntime.engineProductionCardTitle": "AIDE Runtime",
@@ -11039,16 +12219,25 @@ var init_translationsJaBulk = __esm({
       "subscription.plan.enterprise.f1": "\u7121\u5236\u9650 \u30AF\u30A9\u30FC\u30BF",
       "subscription.plan.enterprise.f2": "\u7121\u5236\u9650 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
       "subscription.plan.enterprise.f3": "Team features (\u30D7\u30E9\u30F3ned)",
+      "subscription.plan.enterprise.f4": "300 Agent runs / day \xB7 batch 20",
+      "subscription.plan.enterprise.f5": "Collab rooms up to 10 people",
+      "subscription.plan.enterprise.f6": "100GB cloud storage \xB7 priority support",
       "subscription.plan.enterprise.name": "Team",
       "subscription.plan.free.desc": "Learning and small \u30D7\u30ED\u30B8\u30A7\u30AF\u30C8s with platform AI after sign-in.",
       "subscription.plan.free.f1": "Platform AI \xB7 economy \u30E2\u30C7\u30EBs (Flash / Lite)",
       "subscription.plan.free.f2": "\u7121\u5236\u9650 cloud \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
       "subscription.plan.free.f3": "200 weighted \u30AF\u30A9\u30FC\u30BF units / day",
+      "subscription.plan.free.f4": "200 weighted AI quota units / day",
+      "subscription.plan.free.f5": "2 background Agent runs / day",
+      "subscription.plan.free.f6": "Autopilot 3 runs / day \xB7 proof Markdown",
       "subscription.plan.free.name": "\u7121\u6599",
       "subscription.plan.pro.desc": "Power users, $9.99/mo.",
       "subscription.plan.pro.f1": "2000 weighted \u30AF\u30A9\u30FC\u30BF units / day",
       "subscription.plan.pro.f2": "\u7121\u5236\u9650 \u30EF\u30FC\u30AF\u30B9\u30DA\u30FC\u30B9",
       "subscription.plan.pro.f3": "Secure Stripe \u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3",
+      "subscription.plan.pro.f4": "20 workspaces \xB7 90-day shares",
+      "subscription.plan.pro.f5": "100 background Agent runs / day \xB7 5 concurrent",
+      "subscription.plan.pro.f6": "Host collab \xB7 intent-share import",
       "subscription.plan.pro.name": "Pro",
       "subscription.plans.loadError": "Could not load \u30D7\u30E9\u30F3s online. Showing defaults.",
       "subscription.portalFailed": "Could not open Stripe portal",
@@ -11128,6 +12317,12 @@ var init_translationsJaBulk = __esm({
       "auth.success.signout": "Signed out",
       "auth.title.forgot": "Reset password",
       "welcome.appUrl": "\u73FE\u5728 URL: {url}",
+      "welcome.appUrlIp": "China beta \xB7 {url}",
+      "welcome.appUrlSelfHosted": "Self-hosted \xB7 {url}",
+      "welcome.cnBetaBanner": "China beta \u2014 filing in progress; some features may change.",
+      "welcome.networkTipsSelfHosted": "Self-hosted deploy: ensure API health and auth cookies match your domain. Slow loads? Check reverse proxy and database connectivity.",
+      "welcome.planComparison.title": "Plan comparison (brief)",
+      "welcome.planComparison.footnote": "Full benefits in Settings \u2192 Subscription; checkout prices prevail.",
       "welcome.desktopBadge": "Desktop",
       "welcome.footer.aiNote": "AI \u30C1\u30E3\u30C3\u30C8 and API keys are handled by your chosen \u30E2\u30C7\u30EB \u30D7\u30ED\u30D0\u30A4\u30C0\u30FC.",
       "welcome.footer.browser": "Browser capabilities",
@@ -11767,6 +12962,49 @@ var init_translationsJa = __esm({
     JA_JP_OVERRIDES = {
       "app.name": "AI IDE",
       "app.tagline": "\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u767A\u30FB\u5B9F\u884C\u30FBAI \u5354\u696D",
+      "workspaceMode.title": "\u4F5C\u696D\u30E2\u30FC\u30C9",
+      "workspaceMode.code": "\u30B3\u30FC\u30C7\u30A3\u30F3\u30B0",
+      "workspaceMode.plan": "\u8A08\u753B",
+      "workspaceMode.execute": "\u5B9F\u884C",
+      "workspaceMode.review": "\u30EC\u30D3\u30E5\u30FC",
+      "sessionResume.title": "\u524D\u56DE\u306E\u4F5C\u696D\u3092\u7D9A\u3051\u308B",
+      "sessionResume.continue": "\u7D9A\u3051\u308B",
+      "sessionResume.generic": "\u524D\u56DE\u306E\u30D5\u30A1\u30A4\u30EB\u3068 Spec \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8\u3092\u5FA9\u5143",
+      "learningPath.sectionTitle": "\u5B66\u7FD2\u30D1\u30B9",
+      "learningPath.sectionDesc": "\u30B9\u30BF\u30C3\u30AF\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3067 Plan \u2192 Spec \u2192 \u5B9F\u884C\u30EB\u30FC\u30D7\u3078\u3002",
+      "learningPath.statusInProgress": "\u9032\u884C\u4E2D",
+      "learningPath.statusCompleted": "\u5B8C\u4E86",
+      "weeklyRecap.title": "\u4ECA\u9031\u306E\u632F\u308A\u8FD4\u308A",
+      "weeklyRecap.copyMarkdown": "Markdown \u3092\u30B3\u30D4\u30FC",
+      "share.progress.copyLink": "\u8AAD\u307F\u53D6\u308A\u5C02\u7528\u30EA\u30F3\u30AF\u3092\u30B3\u30D4\u30FC",
+      "shareProgress.openFullIde": "IDE \u3067\u958B\u304F",
+      "command.sessionResume": "\u524D\u56DE\u306E\u4F5C\u696D\u3092\u7D9A\u3051\u308B",
+      "command.weeklyRecap": "\u4ECA\u9031\u306E\u632F\u308A\u8FD4\u308A",
+      "command.workspaceMode": "\u4F5C\u696D\u30E2\u30FC\u30C9\u3092\u5207\u308A\u66FF\u3048",
+      "gitSpecCommit.openTasks": "\u30BF\u30B9\u30AF\u3092\u898B\u308B",
+      "todayFocus.title": "\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9",
+      "todayFocus.mode": "\u30E2\u30FC\u30C9 \xB7 {mode}",
+      "todayFocus.spec": "Spec \xB7 {slug}",
+      "todayFocus.openTasks": "\u672A\u5B8C\u4E86 {count} \u4EF6",
+      "todayFocus.applyMode": "{mode} \u306B\u5207\u308A\u66FF\u3048",
+      "linkage.proofReady": "{slug} \u9A8C\u6536\u5B8C\u4E86 \u2014 \u8A3C\u660E\u30D1\u30C3\u30B1\u30FC\u30B8\u3092\u4FDD\u5B58\u3057\u3066\u9032\u6357\u3092\u5171\u6709",
+      "linkage.shareProgress": "\u9032\u6357\u3092\u5171\u6709",
+      "linkage.autopilotHint": "Git \u306F\u30AF\u30EA\u30FC\u30F3\u3060\u304C Spec \u306B\u672A\u5B8C\u4E86\u3042\u308A \u2014 Autopilot \u3092\u8A66\u3059",
+      "command.cat.linkage": "\u9023\u643A",
+      "command.linkage.autopilot": "Autopilot \u3067\u6B21\u306E Spec \u30BF\u30B9\u30AF",
+      "command.linkage.autopilot.sub": "Git \u304C\u30AF\u30EA\u30FC\u30F3\u306A\u3068\u304D\u306B\u30AD\u30E5\u30FC\u3092\u9032\u3081\u308B",
+      "command.linkage.shareProgress": "\u9032\u6357\u5171\u6709\u3092\u958B\u304F",
+      "command.linkage.shareProgress.sub": "\u8AAD\u307F\u53D6\u308A\u5C02\u7528\u30EA\u30F3\u30AF\u3068\u8A3C\u660E\u30D7\u30EC\u30D3\u30E5\u30FC",
+      "shareProgress.watch": "\u66F4\u65B0\u3092\u30A6\u30A9\u30C3\u30C1",
+      "shareProgress.unwatch": "\u30A6\u30A9\u30C3\u30C1\u89E3\u9664",
+      "shareProgress.specTree": "Intent \u30B0\u30E9\u30D5\u30CE\u30FC\u30C9",
+      "shareProgress.comments": "\u5354\u4F5C\u8005\u30E1\u30E2",
+      "shareProgress.commentsEmpty": "\u30E1\u30E2\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093",
+      "shareProgress.commentAuthor": "\u540D\u524D",
+      "shareProgress.commentBody": "\u9032\u6357\u30D5\u30A3\u30FC\u30C9\u30D0\u30C3\u30AF\u3092\u5165\u529B\u2026",
+      "shareProgress.commentSubmit": "\u30E1\u30E2\u3092\u8FFD\u52A0",
+      "shareProgress.loading": "\u9032\u6357\u30B9\u30CA\u30C3\u30D7\u30B7\u30E7\u30C3\u30C8\u3092\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026",
+      "shareProgress.notFound": "\u5171\u6709\u304C\u898B\u3064\u304B\u3089\u306A\u3044\u304B\u3001\u30EA\u30F3\u30AF\u304C\u7121\u52B9\u3067\u3059\u3002",
       "common.save": "\u4FDD\u5B58",
       "common.cancel": "\u30AD\u30E3\u30F3\u30BB\u30EB",
       "common.close": "\u9589\u3058\u308B",
@@ -11903,6 +13141,7 @@ var init_translationsJa = __esm({
       "subscription.limit.storage": "\u30B9\u30C8\u30EC\u30FC\u30B8",
       "subscription.perDay": " / \u65E5",
       "subscription.perMonth": "/\u6708",
+      "subscription.price.free": "\u7121\u6599",
       "subscription.unlimited": "\u7121\u5236\u9650",
       "subscription.paySuccess": "\u652F\u6255\u3044\u6210\u529F\u3001\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3\u66F4\u65B0\u6E08\u307F",
       "subscription.checkout.stripe": "Stripe \u3067\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9",
@@ -12161,6 +13400,21 @@ var init_translationsJa = __esm({
       "specStudio.title": "Spec Studio",
       "specStudio.lead": "Node / Java / C++ / Go / Rust / Python / Git / AI \u5411\u3051\u306E\u5B9F\u884C\u53EF\u80FD Spec\uFF08requirements / design / tasks / acceptance + hooks\uFF09\u3092\u751F\u6210\u3057\u307E\u3059\u3002",
       "specStudio.nameLabel": "Spec \u540D",
+      "specStudio.nameRequired": "\u300CSpec \u3092\u4F5C\u6210\u300D\u3059\u308B\u524D\u306B Spec \u540D\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      "specStudio.wizard.label": "\u610F\u56F3\u5F62\u5F0F\u5316\u30A6\u30A3\u30B6\u30FC\u30C9",
+      "specStudio.wizard.back": "\u623B\u308B",
+      "specStudio.wizard.next": "\u6B21\u3078",
+      "specStudio.wizard.step.intent": "\u610F\u56F3",
+      "specStudio.wizard.step.template": "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8",
+      "specStudio.wizard.step.preview": "\u30D7\u30EC\u30D3\u30E5\u30FC\u3068\u7DE8\u96C6",
+      "specStudio.wizard.contextName": "Spec: {name}",
+      "specStudio.wizard.contextGoal": "\u76EE\u6A19: {goal}",
+      "specStudio.preview.tabsLabel": "\u56DB\u30D5\u30A1\u30A4\u30EB\u30D7\u30EC\u30D3\u30E5\u30FC",
+      "specStudio.preview.tab.requirements": "requirements",
+      "specStudio.preview.tab.design": "design",
+      "specStudio.preview.tab.tasks": "tasks",
+      "specStudio.preview.tab.acceptance": "acceptance",
+      "specStudio.preview.stats": "{files} \u30D5\u30A1\u30A4\u30EB \xB7 \u672A\u5B8C\u4E86 {tasks} \xB7 \u9A8C\u6536 {acceptance}",
       "specStudio.goalLabel": "\u76EE\u6A19\uFF08AI \u3067 Spec \u3092\u6539\u5584\uFF09",
       "specStudio.goalPlaceholder": "\u4F8B\uFF1A\u30ED\u30B0\u30A4\u30F3 API \u306B refresh token \u3068\u7D71\u5408\u30C6\u30B9\u30C8\u3092\u8FFD\u52A0",
       "specStudio.filterStacks": "\u30B9\u30BF\u30C3\u30AF\u3067\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092\u7D5E\u308A\u8FBC\u307F",
@@ -12211,7 +13465,49 @@ var init_translationsJa = __esm({
       "status.spec.run": "\u5B9F\u884C",
       "status.spec.runTitle": "\u6700\u521D\u306E\u672A\u5B8C\u4E86 Spec \u30BF\u30B9\u30AF\u3092\u5B9F\u884C",
       "settings.aideRuntime.productionCardTitle": "Activity Line",
-      "settings.aideRuntime.engineProductionCardTitle": "AIDE Runtime"
+      "settings.aideRuntime.engineProductionCardTitle": "AIDE Runtime",
+      "intent.shell.barTitle": "Intent Shell",
+      "intent.shell.graphTitle": "\u610F\u56F3\u30B0\u30E9\u30D5",
+      "intent.shell.queueTitle": "\u691C\u8A3C\u30AD\u30E5\u30FC",
+      "intent.shell.openChat": "Chat \u3092\u958B\u304F",
+      "intent.shell.saveProof": "\u8A3C\u660E\u30D1\u30C3\u30AF\u3092\u4FDD\u5B58",
+      "intent.shell.hide": "Shell \u3092\u9589\u3058\u308B",
+      "intent.shell.stage.idle": "\u30AD\u30E5\u30FC\u5F85\u6A5F",
+      "intent.shell.stage.running": "\u5B9F\u884C\u4E2D",
+      "intent.shell.stage.verify": "\u691C\u8A3C\u5F85\u3061",
+      "intent.shell.stage.failed": "\u691C\u8A3C\u5931\u6557",
+      "intent.replay.restoreProof": "\u8A3C\u660E\u30D1\u30C3\u30AF\u304B\u3089\u5FA9\u5143",
+      "intent.replay.restored.title": "\u8A3C\u660E\u30D1\u30C3\u30AF\u306E\u30B3\u30F3\u30C6\u30AD\u30B9\u30C8\u3092\u8AAD\u307F\u8FBC\u307F\u307E\u3057\u305F",
+      "intent.replay.restored.detail": "Spec\u300C{slug}\u300D\u306B\u30D5\u30A9\u30FC\u30AB\u30B9\u3057\u3001\u30AD\u30E5\u30FC\u5FA9\u5143\u3092\u8A66\u307F\u307E\u3057\u305F\u3002",
+      "intent.replay.overlayBadge": "\u8A3C\u660E\u30D1\u30C3\u30AF\u306E\u30B0\u30E9\u30D5\u30B9\u30CA\u30C3\u30D7\u30B7\u30E7\u30C3\u30C8",
+      "intent.autopilot.runNext": "Autopilot \xB7 \u6B21\u306E\u30BF\u30B9\u30AF",
+      "intent.autopilot.runNextWithCount": "Autopilot \xB7 \u6B21\u306E\u30BF\u30B9\u30AF\uFF08\u6B8B\u308A {count} \u4EF6\uFF09",
+      "intent.graph.title": "\u610F\u56F3\u30B0\u30E9\u30D5",
+      "intent.graph.desc": "Plan \u30B9\u30C6\u30C3\u30D7\u3001Spec \u30BF\u30B9\u30AF\u3001acceptance \u306E\u30C8\u30EC\u30FC\u30B9\uFF08\u7C21\u6613\u7248\uFF09\u3002",
+      "intent.graph.empty": "\u30EA\u30F3\u30AF\u304C\u3042\u308A\u307E\u305B\u3093\u3002Spec \u3092\u4F5C\u6210\u3059\u308B\u304B Plan \u3092 Spec \u30BF\u30B9\u30AF\u306B\u30DE\u30C3\u30D7\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      "intent.graph.group.plan": "Plan",
+      "intent.graph.group.tasks": "Spec \u30BF\u30B9\u30AF",
+      "intent.graph.group.acceptance": "Acceptance",
+      "welcome.pathIntentTitle": "Intent \u30C7\u30E2\u304B\u3089\u958B\u59CB",
+      "welcome.pathIntentDesc": "60 \u79D2\u3067 Spec \u2192 \u30AD\u30E5\u30FC \u2192 \u691C\u53CE\u30EB\u30FC\u30D7\uFF08Demo Pack\uFF09\u3002",
+      "welcome.pathIntentHero": "60 \u79D2 Intent \u30C7\u30E2",
+      "intent.drift.action.open-requirements": "requirements \u3092\u66F4\u65B0",
+      "intent.drift.action.open-design": "design \u3092\u958B\u304F",
+      "intent.drift.action.open-tasks": "tasks \u3092\u958B\u304F",
+      "intent.drift.action.open-acceptance": "acceptance \u3092\u958B\u304F",
+      "intent.drift.action.open-file": "\u53C2\u7167\u30D5\u30A1\u30A4\u30EB\u3092\u958B\u304F",
+      "intent.drift.action.open-proof": "\u8A3C\u660E\u30D1\u30C3\u30AF\u3092\u958B\u304F",
+      "intent.drift.title": "Drift",
+      "intent.drift.openTasks": "\u672A\u5B8C\u4E86\u30BF\u30B9\u30AF\u304C {count} \u4EF6",
+      "intent.drift.openAcceptance": "\u672A\u30C1\u30A7\u30C3\u30AF acceptance \u304C {count} \u4EF6",
+      "intent.grounding.v2.detail": "\u30BF\u30B9\u30AF\u304C\u53C2\u7167\u3059\u308B\u30B7\u30F3\u30DC\u30EB\u304C\u30B3\u30FC\u30C9\u30D9\u30FC\u30B9\u306B\u3042\u308A\u307E\u305B\u3093\uFF08{count} \u4EF6\uFF09",
+      "intent.grounding.missingPath": "\u53C2\u7167\u30D1\u30B9\u304C\u5B58\u5728\u3057\u307E\u305B\u3093\uFF1A{path}",
+      "share.intent.imported.title": "Intent \u30B3\u30F3\u30C6\u30AD\u30B9\u30C8\u3092\u5FA9\u5143\u3057\u307E\u3057\u305F",
+      "share.intent.imported.detail": "{summary} \u306B\u30D5\u30A9\u30FC\u30AB\u30B9\u3057\u3001Intent Shell \u3092\u6709\u52B9\u5316\u3057\u307E\u3057\u305F\u3002",
+      "share.intent.importHint": ".aide/meta/intent-share.json \u3092\u542B\u3080\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8 JSON \u306F Spec \u30D5\u30A9\u30FC\u30AB\u30B9\u3092\u81EA\u52D5\u5FA9\u5143\u3057\u307E\u3059\u3002",
+      "share.intent.previewTitle": "Intent \u30B9\u30CA\u30C3\u30D7\u30B7\u30E7\u30C3\u30C8\u30D7\u30EC\u30D3\u30E5\u30FC",
+      "share.intent.applyFocus": "Intent \u30D5\u30A9\u30FC\u30AB\u30B9\u3092\u9069\u7528",
+      "share.intent.importInvalid": "\u6709\u52B9\u306A intent-share.json \u3067\u306F\u3042\u308A\u307E\u305B\u3093"
     };
   }
 });
@@ -14405,8 +15701,8 @@ var init_backgroundJobProcessor = __esm({
 // lib/api/handlers/jobs/process.ts
 var process_exports = {};
 __export(process_exports, {
-  GET: () => GET17,
-  POST: () => POST25
+  GET: () => GET18,
+  POST: () => POST26
 });
 async function runProcess(request) {
   if (!isCronAuthorized(request)) {
@@ -14425,10 +15721,10 @@ async function runProcess(request) {
     return localizedErrorResponse(request, "api.job.processFailed", 500);
   }
 }
-async function GET17(request) {
+async function GET18(request) {
   return runProcess(request);
 }
-async function POST25(request) {
+async function POST26(request) {
   return runProcess(request);
 }
 var init_process = __esm({
@@ -14444,9 +15740,9 @@ var init_process = __esm({
 // lib/api/handlers/jobs/cancel.ts
 var cancel_exports2 = {};
 __export(cancel_exports2, {
-  POST: () => POST26
+  POST: () => POST27
 });
-async function POST26(req, ctx) {
+async function POST27(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -14482,9 +15778,9 @@ var init_cancel2 = __esm({
 // lib/api/handlers/jobs/byId.ts
 var byId_exports2 = {};
 __export(byId_exports2, {
-  GET: () => GET18
+  GET: () => GET19
 });
-async function GET18(req, ctx) {
+async function GET19(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -14512,10 +15808,10 @@ var init_byId2 = __esm({
 var byId_exports3 = {};
 __export(byId_exports3, {
   DELETE: () => DELETE,
-  GET: () => GET19,
+  GET: () => GET20,
   PUT: () => PUT
 });
-async function GET19(req, ctx) {
+async function GET20(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const id = ctx?.params?.id;
@@ -14560,6 +15856,16 @@ async function PUT(req, ctx) {
       return localizedErrorResponse(req, payloadError.key, 413, payloadError.params);
     }
     const targetName = typeof newName === "string" && newName.trim() ? newName.trim() : name;
+    const planName = await resolveUserPlanName(auth.user.id);
+    const payloadBytes = estimateWorkspacePayloadBytes2(filesPayload, settingsPayload);
+    const storageCheck = await assertCloudStorageWithinLimit(auth.user.id, planName, payloadBytes, {
+      replacingWorkspaceName: name
+    });
+    if (!storageCheck.ok) {
+      return localizedErrorResponse(req, "api.storage.limitReached", 413, {
+        limitGb: storageCheck.limitGb
+      });
+    }
     const workspace = await upsertWorkspace(
       auth.user.id,
       targetName,
@@ -14604,6 +15910,8 @@ var init_byId3 = __esm({
     init_localizedError();
     init_workspacePayload();
     init_workspacesService();
+    init_usageDb();
+    init_workspaceStorageEntitlement();
     init_rateLimit();
     init_rateLimitKv();
     init_rateLimitResponse();
@@ -14801,6 +16109,14 @@ async function joinCollaborationRoom(userId, code, requestedRole) {
   if (!room) return { ok: false, reason: "not_found" };
   if (room.status === "closed") return { ok: false, reason: "closed" };
   const isHost = room.hostId === userId;
+  const alreadyMember = room.members.some((member) => member.userId === userId);
+  if (!alreadyMember && !isHost) {
+    const hostPlan = await resolveUserPlanName(room.hostId);
+    const maxParticipants = getCollabMaxParticipants(hostPlan);
+    if (maxParticipants > 0 && room.members.length >= maxParticipants) {
+      return { ok: false, reason: "room_full" };
+    }
+  }
   const role = isHost ? "host" : requestedRole === "viewer" ? "viewer" : "editor";
   if (!isHost && requestedRole === "host") {
     return { ok: false, reason: "forbidden" };
@@ -14868,6 +16184,8 @@ var init_collaborationRoomsService = __esm({
   "lib/api/collaborationRoomsService.ts"() {
     "use strict";
     init_prisma();
+    init_dashboardEntitlements();
+    init_usageDb();
     init_collabLivekit();
     init_collabPermissions();
     init_collabTypes();
@@ -14878,10 +16196,10 @@ var init_collaborationRoomsService = __esm({
 // lib/api/handlers/collab/rooms/index.ts
 var rooms_exports = {};
 __export(rooms_exports, {
-  GET: () => GET20,
-  POST: () => POST27
+  GET: () => GET21,
+  POST: () => POST28
 });
-async function GET20(req) {
+async function GET21(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -14894,7 +16212,7 @@ async function GET20(req) {
     return localizedErrorResponse(req, "api.collab.listFailed", 500);
   }
 }
-async function POST27(req) {
+async function POST28(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -14903,6 +16221,12 @@ async function POST27(req) {
     const name = typeof parsed.value.name === "string" ? parsed.value.name.trim() : "";
     if (name.length > MAX_COLLAB_ROOM_NAME_CHARS) {
       return localizedErrorResponse(req, "api.collab.nameTooLong", 400);
+    }
+    const hostCheck = await assertCanHostCollabRoom(auth.user.id);
+    if (!hostCheck.ok) {
+      return localizedErrorResponse(req, "api.collab.hostRequiresUpgrade", 403, {
+        plan: hostCheck.requiredPlan
+      });
     }
     const room = await createCollaborationRoom(auth.user.id, name || null);
     const signaling = await buildCollabSignalingForUser(
@@ -14934,6 +16258,7 @@ var init_rooms = __esm({
     init_body();
     init_localizedError();
     init_collaborationRoomsService();
+    init_dashboardEntitlements();
     init_collabTypes();
     MAX_BODY_BYTES = 8e3;
   }
@@ -15017,8 +16342,9 @@ async function countUserProjectShares(userId) {
     where: { userId, expiresAt: { gt: /* @__PURE__ */ new Date() } }
   });
 }
-async function createProjectShare(userId, files) {
-  const expiresAt = new Date(Date.now() + SHARE_TTL_MS);
+async function createProjectShare(userId, files, options) {
+  const ttlMs = userId ? getShareTtlMs(options?.planName ?? "free") : SHARE_TTL_MS;
+  const expiresAt = new Date(Date.now() + ttlMs);
   const filesJson = JSON.stringify(files);
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const slug = generateShareSlug();
@@ -15059,23 +16385,39 @@ async function deleteProjectShare(slug, userId) {
   await prisma.projectShare.delete({ where: { slug: normalized } });
   return true;
 }
-var SHARE_TTL_MS, MAX_SHARES_PER_USER;
+var MAX_SHARES_PER_USER, SHARE_TTL_MS;
 var init_projectSharesService = __esm({
   "lib/api/projectSharesService.ts"() {
     "use strict";
     init_prisma();
-    SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1e3;
+    init_entitlements();
     MAX_SHARES_PER_USER = 30;
+    SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1e3;
+  }
+});
+
+// lib/api/shareIntentSnapshot.ts
+function normalizeShareFilePath(path) {
+  return path.replace(/\\/g, "/");
+}
+function shareFilesIncludeIntentSnapshot(files) {
+  return files.some((file) => normalizeShareFilePath(file.name) === INTENT_SHARE_META_PATH);
+}
+var INTENT_SHARE_META_PATH;
+var init_shareIntentSnapshot = __esm({
+  "lib/api/shareIntentSnapshot.ts"() {
+    "use strict";
+    INTENT_SHARE_META_PATH = ".aide/meta/intent-share.json";
   }
 });
 
 // lib/api/handlers/shares/index.ts
 var shares_exports = {};
 __export(shares_exports, {
-  GET: () => GET21,
-  POST: () => POST28
+  GET: () => GET22,
+  POST: () => POST29
 });
-async function GET21(req) {
+async function GET22(req) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
@@ -15093,7 +16435,7 @@ async function GET21(req) {
     return localizedErrorResponse(req, "api.share.listFailed", 500);
   }
 }
-async function POST28(req) {
+async function POST29(req) {
   const user = await optionalAuth(req);
   try {
     const rate = await checkRateLimitDistributed(req, {
@@ -15108,12 +16450,30 @@ async function POST28(req) {
       return localizedErrorResponse(req, validated.key, 400);
     }
     if (user) {
-      const used = await countUserProjectShares(user.id);
-      if (used >= MAX_SHARES_PER_USER) {
-        return localizedErrorResponse(req, "api.share.limitReached", 429, { limit: MAX_SHARES_PER_USER });
+      if (shareFilesIncludeIntentSnapshot(validated.files)) {
+        const denied = await requireEntitlementForUser(req, user.id, "intentShareImport");
+        if (denied) return denied;
       }
+      const planName = await resolveUserPlanName(user.id);
+      const shareLimit = getMaxSharesForPlan(planName);
+      const used = await countUserProjectShares(user.id);
+      if (used >= shareLimit) {
+        return localizedErrorResponse(req, "api.share.limitReached", 429, { limit: shareLimit });
+      }
+      const share2 = await createProjectShare(user.id, validated.files, { planName });
+      return jsonResponse(
+        appendApiMessage(req, "api.share.created", {
+          share: {
+            slug: share2.slug,
+            fileCount: share2.files.length,
+            createdAt: share2.createdAt.toISOString(),
+            expiresAt: share2.expiresAt.toISOString()
+          }
+        }),
+        201
+      );
     }
-    const share = await createProjectShare(user?.id ?? null, validated.files);
+    const share = await createProjectShare(null, validated.files);
     return jsonResponse(
       appendApiMessage(req, "api.share.created", {
         share: {
@@ -15143,6 +16503,10 @@ var init_shares = __esm({
     init_localizedError();
     init_sharePayload();
     init_projectSharesService();
+    init_entitlements();
+    init_usageDb();
+    init_entitlementGuard();
+    init_shareIntentSnapshot();
     init_rateLimit();
     init_rateLimitKv();
     init_rateLimitResponse();
@@ -15153,9 +16517,9 @@ var init_shares = __esm({
 var bySlug_exports = {};
 __export(bySlug_exports, {
   DELETE: () => DELETE2,
-  GET: () => GET22
+  GET: () => GET23
 });
-async function GET22(req, ctx) {
+async function GET23(req, ctx) {
   const slug = ctx?.params?.slug?.trim();
   if (!slug) {
     return localizedErrorResponse(req, "api.share.slugRequired", 400);
@@ -15209,10 +16573,10 @@ var init_bySlug = __esm({
 // lib/api/handlers/collab/rooms/byCode.ts
 var byCode_exports = {};
 __export(byCode_exports, {
-  GET: () => GET23,
-  POST: () => POST29
+  GET: () => GET24,
+  POST: () => POST30
 });
-async function GET23(req, ctx) {
+async function GET24(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const code = ctx?.params?.code?.trim().toLowerCase();
@@ -15241,7 +16605,7 @@ async function GET23(req, ctx) {
     return localizedErrorResponse(req, "api.collab.loadFailed", 500);
   }
 }
-async function POST29(req, ctx) {
+async function POST30(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const code = ctx?.params?.code?.trim().toLowerCase();
@@ -15261,6 +16625,12 @@ async function POST29(req, ctx) {
       }
       if (result.reason === "closed") {
         return localizedErrorResponse(req, "api.collab.roomClosed", 409);
+      }
+      if (result.reason === "room_full") {
+        const hostPlan = roomPreview ? await resolveUserPlanName(roomPreview.hostId) : "free";
+        return localizedErrorResponse(req, "api.collab.roomFull", 409, {
+          limit: String(getCollabMaxParticipants(hostPlan))
+        });
       }
       return localizedErrorResponse(req, "api.collab.joinForbidden", 403);
     }
@@ -15288,6 +16658,8 @@ var init_byCode = __esm({
     init_body();
     init_localizedError();
     init_collaborationRoomsService();
+    init_dashboardEntitlements();
+    init_usageDb();
     init_collabTypes();
     MAX_BODY_BYTES2 = 4e3;
   }
@@ -15296,9 +16668,9 @@ var init_byCode = __esm({
 // lib/api/handlers/collab/rooms/leave.ts
 var leave_exports = {};
 __export(leave_exports, {
-  POST: () => POST30
+  POST: () => POST31
 });
-async function POST30(req, ctx) {
+async function POST31(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const code = ctx?.params?.code?.trim().toLowerCase();
@@ -15398,9 +16770,9 @@ var init_member = __esm({
 // lib/api/handlers/collab/rooms/kick.ts
 var kick_exports = {};
 __export(kick_exports, {
-  POST: () => POST31
+  POST: () => POST32
 });
-async function POST31(req, ctx) {
+async function POST32(req, ctx) {
   const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   const code = ctx?.params?.code?.trim().toLowerCase();
@@ -15450,10 +16822,10 @@ var init_kick = __esm({
 // lib/api/handlers/auth/authCatchAll.ts
 var authCatchAll_exports = {};
 __export(authCatchAll_exports, {
-  GET: () => GET24
+  GET: () => GET25
 });
 import { randomBytes as randomBytes4 } from "crypto";
-async function GET24(req) {
+async function GET25(req) {
   const url = new URL(req.url);
   const pathname = url.pathname;
   if (pathname.includes("providers")) {
@@ -15609,6 +16981,8 @@ var routes = [
   },
   { method: "GET", match: (p) => p === "/api/usage/ai" ? {} : null, load: () => Promise.resolve().then(() => (init_ai(), ai_exports)), export: "GET" },
   { method: "POST", match: (p) => p === "/api/usage/ai" ? {} : null, load: () => Promise.resolve().then(() => (init_ai(), ai_exports)), export: "POST" },
+  { method: "GET", match: (p) => p === "/api/usage/autopilot" ? {} : null, load: () => Promise.resolve().then(() => (init_autopilot(), autopilot_exports)), export: "GET" },
+  { method: "POST", match: (p) => p === "/api/usage/autopilot" ? {} : null, load: () => Promise.resolve().then(() => (init_autopilot(), autopilot_exports)), export: "POST" },
   {
     method: "GET",
     match: (p) => p === "/api/usage/dashboard" ? {} : null,
@@ -15898,18 +17272,18 @@ async function handle(request) {
     );
   }
 }
-var GET25 = handle;
-var POST32 = handle;
+var GET26 = handle;
+var POST33 = handle;
 var PUT2 = handle;
 var DELETE3 = handle;
 var PATCH2 = handle;
 var OPTIONS = handle;
 export {
   DELETE3 as DELETE,
-  GET25 as GET,
+  GET26 as GET,
   OPTIONS,
   PATCH2 as PATCH,
-  POST32 as POST,
+  POST33 as POST,
   PUT2 as PUT
 };
 //# sourceMappingURL=index.js.map

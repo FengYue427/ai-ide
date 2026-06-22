@@ -7,7 +7,7 @@ directories:
 files:
   - electron/**/*
   - package.json
-  - dist/**/*
+  - dist-electron-ui/**/*
 asar: true
 publish:
   provider: github

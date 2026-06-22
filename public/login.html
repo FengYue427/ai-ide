@@ -6,45 +6,38 @@
     <title>登录 AI IDE — 云工作区与平台 AI</title>
     <meta
       name="description"
-      content="登录 AI IDE：同步云工作区、订阅与平台 AI 配额。支持邮箱注册与 OAuth。"
+      content="登录 AI IDE：同步云工作区、订阅与平台 AI 配额。支持邮箱注册。"
     />
     <meta name="robots" content="index,follow" />
-    <link rel="canonical" href="https://ai-ide-flame.vercel.app/login" />
+    <link rel="canonical" href="/login" />
     <meta property="og:title" content="登录 AI IDE" />
     <meta property="og:description" content="登录后使用平台 AI 或自带 API Key。" />
-    <meta property="og:url" content="https://ai-ide-flame.vercel.app/login" />
-    <style>
-      body {
-        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
-        max-width: 42rem;
-        margin: 2rem auto;
-        padding: 0 1rem;
-        line-height: 1.6;
-        color: #111;
-      }
-      a.button {
-        display: inline-block;
-        margin-top: 1rem;
-        padding: 0.75rem 1.25rem;
-        background: #2563eb;
-        color: #fff;
-        text-decoration: none;
-        border-radius: 8px;
-        font-weight: 600;
-      }
-      a.secondary {
-        color: #2563eb;
-        margin-left: 1rem;
-      }
-    </style>
+    <meta property="og:url" content="/login" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="stylesheet" href="/auth-landing.css" />
   </head>
   <body>
-    <h1>登录 AI IDE</h1>
-    <p>使用邮箱或 OAuth 登录，恢复云工作区、订阅状态与 AI 日配额。</p>
-    <p>
-      <a class="button" href="/?auth=login">在 IDE 中登录</a>
-      <a class="secondary" href="/signup">注册新账号</a>
-    </p>
-    <p><a href="/">返回首页</a> · <a href="/legal/privacy.html">隐私政策</a></p>
+    <main class="auth-landing">
+      <div class="auth-landing__brand">
+        <img src="/logo.svg" alt="AI IDE" width="40" height="40" />
+        <strong>AI IDE</strong>
+      </div>
+
+      <div class="auth-landing__card">
+        <h1>登录 AI IDE</h1>
+        <p>使用邮箱登录，恢复云工作区、订阅状态与 AI 日配额。</p>
+        <p class="auth-landing__notice">
+          国内内测站与海外站（ai-ide-flame.vercel.app）账号不互通。若你曾在海外站注册，请在此重新注册。
+        </p>
+        <div class="auth-landing__actions">
+          <a class="auth-landing__btn" href="/?auth=login">在 IDE 中登录</a>
+          <a class="auth-landing__link" href="/signup">注册新账号</a>
+        </div>
+      </div>
+
+      <p class="auth-landing__footer">
+        <a href="/">返回首页</a> · <a href="/legal/privacy.html">隐私政策</a>
+      </p>
+    </main>
   </body>
 </html>

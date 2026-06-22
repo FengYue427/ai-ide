@@ -76,7 +76,9 @@ const assets = [
   ['deploy/aliyun/nginx.conf.example', 'Nginx 静态 + /api 反代 + COOP/COEP'],
   ['deploy/aliyun/ecosystem.config.cjs', 'PM2 常驻 API'],
   ['deploy/aliyun/crontab.example', '定时任务（订阅过期、后台 Job）'],
+  ['deploy/aliyun/healthcheck.cron.example', '可选：每小时 /api/health 探测'],
   ['docs/DEPLOY_ALIYUN_CN.md', '完整分步指南'],
+  ['docs/CN_LAUNCH_P0.md', '迁阿里云 P0 清单'],
 ]
 for (const [path, desc] of assets) {
   const ok = existsSync(join(root, path))
@@ -104,4 +106,6 @@ if (checkEnv) {
   }
 }
 
-console.log('\n下一步：阅读 docs/DEPLOY_ALIYUN_CN.md → 购服务器 → beian.aliyun.com 提交备案\n')
+console.log('\n下一步：')
+console.log('  npm run aliyun:p0 --env')
+console.log('  阅读 docs/CN_LAUNCH_P0.md → docs/DEPLOY_ALIYUN_CN.md\n')

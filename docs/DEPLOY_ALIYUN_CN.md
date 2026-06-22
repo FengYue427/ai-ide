@@ -2,6 +2,8 @@
 
 面向：**放弃 Vercel、在中国大陆运营**。本文覆盖 **备案前必须准备的前置条件**；备案通过后的部署步骤见文末。
 
+> **P0 快速清单**：迁云前请先完成 [CN_LAUNCH_P0.md](./CN_LAUNCH_P0.md)，并运行 `npm run aliyun:p0 --env`。
+
 > **重要**：ICP 备案必须由备案主体本人在 [beian.aliyun.com](https://beian.aliyun.com/) 提交，仓库无法代办。16 岁以下请提前确认所在省管局规则（常需监护人或个体户主体）。
 
 ---
@@ -61,6 +63,7 @@
 ```bash
 node scripts/cn-preflight.mjs
 node scripts/cn-preflight.mjs --env   # 准备好 .env.production 后
+npm run aliyun:p0 --env               # P0 文档 + Flag + 支付回调检查
 ```
 
 ---
@@ -119,17 +122,18 @@ sudo chown $USER:$USER /opt/ai-ide
 
 ### 2. 上传构建产物
 
-在开发机：
+在开发机（推荐一键部署）：
 
 ```bash
+cp .env.aliyun.example .env.aliyun          # ALIYUN_SSH、APP_URL、迁库 URL
 cp deploy/aliyun/env.production.example .env.production
-# 编辑 DATABASE_URL、AUTH_SECRET、APP_URL=https://你的域名
+# 编辑 DATABASE_URL、AUTH_SECRET、APP_URL、支付宝等
 
-npm ci
-npm run build:deploy
-# 将 dist/、node_modules/、prisma/、scripts/、lib/、src/lib/prisma、package.json、
-# deploy/aliyun/ecosystem.config.cjs 等同步到 /opt/ai-ide（可用 rsync/scp）
+npm run aliyun:deploy -- --with-env --skip-smoke   # 备案前
+# 或分步: aliyun:build → aliyun:sync -- --with-env → aliyun:remote-install
 ```
+
+手动 rsync 等价于 `npm run aliyun:sync`。Neon → RDS：`npm run db:migrate:neon-to-rds`（见 [CN_LAUNCH_P0.md](./CN_LAUNCH_P0.md)）。
 
 ### 3. 数据库迁移
 
@@ -164,18 +168,29 @@ sudo nginx -t && sudo systemctl reload nginx
 - 域名 A 记录 → ECS 公网 IP
 - 阿里云申请免费 SSL，或 `certbot`
 - 更新 `APP_URL`、`AUTH_URL` 为 `https://域名`
-- 配置 `deploy/aliyun/crontab.example` 中的定时任务
+- 配置 `deploy/aliyun/crontab.example` 中的定时任务（可选 `healthcheck.cron.example`）
 
 ### 7. 前端构建变量（生产）
 
-复制 `.env.production.example`，确保至少：
+复制 `.env.production.example` → `.env.production`，完整说明见 [ENV_PRODUCTION.md](./ENV_PRODUCTION.md)。至少：
 
 ```env
 VITE_AI_GATEWAY=true
 VITE_ALLOW_BYOK_LEGACY=false
+VITE_TAB_PLUS_PLUS=true
+VITE_AIDE_SPEC_ARTIFACTS_V2=true
+VITE_AIDE_RUNTIME=true
+VITE_AIDE_ACTIVITY_LINE=true
+VITE_GA_LIVE=true
 ```
 
-重新 `npm run build` 并同步 `dist/`。
+服务端 `.env.production` 另设 `PUBLIC_WELFARE_MODE=false`、`CRON_SECRET`、支付宝密钥。支付回调：
+
+```bash
+APP_URL=https://你的域名 node scripts/payment-notify-urls.mjs
+```
+
+重新 `npm run build:deploy` 并同步 `dist/`。
 
 ### 8. 首页 ICP 备案号
 
@@ -185,6 +200,7 @@ VITE_ALLOW_BYOK_LEGACY=false
 
 ```bash
 npm run smoke:production -- https://你的域名
+npm run aliyun:p0 --env --url https://你的域名
 node scripts/verify-env.mjs --production --v16-production --url https://你的域名
 ```
 

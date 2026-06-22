@@ -7,7 +7,8 @@ import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const distDir = join(root, 'dist')
+const distName = process.env.AI_IDE_DIST_DIR?.trim() || 'dist'
+const distDir = join(root, distName)
 const websiteSrc = join(root, 'website')
 const websiteDest = join(distDir, 'website')
 
@@ -22,4 +23,4 @@ if (!existsSync(websiteSrc)) {
 }
 
 cpSync(websiteSrc, websiteDest, { recursive: true })
-console.log('[copy-website] Copied website/ -> dist/website/')
+console.log(`[copy-website] Copied website/ -> ${distName}/website/`)
