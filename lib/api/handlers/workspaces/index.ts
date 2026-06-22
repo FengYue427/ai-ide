@@ -14,6 +14,10 @@ import {
 } from '../../workspacesService'
 import { getWorkspaceLimit } from '../../../billing/plans'
 import { resolveUserPlanName } from '../../../billing/usageDb'
+import {
+  assertCloudStorageWithinLimit,
+  estimateWorkspacePayloadBytes,
+} from '../../../billing/workspaceStorageEntitlement'
 import { resolveRateLimitOptions } from '../../rateLimit'
 import { checkRateLimitDistributed } from '../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../rateLimitResponse'
@@ -78,6 +82,22 @@ export async function POST(req: Request) {
           })
         }
       }
+    }
+
+    const filesPayload =
+      typeof files === 'string' ? files : JSON.stringify(files ?? [])
+    const settingsPayload =
+      typeof settings === 'string' ? settings : JSON.stringify(settings ?? {})
+
+    const planName = await resolveUserPlanName(auth.user.id)
+    const payloadBytes = estimateWorkspacePayloadBytes(filesPayload, settingsPayload)
+    const storageCheck = await assertCloudStorageWithinLimit(auth.user.id, planName, payloadBytes, {
+      replacingWorkspaceName: existing ? workspaceName : undefined,
+    })
+    if (!storageCheck.ok) {
+      return localizedErrorResponse(req, 'api.storage.limitReached', 413, {
+        limitGb: storageCheck.limitGb,
+      })
     }
 
     const workspace = await upsertWorkspace(

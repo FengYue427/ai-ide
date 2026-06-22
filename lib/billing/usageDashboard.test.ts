@@ -30,9 +30,16 @@ describe('buildPlatformUsageDashboard', () => {
       periodDays: 7,
       daily: [],
       platformProvider: 'deepseek',
+      entitlements: {
+        plan: 'free',
+        unlocked: [],
+        locked: ['collabHost'],
+        nearLimits: [],
+      },
     })
     expect(payload.quotaNearLimit).toBe(true)
     expect(payload.quotaUsagePercent).toBeGreaterThanOrEqual(80)
     expect(payload.platformProvider).toBe('deepseek')
+    expect(payload.entitlements?.locked).toContain('collabHost')
   })
 })

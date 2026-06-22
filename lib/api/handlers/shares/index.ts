@@ -10,8 +10,11 @@ import {
   countUserProjectShares,
   createProjectShare,
   listProjectSharesForUser,
-  MAX_SHARES_PER_USER,
 } from '../../projectSharesService'
+import { getMaxSharesForPlan } from '../../../billing/entitlements'
+import { resolveUserPlanName } from '../../../billing/usageDb'
+import { requireEntitlementForUser } from '../../entitlementGuard'
+import { shareFilesIncludeIntentSnapshot } from '../../shareIntentSnapshot'
 import { resolveRateLimitOptions } from '../../rateLimit'
 import { checkRateLimitDistributed } from '../../rateLimitKv'
 import { rateLimitErrorResponse } from '../../rateLimitResponse'
@@ -55,13 +58,32 @@ export async function POST(req: Request) {
     }
 
     if (user) {
-      const used = await countUserProjectShares(user.id)
-      if (used >= MAX_SHARES_PER_USER) {
-        return localizedErrorResponse(req, 'api.share.limitReached', 429, { limit: MAX_SHARES_PER_USER })
+      if (shareFilesIncludeIntentSnapshot(validated.files)) {
+        const denied = await requireEntitlementForUser(req, user.id, 'intentShareImport')
+        if (denied) return denied
       }
+
+      const planName = await resolveUserPlanName(user.id)
+      const shareLimit = getMaxSharesForPlan(planName)
+      const used = await countUserProjectShares(user.id)
+      if (used >= shareLimit) {
+        return localizedErrorResponse(req, 'api.share.limitReached', 429, { limit: shareLimit })
+      }
+      const share = await createProjectShare(user.id, validated.files, { planName })
+      return jsonResponse(
+        appendApiMessage(req, 'api.share.created', {
+          share: {
+            slug: share.slug,
+            fileCount: share.files.length,
+            createdAt: share.createdAt.toISOString(),
+            expiresAt: share.expiresAt.toISOString(),
+          },
+        }),
+        201,
+      )
     }
 
-    const share = await createProjectShare(user?.id ?? null, validated.files)
+    const share = await createProjectShare(null, validated.files)
     return jsonResponse(
       appendApiMessage(req, 'api.share.created', {
         share: {

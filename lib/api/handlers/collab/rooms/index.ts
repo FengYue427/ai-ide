@@ -11,6 +11,7 @@ import {
   listCollaborationRoomsForUser,
   serializeCollabRoom,
 } from '../../../collaborationRoomsService'
+import { assertCanHostCollabRoom } from '../../../../billing/dashboardEntitlements'
 import { MAX_COLLAB_ROOM_NAME_CHARS } from '../../../collabTypes'
 
 const MAX_BODY_BYTES = 8_000
@@ -41,6 +42,13 @@ export async function POST(req: Request) {
     const name = typeof parsed.value.name === 'string' ? parsed.value.name.trim() : ''
     if (name.length > MAX_COLLAB_ROOM_NAME_CHARS) {
       return localizedErrorResponse(req, 'api.collab.nameTooLong', 400)
+    }
+
+    const hostCheck = await assertCanHostCollabRoom(auth.user.id)
+    if (!hostCheck.ok) {
+      return localizedErrorResponse(req, 'api.collab.hostRequiresUpgrade', 403, {
+        plan: hostCheck.requiredPlan,
+      })
     }
 
     const room = await createCollaborationRoom(auth.user.id, name || null)

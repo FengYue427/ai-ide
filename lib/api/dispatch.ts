@@ -146,6 +146,8 @@ const routes: RouteEntry[] = [
   },
   { method: 'GET', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'GET' },
   { method: 'POST', match: (p) => (p === '/api/usage/ai' ? {} : null), load: () => import('./handlers/usage/ai'), export: 'POST' },
+  { method: 'GET', match: (p) => (p === '/api/usage/autopilot' ? {} : null), load: () => import('./handlers/usage/autopilot'), export: 'GET' },
+  { method: 'POST', match: (p) => (p === '/api/usage/autopilot' ? {} : null), load: () => import('./handlers/usage/autopilot'), export: 'POST' },
   {
     method: 'GET',
     match: (p) => (p === '/api/usage/dashboard' ? {} : null),

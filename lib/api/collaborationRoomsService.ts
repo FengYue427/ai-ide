@@ -1,5 +1,7 @@
 import type { CollaborationMember, CollaborationRoom } from '@prisma/client'
 import { prisma } from '../../src/lib/prisma'
+import { getCollabMaxParticipants } from '../billing/dashboardEntitlements'
+import { resolveUserPlanName } from '../billing/usageDb'
 import { appendLivekitToken } from './collabLivekit'
 import { canManageCollabMember } from './collabPermissions'
 import {
@@ -164,13 +166,23 @@ export async function joinCollaborationRoom(
   requestedRole: CollabMemberRole,
 ): Promise<
   | { ok: true; room: CollaborationRoom; members: CollaborationMember[] }
-  | { ok: false; reason: 'not_found' | 'closed' | 'forbidden' }
+  | { ok: false; reason: 'not_found' | 'closed' | 'forbidden' | 'room_full' }
 > {
   const room = await getCollaborationRoomByCode(code)
   if (!room) return { ok: false, reason: 'not_found' }
   if (room.status === 'closed') return { ok: false, reason: 'closed' }
 
   const isHost = room.hostId === userId
+  const alreadyMember = room.members.some((member) => member.userId === userId)
+
+  if (!alreadyMember && !isHost) {
+    const hostPlan = await resolveUserPlanName(room.hostId)
+    const maxParticipants = getCollabMaxParticipants(hostPlan)
+    if (maxParticipants > 0 && room.members.length >= maxParticipants) {
+      return { ok: false, reason: 'room_full' }
+    }
+  }
+
   const role: CollabMemberRole = isHost ? 'host' : requestedRole === 'viewer' ? 'viewer' : 'editor'
 
   if (!isHost && requestedRole === 'host') {

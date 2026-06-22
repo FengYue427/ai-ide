@@ -6,12 +6,10 @@ import { requireAuth } from '../../requireAuth'
 import { readJsonWithLimit } from '../../body'
 import { appendApiMessage, localizedErrorResponse } from '../../localizedError'
 import { createBackgroundJob, serializeBackgroundJob } from '../../backgroundJobsService'
-import { assertCanCreateBackgroundJob } from '../../backgroundJobEntitlement'
-import {
-  MAX_BACKGROUND_JOBS_BATCH,
-  validateCreateBackgroundJobInput,
-} from '../../backgroundJobTypes'
+import { assertCanCreateBackgroundJob, backgroundJobBatchMax } from '../../backgroundJobEntitlement'
+import { validateCreateBackgroundJobInput } from '../../backgroundJobTypes'
 import { resolveUserPlanName } from '../../../billing/usageDb'
+import { requireBackgroundBatchForUser } from '../../entitlementGuard'
 
 const MAX_JOB_BODY_BYTES = 512_000
 
@@ -31,11 +29,16 @@ export async function POST(req: Request) {
       return localizedErrorResponse(req, 'api.job.batchEmpty', 400)
     }
 
+    const batchDenied = await requireBackgroundBatchForUser(req, auth.user.id)
+    if (batchDenied) return batchDenied
+
+    const planName = await resolveUserPlanName(auth.user.id)
+    const batchCap = backgroundJobBatchMax(planName)
     const prompts = rawPrompts
       .filter((p): p is string => typeof p === 'string')
       .map((p) => p.trim())
       .filter(Boolean)
-      .slice(0, MAX_BACKGROUND_JOBS_BATCH)
+      .slice(0, batchCap)
 
     if (prompts.length === 0) {
       return localizedErrorResponse(req, 'api.job.batchEmpty', 400)
@@ -55,7 +58,6 @@ export async function POST(req: Request) {
       }
     }
 
-    const planName = await resolveUserPlanName(auth.user.id)
     const jobs = []
     let created = 0
     let skipped = 0

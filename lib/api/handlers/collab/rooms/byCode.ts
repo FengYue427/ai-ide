@@ -11,6 +11,8 @@ import {
   joinCollaborationRoom,
   serializeCollabRoom,
 } from '../../../collaborationRoomsService'
+import { getCollabMaxParticipants } from '../../../../billing/dashboardEntitlements'
+import { resolveUserPlanName } from '../../../../billing/usageDb'
 import { normalizeJoinRole } from '../../../collabTypes'
 
 const MAX_BODY_BYTES = 4_000
@@ -73,6 +75,12 @@ export async function POST(req: Request, ctx?: { params: Record<string, string> 
       }
       if (result.reason === 'closed') {
         return localizedErrorResponse(req, 'api.collab.roomClosed', 409)
+      }
+      if (result.reason === 'room_full') {
+        const hostPlan = roomPreview ? await resolveUserPlanName(roomPreview.hostId) : 'free'
+        return localizedErrorResponse(req, 'api.collab.roomFull', 409, {
+          limit: String(getCollabMaxParticipants(hostPlan)),
+        })
       }
       return localizedErrorResponse(req, 'api.collab.joinForbidden', 403)
     }

@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest'
+import { getBackgroundJobLimits } from '../billing/entitlements'
 import {
   backgroundJobDailyLimit,
   backgroundJobMaxActive,
-  FREE_BACKGROUND_JOBS_MAX_ACTIVE,
-  FREE_BACKGROUND_JOBS_PER_DAY,
-  PAID_BACKGROUND_JOBS_MAX_ACTIVE,
-  PAID_BACKGROUND_JOBS_PER_DAY,
 } from './backgroundJobEntitlement'
 
 describe('backgroundJobEntitlement', () => {
   it('gives free tighter limits than paid', () => {
-    expect(backgroundJobDailyLimit('free')).toBe(FREE_BACKGROUND_JOBS_PER_DAY)
-    expect(backgroundJobDailyLimit('pro')).toBe(PAID_BACKGROUND_JOBS_PER_DAY)
-    expect(backgroundJobMaxActive('free')).toBe(FREE_BACKGROUND_JOBS_MAX_ACTIVE)
-    expect(backgroundJobMaxActive('enterprise')).toBe(PAID_BACKGROUND_JOBS_MAX_ACTIVE)
+    const free = getBackgroundJobLimits('free')
+    const pro = getBackgroundJobLimits('pro')
+    const team = getBackgroundJobLimits('enterprise')
+    expect(backgroundJobDailyLimit('free')).toBe(free.dailyLimit)
+    expect(backgroundJobDailyLimit('pro')).toBe(pro.dailyLimit)
+    expect(backgroundJobMaxActive('free')).toBe(free.maxActive)
+    expect(backgroundJobMaxActive('enterprise')).toBe(team.maxActive)
+    expect(pro.dailyLimit).toBeGreaterThan(free.dailyLimit)
   })
 })

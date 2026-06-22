@@ -36,7 +36,16 @@ export function localizedErrorResponse(
   headers?: Record<string, string>,
 ): Response {
   const locale = resolveRequestLocale(req)
-  return jsonResponse({ error: apiMessage(key, locale, params), errorKey: key }, status, headers)
+  const payload: Record<string, string> = {
+    error: apiMessage(key, locale, params),
+    errorKey: key,
+  }
+  if (params) {
+    for (const [name, value] of Object.entries(params)) {
+      payload[name] = String(value)
+    }
+  }
+  return jsonResponse(payload, status, headers)
 }
 
 export function authJsonError(req: Request, key: ApiErrorKey, status: number): Response {

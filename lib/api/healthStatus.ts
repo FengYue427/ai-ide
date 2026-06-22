@@ -45,7 +45,7 @@ export async function buildHealthCheck(options: {
     payload.status = 'degraded'
     payload.database = 'not_configured'
     payload.hints = [
-      'Set DATABASE_URL on Vercel (Neon pooler URL with sslmode=require).',
+      'Set DATABASE_URL (Neon pooler with sslmode=require, or Aliyun RDS internal URL).',
       'Set AUTH_SECRET (32+ random chars) and APP_URL to your deployment origin.',
     ]
     return { payload, statusCode: 503 }
@@ -59,8 +59,8 @@ export async function buildHealthCheck(options: {
     payload.status = 'degraded'
     payload.database = 'unavailable'
     payload.hints = [
-      'Verify Neon project is active and DATABASE_URL uses the pooler host.',
-      'Redeploy after changing env vars; run npm run smoke:production.',
+      'Verify DATABASE_URL (Neon pooler or Aliyun RDS whitelist + credentials).',
+      'Run npm run db:migrate:deploy; then npm run smoke:production.',
     ]
     return { payload, statusCode: 503 }
   }

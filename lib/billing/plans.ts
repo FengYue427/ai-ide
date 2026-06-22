@@ -1,3 +1,8 @@
+import {
+  getPlanLimitsFromEntitlements,
+  getPlanMarketingFeatures,
+} from './entitlements'
+
 export interface PlanDefinition {
   id: string
   name: string
@@ -20,57 +25,37 @@ export interface PlanDefinition {
 export const STRIPE_USD_PRO = 9.99
 export const STRIPE_USD_ENTERPRISE = 19.99
 
-/** v1.5 weighted quota units/day; Pro $9.99/mo · Team $19.99/mo. */
+function buildPlanDefinition(
+  id: PlanDefinition['name'],
+  displayName: string,
+  description: string,
+  price: number,
+  priceCny: number | undefined,
+): PlanDefinition {
+  return {
+    id,
+    name: id,
+    displayName,
+    description,
+    price,
+    currency: 'USD',
+    priceCny,
+    features: getPlanMarketingFeatures(id),
+    limits: getPlanLimitsFromEntitlements(id),
+  }
+}
+
+/** v1.5 weighted quota units/day; Pro $9.99/mo · Team $19.99/mo. Limits from entitlements.ts. */
 export const BILLING_PLANS: PlanDefinition[] = [
-  {
-    id: 'free',
-    name: 'free',
-    displayName: '免费版',
-    description: '个人学习与日常小项目',
-    price: 0,
-    currency: 'USD',
-    features: [
-      '平台 AI 对话（登录即用，经济模型）',
-      '每日 200 加权配额单位',
-      '无限云工作区',
-      '30GB 云存储额度（规划）',
-    ],
-    limits: { aiRequestsPerDay: 200, workspaces: -1, storageGB: 30 },
-  },
-  {
-    id: 'pro',
-    name: 'pro',
-    displayName: '专业版',
-    description: '高频个人开发者，全模型平台 AI',
-    price: STRIPE_USD_PRO,
-    currency: 'USD',
-    priceCny: 39,
-    features: [
-      '平台 AI + Agent（全档模型）',
-      '每日 2000 加权配额单位',
-      '无限云工作区',
-      '30GB 云存储额度（规划）',
-      'Stripe 订阅',
-    ],
-    limits: { aiRequestsPerDay: 2000, workspaces: -1, storageGB: 30 },
-  },
-  {
-    id: 'enterprise',
-    name: 'enterprise',
-    displayName: '团队版',
-    description: '小团队与重度用户，配额几乎不限',
-    price: STRIPE_USD_ENTERPRISE,
-    currency: 'USD',
-    priceCny: 79,
-    features: [
-      '专业版全部能力',
-      'AI 配额不限（-1）',
-      '无限云工作区',
-      '100GB 云存储额度（规划）',
-      '优先支持（规划）',
-    ],
-    limits: { aiRequestsPerDay: -1, workspaces: -1, storageGB: 100 },
-  },
+  buildPlanDefinition('free', '免费版', '个人学习与日常小项目', 0, undefined),
+  buildPlanDefinition('pro', '专业版', '个人工程闭环 — Autopilot · 证明包 · 全档 AI', STRIPE_USD_PRO, 39),
+  buildPlanDefinition(
+    'enterprise',
+    '团队版',
+    '协作交付 — 长链 Share · 批量 Agent · 团队房间',
+    STRIPE_USD_ENTERPRISE,
+    79,
+  ),
 ]
 
 export function getBillablePlanNames(): string[] {
@@ -82,7 +67,7 @@ export function findPlanByName(name: string): PlanDefinition | undefined {
 }
 
 export function getPlanLimits(planName: string): PlanDefinition['limits'] {
-  return findPlanByName(planName)?.limits ?? BILLING_PLANS[0].limits
+  return getPlanLimitsFromEntitlements(planName)
 }
 
 export function getWorkspaceLimit(planName: string): number {

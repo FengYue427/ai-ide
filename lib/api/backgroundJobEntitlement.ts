@@ -1,13 +1,6 @@
-import { prisma } from '../../src/lib/prisma'
 import type { ApiMessageKey } from '../i18n/apiMessages'
-
-/** Free: background Agent allowed with tight caps (v1.1.2 F4). */
-export const FREE_BACKGROUND_JOBS_PER_DAY = 2
-export const FREE_BACKGROUND_JOBS_MAX_ACTIVE = 1
-
-/** Pro / Enterprise — generous caps. */
-export const PAID_BACKGROUND_JOBS_PER_DAY = 100
-export const PAID_BACKGROUND_JOBS_MAX_ACTIVE = 5
+import { getBackgroundJobLimits } from '../billing/entitlements'
+import { prisma } from '../../src/lib/prisma'
 
 export type BackgroundJobEntitlementError = {
   key: ApiMessageKey
@@ -37,11 +30,15 @@ export async function countActiveBackgroundJobs(userId: string): Promise<number>
 }
 
 export function backgroundJobDailyLimit(planName: string): number {
-  return isPaidPlan(planName) ? PAID_BACKGROUND_JOBS_PER_DAY : FREE_BACKGROUND_JOBS_PER_DAY
+  return getBackgroundJobLimits(planName).dailyLimit
 }
 
 export function backgroundJobMaxActive(planName: string): number {
-  return isPaidPlan(planName) ? PAID_BACKGROUND_JOBS_MAX_ACTIVE : FREE_BACKGROUND_JOBS_MAX_ACTIVE
+  return getBackgroundJobLimits(planName).maxActive
+}
+
+export function backgroundJobBatchMax(planName: string): number {
+  return getBackgroundJobLimits(planName).batchMax
 }
 
 export async function assertCanCreateBackgroundJob(

@@ -1,9 +1,13 @@
 import { randomBytes } from 'node:crypto'
 import { prisma } from '../../src/lib/prisma'
 import type { ShareFilePayload } from './sharePayload'
+import { getShareTtlMs } from '../billing/entitlements'
 
-export const SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+/** @deprecated Use getMaxSharesForPlan(planName) */
 export const MAX_SHARES_PER_USER = 30
+
+/** @deprecated Use getShareTtlMs(planName) */
+export const SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 function generateShareSlug(): string {
   return randomBytes(6).toString('base64url').replace(/[^a-zA-Z0-9]/g, 'x').slice(0, 8)
@@ -54,8 +58,10 @@ export async function countUserProjectShares(userId: string): Promise<number> {
 export async function createProjectShare(
   userId: string | null,
   files: ShareFilePayload[],
+  options?: { planName?: string },
 ): Promise<ProjectShareRecord> {
-  const expiresAt = new Date(Date.now() + SHARE_TTL_MS)
+  const ttlMs = userId ? getShareTtlMs(options?.planName ?? 'free') : SHARE_TTL_MS
+  const expiresAt = new Date(Date.now() + ttlMs)
   const filesJson = JSON.stringify(files)
 
   for (let attempt = 0; attempt < 5; attempt += 1) {

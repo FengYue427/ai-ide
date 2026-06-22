@@ -6,6 +6,9 @@ import { localizedErrorResponse } from '../../localizedError'
 import { requireAuth } from '../../requireAuth'
 import { isPlatformAiConfigured, resolvePlatformAiRoute } from '../../aiGateway/platformConfig'
 import { buildPlatformUsageDashboard } from '../../../billing/usageDashboard'
+import { buildDashboardEntitlements } from '../../../billing/dashboardEntitlements'
+import { getEffectiveEntitlements } from '../../../billing/entitlements'
+import { getAutopilotQuotaForUser } from '../../../billing/autopilotUsage'
 import {
   AI_USAGE_PLATFORM_TYPE,
   AI_USAGE_TYPE,
@@ -28,6 +31,12 @@ export async function GET(req: Request) {
     const platformToday = await getUsageCountForDay(auth.user.id, [AI_USAGE_PLATFORM_TYPE], 0)
     const otherToday = await getUsageCountForDay(auth.user.id, [AI_USAGE_TYPE], 0)
     const daily = await getAiUsageDailyBuckets(auth.user.id, DASHBOARD_DAYS)
+    const quota = buildQuotaSnapshot(plan, used)
+    const autopilotQuota = await getAutopilotQuotaForUser(auth.user.id)
+    const entitlements = buildDashboardEntitlements(plan, getEffectiveEntitlements(plan), {
+      aiQuota: quota,
+      autopilotQuota,
+    })
 
     const platformRoute = resolvePlatformAiRoute()
     const platformProvider =
@@ -35,12 +44,13 @@ export async function GET(req: Request) {
 
     return jsonResponse(
       buildPlatformUsageDashboard({
-        quota: buildQuotaSnapshot(plan, used),
+        quota,
         platformToday,
         otherToday,
         daily,
         periodDays: DASHBOARD_DAYS,
         platformProvider,
+        entitlements,
       }),
     )
   } catch (error) {

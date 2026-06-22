@@ -1,5 +1,6 @@
 import { isQuotaNearLimit, quotaUsagePercent } from './quotaUsageHints'
 import { estimatePlatformCostUsd, getPlatformCostPerRequestUsd } from './platformUsageEstimate'
+import type { DashboardEntitlementsPayload } from './dashboardEntitlements'
 import type { QuotaSnapshot, UsageDayBucket } from './usageDb'
 
 export interface PlatformUsageDashboardPayload {
@@ -17,6 +18,7 @@ export interface PlatformUsageDashboardPayload {
   quotaNearLimit: boolean
   /** Platform gateway model route (read-only). */
   platformProvider?: string
+  entitlements?: DashboardEntitlementsPayload
 }
 
 export function buildPlatformUsageDashboard(params: {
@@ -26,6 +28,7 @@ export function buildPlatformUsageDashboard(params: {
   daily: UsageDayBucket[]
   periodDays: number
   platformProvider?: string
+  entitlements?: DashboardEntitlementsPayload
 }): PlatformUsageDashboardPayload {
   const platformPeriodTotal = params.daily.reduce((sum, row) => sum + row.platform, 0)
   const usagePercent = quotaUsagePercent(params.quota.used, params.quota.limit)
@@ -43,5 +46,6 @@ export function buildPlatformUsageDashboard(params: {
     quotaUsagePercent: usagePercent,
     quotaNearLimit: isQuotaNearLimit(params.quota.used, params.quota.limit),
     platformProvider: params.platformProvider,
+    entitlements: params.entitlements,
   }
 }
