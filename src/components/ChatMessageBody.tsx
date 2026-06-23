@@ -8,11 +8,13 @@ import {
   type InlineNode,
   type MarkdownBlock,
 } from '../lib/chatMarkdownLite'
+import type { ChatAttachmentMeta } from '../lib/chatAttachments'
 
 type ChatMessageBodyProps = {
   content: string
   variant: 'user' | 'assistant'
   isError?: boolean
+  attachments?: ChatAttachmentMeta[]
 }
 
 function InlineContent({ nodes }: { nodes: InlineNode[] }) {
@@ -162,11 +164,24 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
   )
 }
 
-export function ChatMessageBody({ content, variant, isError }: ChatMessageBodyProps) {
+export function ChatMessageBody({ content, variant, isError, attachments }: ChatMessageBodyProps) {
   const segments = useMemo(() => splitMessageSegments(content), [content])
 
   return (
     <div className={`chat-msg-body chat-msg-body--${variant} ${isError ? 'chat-msg-body--error' : ''}`}>
+      {attachments && attachments.length > 0 ? (
+        <div className="chat-msg-attachments">
+          {attachments.map((attachment) => (
+            <div key={attachment.id} className="chat-msg-attachment" title={attachment.name}>
+              {attachment.previewDataUrl ? (
+                <img src={attachment.previewDataUrl} alt={attachment.name} className="chat-msg-attachment__img" />
+              ) : (
+                <span className="chat-msg-attachment__file">{attachment.name}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : null}
       {segments.map((segment, index) => {
         if (segment.kind === 'code') {
           return <CodeBlock key={`code-${index}`} language={segment.language} value={segment.value} />

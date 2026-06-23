@@ -2,6 +2,8 @@ export type AIModel = 'openai' | 'deepseek' | 'claude' | 'google' | 'ollama' | '
 
 import type { AiKeyMode } from '../lib/aiPlatformMode'
 import { shouldUsePlatformAi } from '../lib/aiPlatformMode'
+import type { ChatApiMessage } from '../lib/chatAttachments'
+import { toLegacyChatMessages } from '../lib/chatAttachments'
 import { sendPlatformMessage } from './platformAiService'
 
 export interface AIConfig {
@@ -120,7 +122,7 @@ export const defaultEndpoints: Record<AIModel, string> = {
 
 export async function sendMessage(
   config: AIConfig,
-  messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  messages: ChatApiMessage[],
   onStream?: (chunk: string) => void,
   options?: { skipQuotaCheck?: boolean; signal?: AbortSignal; loggedIn?: boolean },
 ): Promise<string> {
@@ -144,13 +146,13 @@ export async function sendMessage(
       result = await sendOpenAICompatible(endpoint, config.apiKey, model, messages, onStream, options?.signal)
       break
     case 'google':
-      result = await sendGoogleGemini(endpoint, config.apiKey, model, messages, onStream, options?.signal)
+      result = await sendGoogleGemini(endpoint, config.apiKey, model, toLegacyChatMessages(messages), onStream, options?.signal)
       break
     case 'claude':
-      result = await sendClaude(endpoint, config.apiKey, model, messages, onStream, options?.signal)
+      result = await sendClaude(endpoint, config.apiKey, model, toLegacyChatMessages(messages), onStream, options?.signal)
       break
     case 'ollama':
-      result = await sendOllama(endpoint, model, messages, onStream, options?.signal)
+      result = await sendOllama(endpoint, model, toLegacyChatMessages(messages), onStream, options?.signal)
       break
     default:
       throw aiServiceError('ai.error.unsupportedProvider', { provider: config.provider })
@@ -349,7 +351,7 @@ async function sendOpenAICompatible(
   endpoint: string,
   apiKey: string,
   model: string,
-  messages: { role: string; content: string }[],
+  messages: ChatApiMessage[],
   onStream?: (chunk: string) => void,
   signal?: AbortSignal
 ): Promise<string> {

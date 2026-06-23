@@ -58,7 +58,7 @@ export interface ChatPayloadEstimate {
 }
 
 export function measureAiMessagesPayload(
-  messages: { role: string; content: string }[],
+  messages: Array<{ role: string; content: string | import('../lib/chatAttachments').ChatContentPart[] }>,
 ): number {
   return new Blob([JSON.stringify(messages)]).size
 }

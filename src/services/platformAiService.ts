@@ -9,7 +9,7 @@ import { extractUserFacingStreamDelta, sanitizeChatAssistantOutput, type StreamD
 
 export type PlatformChatMessage = {
   role: 'system' | 'user' | 'assistant'
-  content: string
+  content: import('../lib/chatAttachments').ChatContentPart[] | string
 }
 
 function platformAiError(message: string): Error {

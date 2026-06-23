@@ -68,6 +68,7 @@ import { useChatQueueReport } from '../hooks/useChatQueueReport'
 import { useChatAgentRunHistory } from '../hooks/useChatAgentRunHistory'
 import { useChatPayloadEstimate } from '../hooks/useChatPayloadEstimate'
 import { useChatMentionComposer } from '../hooks/useChatMentionComposer'
+import type { ChatPendingAttachment } from '../lib/chatAttachments'
 import {
   clearRuntimeQueuePause,
   getRuntimeQueuePause,
@@ -220,6 +221,7 @@ ${t('ai.chat.prompt')}`
       return ''
     }
   })
+  const [chatAttachments, setChatAttachments] = useState<ChatPendingAttachment[]>([])
   const [sendQueue, setSendQueue] = useState<PendingSend[]>([])
   const [runId, setRunId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -1037,6 +1039,17 @@ ${t('ai.chat.prompt')}`
         onSend={handleSend}
         onStop={stopGeneration}
         onBackgroundRun={() => void handleBackgroundRun()}
+        attachments={chatAttachments}
+        onAttachmentsChange={setChatAttachments}
+        onAttachmentRejected={(reason) => {
+          const detailKey =
+            reason === 'limit'
+              ? 'chat.attachments.rejectedLimit'
+              : reason === 'size'
+                ? 'chat.attachments.rejectedSize'
+                : 'chat.attachments.rejectedType'
+          notify?.('info', t('chat.attachments.rejectedTitle'), t(detailKey))
+        }}
       />
 
       {promoteModal ? (

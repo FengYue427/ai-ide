@@ -56,6 +56,13 @@ import { findRetryUserText } from '../services/chatRetry'
 import { buildMcpFollowUpMessages } from '../services/chatMcpFollowUp'
 import { removeTrailingUserMessage, upsertAssistantMessage } from '../services/chatMessageState'
 import { sanitizeChatAssistantOutput } from '../services/chatOutputSanitizer'
+import {
+  buildChatUserContent,
+  toChatAttachmentMeta,
+  toLegacyChatMessages,
+  type ChatApiMessage,
+  type ChatContentPart,
+} from '../lib/chatAttachments'
 import { applyPlanArtifactsWithResult, buildPlanModeSystemPrompt } from '../services/planModeService'
 import {
   appendWorkflowSystemAddon,
@@ -88,16 +95,32 @@ import type { FileItem } from '../types/file'
 import type { IndexBuildStats } from '../services/projectIndexService'
 import { loadMcpSettings } from '../services/mcpConfigService'
 
+function patchLastUserMessageContent(
+  messages: ChatApiMessage[],
+  content: string | ChatContentPart[],
+): ChatApiMessage[] {
+  const next = [...messages]
+  for (let index = next.length - 1; index >= 0; index -= 1) {
+    if (next[index]?.role === 'user') {
+      next[index] = { ...next[index], content }
+      break
+    }
+  }
+  return next
+}
+
 export type ChatMessage = {
   role: 'user' | 'assistant'
   content: string
   isError?: boolean
+  attachments?: import('../lib/chatAttachments').ChatAttachmentMeta[]
 }
 
 export type ChatSendAction = 'explain' | 'refactor' | 'fix' | 'generate'
 
 export type ChatSendOptions = {
   forceSlim?: boolean
+  attachments?: import('../lib/chatAttachments').ChatPendingAttachment[]
 }
 
 export type ChatPayloadWarning = {
@@ -383,7 +406,8 @@ export function useChatSendOrchestrator(params: UseChatSendOrchestratorParams) {
   const handleSend = useCallback(
     async (customInput?: string, action?: ChatSendAction, options?: ChatSendOptions) => {
       const textToSend = customInput || input
-      if (!textToSend.trim()) return
+      const pendingAttachments = options?.attachments ?? []
+      if (!textToSend.trim() && pendingAttachments.length === 0) return
       if (loading) {
         setSendQueue((prev) =>
           enqueueSend(
@@ -419,7 +443,14 @@ export function useChatSendOrchestrator(params: UseChatSendOrchestratorParams) {
       const effectiveWorkspaceContext = forceSlim ? false : useWorkspaceContext
       const historyLimit = forceSlim ? 6 : 20
 
-      const userMessage: ChatMessage = { role: 'user', content: effectiveTextToSend }
+      const userMessage: ChatMessage = {
+        role: 'user',
+        content: effectiveTextToSend,
+        attachments:
+          pendingAttachments.length > 0
+            ? pendingAttachments.map((attachment) => toChatAttachmentMeta(attachment))
+            : undefined,
+      }
       setMessages((prev) => [...prev, userMessage])
       if (!customInput) setInput('')
       setPayloadWarning(null)
@@ -517,7 +548,7 @@ export function useChatSendOrchestrator(params: UseChatSendOrchestratorParams) {
           historyLimit,
         )
 
-        let aiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = []
+        let aiMessages: ChatApiMessage[] = []
         let assistantContent = ''
 
         const useToolLoop =
@@ -739,6 +770,13 @@ export function useChatSendOrchestrator(params: UseChatSendOrchestratorParams) {
           ]
         }
 
+        const userApiContent = buildChatUserContent({
+          text: effectiveTextToSend,
+          attachments: pendingAttachments,
+          provider: aiConfig.provider,
+        })
+        aiMessages = patchLastUserMessageContent(aiMessages, userApiContent)
+
         const estimatedBytes = measureAiMessagesPayload(aiMessages)
         if (payloadMeterEstimate) {
           const parity = comparePayloadEstimateToSend(payloadMeterEstimate.estimatedBytes, estimatedBytes)
@@ -801,7 +839,7 @@ export function useChatSendOrchestrator(params: UseChatSendOrchestratorParams) {
             sendFollowUp: async ({ assistantSoFar, toolLog }) => {
               let followUpContent = ''
               const followUpMessages = buildMcpFollowUpMessages(
-                aiMessages,
+                toLegacyChatMessages(aiMessages),
                 assistantSoFar,
                 t('chat.mcp.followUp', { log: toolLog.join('\n') }),
               )

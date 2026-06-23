@@ -1,10 +1,15 @@
-import { memo, type RefObject } from 'react'
-import { Pause, Send, Server } from 'lucide-react'
+import { memo, useRef, type RefObject } from 'react'
+import { Paperclip, Pause, Send, Server } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { trackEvent } from '../../lib/observability'
 import type { AIConfig } from '../../services/aiService'
 import type { ChatPayloadEstimate } from '../../services/chatPayloadEstimate'
 import type { LargeRepoContextHint } from '../../services/largeRepoContextHint'
+import {
+  CHAT_ATTACHMENT_MAX_COUNT,
+  parseChatAttachmentFile,
+  type ChatPendingAttachment,
+} from '../../lib/chatAttachments'
 import {
   countAmbiguousMentions,
   countUnresolvedMentions,
@@ -14,6 +19,7 @@ import type { IndexBuildState } from '../../services/projectIndexManager'
 import type { IndexBuildStats, IndexSearchHit } from '../../services/projectIndexService'
 import { toKb } from '../../services/payloadBudget'
 import { ChatPayloadBudgetMeter } from '../ChatPayloadBudgetMeter'
+import { ChatAttachmentStrip } from './ChatAttachmentStrip'
 
 type SendAction = 'explain' | 'refactor' | 'fix' | 'generate'
 
@@ -53,9 +59,12 @@ export interface ChatInputComposerProps {
   onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void
   onPickMention: (hit: IndexSearchHit) => void
   onDismissMentionOnboarding: () => void
-  onSend: (customInput?: string, action?: SendAction, options?: { forceSlim?: boolean }) => void
+  onSend: (customInput?: string, action?: SendAction, options?: { forceSlim?: boolean; attachments?: ChatPendingAttachment[] }) => void
   onStop: () => void
   onBackgroundRun: () => void
+  attachments: ChatPendingAttachment[]
+  onAttachmentsChange: (attachments: ChatPendingAttachment[]) => void
+  onAttachmentRejected?: (reason: 'limit' | 'type' | 'size') => void
 }
 
 export const ChatInputComposer = memo(function ChatInputComposer({
@@ -89,8 +98,57 @@ export const ChatInputComposer = memo(function ChatInputComposer({
   onSend,
   onStop,
   onBackgroundRun,
+  attachments,
+  onAttachmentsChange,
+  onAttachmentRejected,
 }: ChatInputComposerProps) {
   const { t } = useI18n()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const canSend = Boolean(input.trim()) || attachments.length > 0
+
+  const addFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files)
+    if (list.length === 0) return
+    const next = [...attachments]
+    for (const file of list) {
+      if (next.length >= CHAT_ATTACHMENT_MAX_COUNT) {
+        onAttachmentRejected?.('limit')
+        break
+      }
+      try {
+        const parsed = await parseChatAttachmentFile(file)
+        if (!parsed) {
+          onAttachmentRejected?.('size')
+          continue
+        }
+        next.push(parsed)
+      } catch {
+        onAttachmentRejected?.('type')
+      }
+    }
+    onAttachmentsChange(next)
+  }
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = event.clipboardData?.items
+    if (!items) return
+    const imageFiles: File[] = []
+    for (const item of items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) imageFiles.push(file)
+      }
+    }
+    if (imageFiles.length === 0) return
+    event.preventDefault()
+    void addFiles(imageFiles)
+  }
+
+  const sendWithAttachments = (customInput?: string, action?: SendAction, options?: { forceSlim?: boolean }) => {
+    onSend(customInput, action, { ...options, attachments })
+    onAttachmentsChange([])
+  }
 
   return (
     <div className="chat-input-area chat-input-area--stacked">
@@ -170,7 +228,7 @@ export const ChatInputComposer = memo(function ChatInputComposer({
                 trackEvent('chat.mention_slim_retry', {
                   ambiguousCount: countAmbiguousMentions(mentionPreflight),
                 })
-                onSend(input, undefined, { forceSlim: true })
+                sendWithAttachments(input, undefined, { forceSlim: true })
               }}
             >
               {t('chat.mention.slimPastAmbiguous')}
@@ -200,7 +258,7 @@ export const ChatInputComposer = memo(function ChatInputComposer({
                 budgetBytes: payloadWarning.budgetBytes,
                 provider: aiConfig.provider,
               })
-              onSend(payloadWarning.text, payloadWarning.action, { forceSlim: true })
+              sendWithAttachments(payloadWarning.text, payloadWarning.action, { forceSlim: true })
             }}
           >
             {t('chat.payload.slimAndSend')}
@@ -253,7 +311,32 @@ export const ChatInputComposer = memo(function ChatInputComposer({
         </div>
       ) : null}
 
+      <ChatAttachmentStrip
+        attachments={attachments}
+        onRemove={(id) => onAttachmentsChange(attachments.filter((item) => item.id !== id))}
+      />
+
       <div className="chat-input-row">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="chat-attachment-input"
+          multiple
+          accept="image/*,.txt,.md,.json,.yaml,.yml,.xml,.csv,.ts,.tsx,.js,.jsx,.py,.go,.rs,.java,.css,.html,.sql,.log,.env"
+          onChange={(event) => {
+            if (event.target.files) void addFiles(event.target.files)
+            event.target.value = ''
+          }}
+        />
+        <button
+          type="button"
+          className="chat-send chat-send--square"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!isConfigured || loading || attachments.length >= CHAT_ATTACHMENT_MAX_COUNT}
+          title={t('chat.attachments.add')}
+        >
+          <Paperclip size={16} />
+        </button>
         <textarea
           ref={inputRef}
           className="chat-input chat-input--composer"
@@ -261,6 +344,7 @@ export const ChatInputComposer = memo(function ChatInputComposer({
           value={input}
           onChange={onInputChange}
           onKeyDown={onKeyDown}
+          onPaste={handlePaste}
           disabled={!isConfigured || loading}
           rows={1}
         />
@@ -269,7 +353,7 @@ export const ChatInputComposer = memo(function ChatInputComposer({
             type="button"
             className="chat-send chat-send--square"
             onClick={onBackgroundRun}
-            disabled={!isConfigured || loading || backgroundSubmitting || !input.trim()}
+            disabled={!isConfigured || loading || backgroundSubmitting || !canSend}
             title={t('chat.backgroundRun.button')}
           >
             <Server size={16} />
@@ -278,8 +362,8 @@ export const ChatInputComposer = memo(function ChatInputComposer({
         <button
           type="button"
           className="chat-send chat-send--square"
-          onClick={loading ? onStop : () => onSend()}
-          disabled={!isConfigured || (!loading && !input.trim())}
+          onClick={loading ? onStop : () => sendWithAttachments()}
+          disabled={!isConfigured || (!loading && !canSend)}
           title={loading ? t('chat.stop') : t('chat.sendButton')}
         >
           {loading ? <Pause size={16} /> : <Send size={16} />}

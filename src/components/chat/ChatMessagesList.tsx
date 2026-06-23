@@ -10,6 +10,7 @@ export interface ChatMessageItem {
   role: 'user' | 'assistant'
   content: string
   isError?: boolean
+  attachments?: import('../../lib/chatAttachments').ChatAttachmentMeta[]
 }
 
 export interface ChatMessagesListProps {
@@ -78,6 +79,7 @@ export const ChatMessagesList = memo(function ChatMessagesList({
                   content={message.content}
                   variant={message.role}
                   isError={message.isError}
+                  attachments={message.attachments}
                 />
               </div>
 
