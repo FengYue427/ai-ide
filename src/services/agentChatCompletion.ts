@@ -9,17 +9,29 @@ import { getApiLanguage } from '../lib/apiLanguage'
 import type { ChatCompletionResult, ChatMessage } from './agentChatTypes'
 import type { OpenAIToolDefinition } from './agentTools/types'
 import { shouldUsePlatformAi } from '../lib/aiPlatformMode'
+import { isPlatformCloudProvider } from '../lib/platformModelCatalog'
 import { reserveAIUsageFromStore } from './usageService'
 import { sanitizeChatAssistantOutput } from './chatOutputSanitizer'
+import { getAgentToolAdapterKind, supportsAgentToolProvider } from '../../lib/ai/agentToolProviders'
+import { sendAnthropicAgentCompletion } from '../../lib/ai/anthropicAgentCompletion'
+import { sendGeminiAgentCompletion } from '../../lib/ai/geminiAgentCompletion'
 
-const TOOL_PROVIDERS: AIModel[] = ['openai', 'deepseek', 'grok', 'zhipu', 'minimax']
+/** @deprecated use supportsAgentToolProvider from lib/ai/agentToolProviders */
+export function supportsAgentToolCalling(provider: AIModel): boolean {
+  if (import.meta.env.VITE_AGENT_TOOLS === '0') return false
+  return supportsAgentToolProvider(provider)
+}
 
 /** DeepSeek V4 tool loop: disable thinking to avoid 400 without reasoning_content round-trip */
 const DEEPSEEK_AGENT_THINKING = { type: 'disabled' as const }
 
-export function supportsAgentToolCalling(provider: AIModel): boolean {
-  if (import.meta.env.VITE_AGENT_TOOLS === '0') return false
-  return TOOL_PROVIDERS.includes(provider)
+/** Agent tool loop requires OpenAI-compatible chat completions (DashScope compatible-mode for Qwen). */
+export function resolveAgentEndpoint(config: AIConfig): string {
+  if (config.endpoint?.trim()) return config.endpoint.trim()
+  if (config.provider === 'qwen') {
+    return 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+  }
+  return defaultEndpoints[config.provider]
 }
 
 function aiServiceError(key: TranslationKey, params?: Record<string, string | number>): Error {
@@ -133,8 +145,7 @@ async function sendPlatformAgentCompletionViaGateway(
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      provider:
-        config.provider === 'openai' || config.provider === 'deepseek' ? config.provider : 'deepseek',
+      provider: isPlatformCloudProvider(config.provider) ? config.provider : 'deepseek',
       model: resolveAgentModelId(config),
       messages: serializeMessagesForApi(messages),
       tools: options?.tools ?? [],
@@ -190,7 +201,38 @@ export async function sendChatCompletion(
     throw aiServiceError('agent.error.toolsUnsupported', { provider: config.provider })
   }
 
-  const endpoint = config.endpoint || defaultEndpoints[config.provider]
+  const adapter = getAgentToolAdapterKind(config.provider)
+  if (adapter === 'anthropic') {
+    const result = await sendAnthropicAgentCompletion({
+      endpoint: resolveAgentEndpoint(config),
+      apiKey: config.apiKey,
+      model: resolveAgentModelId(config),
+      messages,
+      tools: options?.tools,
+      signal: options?.signal,
+    })
+    return {
+      ...result,
+      content: sanitizeChatAssistantOutput(result.content ?? '') || null,
+    }
+  }
+
+  if (adapter === 'gemini') {
+    const result = await sendGeminiAgentCompletion({
+      endpoint: resolveAgentEndpoint(config),
+      apiKey: config.apiKey,
+      model: resolveAgentModelId(config),
+      messages,
+      tools: options?.tools,
+      signal: options?.signal,
+    })
+    return {
+      ...result,
+      content: sanitizeChatAssistantOutput(result.content ?? '') || null,
+    }
+  }
+
+  const endpoint = resolveAgentEndpoint(config)
   const body = buildRequestBody(config, messages, options?.tools)
 
   const response = await fetch(endpoint, {

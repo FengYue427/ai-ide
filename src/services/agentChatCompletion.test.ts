@@ -1,8 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { resolveAgentModelId, serializeMessagesForApi } from './agentChatCompletion'
+import { resolveAgentEndpoint, resolveAgentModelId, serializeMessagesForApi, supportsAgentToolCalling } from './agentChatCompletion'
 import type { ChatMessage } from './agentChatTypes'
 
 describe('agentChatCompletion helpers', () => {
+  it('supports qwen, claude, and google for tool loop', () => {
+    expect(supportsAgentToolCalling('qwen')).toBe(true)
+    expect(supportsAgentToolCalling('claude')).toBe(true)
+    expect(supportsAgentToolCalling('google')).toBe(true)
+    expect(supportsAgentToolCalling('ollama')).toBe(false)
+  })
+
+  it('uses dashscope compatible-mode for qwen agent endpoint', () => {
+    expect(
+      resolveAgentEndpoint({
+        provider: 'qwen',
+        apiKey: 'k',
+      }),
+    ).toContain('compatible-mode/v1/chat/completions')
+  })
   it('maps legacy deepseek model ids to V4', () => {
     expect(
       resolveAgentModelId({

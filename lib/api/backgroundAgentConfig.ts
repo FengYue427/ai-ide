@@ -4,6 +4,7 @@ export type BackgroundAgentProvider =
   | 'grok'
   | 'zhipu'
   | 'minimax'
+  | 'qwen'
 
 export type BackgroundAgentAiConfig = {
   provider: BackgroundAgentProvider
@@ -18,6 +19,7 @@ const TOOL_PROVIDERS: BackgroundAgentProvider[] = [
   'grok',
   'zhipu',
   'minimax',
+  'qwen',
 ]
 
 const DEFAULT_ENDPOINTS: Record<BackgroundAgentProvider, string> = {
@@ -26,6 +28,7 @@ const DEFAULT_ENDPOINTS: Record<BackgroundAgentProvider, string> = {
   grok: 'https://api.x.ai/v1/chat/completions',
   zhipu: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
   minimax: 'https://api.minimax.chat/v1/text/chatcompletion_v2',
+  qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
 }
 
 const DEFAULT_MODELS: Record<BackgroundAgentProvider, string> = {
@@ -34,6 +37,7 @@ const DEFAULT_MODELS: Record<BackgroundAgentProvider, string> = {
   grok: 'grok-4.20',
   zhipu: 'glm-4-flash',
   minimax: 'minimax-m2.5',
+  qwen: 'qwen-3.5-plus',
 }
 
 const DEEPSEEK_LEGACY: Record<string, string> = {

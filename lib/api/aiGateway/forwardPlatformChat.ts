@@ -1,4 +1,8 @@
-import type { ChatMessage } from './forwardOpenAiChat'
+import type { ChatMessage } from '../../../src/services/agentChatTypes'
+import type { OpenAIToolDefinition } from '../../../src/services/agentTools/types'
+import { sendAnthropicAgentCompletion } from '../../ai/anthropicAgentCompletion'
+import { sendGeminiAgentCompletion } from '../../ai/geminiAgentCompletion'
+import type { ChatMessage as BasicChatMessage } from './forwardOpenAiChat'
 import { forwardOpenAiAgent, forwardOpenAiChat } from './forwardOpenAiChat'
 import type { PlatformAiRoute } from './platformCatalog'
 
@@ -40,7 +44,7 @@ function buildOpenAiJsonResponse(content: string): Response {
 
 async function forwardAnthropicChat(
   route: PlatformAiRoute,
-  messages: ChatMessage[],
+  messages: BasicChatMessage[],
   options?: { stream?: boolean; signal?: AbortSignal },
 ): Promise<Response> {
   const systemMessage = messages.find((message) => message.role === 'system')
@@ -85,7 +89,7 @@ async function forwardAnthropicChat(
 
 async function forwardGeminiChat(
   route: PlatformAiRoute,
-  messages: ChatMessage[],
+  messages: BasicChatMessage[],
   options?: { stream?: boolean; signal?: AbortSignal },
 ): Promise<Response> {
   const contents = messages
@@ -127,7 +131,7 @@ async function forwardGeminiChat(
 
 export async function forwardPlatformChat(
   route: PlatformAiRoute,
-  messages: ChatMessage[],
+  messages: BasicChatMessage[],
   options?: { stream?: boolean; signal?: AbortSignal },
 ): Promise<Response> {
   switch (route.adapter) {
@@ -150,11 +154,88 @@ export async function forwardPlatformAgent(
   input: { messages: unknown[]; tools: unknown[] },
   options?: { signal?: AbortSignal },
 ): Promise<Response> {
-  if (route.adapter !== 'openai-chat') {
-    return new Response(JSON.stringify({ error: 'PLATFORM_AI_AGENT_UNSUPPORTED' }), {
-      status: 501,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  const messages = input.messages as ChatMessage[]
+  const tools = input.tools as OpenAIToolDefinition[]
+
+  switch (route.adapter) {
+    case 'openai-chat':
+      return forwardOpenAiAgent(openAiCompatibleRoute(route), input, options)
+    case 'anthropic-messages': {
+      try {
+        const result = await sendAnthropicAgentCompletion({
+          endpoint: route.endpoint,
+          apiKey: route.apiKey,
+          model: route.model,
+          messages,
+          tools,
+          signal: options?.signal,
+        })
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                finish_reason: result.finish_reason,
+                message: {
+                  role: 'assistant',
+                  content: result.content,
+                  tool_calls: result.tool_calls,
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', 'X-AI-Billing': 'platform' },
+          },
+        )
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error)
+        return new Response(
+          JSON.stringify({ error: 'PLATFORM_AI_UPSTREAM_ERROR', detail: detail.slice(0, 500) }),
+          { status: 502, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+    }
+    case 'gemini-generate': {
+      try {
+        const result = await sendGeminiAgentCompletion({
+          endpoint: route.endpoint,
+          apiKey: route.apiKey,
+          model: route.model,
+          messages,
+          tools,
+          signal: options?.signal,
+        })
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                finish_reason: result.finish_reason,
+                message: {
+                  role: 'assistant',
+                  content: result.content,
+                  tool_calls: result.tool_calls,
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', 'X-AI-Billing': 'platform' },
+          },
+        )
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error)
+        return new Response(
+          JSON.stringify({ error: 'PLATFORM_AI_UPSTREAM_ERROR', detail: detail.slice(0, 500) }),
+          { status: 502, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+    }
+    default:
+      return new Response(JSON.stringify({ error: 'PLATFORM_AI_AGENT_UNSUPPORTED' }), {
+        status: 501,
+        headers: { 'Content-Type': 'application/json' },
+      })
   }
-  return forwardOpenAiAgent(openAiCompatibleRoute(route), input, options)
 }

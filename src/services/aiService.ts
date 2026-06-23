@@ -113,7 +113,7 @@ export const defaultEndpoints: Record<AIModel, string> = {
   deepseek: 'https://api.deepseek.com/v1/chat/completions',
   claude: 'https://api.anthropic.com/v1/messages',
   google: 'https://generativelanguage.googleapis.com/v1beta/models',
-  qwen: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+  qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
   zhipu: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
   minimax: 'https://api.minimax.chat/v1/text/chatcompletion_v2',
   grok: 'https://api.x.ai/v1/chat/completions',
