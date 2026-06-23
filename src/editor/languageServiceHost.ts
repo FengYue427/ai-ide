@@ -8,6 +8,7 @@ import {
   type DefinitionProjectFile,
 } from './registerCrossFileDefinition'
 import { registerCrossFileReferenceProvider } from './registerCrossFileReferences'
+import { registerCrossFileHoverProvider } from './registerCrossFileHover'
 import {
   goToDefinition,
   goToReferences,
@@ -25,10 +26,12 @@ export function registerLanguageServiceProviders(
 ): monaco.IDisposable {
   const definitionDisposable = registerCrossFileDefinitionProvider(files, currentFile)
   const referenceDisposable = registerCrossFileReferenceProvider(files, currentFile)
+  const hoverDisposable = registerCrossFileHoverProvider(currentFile)
   return {
     dispose() {
       definitionDisposable.dispose()
       referenceDisposable.dispose()
+      hoverDisposable.dispose()
     },
   }
 }

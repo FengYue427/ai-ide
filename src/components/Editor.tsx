@@ -430,6 +430,7 @@ const Editor: React.FC<EditorProps> = ({
           folding: true,
           renderLineHighlight: 'line',
           matchBrackets: 'always',
+          hover: { enabled: true, delay: 300 },
           tabSize: 2,
           insertSpaces: true,
           wordWrap: 'on',

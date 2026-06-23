@@ -5,6 +5,7 @@ import {
   libUriStringToWorkspacePath,
   workspacePathToLibUriString,
 } from './editorModelUri'
+import { formatQuickInfoMarkdown, type TsQuickInfo } from './monacoQuickInfoMarkdown'
 
 type TsTextSpan = { start: number; length: number }
 type TsDefinitionEntry = { fileName: string; textSpan: TsTextSpan }
@@ -123,6 +124,36 @@ export async function getMonacoTypeScriptReferences(
       | undefined
     if (!entries?.length) return null
     return entries.map(entryToLocation).filter((loc): loc is monaco.languages.Location => loc != null)
+  } catch {
+    return null
+  }
+}
+
+export async function getMonacoTypeScriptHover(
+  model: monaco.editor.ITextModel,
+  position: monaco.Position,
+  workspaceFilename: string,
+): Promise<monaco.languages.Hover | null> {
+  if (!isTypeScriptLikeLanguage(model.getLanguageId())) return null
+
+  const libUri = resolveModelLibUri(model, workspaceFilename)
+  const libModel =
+    monaco.editor.getModel(monaco.Uri.parse(libUri)) ??
+    modelForLibEntry(libUri) ??
+    (model.uri.toString() === libUri ? model : null)
+  if (!libModel) return null
+
+  const offset = libModel.getOffsetAt(position)
+  try {
+    const worker = await getWorkerForModel(libModel)
+    const info = (await worker.getQuickInfoAtPosition(libUri, offset)) as TsQuickInfo | undefined
+    if (!info) return null
+    const markdown = formatQuickInfoMarkdown(info)
+    if (!markdown.trim()) return null
+    return {
+      contents: [{ value: markdown }],
+      range: textSpanToRange(libModel, info.textSpan),
+    }
   } catch {
     return null
   }
