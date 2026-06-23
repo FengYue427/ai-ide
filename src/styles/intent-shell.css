@@ -384,6 +384,34 @@
   border-style: solid;
 }
 
+.intent-linkage-graph-viz {
+  display: block;
+  margin: 8px 0 4px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-bg) 90%, var(--accent-color) 10%);
+  border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+}
+
+.intent-linkage-graph-viz__dot {
+  fill: color-mix(in srgb, var(--accent-color) 25%, var(--panel-bg));
+  stroke: var(--accent-color);
+  stroke-width: 1.5;
+}
+
+.intent-linkage-graph-viz__dot--blocked {
+  fill: color-mix(in srgb, var(--warning-color, #c90) 20%, var(--panel-bg));
+  stroke: var(--warning-color, #c90);
+}
+
+.intent-linkage-graph-viz__dot--active,
+.intent-linkage-graph-viz__dot--open {
+  fill: color-mix(in srgb, var(--accent-color) 35%, var(--panel-bg));
+}
+
+.intent-linkage-graph-viz__node--clickable:hover .intent-linkage-graph-viz__dot {
+  stroke-width: 2.5;
+}
+
 @media (max-width: 1100px) {
   .workbench-editor-row--intent-shell-narrow {
     position: relative;

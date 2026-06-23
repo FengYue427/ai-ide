@@ -930,7 +930,7 @@ export function AppShell() {
         output={output}
         isWebContainerReady={isReady}
         gitBranch={gitStatus.branch}
-        gitModified={gitStatus.modifiedCount}
+        gitModified={gitModifiedTotal}
         gitUnstaged={gitStatus.unstagedCount}
         gitStageAllDisabled={gitWriteDisabled}
         onStageAll={handleStageAll}

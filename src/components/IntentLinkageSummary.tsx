@@ -14,6 +14,7 @@ import {
 } from '../lib/linkageOverlayNavigation'
 import { summarizeIntentLinkageGraph, type LinkageNodeKind } from '../services/intentOs/intentLinkageGraphService'
 import { resolveAutonomyModeKey } from '../lib/autonomyStrategyUi'
+import { IntentLinkageGraphViz } from './IntentLinkageGraphViz'
 
 interface IntentLinkageSummaryProps {
   focusTasksPath?: string | null
@@ -111,6 +112,14 @@ export const IntentLinkageSummary = memo(function IntentLinkageSummary({
           </span>
         ) : null}
       </div>
+      {summary.overlayNodes.length > 0 ? (
+        <IntentLinkageGraphViz
+          nodes={summary.overlayNodes}
+          edges={summary.overlayEdges}
+          focusTasksPath={focusTasksPath}
+          onNavigate={onLinkageNavigate}
+        />
+      ) : null}
       {summary.overlayNodes.length > 0 ? (
         <div className="intent-linkage-summary__overlay" data-testid="intent-linkage-overlay">
           <span className="intent-linkage-summary__overlay-label">{t('linkage.summary.overlay')}</span>

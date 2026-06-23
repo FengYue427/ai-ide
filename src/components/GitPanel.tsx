@@ -85,11 +85,23 @@ const GitPanel: React.FC<GitPanelProps> = ({
       [notify],
     ),
   )
-  const autopilot = useAutopilotLite(runFirstOpenSpecTask)
-  const backgroundWatch = useAutopilotBackgroundWatch(autopilot.tasksPath)
+  const [status, setStatus] = useState<gitService.GitStatus[]>([])
+  const gitModifiedCount = useMemo(() => status.length, [status])
+  const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
+  const verifyingSpecBackfill = useIDEStore((s) => s.verifyingSpecBackfill)
+  const failedSpecExecution = useIDEStore((s) => s.failedSpecExecution)
+  const queuedSpecExecutions = useIDEStore((s) => s.queuedSpecExecutions)
+  const linkageQueueBusy = Boolean(
+    queuedSpecBackfill || verifyingSpecBackfill || failedSpecExecution || queuedSpecExecutions.length > 0,
+  )
+  const autopilot = useAutopilotLite(runFirstOpenSpecTask, { gitModifiedCount })
+  const backgroundWatch = useAutopilotBackgroundWatch(autopilot.tasksPath, {
+    gitModifiedCount,
+    queueBusy: linkageQueueBusy,
+    quotaBlocked: autopilot.quotaBlocked,
+  })
   const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
   const autopilotEnabled = isTierCEnabled('autopilotLite')
-  const [status, setStatus] = useState<gitService.GitStatus[]>([])
   const [commits, setCommits] = useState<gitService.GitCommit[]>([])
   const [commitMessage, setCommitMessage] = useState('')
   const [isInit, setIsInit] = useState(false)
