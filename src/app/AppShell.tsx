@@ -301,11 +301,12 @@ export function AppShell() {
     queuedSpecBackfill || verifyingSpecBackfill || failedSpecExecution || queuedSpecExecutions.length > 0,
   )
 
-  const autopilot = useAutopilotLite(runFirstOpenSpecTask, { gitModifiedCount: gitModifiedTotal })
+  const autopilot = useAutopilotLite(runFirstOpenSpecTask, { gitModifiedCount: gitModifiedTotal, notify })
   const backgroundWatch = useAutopilotBackgroundWatch(autopilot.tasksPath, {
     gitModifiedCount: gitModifiedTotal,
     queueBusy: linkageQueueBusy,
     quotaBlocked: autopilot.quotaBlocked,
+    notify,
   })
   const goalDrive = useAutopilotGoalDrive({
     startLoop: autopilot.startLoop,

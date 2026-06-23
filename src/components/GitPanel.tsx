@@ -94,11 +94,12 @@ const GitPanel: React.FC<GitPanelProps> = ({
   const linkageQueueBusy = Boolean(
     queuedSpecBackfill || verifyingSpecBackfill || failedSpecExecution || queuedSpecExecutions.length > 0,
   )
-  const autopilot = useAutopilotLite(runFirstOpenSpecTask, { gitModifiedCount })
+  const autopilot = useAutopilotLite(runFirstOpenSpecTask, { gitModifiedCount, notify })
   const backgroundWatch = useAutopilotBackgroundWatch(autopilot.tasksPath, {
     gitModifiedCount,
     queueBusy: linkageQueueBusy,
     quotaBlocked: autopilot.quotaBlocked,
+    notify,
   })
   const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
   const autopilotEnabled = isTierCEnabled('autopilotLite')

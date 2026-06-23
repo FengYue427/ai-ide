@@ -1,5 +1,5 @@
 import type { TranslationKey } from '../i18n'
-import type { AutonomyPolicyResult } from './autonomyPolicy'
+import type { AutonomyMode, AutonomyPolicyResult } from './autonomyPolicy'
 import { linkageReasonLabelKey } from './linkageReason'
 import { resolveAutonomyModeKey } from './autonomyStrategyUi'
 
@@ -30,4 +30,30 @@ export function formatAutonomyPauseFeedback(
       because,
     }),
   }
+}
+
+function autonomyBlockedTitleKey(
+  channel: 'loop' | 'background',
+  mode: AutonomyMode,
+): TranslationKey {
+  if (channel === 'loop') return 'intent.autopilot.loopBlockedTitle'
+  if (mode === 'foreground') return 'intent.autopilot.backgroundForegroundTitle'
+  return 'intent.autopilot.backgroundBlockedTitle'
+}
+
+/** Toast copy when E1/E2 start is rejected by autonomy policy. */
+export function formatAutonomyStartBlockedFeedback(
+  policy: AutonomyPolicyResult,
+  t: TranslateFn,
+  channel: 'loop' | 'background',
+): { title: string; detail: string } | null {
+  if (channel === 'loop') {
+    if (policy.mode !== 'pause' && policy.mode !== 'hint-only') return null
+  } else if (policy.mode === 'background') {
+    return null
+  }
+
+  return formatAutonomyPauseFeedback(policy, t, {
+    titleKey: autonomyBlockedTitleKey(channel, policy.mode),
+  })
 }

@@ -294,7 +294,7 @@ export function PanelHost({
   const setIntentShellFocusTasksPath = useIDEStore((s) => s.setIntentShellFocusTasksPath)
 
   const { runFirstOpenSpecTask, runFirstRunnableSpecTask, specQueueDeps } = useSpecTaskActions(notify)
-  const autopilot = useAutopilotLite(runFirstOpenSpecTask, { gitModifiedCount: gitModified })
+  const autopilot = useAutopilotLite(runFirstOpenSpecTask, { gitModifiedCount: gitModified, notify })
   const specStatus = useMemo(() => buildSpecStatusSummary(files), [files])
   const intentShellEnabled = useIDEStore((s) => s.intentShellEnabled)
   const intentShellActive = shouldShowIntentShell(files, intentShellEnabled)

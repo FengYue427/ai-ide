@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useI18n } from '../i18n'
+import type { ToastKind } from '../components/FeedbackCenter'
 import { buildSpecStatusSummary } from '../lib/specStatusSummary'
 import { isTierCEnabled } from '../lib/intentOsTierC'
 import { suggestNextSpecTask, countOpenSpecTasks } from '../services/intentOs/autopilotLiteService'
 import { buildRuntimeStatePreview } from '../services/runtime/runtimeStatePreview'
 import { consumeAutopilotRunClient, fetchAutopilotQuota, type AutopilotQuota } from '../services/autopilotUsageService'
 import { evaluateAutonomyPolicy } from '../lib/autonomyPolicy'
+import { formatAutonomyStartBlockedFeedback } from '../lib/autonomyPauseFeedback'
 import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
 import { useIDEStore } from '../store/ideStore'
 import {
@@ -21,8 +24,9 @@ import { trackEvent } from '../lib/observability'
 
 export function useAutopilotLite(
   runFirstOpenSpecTask: (tasksPath: string) => void,
-  options?: { gitModifiedCount?: number },
+  options?: { gitModifiedCount?: number; notify?: (kind: ToastKind, title: string, detail?: string) => void },
 ) {
+  const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
   const focusTasksPath = useIDEStore((s) => s.intentShellFocusTasksPath)
   const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
@@ -140,6 +144,16 @@ export function useAutopilotLite(
     })
     if (policy.mode === 'pause' || policy.mode === 'hint-only') {
       publishAutopilotLoopEvent('stop', policy.mode, { tasksPath: path }, policy.reasons)
+      emitLinkageAutopilot({
+        action: 'pause',
+        channel: 'loop',
+        tasksPath: path,
+        mode: policy.mode,
+      })
+      const feedback = formatAutonomyStartBlockedFeedback(policy, t, 'loop')
+      if (feedback && options?.notify) {
+        options.notify('info', feedback.title, feedback.detail)
+      }
       return
     }
 
@@ -192,7 +206,9 @@ export function useAutopilotLite(
     quota,
     queueBusy,
     options?.gitModifiedCount,
+    options?.notify,
     suggestion,
+    t,
     tasksPath,
   ])
 

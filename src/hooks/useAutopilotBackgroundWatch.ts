@@ -10,6 +10,8 @@ import {
   type AutopilotBackgroundWatchStopReason,
 } from '../lib/autopilotBackgroundWatch'
 import { evaluateAutonomyPolicy } from '../lib/autonomyPolicy'
+import { formatAutonomyStartBlockedFeedback } from '../lib/autonomyPauseFeedback'
+import type { ToastKind } from '../components/FeedbackCenter'
 import { countOpenSpecTasks } from '../services/intentOs/autopilotLiteService'
 import { queueNextOpenSpecTaskAsBackgroundJob } from '../services/specBackgroundAutopilotService'
 import { publishAutopilotBackgroundEvent } from '../services/runtime/runtimeActivityPublishers'
@@ -19,7 +21,12 @@ import { useIDEStore } from '../store/ideStore'
 
 export function useAutopilotBackgroundWatch(
   tasksPath: string | null,
-  options?: { gitModifiedCount?: number; queueBusy?: boolean; quotaBlocked?: boolean },
+  options?: {
+    gitModifiedCount?: number
+    queueBusy?: boolean
+    quotaBlocked?: boolean
+    notify?: (kind: ToastKind, title: string, detail?: string) => void
+  },
 ) {
   const { t, language } = useI18n()
   const files = useIDEStore((s) => s.files)
@@ -81,6 +88,16 @@ export function useAutopilotBackgroundWatch(
     })
     if (policy.mode !== 'background') {
       publishAutopilotBackgroundEvent('stop', policy.mode, { tasksPath: path }, policy.reasons)
+      emitLinkageAutopilot({
+        action: 'pause',
+        channel: 'background',
+        tasksPath: path,
+        mode: policy.mode,
+      })
+      const feedback = formatAutonomyStartBlockedFeedback(policy, t, 'background')
+      if (feedback && options?.notify) {
+        options.notify('info', feedback.title, feedback.detail)
+      }
       return
     }
 
@@ -119,7 +136,7 @@ export function useAutopilotBackgroundWatch(
       tasksPath: path,
       jobId: result.job.id,
     })
-  }, [backgroundAgentEnabled, files, language, options?.gitModifiedCount, options?.queueBusy, options?.quotaBlocked, stopWatch, setWatch, t, tasksPath])
+  }, [backgroundAgentEnabled, files, language, options?.gitModifiedCount, options?.notify, options?.queueBusy, options?.quotaBlocked, stopWatch, setWatch, t, tasksPath])
 
   const pauseWatch = useCallback(() => {
     stopWatch('paused')
