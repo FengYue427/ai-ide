@@ -1,4 +1,8 @@
 import type { FileItem } from '../../types/file'
+import {
+  linkageTaskAnchorOverlayNode,
+  resolveLinkageTaskAnchorId,
+} from '../../lib/linkageTaskAnchor'
 import { buildIntentGraph, type IntentGraph } from './intentGraphService'
 import { readPlanSpecLinks } from '../planSpecLinkService'
 import { findFirstOpenSpecTask } from '../specTaskExecutionService'
@@ -71,9 +75,15 @@ export function buildIntentLinkageGraph(input: BuildIntentLinkageGraphInput): In
   }
   const addEdge = (edge: LinkageOverlayEdge) => overlayEdges.push(edge)
 
+  const taskAnchor = focus ? resolveLinkageTaskAnchorId(focus, base, input.files) : null
+  const edgeToTask = (from: string, kind: LinkageEdgeKind, label?: string) => {
+    if (!taskAnchor) return
+    addEdge({ from, to: taskAnchor, kind, label })
+  }
+
   if (input.goalText?.trim()) {
     addNode({ id: 'link:goal', kind: 'goal', label: input.goalText.trim().slice(0, 80), status: 'active' })
-    if (focus) addEdge({ from: 'link:goal', to: `task:${focus}:root`, kind: 'spawns', label: 'decompose' })
+    if (focus) edgeToTask('link:goal', 'spawns', 'decompose')
 
     const decomposed = input.decomposedTasks ?? []
     decomposed.forEach((task, index) => {
@@ -85,7 +95,7 @@ export function buildIntentLinkageGraph(input: BuildIntentLinkageGraphInput): In
         status: index === 0 ? 'open' : 'idle',
       })
       addEdge({ from: 'link:goal', to: nodeId, kind: 'spawns', label: 'llm-task' })
-      if (focus) addEdge({ from: nodeId, to: `task:${focus}:root`, kind: 'maps' })
+      if (focus) edgeToTask(nodeId, 'maps')
     })
   }
 
@@ -96,7 +106,7 @@ export function buildIntentLinkageGraph(input: BuildIntentLinkageGraphInput): In
       label: input.workspaceMode,
       status: input.workspaceMode === 'execute' ? 'active' : 'idle',
     })
-    if (focus) addEdge({ from: 'link:mode', to: `task:${focus}:root`, kind: 'enables' })
+    if (focus) edgeToTask('link:mode', 'enables')
   }
 
   const gitDirty = (input.gitModifiedCount ?? 0) > 0
@@ -106,13 +116,7 @@ export function buildIntentLinkageGraph(input: BuildIntentLinkageGraphInput): In
     label: gitDirty ? 'git-dirty' : 'git-clean',
     status: gitDirty ? 'blocked' : 'done',
   })
-  if (focus) {
-    addEdge({
-      from: 'link:git',
-      to: `task:${focus}:root`,
-      kind: gitDirty ? 'blocks' : 'enables',
-    })
-  }
+  if (focus) edgeToTask('link:git', gitDirty ? 'blocks' : 'enables')
 
   addNode({
     id: 'link:queue',
@@ -120,7 +124,7 @@ export function buildIntentLinkageGraph(input: BuildIntentLinkageGraphInput): In
     label: input.queueBusy ? 'queue-busy' : 'queue-idle',
     status: input.queueBusy ? 'active' : 'idle',
   })
-  if (focus) addEdge({ from: 'link:queue', to: `task:${focus}:root`, kind: input.queueBusy ? 'blocks' : 'enables' })
+  if (focus) edgeToTask('link:queue', input.queueBusy ? 'blocks' : 'enables')
 
   const jobs = input.backgroundJobsActive ?? 0
   addNode({
@@ -129,21 +133,20 @@ export function buildIntentLinkageGraph(input: BuildIntentLinkageGraphInput): In
     label: jobs > 0 ? `jobs:${jobs}` : 'jobs:idle',
     status: jobs > 0 ? 'active' : 'idle',
   })
-  if (focus && jobs > 0) addEdge({ from: 'link:bg-job', to: `task:${focus}:root`, kind: 'mirrors' })
+  if (focus && jobs > 0) edgeToTask('link:bg-job', 'mirrors')
 
   if (input.autopilotActive) {
     addNode({ id: 'link:autopilot', kind: 'autopilot', label: 'autopilot', status: 'active' })
-    if (focus) addEdge({ from: 'link:autopilot', to: `task:${focus}:root`, kind: 'spawns' })
+    if (focus) edgeToTask('link:autopilot', 'spawns')
   }
 
   if (input.shareLinked) {
     addNode({ id: 'link:share', kind: 'share', label: 'share-watch', status: 'open' })
-    if (focus) addEdge({ from: `task:${focus}:root`, to: 'link:share', kind: 'mirrors' })
+    if (focus && taskAnchor) addEdge({ from: taskAnchor, to: 'link:share', kind: 'mirrors' })
   }
 
-  // Anchor node for overlay edges when no spec task nodes yet
-  if (focus && !base.nodes.some((n) => n.path === focus)) {
-    addNode({ id: `task:${focus}:root`, kind: 'queue', label: focus.split('/').slice(-2).join('/'), status: 'open' })
+  if (focus && taskAnchor) {
+    addNode(linkageTaskAnchorOverlayNode(taskAnchor, focus, base))
   }
 
   const openTaskCount = focus ? countOpenSpecTasks(input.files, focus) : 0

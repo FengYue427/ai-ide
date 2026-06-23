@@ -316,6 +316,7 @@ export function AppShell() {
     backgroundWatchActive: backgroundWatch.watchActive,
     quotaBlocked: autopilot.quotaBlocked,
     gitModifiedCount: gitModifiedTotal,
+    notify,
   })
 
   const specStatus = useMemo(() => buildSpecStatusSummary(files), [files])

@@ -35,4 +35,17 @@ describe('intentLinkageGraphService', () => {
     expect(graph.overlayNodes.some((n) => n.id === 'link:goal:task:0')).toBe(true)
     expect(graph.overlayEdges.some((e) => e.label === 'llm-task')).toBe(true)
   })
+
+  it('aligns overlay edges to base spec task id', () => {
+    const focus = '.aide/specs/x/tasks.md'
+    const graph = buildIntentLinkageGraph({
+      files: [{ name: focus, content: '- [ ] Implement\n', language: 'markdown' }],
+      focusTasksPath: focus,
+      gitModifiedCount: 1,
+    })
+    const anchor = `task:${focus}:Implement`
+    expect(graph.overlayEdges.some((edge) => edge.to === anchor)).toBe(true)
+    expect(graph.overlayNodes.some((node) => node.id === anchor)).toBe(true)
+    expect(graph.overlayEdges.some((edge) => edge.to.endsWith(':root'))).toBe(false)
+  })
 })

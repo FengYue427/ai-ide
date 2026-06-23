@@ -7,13 +7,13 @@ describe('linkageGraphLayout', () => {
       [
         { id: 'link:goal', kind: 'goal', label: 'Ship auth', status: 'active' },
         { id: 'link:git', kind: 'git', label: 'git-clean', status: 'done' },
-        { id: 'task:.aide/specs/x/tasks.md:root', kind: 'queue', label: 'tasks', status: 'open' },
+        { id: 'task:.aide/specs/x/tasks.md:Implement', kind: 'queue', label: 'Implement', status: 'open' },
       ],
-      [{ from: 'link:goal', to: 'task:.aide/specs/x/tasks.md:root', kind: 'spawns' }],
+      [{ from: 'link:goal', to: 'task:.aide/specs/x/tasks.md:Implement', kind: 'spawns' }],
     )
     const goal = nodes.find((node) => node.id === 'link:goal')
     const git = nodes.find((node) => node.id === 'link:git')
-    const task = nodes.find((node) => node.id === 'task:.aide/specs/x/tasks.md:root')
+    const task = nodes.find((node) => node.id === 'task:.aide/specs/x/tasks.md:Implement')
     expect(goal && git && task).toBeTruthy()
     expect(goal!.y).toBeLessThan(task!.y)
     expect(task!.y).toBeLessThan(git!.y)

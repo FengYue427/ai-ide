@@ -3,6 +3,8 @@ import { useI18n } from '../i18n'
 import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
 import { isTierCEnabled } from '../lib/intentOsTierC'
 import { evaluateAutonomyPolicy } from '../lib/autonomyPolicy'
+import { formatAutonomyPauseFeedback } from '../lib/autonomyPauseFeedback'
+import type { ToastKind } from '../components/FeedbackCenter'
 import {
   createAutopilotGoalDriveState,
   stopAutopilotGoalDriveState,
@@ -28,8 +30,9 @@ export function useAutopilotGoalDrive(input: {
   backgroundWatchActive: boolean
   quotaBlocked: boolean
   gitModifiedCount: number
+  notify?: (kind: ToastKind, title: string, detail?: string) => void
 }) {
-  const { language } = useI18n()
+  const { language, t } = useI18n()
   const goalDrive = useIDEStore((s) => s.autopilotGoalDrive)
   const setGoalDrive = useIDEStore((s) => s.setAutopilotGoalDrive)
   const aiConfig = useIDEStore((s) => s.aiConfig)
@@ -93,6 +96,13 @@ export function useAutopilotGoalDrive(input: {
             tasksPath: prepared.tasksPath,
             mode: policy.mode,
           })
+          if (input.notify) {
+            const feedback = formatAutonomyPauseFeedback(policy, t, {
+              titleKey: 'intent.autopilot.goalDriveBlockedTitle',
+              specCreated: prepared.created,
+            })
+            input.notify('info', feedback.title, feedback.detail)
+          }
           return
         }
 
@@ -159,7 +169,7 @@ export function useAutopilotGoalDrive(input: {
         setBusy(false)
       }
     },
-    [input, language, setGoalDrive, aiConfig, currentUser],
+    [input, language, setGoalDrive, aiConfig, currentUser, t],
   )
 
   const pauseGoalDrive = useCallback(() => {
