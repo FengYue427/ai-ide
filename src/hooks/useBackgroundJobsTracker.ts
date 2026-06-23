@@ -4,6 +4,7 @@ import type { ToastKind } from '../components/FeedbackCenter'
 import { useI18n } from '../i18n'
 import { processBackgroundJobsSnapshot } from '../services/backgroundJobCompletionTracker'
 import { maybeAutoMarkPlanStepFromJob } from '../services/backgroundJobPlanBackfillService'
+import { handleAutopilotBackgroundWatchOnJobTerminal } from '../services/specBackgroundAutopilotWatchCoordinator'
 import { listBackgroundJobs } from '../services/backgroundJobsApiService'
 import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { useIDEStore } from '../store/ideStore'
@@ -13,7 +14,7 @@ const POLL_MS = 10_000
 export function useBackgroundJobsTracker(
   notify: (kind: ToastKind, title: string, detail?: string) => void,
 ): void {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const currentUser = useIDEStore((s) => s.currentUser)
   const setBackgroundJobsActiveCount = useIDEStore((s) => s.setBackgroundJobsActiveCount)
   const enabled = isBackgroundAgentEnabled()
@@ -29,21 +30,33 @@ export function useBackgroundJobsTracker(
     const tick = async () => {
       const { jobs } = await listBackgroundJobs(50)
       if (cancelled) return
-      const { files, setFiles } = useIDEStore.getState()
       const active = processBackgroundJobsSnapshot(jobs, {
         notify,
         t,
         onTerminal: (job) => {
+          const state = useIDEStore.getState()
           maybeAutoMarkPlanStepFromJob(
-            files,
+            state.files,
             job,
             (nextFiles) => {
-              setFiles(nextFiles)
+              state.setFiles(nextFiles)
               markWorkspaceHydrated()
             },
             notify,
             t,
           )
+          void handleAutopilotBackgroundWatchOnJobTerminal(job, {
+            files: useIDEStore.getState().files,
+            setFiles: (nextFiles) => {
+              useIDEStore.getState().setFiles(nextFiles)
+              markWorkspaceHydrated()
+            },
+            watch: useIDEStore.getState().autopilotBackgroundWatch,
+            setWatch: useIDEStore.getState().setAutopilotBackgroundWatch,
+            workspaceKey: useIDEStore.getState().activeRootId,
+            language,
+            t,
+          })
         },
       })
       setBackgroundJobsActiveCount(active)
@@ -56,5 +69,5 @@ export function useBackgroundJobsTracker(
       window.clearInterval(timer)
       setBackgroundJobsActiveCount(0)
     }
-  }, [currentUser, enabled, notify, setBackgroundJobsActiveCount, t])
+  }, [currentUser, enabled, language, notify, setBackgroundJobsActiveCount, t])
 }

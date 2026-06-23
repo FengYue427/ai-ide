@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react'
-import { AlertTriangle, FileCheck2, GitBranch, ListOrdered, Sparkles } from 'lucide-react'
+import { AlertTriangle, FileCheck2, GitBranch, ListOrdered } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { buildSpecStatusSummary } from '../lib/specStatusSummary'
 import { buildRuntimeStatePreview } from '../services/runtime/runtimeStatePreview'
@@ -7,6 +7,7 @@ import { buildDriftResolutionActions } from '../services/intentOs/driftResolutio
 import { isIntentLinkageLocked, isPlanGatedTierCEnabled, isTierCFeatureLocked } from '../lib/planFeatureGate'
 import { IntentGroundingBanner } from './intent/IntentGroundingBanner'
 import { AutopilotQuotaBar } from './AutopilotQuotaBar'
+import { AutonomyStrategyBar } from './AutonomyStrategyBar'
 import { UpgradeEntitlementHint } from './UpgradeEntitlementHint'
 import { useIDEStore, type LastGroundingBlock } from '../store/ideStore'
 import type { AutopilotQuota } from '../services/autopilotUsageService'
@@ -16,10 +17,24 @@ interface IntentShellBarProps {
   onSaveProof?: () => void
   onToggleShell: () => void
   onRunAutopilotNext?: () => void
+  onStartAutopilotLoop?: () => void
+  onPauseAutopilotLoop?: () => void
+  onStartBackgroundWatch?: () => void
+  onPauseBackgroundWatch?: () => void
+  onOpenGoalDrive?: () => void
+  onPauseGoalDrive?: () => void
+  goalDriveActive?: boolean
+  autopilotLoopActive?: boolean
+  autopilotLoopProgress?: { completed: number; total: number } | null
+  autopilotBackgroundWatchActive?: boolean
+  autopilotBackgroundProgress?: { queued: number; remaining: number } | null
+  backgroundAgentEnabled?: boolean
   autopilotTaskPreview?: string | null
   autopilotOpenCount?: number
   autopilotQuota?: AutopilotQuota | null
   autopilotQuotaBlocked?: boolean
+  linkageGitModifiedCount?: number
+  linkageQueueBusy?: boolean
   lastGroundingBlock?: LastGroundingBlock | null
   onDismissGroundingBlock?: () => void
   narrowLayout?: boolean
@@ -36,10 +51,24 @@ export const IntentShellBar = memo(function IntentShellBar({
   onSaveProof,
   onToggleShell,
   onRunAutopilotNext,
+  onStartAutopilotLoop,
+  onPauseAutopilotLoop,
+  onStartBackgroundWatch,
+  onPauseBackgroundWatch,
+  onOpenGoalDrive,
+  onPauseGoalDrive,
+  goalDriveActive = false,
+  autopilotLoopActive = false,
+  autopilotLoopProgress = null,
+  autopilotBackgroundWatchActive = false,
+  autopilotBackgroundProgress = null,
+  backgroundAgentEnabled = false,
   autopilotTaskPreview,
   autopilotOpenCount = 0,
   autopilotQuota = null,
   autopilotQuotaBlocked = false,
+  linkageGitModifiedCount = 0,
+  linkageQueueBusy = false,
   lastGroundingBlock,
   onDismissGroundingBlock,
   narrowLayout = false,
@@ -155,20 +184,49 @@ export const IntentShellBar = memo(function IntentShellBar({
           ) : null}
         </div>
       ) : null}
+      {onOpenGoalDrive && onPauseGoalDrive ? (
+        goalDriveActive ? (
+          <button
+            type="button"
+            className="intent-shell-bar__action intent-shell-bar__action--goal"
+            data-testid="intent-shell-goal-drive-pause"
+            onClick={onPauseGoalDrive}
+          >
+            {t('intent.autopilot.goalDrivePause')}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="intent-shell-bar__action intent-shell-bar__action--goal"
+            data-testid="intent-shell-goal-drive"
+            onClick={onOpenGoalDrive}
+            disabled={autopilotQuotaBlocked || autopilotLoopActive || autopilotBackgroundWatchActive}
+          >
+            {t('intent.autopilot.goalDriveStart')}
+          </button>
+        )
+      ) : null}
       {onRunAutopilotNext && autopilotTaskPreview ? (
-        <button
-          type="button"
-          className="intent-shell-bar__action intent-shell-bar__action--accent"
-          data-testid="intent-shell-autopilot-next"
-          title={autopilotTaskPreview}
-          onClick={onRunAutopilotNext}
-          disabled={autopilotQuotaBlocked}
-        >
-          <Sparkles size={12} />
-          {autopilotOpenCount > 1
-            ? t('intent.autopilot.runNextWithCount', { count: autopilotOpenCount })
-            : t('intent.autopilot.runNext')}
-        </button>
+        <AutonomyStrategyBar
+          focusTasksPath={activePath}
+          openTaskCount={autopilotOpenCount}
+          gitModifiedCount={linkageGitModifiedCount}
+          queueBusy={linkageQueueBusy}
+          quotaBlocked={autopilotQuotaBlocked}
+          backgroundAgentEnabled={backgroundAgentEnabled}
+          loopActive={autopilotLoopActive}
+          loopProgress={autopilotLoopProgress}
+          backgroundWatchActive={autopilotBackgroundWatchActive}
+          backgroundProgress={autopilotBackgroundProgress}
+          goalDriveActive={goalDriveActive}
+          onRunNext={onRunAutopilotNext}
+          onStartLoop={onStartAutopilotLoop}
+          onPauseLoop={onPauseAutopilotLoop}
+          onStartBackground={onStartBackgroundWatch}
+          onPauseBackground={onPauseBackgroundWatch}
+          onPauseGoalDrive={onPauseGoalDrive}
+          taskPreview={autopilotTaskPreview}
+        />
       ) : null}
       {autopilotQuota ? (
         <AutopilotQuotaBar

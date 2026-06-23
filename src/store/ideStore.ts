@@ -13,6 +13,9 @@ import type { IntentGraph } from '../services/intentOs/intentGraphService'
 import type { WorkspaceRoot } from '../types/workspaceRoot'
 import { isMultiRootWorkspaceEnabled } from '../lib/v12Features'
 import { loadWorkspaceMode, type WorkspaceMode } from '../lib/workspaceMode'
+import type { AutopilotLoopState } from '../lib/autopilotLoop'
+import type { AutopilotBackgroundWatchState } from '../lib/autopilotBackgroundWatch'
+import type { AutopilotGoalDriveState } from '../lib/autopilotGoalDrive'
 import { loadIntentShellPreference } from '../lib/intentShellFeatures'
 import {
   createWorkspaceRoot,
@@ -240,6 +243,9 @@ export interface IDEState {
   intentShellQueueRailOpen: boolean
   workspaceMode: WorkspaceMode
   showWeeklyRecap: boolean
+  autopilotLoop: AutopilotLoopState | null
+  autopilotBackgroundWatch: AutopilotBackgroundWatchState | null
+  autopilotGoalDrive: AutopilotGoalDriveState | null
 
   showNewFileInput: boolean
   showTerminal: boolean
@@ -353,6 +359,9 @@ export interface IDEState {
   setIntentShellGraphOpen: (open: boolean) => void
   setIntentShellQueueRailOpen: (open: boolean) => void
   setWorkspaceMode: (mode: WorkspaceMode) => void
+  setAutopilotLoop: (loop: AutopilotLoopState | null) => void
+  setAutopilotBackgroundWatch: (watch: AutopilotBackgroundWatchState | null) => void
+  setAutopilotGoalDrive: (drive: AutopilotGoalDriveState | null) => void
   setShowWeeklyRecap: (show: boolean) => void
 
   setShowNewFileInput: (show: BooleanUpdater) => void
@@ -507,6 +516,9 @@ export const useIDEStore = create<IDEState>()((set) => ({
   intentShellQueueRailOpen: true,
   workspaceMode: loadWorkspaceMode(),
   showWeeklyRecap: false,
+  autopilotLoop: null,
+  autopilotBackgroundWatch: null,
+  autopilotGoalDrive: null,
 
   showNewFileInput: false,
   showTerminal: false,
@@ -787,6 +799,9 @@ export const useIDEStore = create<IDEState>()((set) => ({
   setIntentShellGraphOpen: (intentShellGraphOpen) => set({ intentShellGraphOpen }),
   setIntentShellQueueRailOpen: (intentShellQueueRailOpen) => set({ intentShellQueueRailOpen }),
   setWorkspaceMode: (workspaceMode) => set({ workspaceMode }),
+  setAutopilotLoop: (autopilotLoop) => set({ autopilotLoop }),
+  setAutopilotBackgroundWatch: (autopilotBackgroundWatch) => set({ autopilotBackgroundWatch }),
+  setAutopilotGoalDrive: (autopilotGoalDrive) => set({ autopilotGoalDrive }),
   setShowWeeklyRecap: (showWeeklyRecap) => set({ showWeeklyRecap }),
 
   setShowNewFileInput: (value) =>

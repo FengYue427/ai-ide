@@ -13,6 +13,8 @@ export const TIER_C_FLAGS = {
   groundingGateV2: true,
   /** C6 — plan autopilot lite */
   autopilotLite: true,
+  /** E3 — goal-driven full autopilot */
+  autopilotGoalDrive: true,
   /** C5 — interactive graph canvas */
   intentGraphV2: true,
 } as const

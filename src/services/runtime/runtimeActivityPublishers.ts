@@ -2,6 +2,8 @@
 
 import { publishRuntimeEvent } from './runtimeEventBus'
 import { specNameFromTasksPath } from './specHookLog'
+import type { LinkageReason } from '../../lib/linkageReason'
+import { appendBecauseToMeta } from '../../lib/linkageReason'
 
 export function publishQueueProgress(message: string, meta?: Record<string, string | number | boolean>): void {
   publishRuntimeEvent({
@@ -67,5 +69,47 @@ export function publishGroundingBlock(tasksPath: string, taskText: string, detai
       taskText: taskText.slice(0, 80),
       ...(specName ? { spec: specName } : {}),
     },
+  })
+}
+
+export function publishAutopilotLoopEvent(
+  phase: 'start' | 'step' | 'stop',
+  message: string,
+  meta?: Record<string, string | number | boolean>,
+  because?: LinkageReason[],
+): void {
+  publishRuntimeEvent({
+    type: 'autopilot.loop',
+    at: new Date().toISOString(),
+    message: `${phase}: ${message}`,
+    meta: appendBecauseToMeta({ phase, ...meta }, because ?? []),
+  })
+}
+
+export function publishAutopilotBackgroundEvent(
+  phase: 'start' | 'step' | 'stop',
+  message: string,
+  meta?: Record<string, string | number | boolean>,
+  because?: LinkageReason[],
+): void {
+  publishRuntimeEvent({
+    type: 'autopilot.background',
+    at: new Date().toISOString(),
+    message: `${phase}: ${message}`,
+    meta: appendBecauseToMeta({ phase, ...meta }, because ?? []),
+  })
+}
+
+export function publishAutopilotGoalEvent(
+  phase: 'start' | 'step' | 'stop',
+  message: string,
+  meta?: Record<string, string | number | boolean>,
+  because?: LinkageReason[],
+): void {
+  publishRuntimeEvent({
+    type: 'autopilot.goal',
+    at: new Date().toISOString(),
+    message: `${phase}: ${message}`,
+    meta: appendBecauseToMeta({ phase, ...meta }, because ?? []),
   })
 }

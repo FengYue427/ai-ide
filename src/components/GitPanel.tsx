@@ -42,6 +42,8 @@ import { AutopilotQuotaBar } from './AutopilotQuotaBar'
 import { LinkageAutopilotHint } from './LinkageAutopilotHint'
 import { useWorkspaceMode } from '../hooks/useWorkspaceMode'
 import { useAutopilotLite } from '../hooks/useAutopilotLite'
+import { useAutopilotBackgroundWatch } from '../hooks/useAutopilotBackgroundWatch'
+import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
 import { isTierCEnabled } from '../lib/intentOsTierC'
 import { useSpecTaskActions } from '../hooks/useSpecTaskActions'
 import { workspaceContextService } from '../services/workspaceContextService'
@@ -84,6 +86,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
     ),
   )
   const autopilot = useAutopilotLite(runFirstOpenSpecTask)
+  const backgroundWatch = useAutopilotBackgroundWatch(autopilot.tasksPath)
   const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
   const autopilotEnabled = isTierCEnabled('autopilotLite')
   const [status, setStatus] = useState<gitService.GitStatus[]>([])
@@ -630,6 +633,13 @@ const GitPanel: React.FC<GitPanelProps> = ({
                   <LinkageAutopilotHint
                     gitModifiedCount={staged.length + unstaged.length}
                     onRunAutopilot={autopilot.suggestion ? autopilot.runNext : undefined}
+                    onStartBackgroundWatch={
+                      backgroundWatch.enabled && autopilot.suggestion
+                        ? backgroundWatch.startWatch
+                        : undefined
+                    }
+                    backgroundWatchActive={backgroundWatch.watchActive}
+                    backgroundAgentEnabled={isBackgroundAgentEnabled()}
                   />
                   <GitSpecCommitBanner
                     onOpenTasks={() => {

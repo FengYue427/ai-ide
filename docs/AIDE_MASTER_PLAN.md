@@ -1,6 +1,6 @@
 # AIDE 总规划 — 多功能一体化智能开发空间
 
-> **更新**：2026-06-05 · 内测 IP 已同步 Phase 1–8（代码）
+> **更新**：2026-06-22 · 内测含 Phase 9 E1/E2（自动体）
 > **宗旨**：打造 **多功能、高精度（综合精度，非与 Cursor 比单一 Tab/补全精度）、低成本、高收益、有创新性** 的 **一体化舒适 AI 空间**。  
 > **不做**：烧钱买量、硬刚 Cursor/Trae 单点、公益 IDE 叙事、宣传先于产品。  
 > **要做**：Plan · Spec · Intent · AI · Git · 运行 · 分享 **联动成闭环**，开发者「打开就舒服、用得省、链路顺」。
@@ -93,6 +93,31 @@ flowchart TB
 | **7.2 协作者注释（轻量）** | 只读 Share 上锚点评论（无完整 IDE） | Share · 协作 |
 | **7.3 进度订阅** | 复制链接后可选「有更新通知我」 | Share · 邮件（备案后） |
 
+### Phase 9 — 自动体（Autopilot Agent）
+
+> 主题：**智能一体化自动体** 之「自动」支柱 — 从单步建议到连续推进。
+
+| 小项 | 交付 | 状态 |
+|------|------|:----:|
+| **E1 步内自动** | Intent Shell「自动 · 跑到闸门」：队列空闲后链式 `runNext`，闸门含完成/失败/配额/20 步上限 | ✅ 内测 |
+| **E2 跨步后台** |「后台 · 续跑」：Spec 任务单条入队 Background Job，成功后链式排队；Git 干净 + 待办提示；Share 本地 digest 联动 | ✅ 内测 |
+| **E3 目标驱动** | 一句话目标 → 启发式分解 Spec/任务 → 自动 E2 后台或 E1 步内链式推进 | ✅ v1 内测 |
+
+**联动**：E1 ↔ Queue/Runtime · E2 ↔ Background Jobs · Activity Line · Share 进度关注
+
+### Phase 10 — Intent 关系网（Linkage Graph）
+
+> 主题：**智能 · 一体化 · 自动** 三支柱合流 — 每个自动动作必须能解释「因何、联动谁」。
+
+| 小项 | 交付 | 状态 |
+|------|------|:----:|
+| **F1 关系图** | `intentLinkageGraphService`：Plan/Spec 基图 + Git/Queue/Job/Goal/Mode 叠加层 | ✅ v1 |
+| **F2 因果链** | `linkageReason` + Activity Line「因…」条；Autopilot 事件带 `because` | ✅ v1 |
+| **F3 策略引擎** | `autonomyPolicy` 统一 E1/E2/E3 模式选择 | ✅ v0 |
+| **F4 智能入图** | `goalDriveLlmDecompose` + 分解任务写入关系图 overlay；`linkageLinkEvents` 总线 | ✅ v1 内测 |
+
+**联动**：Graph 左栏摘要 · Autopilot 启停 · `aideLinkBus` `linkage-graph-changed` / `linkage-autopilot` · **AutonomyStrategyBar** 统一 Shell 自动策略 UI
+
 ### Phase 8 — 国内 GA 门
 
 | 小项 | 交付 | 联动 |
@@ -146,7 +171,7 @@ flowchart TB
 
 | 环境 | URL | 版本内容 |
 |------|-----|----------|
-| **内测** | https://47.105.110.136 | Phase 1–8 体验 + 联动层 + **S1–S5 订阅价值** + S6 存储门控 |
+| **内测** | https://47.105.110.136 | Phase 1–8 + **Phase 9 E1/E2 自动体** + S1–S6 订阅价值 |
 | **海外** | https://ai-ide-flame.vercel.app | 独立发版节奏 |
 
 **内测验收（Phase 1–8）**：见 [AIDE_EXPERIENCE_ROADMAP.md](./AIDE_EXPERIENCE_ROADMAP.md)。

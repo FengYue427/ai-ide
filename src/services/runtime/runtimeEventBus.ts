@@ -7,6 +7,9 @@ export const RUNTIME_EVENT_TYPES = [
   'hook.end',
   'verify.fail',
   'grounding.block',
+  'autopilot.loop',
+  'autopilot.background',
+  'autopilot.goal',
 ] as const
 
 export type RuntimeEventType = (typeof RUNTIME_EVENT_TYPES)[number]

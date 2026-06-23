@@ -10,13 +10,20 @@ import {
   intentGraphNodeIcon,
 } from '../lib/intentGraphPresentation'
 import { UpgradeEntitlementHint } from './UpgradeEntitlementHint'
+import { IntentLinkageSummary } from './IntentLinkageSummary'
 import { useIDEStore } from '../store/ideStore'
+import type { LinkageOverlayNavigateTarget } from '../lib/linkageOverlayNavigation'
 
 interface IntentGraphPanelProps {
   focusTasksPath?: string | null
   highlightTaskText?: string | null
   onOpenPath?: (path: string) => void
   variant?: 'settings' | 'shell'
+  linkageOpenTaskCount?: number
+  linkageGitModifiedCount?: number
+  linkageQueueBusy?: boolean
+  linkageQuotaBlocked?: boolean
+  onLinkageNavigate?: (target: LinkageOverlayNavigateTarget) => void
 }
 
 function renderGraphNode(
@@ -59,6 +66,11 @@ export const IntentGraphPanel = memo(function IntentGraphPanel({
   highlightTaskText,
   onOpenPath,
   variant = 'settings',
+  linkageOpenTaskCount = 0,
+  linkageGitModifiedCount = 0,
+  linkageQueueBusy = false,
+  linkageQuotaBlocked = false,
+  onLinkageNavigate,
 }: IntentGraphPanelProps) {
   const { t } = useI18n()
   const files = useIDEStore((s) => s.files)
@@ -125,6 +137,16 @@ export const IntentGraphPanel = memo(function IntentGraphPanel({
             </span>
           ))}
         </div>
+      ) : null}
+      {shell ? (
+        <IntentLinkageSummary
+          focusTasksPath={focusTasksPath}
+          openTaskCount={linkageOpenTaskCount}
+          gitModifiedCount={linkageGitModifiedCount}
+          queueBusy={linkageQueueBusy}
+          quotaBlocked={linkageQuotaBlocked}
+          onLinkageNavigate={shell ? onLinkageNavigate : undefined}
+        />
       ) : null}
       {shell && linkageLocked ? (
         <UpgradeEntitlementHint

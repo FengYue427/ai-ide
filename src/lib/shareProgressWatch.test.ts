@@ -6,6 +6,7 @@ import {
   hasShareProgressUpdate,
   markShareProgressSeen,
   subscribeShareProgressWatch,
+  signalShareProgressLocalDigest,
 } from './shareProgressWatch'
 
 const recap: WeeklyRecap = {
@@ -55,5 +56,12 @@ describe('shareProgressWatch updates', () => {
 
     markShareProgressSeen('abc', changed)
     expect(hasShareProgressUpdate('abc', changed)).toBe(false)
+  })
+
+  it('detects local workspace digest drift', () => {
+    const digest = buildShareProgressDigest(view)
+    subscribeShareProgressWatch('abc', 'Demo', digest)
+    signalShareProgressLocalDigest('abc', buildShareProgressDigest({ ...view, weeklyRecap: { ...recap, doneTaskCount: 5 } }))
+    expect(hasShareProgressUpdate('abc', digest)).toBe(true)
   })
 })

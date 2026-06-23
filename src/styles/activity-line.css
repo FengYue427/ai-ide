@@ -75,6 +75,18 @@
   line-height: 1.4;
 }
 
+.aide-activity-line__loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+}
+
 .aide-activity-line__body {
   max-height: 160px;
   overflow: auto;
@@ -103,4 +115,28 @@
   opacity: 0.6;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.aide-activity-line__linkage {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--accent-color);
+  margin-left: 8px;
+  flex-shrink: 0;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aide-activity-line__linkage-feed {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.aide-activity-line__row--linkage .aide-activity-line__message {
+  color: var(--accent-color);
 }

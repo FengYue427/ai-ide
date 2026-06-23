@@ -28,6 +28,7 @@ import {
 import { PROOF_REPORT_PREFIX } from '../services/intentOs/proofOfDoneReportService'
 import { UpgradeEntitlementHint } from './UpgradeEntitlementHint'
 import { emitAideLinkEvent } from '../lib/aideLinkBus'
+import { linkWorkspaceShare } from '../lib/shareWorkspaceLink'
 import { ModalShell } from './ui/ModalShell'
 
 interface ShareModalProps {
@@ -82,6 +83,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose, initi
     if (!includeIntentSnapshot || !hasIntentSpecs) return files
     return appendIntentSnapshotToShareFiles(files)
   }, [files, hasIntentSpecs, includeIntentSnapshot])
+  const activeRootId = useIDEStore((s) => s.activeRootId)
 
   const refreshShares = useCallback(async () => {
     setHistoryLoading(true)
@@ -119,6 +121,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ files, onImport, onClose, initi
         setShareUrl(result.url)
         setShareId(result.id)
         setShareCloud(result.cloud)
+        linkWorkspaceShare(result.id, activeRootId)
         emitAideLinkEvent('share-created', { shareId: result.id, cloud: result.cloud })
         void refreshShares()
       })

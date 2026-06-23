@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { readActivityLineCollapsed, writeActivityLineCollapsed } from '../lib/activityLinePrefs'
-import { ChevronDown, ChevronRight, Activity, Bot, GitBranch, ShieldAlert, Zap, Crown } from 'lucide-react'
+import { ChevronDown, ChevronRight, Activity, Bot, GitBranch, ShieldAlert, Zap, Crown, Sparkles, Target, Link2 } from 'lucide-react'
 import { useI18n, type TranslationKey } from '../i18n'
 import { buildWorkspaceRhythm, type WorkspaceRhythmStage } from '../lib/workspaceRhythm'
+import { stopAutopilotLoopState } from '../lib/autopilotLoop'
+import { stopAutopilotBackgroundWatchState } from '../lib/autopilotBackgroundWatch'
+import { publishAutopilotLoopEvent, publishAutopilotBackgroundEvent } from '../services/runtime/runtimeActivityPublishers'
 import { subscribeAideLink, type AideLinkEvent } from '../lib/aideLinkBus'
+import { linkageAideLinkActivityLabel } from '../lib/linkageLinkEvents'
 import { resolveAideLinkFeatureLabel } from '../lib/aideLinkFeatureLabels'
 import { trackUpgradeClick } from '../lib/conversionTracking'
+import { LinkageBecauseStrip } from './LinkageBecauseStrip'
 import { useIDEStore } from '../store/ideStore'
 import {
   exposeRuntimeEventBusForE2E,
@@ -16,6 +21,7 @@ import {
 } from '../services/runtime/runtimeEventBus'
 
 const MAX_VISIBLE = 16
+const MAX_LINKAGE_FEED = 8
 
 function eventIcon(type: RuntimeEventType) {
   switch (type) {
@@ -30,6 +36,12 @@ function eventIcon(type: RuntimeEventType) {
       return <ShieldAlert size={12} color="var(--danger-color, #c44)" />
     case 'grounding.block':
       return <ShieldAlert size={12} color="var(--warning-color, #c90)" />
+    case 'autopilot.loop':
+      return <Sparkles size={12} color="var(--accent-color)" />
+    case 'autopilot.background':
+      return <Bot size={12} color="var(--accent-color)" />
+    case 'autopilot.goal':
+      return <Target size={12} color="var(--accent-color)" />
     default:
       return <Activity size={12} />
   }
@@ -62,6 +74,26 @@ function eventLabel(
       return `${t('activityLine.verifyFail')} · ${event.message}`
     case 'grounding.block':
       return `${t('activityLine.groundingBlock')} · ${event.message}`
+    case 'autopilot.loop':
+      return event.message.startsWith('start:')
+        ? t('activityLine.autopilotLoopStart', {
+            path: String(event.meta?.tasksPath ?? event.message.replace(/^start:\s*/, '')),
+          })
+        : event.message.startsWith('stop:')
+          ? t('activityLine.autopilotLoopStop', { detail: event.message.replace(/^stop:\s*/, '') })
+          : t('activityLine.autopilotLoopStep', { detail: event.message.replace(/^step:\s*/, '') })
+    case 'autopilot.background':
+      return event.message.startsWith('start:')
+        ? t('activityLine.autopilotBackgroundStart', {
+            path: String(event.meta?.tasksPath ?? event.message.replace(/^start:\s*/, '')),
+          })
+        : event.message.startsWith('stop:')
+          ? t('activityLine.autopilotBackgroundStop', { detail: event.message.replace(/^stop:\s*/, '') })
+          : t('activityLine.autopilotBackgroundStep', { detail: event.message.replace(/^step:\s*/, '') })
+    case 'autopilot.goal':
+      return event.message.startsWith('start:')
+        ? t('activityLine.autopilotGoalStart', { detail: event.message.replace(/^start:\s*/, '').slice(0, 80) })
+        : t('activityLine.autopilotGoalStop', { detail: event.message.replace(/^stop:\s*/, '') })
     default:
       return event.message
   }
@@ -84,6 +116,8 @@ function aideLinkHintLabel(
       ? t('activityLine.entitlementBlocked', { feature })
       : t('activityLine.entitlementBlockedGeneric')
   }
+  const linkageLabel = linkageAideLinkActivityLabel(event, t)
+  if (linkageLabel) return linkageLabel
   return ''
 }
 
@@ -96,9 +130,14 @@ export function ActivityLine() {
   const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
   const currentUser = useIDEStore((s) => s.currentUser)
   const setShowSubscriptionModal = useIDEStore((s) => s.setShowSubscriptionModal)
+  const autopilotLoop = useIDEStore((s) => s.autopilotLoop)
+  const setAutopilotLoop = useIDEStore((s) => s.setAutopilotLoop)
+  const autopilotBackgroundWatch = useIDEStore((s) => s.autopilotBackgroundWatch)
+  const setAutopilotBackgroundWatch = useIDEStore((s) => s.setAutopilotBackgroundWatch)
   const [collapsed, setCollapsed] = useState(() => readActivityLineCollapsed(true))
   const [events, setEvents] = useState<RuntimeEvent[]>(() => getRecentRuntimeEvents(MAX_VISIBLE))
   const [linkHint, setLinkHint] = useState<AideLinkEvent | null>(null)
+  const [linkageFeed, setLinkageFeed] = useState<AideLinkEvent[]>([])
 
   const rhythm = useMemo(
     () =>
@@ -133,6 +172,9 @@ export function ActivityLine() {
       if (event.type === 'quota-exceeded' || event.type === 'entitlement-blocked') {
         setLinkHint(event)
       }
+      if (event.type === 'linkage-autopilot' || event.type === 'linkage-graph-changed') {
+        setLinkageFeed((prev) => [event, ...prev].slice(0, MAX_LINKAGE_FEED))
+      }
     })
   }, [])
 
@@ -145,6 +187,24 @@ export function ActivityLine() {
   }, [events])
 
   const linkHintLabel = linkHint ? aideLinkHintLabel(linkHint, t) : ''
+  const latestLinkage = linkageFeed[0]
+  const latestLinkageLabel = latestLinkage ? linkageAideLinkActivityLabel(latestLinkage, t) : ''
+
+  const latestBecause = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i -= 1) {
+      const event = events[i]
+      if (
+        event.type !== 'autopilot.loop' &&
+        event.type !== 'autopilot.background' &&
+        event.type !== 'autopilot.goal'
+      ) {
+        continue
+      }
+      const because = event.meta?.because
+      if (typeof because === 'string' && because.trim()) return because
+    }
+    return undefined
+  }, [events])
 
   return (
     <div data-testid="aide-activity-line" className="aide-activity-line">
@@ -180,6 +240,65 @@ export function ActivityLine() {
             {collapsed ? t('activityLine.expandHint') : t('activityLine.eventCount', { count: String(events.length) })}
           </span>
         </button>
+        {latestBecause ? <LinkageBecauseStrip becauseRaw={latestBecause} compact /> : null}
+        {autopilotLoop?.active ? (
+          <div className="aide-activity-line__loop" data-testid="aide-activity-autopilot-loop">
+            <Sparkles size={12} />
+            <span>
+              {t('activityLine.autopilotLoopActive', {
+                completed: autopilotLoop.stepsCompleted,
+                total: Math.max(autopilotLoop.openAtStart, autopilotLoop.stepsCompleted + 1),
+              })}
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              data-testid="aide-activity-autopilot-pause"
+              onClick={() => {
+                if (!autopilotLoop) return
+                stopAutopilotLoopState(autopilotLoop, 'paused')
+                publishAutopilotLoopEvent('stop', 'paused', {
+                  stepsCompleted: autopilotLoop.stepsCompleted,
+                })
+                setAutopilotLoop(null)
+              }}
+            >
+              {t('intent.autopilot.loopPauseShort')}
+            </button>
+          </div>
+        ) : null}
+        {autopilotBackgroundWatch?.active ? (
+          <div className="aide-activity-line__loop" data-testid="aide-activity-autopilot-background">
+            <Bot size={12} />
+            <span>
+              {t('activityLine.autopilotBackgroundActive', {
+                queued: autopilotBackgroundWatch.stepsQueued,
+              })}
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              data-testid="aide-activity-autopilot-background-pause"
+              onClick={() => {
+                if (!autopilotBackgroundWatch) return
+                stopAutopilotBackgroundWatchState(autopilotBackgroundWatch, 'paused')
+                publishAutopilotBackgroundEvent('stop', 'paused', {
+                  tasksPath: autopilotBackgroundWatch.tasksPath,
+                  stepsQueued: autopilotBackgroundWatch.stepsQueued,
+                })
+                setAutopilotBackgroundWatch(null)
+              }}
+            >
+              {t('intent.autopilot.backgroundPauseShort')}
+            </button>
+          </div>
+        ) : null}
+        {latestLinkageLabel ? (
+          <div className="aide-activity-line__linkage" data-testid="aide-activity-linkage-latest">
+            <Link2 size={12} />
+            <span>{latestLinkageLabel}</span>
+          </div>
+        ) : null}
         {linkHint && linkHintLabel ? (
           <div className="aide-activity-line__link-hint-wrap" data-testid="aide-activity-link-hint">
             <span className="aide-activity-line__link-hint">
@@ -204,6 +323,23 @@ export function ActivityLine() {
       </div>
       {!collapsed ? (
         <div data-testid="aide-activity-line-body" className="aide-activity-line__body">
+          {linkageFeed.length > 0 ? (
+            <div className="aide-activity-line__linkage-feed" data-testid="aide-activity-linkage-feed">
+              {linkageFeed.map((event) => (
+                <div
+                  key={`${event.type}-${event.at}`}
+                  className="aide-activity-line__row aide-activity-line__row--linkage"
+                  data-testid={`aide-activity-linkage-${event.type}`}
+                >
+                  <span className="aide-activity-line__icon">
+                    <Link2 size={12} />
+                  </span>
+                  <span className="aide-activity-line__message">{linkageAideLinkActivityLabel(event, t)}</span>
+                  <span className="aide-activity-line__time">{formatEventTime(event.at)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {events.length === 0 ? (
             <div>{t('activityLine.empty')}</div>
           ) : (

@@ -50,13 +50,17 @@ import { PanelHost } from './PanelHost'
 import { RightPanel } from './RightPanel'
 import { WorkbenchAuxiliaryHost } from './WorkbenchAuxiliaryHost'
 import { useAppFeedback } from './useAppFeedback'
-import { OPEN_BACKGROUND_JOBS_PANEL_EVENT } from '../lib/backgroundJobsPanelEvents'
+import { OPEN_BACKGROUND_JOBS_PANEL_EVENT, dispatchOpenBackgroundJobsPanel } from '../lib/backgroundJobsPanelEvents'
+import type { LinkageOverlayNavigateTarget } from '../lib/linkageOverlayNavigation'
 import { loadWorkspaceByRef } from '../services/workspaceLoader'
 import { markWorkspaceHydrated } from '../services/workspaceSession'
 import { collabRoleCanWrite } from '../lib/collabPermissions'
 import { stageAllInWorkspace } from '../lib/gitQuickActions'
 import { useIntentQueueRail } from '../hooks/useIntentQueueRail'
 import { useAutopilotLite } from '../hooks/useAutopilotLite'
+import { useAutopilotBackgroundWatch } from '../hooks/useAutopilotBackgroundWatch'
+import { useAutopilotGoalDrive } from '../hooks/useAutopilotGoalDrive'
+import { GoalDriveAutopilotDialog } from '../components/GoalDriveAutopilotDialog'
 import { useSpecTaskActions } from '../hooks/useSpecTaskActions'
 import { useIntentShellNarrowLayout } from '../hooks/useIntentShellNarrowLayout'
 import { useWorkspaceMode } from '../hooks/useWorkspaceMode'
@@ -135,6 +139,7 @@ export function AppShell() {
   const queuedSpecExecutions = useIDEStore((s) => s.queuedSpecExecutions)
   const queuedSpecBackfill = useIDEStore((s) => s.queuedSpecBackfill)
   const verifyingSpecBackfill = useIDEStore((s) => s.verifyingSpecBackfill)
+  const failedSpecExecution = useIDEStore((s) => s.failedSpecExecution)
 
   const { toasts, confirmRequest, dismissToast, notify, requestConfirm, resolveConfirm } = useAppFeedback()
   useBackgroundJobsTracker(notify)
@@ -176,7 +181,6 @@ export function AppShell() {
     [applyWorkspaceMode, ui],
   )
   const { runFirstOpenSpecTask } = useSpecTaskActions(notify)
-  const autopilot = useAutopilotLite(runFirstOpenSpecTask)
   const intentShellOn = shouldShowIntentShell(files, intentShellEnabled)
   const intentShellNarrow = useIntentShellNarrowLayout(intentShellOn)
   const {
@@ -204,6 +208,27 @@ export function AppShell() {
       notify('info', t('tasksPanel.fileMissing'), normalized)
     },
     [files, notify, setAcceptanceEditorPath, setActiveFile, setEditorTarget, t],
+  )
+
+  const handleLinkageNavigate = useCallback(
+    (target: LinkageOverlayNavigateTarget) => {
+      if (target.kind === 'tasks') {
+        openIntentShellPath(target.path)
+        return
+      }
+      if (target.kind === 'git') {
+        ui.openGitPanel()
+        return
+      }
+      if (target.kind === 'background-jobs') {
+        dispatchOpenBackgroundJobsPanel()
+        return
+      }
+      if (target.kind === 'share') {
+        useIDEStore.getState().setShowShareModal(true)
+      }
+    },
+    [openIntentShellPath, ui],
   )
 
   const openCapstoneDoc = useCallback(
@@ -271,6 +296,27 @@ export function AppShell() {
   useProjectIndexSync()
   const gitStatus = useGitStatus(fs, files)
   const gitWriteDisabled = Boolean(collaborationRoomId && !collabRoleCanWrite(collaborationMemberRole))
+  const gitModifiedTotal = gitStatus.modifiedCount + gitStatus.unstagedCount
+  const linkageQueueBusy = Boolean(
+    queuedSpecBackfill || verifyingSpecBackfill || failedSpecExecution || queuedSpecExecutions.length > 0,
+  )
+
+  const autopilot = useAutopilotLite(runFirstOpenSpecTask, { gitModifiedCount: gitModifiedTotal })
+  const backgroundWatch = useAutopilotBackgroundWatch(autopilot.tasksPath, {
+    gitModifiedCount: gitModifiedTotal,
+    queueBusy: linkageQueueBusy,
+    quotaBlocked: autopilot.quotaBlocked,
+  })
+  const goalDrive = useAutopilotGoalDrive({
+    startLoop: autopilot.startLoop,
+    startBackgroundWatch: backgroundWatch.startWatch,
+    pauseLoop: autopilot.pauseLoop,
+    pauseBackgroundWatch: backgroundWatch.pauseWatch,
+    loopActive: autopilot.loopActive,
+    backgroundWatchActive: backgroundWatch.watchActive,
+    quotaBlocked: autopilot.quotaBlocked,
+    gitModifiedCount: gitModifiedTotal,
+  })
 
   const specStatus = useMemo(() => buildSpecStatusSummary(files), [files])
   const suggestedWorkspaceMode = useMemo(
@@ -607,6 +653,26 @@ export function AppShell() {
                   onOpenPath={openIntentShellPath}
                   onSaveProof={intentQueuePanelProps.onSaveProof}
                   onRunAutopilotNext={autopilot.suggestion ? autopilot.runNext : undefined}
+                  onStartAutopilotLoop={
+                    autopilot.suggestion && autopilot.openTaskCount > 1 ? autopilot.startLoop : undefined
+                  }
+                  onPauseAutopilotLoop={autopilot.loopActive ? autopilot.pauseLoop : undefined}
+                  onStartBackgroundWatch={
+                    backgroundWatch.enabled && autopilot.suggestion
+                      ? backgroundWatch.startWatch
+                      : undefined
+                  }
+                  onPauseBackgroundWatch={
+                    backgroundWatch.watchActive ? backgroundWatch.pauseWatch : undefined
+                  }
+                  autopilotLoopActive={autopilot.loopActive}
+                  autopilotLoopProgress={autopilot.loopProgress}
+                  autopilotBackgroundWatchActive={backgroundWatch.watchActive}
+                  autopilotBackgroundProgress={backgroundWatch.progress}
+                  backgroundAgentEnabled={backgroundWatch.enabled}
+                  onOpenGoalDrive={goalDrive.enabled ? goalDrive.openDialog : undefined}
+                  onPauseGoalDrive={goalDrive.goalDriveActive ? goalDrive.pauseGoalDrive : undefined}
+                  goalDriveActive={goalDrive.goalDriveActive}
                   autopilotTaskPreview={
                     autopilot.suggestion?.taskText
                       ? autopilot.suggestion.taskText.slice(0, 48)
@@ -615,6 +681,8 @@ export function AppShell() {
                   autopilotOpenCount={autopilot.openTaskCount}
                   autopilotQuota={autopilot.quota}
                   autopilotQuotaBlocked={autopilot.quotaBlocked}
+                  linkageGitModifiedCount={gitModifiedTotal}
+                  linkageQueueBusy={linkageQueueBusy}
                   lastGroundingBlock={intentQueuePanelProps.lastGroundingBlock}
                   onDismissGroundingBlock={intentQueuePanelProps.onDismissGroundingBlock}
                   narrowLayout={intentShellNarrow}
@@ -648,6 +716,11 @@ export function AppShell() {
                   onOpenPath={openIntentShellPath}
                   drawerOpen={!intentShellNarrow || intentShellRailTab === 'graph'}
                   onClose={() => setIntentShellGraphOpen(false)}
+                  linkageOpenTaskCount={autopilot.openTaskCount}
+                  linkageGitModifiedCount={gitModifiedTotal}
+                  linkageQueueBusy={linkageQueueBusy}
+                  linkageQuotaBlocked={autopilot.quotaBlocked}
+                  onLinkageNavigate={handleLinkageNavigate}
                 />
                 </Suspense>
               ) : null}
@@ -871,6 +944,14 @@ export function AppShell() {
         confirmRequest={confirmRequest}
         onDismissToast={dismissToast}
         onResolveConfirm={resolveConfirm}
+      />
+      <GoalDriveAutopilotDialog
+        open={goalDrive.dialogOpen}
+        onClose={() => goalDrive.setDialogOpen(false)}
+        onSubmit={(goal) => {
+          void goalDrive.startGoalDrive(goal)
+        }}
+        busy={goalDrive.busy}
       />
       <PluginModal />
     </div>

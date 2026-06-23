@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { GitBranch, X } from 'lucide-react'
 import { IntentGraphPanel } from './IntentGraphPanel'
 import { useI18n } from '../i18n'
+import type { LinkageOverlayNavigateTarget } from '../lib/linkageOverlayNavigation'
 
 interface IntentShellLeftRailProps {
   focusTasksPath?: string | null
@@ -9,6 +10,11 @@ interface IntentShellLeftRailProps {
   onOpenPath: (path: string) => void
   drawerOpen?: boolean
   onClose?: () => void
+  linkageOpenTaskCount?: number
+  linkageGitModifiedCount?: number
+  linkageQueueBusy?: boolean
+  linkageQuotaBlocked?: boolean
+  onLinkageNavigate?: (target: LinkageOverlayNavigateTarget) => void
 }
 
 export const IntentShellLeftRail = memo(function IntentShellLeftRail({
@@ -17,6 +23,11 @@ export const IntentShellLeftRail = memo(function IntentShellLeftRail({
   onOpenPath,
   drawerOpen = false,
   onClose,
+  linkageOpenTaskCount = 0,
+  linkageGitModifiedCount = 0,
+  linkageQueueBusy = false,
+  linkageQuotaBlocked = false,
+  onLinkageNavigate,
 }: IntentShellLeftRailProps) {
   const { t } = useI18n()
 
@@ -50,6 +61,11 @@ export const IntentShellLeftRail = memo(function IntentShellLeftRail({
           focusTasksPath={focusTasksPath}
           highlightTaskText={highlightTaskText}
           onOpenPath={onOpenPath}
+          linkageOpenTaskCount={linkageOpenTaskCount}
+          linkageGitModifiedCount={linkageGitModifiedCount}
+          linkageQueueBusy={linkageQueueBusy}
+          linkageQuotaBlocked={linkageQuotaBlocked}
+          onLinkageNavigate={onLinkageNavigate}
         />
       </div>
     </aside>

@@ -7,11 +7,14 @@ export type AideLinkEventType =
   | 'spec-tasks-open'
   | 'git-commit-blocked'
   | 'share-created'
+  | 'share-progress-local'
   | 'queue-active'
   | 'plan-file-focused'
   | 'mode-suggestion'
   | 'quota-exceeded'
   | 'entitlement-blocked'
+  | 'linkage-graph-changed'
+  | 'linkage-autopilot'
 
 export interface AideLinkEvent {
   type: AideLinkEventType
