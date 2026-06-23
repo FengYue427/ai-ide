@@ -469,6 +469,51 @@ export async function pushToGitHub(
   })
 }
 
+export async function getOriginRemoteUrl(fs: any, dir: string = '/'): Promise<string | null> {
+  try {
+    const remotes = await git.listRemotes({ fs, dir })
+    return remotes.find((remote) => remote.remote === 'origin')?.url ?? null
+  } catch {
+    return null
+  }
+}
+
+function commitAuthorStamp() {
+  return {
+    ...DEFAULT_AUTHOR,
+    timestamp: Math.floor(Date.now() / 1000),
+    timezoneOffset: new Date().getTimezoneOffset(),
+  }
+}
+
+/** Pull from origin for browser / isomorphic-git workspaces. */
+export async function pullFromOrigin(fs: any, dir: string = '/', ref?: string): Promise<void> {
+  const branch = ref ?? (await getCurrentBranch(fs, dir)) ?? 'main'
+  await git.pull({
+    fs,
+    http,
+    dir,
+    ref: branch,
+    singleBranch: true,
+    author: commitAuthorStamp(),
+    onAuth: () => ({}),
+  })
+}
+
+/** Push current branch to origin for browser / isomorphic-git workspaces. */
+export async function pushToOrigin(fs: any, dir: string = '/', ref?: string): Promise<void> {
+  const branch = ref ?? (await getCurrentBranch(fs, dir)) ?? 'main'
+  await git.push({
+    fs,
+    http,
+    dir,
+    remote: 'origin',
+    ref: branch,
+    remoteRef: branch,
+    onAuth: () => ({}),
+  })
+}
+
 export async function cloneRepo(fs: any, dir: string, url: string, token?: string): Promise<void> {
   const authUrl = token ? url.replace('https://', `https://oauth2:${token}@`) : url
 

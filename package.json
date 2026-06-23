@@ -49,6 +49,7 @@
     "aliyun:sync": "node scripts/aliyun-sync.mjs",
     "aliyun:remote-install": "node scripts/aliyun-remote-install.mjs",
     "aliyun:deploy": "node scripts/aliyun-deploy.mjs",
+    "release:cn": "node scripts/release-cn.mjs",
     "aliyun:nginx": "node scripts/aliyun-render-nginx.mjs",
     "aliyun:post-beian": "node scripts/aliyun-post-beian.mjs",
     "db:migrate:neon-to-rds": "node scripts/db-migrate-neon-to-rds.mjs",

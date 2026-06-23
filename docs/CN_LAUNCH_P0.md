@@ -113,6 +113,25 @@ npm run smoke:production -- https://你的域名
 npm run electron:pack:offline
 ```
 
+### 8.1 网页 / 桌面 parity（Sprint A）
+
+**同一套 React 代码**，但桌面 UI 打进离线包，**不会**随 `aliyun:deploy` 自动更新。
+
+| 步骤 | 命令 |
+|------|------|
+| 网页部署 + 测试 | `npm run release:cn` |
+| 网页 + 桌面包 | `npm run release:cn -- --with-desktop` |
+| 仅桌面包（网页已部署） | `npm run electron:pack:offline` |
+
+**每次网页大版本上线后必做**：重打 `electron:pack:offline`，并在桌面验收：
+
+- [ ] Intent Shell · Autopilot E1/E2/E3 · 关系网 SVG
+- [ ] 策略阻断 Toast（步内 / 后台 / 目标）
+- [ ] Git Pull/Push（需 `origin` 远程；桌面走本机 `git` CLI）
+- [ ] 登录 / 订阅 / Background Agent
+
+`.env.electron` 应与网页生产 Flag 对齐（`VITE_AIDE_RUNTIME`、`VITE_BACKGROUND_AGENT_PRODUCTION` 等）。详见仓库根目录 `.env.electron`。
+
 ## 验收标准
 
 - [ ] `/api/health` → `status: ok`，`database: connected`

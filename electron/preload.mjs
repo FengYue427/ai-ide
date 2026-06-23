@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('aiIdeDesktop', {
   getInfo: () => ipcRenderer.invoke('desktop:info'),
   readGitReadonlySnapshot: (rootPath) =>
     ipcRenderer.invoke('desktop:git-readonly-snapshot', { rootPath }),
+  readGitOriginRemote: (rootPath) => ipcRenderer.invoke('desktop:git-origin-remote', { rootPath }),
+  syncGitOrigin: (rootPath, action) =>
+    ipcRenderer.invoke('desktop:git-sync-origin', { rootPath, action }),
   spawnNodeInspect: (payload) => ipcRenderer.invoke('desktop:spawn-node-inspect', payload),
   killNodeInspect: (sessionId) => ipcRenderer.invoke('desktop:kill-node-inspect', { sessionId }),
   onNodeInspectExit: (callback) => {

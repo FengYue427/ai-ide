@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
   ChevronDown,
   ChevronRight,
   GitBranch,
@@ -46,6 +48,7 @@ import { useAutopilotBackgroundWatch } from '../hooks/useAutopilotBackgroundWatc
 import { isBackgroundAgentEnabled } from '../lib/backgroundAgentFeatures'
 import { isTierCEnabled } from '../lib/intentOsTierC'
 import { useSpecTaskActions } from '../hooks/useSpecTaskActions'
+import { resolveGitOriginRemote, runGitRemoteSync } from '../services/gitRemoteSyncService'
 import { workspaceContextService } from '../services/workspaceContextService'
 import styles from './GitPanel.module.css'
 
@@ -121,6 +124,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
   const [historyFilterQuery, setHistoryFilterQuery] = useState('')
   const [gitSnapshotSource, setGitSnapshotSource] = useState<GitReadonlySnapshotSource>('isomorphic')
   const [desktopGitCliEnabled, setDesktopGitCliEnabledState] = useState(isDesktopGitCliEnabled)
+  const [originRemote, setOriginRemote] = useState<string | null>(null)
 
   const filteredCommits = useMemo(
     () => filterGitCommitsByHistoryQuery(commits, historyFilterQuery, commitFilesByOid),
@@ -157,6 +161,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
       setBranch(snapshot.branch)
       setBranches(snapshot.branches)
       setGitSnapshotSource(snapshot.source)
+      setOriginRemote(await resolveGitOriginRemote(fs))
       setIsInit(true)
       setError(null)
     } catch (refreshError) {
@@ -249,6 +254,16 @@ const GitPanel: React.FC<GitPanelProps> = ({
     setCommitMessage('')
     onFilesChange()
   })
+
+  const handleRemoteSync = (action: 'pull' | 'push') =>
+    runGitAction(async () => {
+      if (!originRemote) {
+        throw new Error(t('git.noRemote'))
+      }
+      await runGitRemoteSync(fs, action, syncWorkspaceToFs)
+      notify?.('success', action === 'pull' ? t('git.pullDone') : t('git.pushDone'), originRemote)
+      onFilesChange()
+    })
 
   const handleStageAll = () => runGitAction(async () => {
     for (const file of status.filter((item) => !item.staged)) {
@@ -499,16 +514,42 @@ const GitPanel: React.FC<GitPanelProps> = ({
             </div>
           ) : null}
         </div>
-        <button
-          type="button"
-          className={`btn btn-secondary ${styles.refreshButton}`}
-          onClick={() => void refresh()}
-          disabled={isBusy}
-          title={t('git.refreshTitle')}
-        >
-          <RefreshCw size={12} className={styles.refreshIcon} />
-          {t('git.refresh')}
-        </button>
+        <div className={styles.headerActions}>
+          {originRemote && !readOnly ? (
+            <>
+              <button
+                type="button"
+                className={`btn btn-secondary ${styles.syncButton}`}
+                onClick={() => void handleRemoteSync('pull')}
+                disabled={isBusy}
+                title={originRemote}
+              >
+                <ArrowDownToLine size={12} />
+                {t('git.pull')}
+              </button>
+              <button
+                type="button"
+                className={`btn btn-secondary ${styles.syncButton}`}
+                onClick={() => void handleRemoteSync('push')}
+                disabled={isBusy}
+                title={originRemote}
+              >
+                <ArrowUpFromLine size={12} />
+                {t('git.push')}
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            className={`btn btn-secondary ${styles.refreshButton}`}
+            onClick={() => void refresh()}
+            disabled={isBusy}
+            title={t('git.refreshTitle')}
+          >
+            <RefreshCw size={12} className={styles.refreshIcon} />
+            {t('git.refresh')}
+          </button>
+        </div>
       </div>
 
       <div className={styles.tabs}>

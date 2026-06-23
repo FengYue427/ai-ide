@@ -93,6 +93,13 @@ export interface AiIdeDesktopApi {
   ) => Promise<string>
   writeFile: (rootPath: string, relPath: string, content: string) => Promise<{ ok: boolean }>
   readGitReadonlySnapshot: (rootPath: string) => Promise<DesktopGitReadonlySnapshot>
+  readGitOriginRemote: (
+    rootPath: string,
+  ) => Promise<{ ok: true; url: string } | { ok: false; reason: string; detail?: string }>
+  syncGitOrigin: (
+    rootPath: string,
+    action: 'pull' | 'push',
+  ) => Promise<{ ok: true } | { ok: false; reason: string; detail?: string }>
   spawnNodeInspect: (payload: {
     rootPath: string
     entryFile: string

@@ -22,7 +22,7 @@ import {
   writePtySession,
 } from './ptyBridge.mjs'
 import { checkForUpdates, installDesktopCrashLog, setupDesktopUpdater } from './updater.mjs'
-import { readGitReadonlySnapshot } from './gitCli.mjs'
+import { readGitReadonlySnapshot, readGitOriginRemote, syncGitOrigin } from './gitCli.mjs'
 import {
   killNodeInspectSession,
   spawnNodeInspectSession,
@@ -380,6 +380,19 @@ function registerIpc() {
     const root = rootPath ?? projectRoot
     if (!root) return { ok: false, reason: 'NO_ROOT' }
     return readGitReadonlySnapshot(root)
+  })
+
+  ipcMain.handle('desktop:git-origin-remote', async (_e, { rootPath }) => {
+    const root = rootPath ?? projectRoot
+    if (!root) return { ok: false, reason: 'NO_ROOT' }
+    return readGitOriginRemote(root)
+  })
+
+  ipcMain.handle('desktop:git-sync-origin', async (_e, { rootPath, action }) => {
+    const root = rootPath ?? projectRoot
+    if (!root) return { ok: false, reason: 'NO_ROOT' }
+    if (action !== 'pull' && action !== 'push') return { ok: false, reason: 'INVALID_ACTION' }
+    return syncGitOrigin(root, action)
   })
 
   ipcMain.handle('desktop:spawn-node-inspect', async (_e, { rootPath, entryFile }) => {

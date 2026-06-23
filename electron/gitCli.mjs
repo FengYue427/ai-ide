@@ -93,3 +93,41 @@ export async function readGitReadonlySnapshot(rootPath) {
     branches: branches.length > 0 ? branches : ['main'],
   }
 }
+
+/** @returns {{ ok: true, url: string } | { ok: false, reason: string, detail?: string }} */
+export async function readGitOriginRemote(rootPath) {
+  const root = path.resolve(String(rootPath ?? ''))
+  if (!root) return { ok: false, reason: 'NO_ROOT' }
+  if (!(await isGitRepo(root))) return { ok: false, reason: 'NOT_A_GIT_REPO' }
+
+  const result = await runGit(root, ['remote', 'get-url', 'origin'])
+  if (result.exitCode !== 0) {
+    return {
+      ok: false,
+      reason: 'NO_ORIGIN',
+      detail: result.stderr.trim() || result.stdout.trim(),
+    }
+  }
+
+  const url = result.stdout.trim()
+  return url ? { ok: true, url } : { ok: false, reason: 'NO_ORIGIN' }
+}
+
+/** @returns {{ ok: true } | { ok: false, reason: string, detail?: string }} */
+export async function syncGitOrigin(rootPath, action) {
+  const root = path.resolve(String(rootPath ?? ''))
+  if (!root) return { ok: false, reason: 'NO_ROOT' }
+  if (!(await isGitRepo(root))) return { ok: false, reason: 'NOT_A_GIT_REPO' }
+
+  const args = action === 'pull' ? ['pull', '--ff-only', 'origin'] : ['push', 'origin', 'HEAD']
+  const result = await runGit(root, args)
+  if (result.exitCode !== 0) {
+    return {
+      ok: false,
+      reason: action === 'pull' ? 'PULL_FAILED' : 'PUSH_FAILED',
+      detail: result.stderr.trim() || result.stdout.trim(),
+    }
+  }
+
+  return { ok: true }
+}
