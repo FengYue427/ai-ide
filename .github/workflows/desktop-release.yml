@@ -32,6 +32,11 @@ jobs:
 
       - run: npm ci
 
+      - name: Rebuild node-pty for Electron
+        env:
+          PYTHON: python
+        run: node scripts/electron-rebuild-pty.mjs
+
       - name: Build & publish Windows to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

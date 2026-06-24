@@ -113,6 +113,7 @@
     "electron:pack:installer": "node scripts/electron-builder-run.mjs --win nsis --publish never",
     "electron:pack:mac": "node scripts/electron-builder-run.mjs --mac dmg zip --publish never",
     "electron:pack:offline": "node scripts/electron-pack.mjs",
+    "electron:rebuild-pty": "node scripts/electron-rebuild-pty.mjs",
     "electron:publish": "node scripts/electron-publish.mjs"
   },
   "dependencies": {
@@ -153,6 +154,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.2",
     "@playwright/test": "^1.60.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^8.0.0",

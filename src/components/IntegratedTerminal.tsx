@@ -209,7 +209,9 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
     }
 
     if (ptyCaps.available) {
-      term.writeln(t('terminal.ptyHint'))
+      term.writeln(t('terminal.ptyActive'))
+    } else if (useDesktopLineRepl && ptyCaps.reason) {
+      term.writeln(t('terminal.ptyFallback', { reason: ptyCaps.reason }))
     }
 
     const resizeObserver = new ResizeObserver(() => {
@@ -224,7 +226,7 @@ const IntegratedTerminal: FC<IntegratedTerminalProps> = ({
       termRef.current = null
       fitRef.current = null
     }
-  }, [fitTerminal, isLoading, isReady, ptyCaps.available, readOnly, runDesktopLine, t, theme, useDesktopLineRepl])
+  }, [fitTerminal, isLoading, isReady, ptyCaps.available, ptyCaps.reason, readOnly, runDesktopLine, t, theme, useDesktopLineRepl])
 
   useEffect(() => {
     fitTerminal()

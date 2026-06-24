@@ -14,6 +14,7 @@ function run(cmd, args) {
 }
 
 console.log('=== AI IDE desktop pack (offline UI + remote API) ===\n')
+run('node', ['scripts/electron-rebuild-pty.mjs'])
 run('npm', ['run', 'build:electron'])
 run('node', [
   'scripts/electron-builder-run.mjs',

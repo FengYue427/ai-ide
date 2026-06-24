@@ -128,6 +128,7 @@ npm run electron:pack:offline
 - [ ] Intent Shell · Autopilot E1/E2/E3 · 关系网 SVG
 - [ ] 策略阻断 Toast（步内 / 后台 / 目标）
 - [ ] Git Pull/Push（需 `origin` 远程；桌面走本机 `git` CLI）
+- [ ] 终端 PTY 完整 shell（`npm` / `git` 交互；打包含 node-pty）
 - [ ] 登录 / 订阅 / Background Agent
 
 `.env.electron` 应与网页生产 Flag 对齐（`VITE_AIDE_RUNTIME`、`VITE_BACKGROUND_AGENT_PRODUCTION` 等）。详见仓库根目录 `.env.electron`。

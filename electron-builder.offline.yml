@@ -8,7 +8,11 @@ files:
   - electron/**/*
   - package.json
   - dist-electron-ui/**/*
+  - node_modules/node-pty/**/*
 asar: true
+asarUnpack:
+  - node_modules/node-pty/**/*
+  - "**/*.node"
 publish:
   provider: github
   owner: FengYue427

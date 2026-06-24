@@ -1,21 +1,28 @@
 /**
- * Optional node-pty bridge for Electron desktop (v1.1.5.5 spike).
- * Set AI_IDE_PTY=1 to attempt load; falls back when module missing.
+ * node-pty bridge for Electron desktop — enabled by default; set AI_IDE_PTY=0 to disable.
  */
+
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
 
 let ptyModule = null
 let loadAttempted = false
 let loadError = null
 
+export function isPtyDisabledByEnv(env = process.env) {
+  return env.AI_IDE_PTY === '0'
+}
+
 export async function loadPtyModule() {
   if (loadAttempted) return ptyModule
   loadAttempted = true
-  if (process.env.AI_IDE_PTY === '0') {
+  if (isPtyDisabledByEnv()) {
     loadError = new Error('PTY disabled (AI_IDE_PTY=0)')
     return null
   }
   try {
-    ptyModule = await import('node-pty')
+    ptyModule = require('node-pty')
     return ptyModule
   } catch (error) {
     loadError = error instanceof Error ? error : new Error(String(error))
