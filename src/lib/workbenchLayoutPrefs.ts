@@ -2,8 +2,9 @@
  * Persist workbench panel open/close state across sessions (v1.7).
  */
 import type { BottomPanelTab, RightPanelView } from '../store/ideStore'
+import type { ModePanelSnapshot } from './modePanelPrefs'
 import type { WorkspaceMode } from './workspaceMode'
-import { WORKSPACE_MODES } from './workspaceMode'
+import { WORKSPACE_MODES, getWorkspaceModeLayout } from './workspaceMode'
 
 export const WORKBENCH_LAYOUT_PREFS_KEY = 'workbench-layout-prefs'
 
@@ -163,5 +164,43 @@ export function visibilityFromSnapshot(
       typeof snap.rightPanelView === 'string' && VALID_RIGHT_VIEWS.has(snap.rightPanelView)
         ? snap.rightPanelView
         : 'chat',
+  }
+}
+
+export function resolveVisibilityOnRestore(input: {
+  workspaceMode: WorkspaceMode
+  panelSnapshot?: Partial<WorkbenchVisibilitySnapshot> | null
+  globalPrefs?: WorkbenchLayoutPrefs | null
+}): WorkbenchVisibilitySnapshot {
+  if (input.panelSnapshot && hasWorkbenchVisibilitySnapshot(input.panelSnapshot)) {
+    return visibilityFromSnapshot(input.panelSnapshot)
+  }
+  if (input.globalPrefs) {
+    return visibilityFromSnapshot(input.globalPrefs)
+  }
+  return visibilityFromSnapshot({})
+}
+
+/** Apply saved/global visibility on startup — never force mode preset panels open. */
+export function buildRestoredWorkbenchState(input: {
+  workspaceMode: WorkspaceMode
+  panelSnapshot?: Partial<ModePanelSnapshot> | null
+  globalPrefs?: WorkbenchLayoutPrefs | null
+}): WorkbenchLayoutStoreSlice {
+  const modeLayout = getWorkspaceModeLayout(input.workspaceMode)
+  const global = input.globalPrefs
+  const visibility = resolveVisibilityOnRestore({
+    workspaceMode: input.workspaceMode,
+    panelSnapshot: input.panelSnapshot,
+    globalPrefs: global,
+  })
+
+  return {
+    workspaceMode: input.workspaceMode,
+    intentShellEnabled: global?.intentShellEnabled ?? modeLayout.intentShellEnabled,
+    intentShellGraphOpen: input.panelSnapshot?.intentShellGraphOpen ?? global?.intentShellGraphOpen ?? true,
+    intentShellQueueRailOpen:
+      input.panelSnapshot?.intentShellQueueRailOpen ?? global?.intentShellQueueRailOpen ?? true,
+    ...visibility,
   }
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_WORKBENCH_LAYOUT,
+  buildRestoredWorkbenchState,
   hasWorkbenchVisibilitySnapshot,
   normalizeWorkbenchLayoutPrefs,
   snapshotWorkbenchLayout,
@@ -47,5 +48,27 @@ describe('workbenchLayoutPrefs', () => {
   it('fills visibility defaults', () => {
     expect(visibilityFromSnapshot({ showGitPanel: true }).showChatPanel).toBe(false)
     expect(visibilityFromSnapshot({ showGitPanel: true }).showGitPanel).toBe(true)
+  })
+
+  it('does not reopen review panels when restoring without saved visibility', () => {
+    const restored = buildRestoredWorkbenchState({ workspaceMode: 'review', globalPrefs: null })
+    expect(restored.showGitPanel).toBe(false)
+    expect(restored.showCodeReview).toBe(false)
+    expect(restored.showTerminal).toBe(false)
+  })
+
+  it('restores closed panels from global prefs', () => {
+    const restored = buildRestoredWorkbenchState({
+      workspaceMode: 'review',
+      globalPrefs: {
+        ...DEFAULT_WORKBENCH_LAYOUT,
+        workspaceMode: 'review',
+        showGitPanel: false,
+        showCodeReview: false,
+        showTerminal: false,
+      },
+    })
+    expect(restored.showGitPanel).toBe(false)
+    expect(restored.showCodeReview).toBe(false)
   })
 })

@@ -1,10 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { FileItem } from '../types/file'
-import { markWorkbenchLayoutHydrated } from '../lib/workbenchLayoutHydration'
-import {
-  hasWorkbenchVisibilitySnapshot,
-  visibilityFromSnapshot,
-} from '../lib/workbenchLayoutPrefs'
+import { markWorkbenchLayoutHydrated, isWorkbenchLayoutHydrated } from '../lib/workbenchLayoutHydration'
+import { buildRestoredWorkbenchState, visibilityFromSnapshot } from '../lib/workbenchLayoutPrefs'
 import {
   applyModePanelSnapshot,
   saveModePanelSnapshot,
@@ -16,8 +13,8 @@ import {
   saveProjectLayoutSnapshot,
 } from '../lib/projectLayoutPrefs'
 import { loadPanelWidthPrefs } from '../lib/panelWidthPrefs'
-import { getWorkspaceModeLayout } from '../lib/workspaceMode'
 import { saveIntentShellPreference } from '../lib/intentShellFeatures'
+import { loadWorkbenchLayoutPrefsSync } from '../services/workbenchLayoutPrefsService'
 import { useIDEStore } from '../store/ideStore'
 
 /** Restore / persist layout per project fingerprint (Phase 6.3). */
@@ -42,38 +39,27 @@ export function useProjectLayoutSync(files: FileItem[], enabled = true): void {
     if (loadedRef.current === fingerprint) return
     const saved = loadProjectLayoutSnapshot(fingerprint)
     loadedRef.current = fingerprint
+    const globalPrefs = loadWorkbenchLayoutPrefsSync()
+
     if (!saved) {
       markWorkbenchLayoutHydrated()
       return
     }
 
-    if (hasWorkbenchVisibilitySnapshot(saved.panels)) {
-      const visibility = visibilityFromSnapshot(saved.panels)
-      const layout = getWorkspaceModeLayout(saved.workspaceMode)
-      saveIntentShellPreference(layout.intentShellEnabled)
-      useIDEStore.setState({
-        workspaceMode: saved.workspaceMode,
-        intentShellEnabled: layout.intentShellEnabled,
-        ...visibility,
-        intentShellGraphOpen: saved.panels.intentShellGraphOpen,
-        intentShellQueueRailOpen: saved.panels.intentShellQueueRailOpen,
-      })
-    } else {
-      const layout = getWorkspaceModeLayout(saved.workspaceMode)
-      saveIntentShellPreference(layout.intentShellEnabled)
-      useIDEStore.setState({
-        workspaceMode: saved.workspaceMode,
-        ...layout,
-        intentShellGraphOpen: saved.panels.intentShellGraphOpen,
-        intentShellQueueRailOpen: saved.panels.intentShellQueueRailOpen,
-      })
-    }
+    const restored = buildRestoredWorkbenchState({
+      workspaceMode: saved.workspaceMode,
+      panelSnapshot: saved.panels,
+      globalPrefs,
+    })
+    saveIntentShellPreference(restored.intentShellEnabled)
+    useIDEStore.setState(restored)
     applyModePanelSnapshot(saved.panels)
     markWorkbenchLayoutHydrated()
   }, [enabled, fingerprint, files.length])
 
   useEffect(() => {
     if (!enabled || !fingerprint || files.length === 0) return
+    if (!isWorkbenchLayoutHydrated()) return
     const prefs = loadPanelWidthPrefs()
     const panels = snapshotFromPanelPrefs(
       prefs,

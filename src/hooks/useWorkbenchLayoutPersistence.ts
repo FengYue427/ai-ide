@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { isWorkbenchLayoutHydrated } from '../lib/workbenchLayoutHydration'
-import { saveWorkbenchLayoutPrefs } from '../services/workbenchLayoutPrefsService'
+import { saveWorkbenchLayoutPrefsSync } from '../services/workbenchLayoutPrefsService'
 import { useIDEStore } from '../store/ideStore'
 
 /** Debounced localStorage sync for workbench panel visibility (v1.7). */
@@ -26,7 +26,7 @@ export function useWorkbenchLayoutPersistence() {
     if (!isWorkbenchLayoutHydrated()) return
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
-      void saveWorkbenchLayoutPrefs(layout)
+      saveWorkbenchLayoutPrefsSync(layout)
     }, 250)
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)

@@ -4,7 +4,12 @@ import { NARROW_BREAKPOINT_PX } from '../hooks/useNarrowViewport'
 import { patchCloseAuxiliary } from '../lib/workbenchLayout'
 import { saveIntentShellPreference } from '../lib/intentShellFeatures'
 import { markWorkbenchLayoutHydrated } from '../lib/workbenchLayoutHydration'
-import { workbenchLayoutToStorePatch, visibilityFromSnapshot } from '../lib/workbenchLayoutPrefs'
+import {
+  buildRestoredWorkbenchState,
+  hasWorkbenchVisibilitySnapshot,
+  visibilityFromSnapshot,
+  workbenchLayoutToStorePatch,
+} from '../lib/workbenchLayoutPrefs'
 import {
   applyModePanelSnapshot,
   loadModePanelSnapshot,
@@ -18,8 +23,11 @@ import {
   saveWorkspaceMode,
   type WorkspaceMode,
 } from '../lib/workspaceMode'
-import { loadWorkbenchLayoutPrefs } from '../services/workbenchLayoutPrefsService'
 import { buildWorkspaceFingerprint, loadProjectLayoutSnapshot } from '../lib/projectLayoutPrefs'
+import {
+  loadWorkbenchLayoutPrefs,
+  loadWorkbenchLayoutPrefsSync,
+} from '../services/workbenchLayoutPrefsService'
 import { useIDEStore } from '../store/ideStore'
 
 export function useWorkspaceMode() {
@@ -54,21 +62,31 @@ export function useWorkspaceMode() {
 
     const layout = getWorkspaceModeLayout(nextMode)
     saveIntentShellPreference(layout.intentShellEnabled)
-
-    useIDEStore.setState({
-      workspaceMode: nextMode,
-      ...layout,
-      intentShellGraphOpen: true,
-      intentShellQueueRailOpen: true,
-    })
-
     const snap = loadModePanelSnapshot(nextMode)
-    if (snap) {
+
+    if (snap && hasWorkbenchVisibilitySnapshot(snap)) {
+      useIDEStore.setState(
+        buildRestoredWorkbenchState({
+          workspaceMode: nextMode,
+          panelSnapshot: snap,
+          globalPrefs: null,
+        }),
+      )
       applyModePanelSnapshot(snap)
+    } else {
       useIDEStore.setState({
-        intentShellGraphOpen: snap.intentShellGraphOpen,
-        intentShellQueueRailOpen: snap.intentShellQueueRailOpen,
+        workspaceMode: nextMode,
+        ...layout,
+        intentShellGraphOpen: true,
+        intentShellQueueRailOpen: true,
       })
+      if (snap) {
+        applyModePanelSnapshot(snap)
+        useIDEStore.setState({
+          intentShellGraphOpen: snap.intentShellGraphOpen,
+          intentShellQueueRailOpen: snap.intentShellQueueRailOpen,
+        })
+      }
     }
 
     if (typeof window !== 'undefined' && window.innerWidth <= NARROW_BREAKPOINT_PX) {
@@ -82,39 +100,38 @@ export function useWorkspaceMode() {
   const initWorkspaceMode = useCallback(() => {
     void (async () => {
       try {
+        const globalPrefs = loadWorkbenchLayoutPrefsSync() ?? (await loadWorkbenchLayoutPrefs())
         const { files } = useIDEStore.getState()
+
         if (files.length > 0) {
           const projectSaved = loadProjectLayoutSnapshot(buildWorkspaceFingerprint(files))
-          if (projectSaved) return
+          if (projectSaved) {
+            const restored = buildRestoredWorkbenchState({
+              workspaceMode: projectSaved.workspaceMode,
+              panelSnapshot: projectSaved.panels,
+              globalPrefs,
+            })
+            saveIntentShellPreference(restored.intentShellEnabled)
+            useIDEStore.setState(restored)
+            applyModePanelSnapshot(projectSaved.panels)
+            return
+          }
         }
 
-        const savedLayout = await loadWorkbenchLayoutPrefs()
-        if (savedLayout) {
-          saveIntentShellPreference(savedLayout.intentShellEnabled)
-          useIDEStore.setState(workbenchLayoutToStorePatch(savedLayout))
-          const snap = loadModePanelSnapshot(savedLayout.workspaceMode)
-          if (snap) {
-            applyModePanelSnapshot(snap)
-            useIDEStore.setState({
-              intentShellGraphOpen: snap.intentShellGraphOpen,
-              intentShellQueueRailOpen: snap.intentShellQueueRailOpen,
-            })
-          }
+        if (globalPrefs) {
+          saveIntentShellPreference(globalPrefs.intentShellEnabled)
+          useIDEStore.setState(workbenchLayoutToStorePatch(globalPrefs))
+          const snap = loadModePanelSnapshot(globalPrefs.workspaceMode)
+          if (snap) applyModePanelSnapshot(snap)
           return
         }
 
         const mode = loadWorkspaceMode()
-        const layout = getWorkspaceModeLayout(mode)
-        saveIntentShellPreference(layout.intentShellEnabled)
-        useIDEStore.setState({ workspaceMode: mode, ...layout })
+        const restored = buildRestoredWorkbenchState({ workspaceMode: mode, globalPrefs: null })
+        saveIntentShellPreference(restored.intentShellEnabled)
+        useIDEStore.setState(restored)
         const snap = loadModePanelSnapshot(mode)
-        if (snap) {
-          applyModePanelSnapshot(snap)
-          useIDEStore.setState({
-            intentShellGraphOpen: snap.intentShellGraphOpen,
-            intentShellQueueRailOpen: snap.intentShellQueueRailOpen,
-          })
-        }
+        if (snap) applyModePanelSnapshot(snap)
       } finally {
         markWorkbenchLayoutHydrated()
       }
