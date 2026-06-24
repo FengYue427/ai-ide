@@ -2,6 +2,7 @@
  * Per-mode panel width / rail visibility (localStorage).
  */
 import type { WorkspaceMode } from './workspaceMode'
+import type { WorkbenchVisibilitySnapshot } from './workbenchLayoutPrefs'
 import {
   applyAuxiliaryWidthCssVar,
   applyIntentShellWidthCssVars,
@@ -17,7 +18,7 @@ import {
 
 export const MODE_PANEL_PREFS_KEY = 'aide:mode-panel-prefs'
 
-export interface ModePanelSnapshot {
+export interface ModePanelSnapshot extends WorkbenchVisibilitySnapshot {
   sidebar: number
   rightPanel: number
   auxiliary: number
@@ -53,6 +54,7 @@ function writeStore(store: ModePanelPrefsStore): void {
 export function snapshotFromPanelPrefs(
   prefs: PanelWidthPrefs,
   rails: { graphOpen: boolean; queueOpen: boolean },
+  visibility?: WorkbenchVisibilitySnapshot,
 ): ModePanelSnapshot {
   return {
     sidebar: prefs.sidebar,
@@ -62,6 +64,15 @@ export function snapshotFromPanelPrefs(
     intentShellQueue: prefs.intentShellQueue,
     intentShellGraphOpen: rails.graphOpen,
     intentShellQueueRailOpen: rails.queueOpen,
+    showSearchPanel: visibility?.showSearchPanel ?? false,
+    showPreview: visibility?.showPreview ?? false,
+    showCodeReview: visibility?.showCodeReview ?? false,
+    showPerformance: visibility?.showPerformance ?? false,
+    showChatPanel: visibility?.showChatPanel ?? false,
+    showGitPanel: visibility?.showGitPanel ?? false,
+    showTerminal: visibility?.showTerminal ?? false,
+    bottomPanelTab: visibility?.bottomPanelTab ?? 'terminal',
+    rightPanelView: visibility?.rightPanelView ?? 'chat',
   }
 }
 
@@ -82,6 +93,17 @@ export function loadModePanelSnapshot(mode: WorkspaceMode): ModePanelSnapshot | 
     intentShellQueue: clampIntentShellQueueWidth(snap.intentShellQueue),
     intentShellGraphOpen: snap.intentShellGraphOpen !== false,
     intentShellQueueRailOpen: snap.intentShellQueueRailOpen !== false,
+    showSearchPanel: snap.showSearchPanel === true,
+    showPreview: snap.showPreview === true,
+    showCodeReview: snap.showCodeReview === true,
+    showPerformance: snap.showPerformance === true,
+    showChatPanel: snap.showChatPanel === true,
+    showGitPanel: snap.showGitPanel === true,
+    showTerminal: snap.showTerminal === true,
+    bottomPanelTab: snap.bottomPanelTab === 'scripts' || snap.bottomPanelTab === 'tasks' || snap.bottomPanelTab === 'debug'
+      ? snap.bottomPanelTab
+      : 'terminal',
+    rightPanelView: snap.rightPanelView === 'backgroundJobs' ? 'backgroundJobs' : 'chat',
   }
 }
 

@@ -70,6 +70,7 @@ import { useSessionResumeSync } from '../hooks/useSessionResumeSync'
 import { useLearningPathProgressSync } from '../hooks/useLearningPathProgressSync'
 import { useAideLinkEmitters } from '../hooks/useAideLinkEmitters'
 import { useProjectLayoutSync } from '../hooks/useProjectLayoutSync'
+import { useWorkbenchLayoutPersistence } from '../hooks/useWorkbenchLayoutPersistence'
 import { TodayFocusBar } from '../components/TodayFocusBar'
 import { readCapstoneFunnel } from '../lib/capstoneFunnel'
 import type { LearningPath } from '../lib/learningPaths'
@@ -289,6 +290,7 @@ export function AppShell() {
   const runtimeBusy = isRunning || debugSessionActive
 
   useAppBootstrap()
+  useWorkbenchLayoutPersistence()
   useWorkspaceRootsMeta()
   useDesktopBootstrap()
   useBillingSync()
