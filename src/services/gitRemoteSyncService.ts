@@ -1,4 +1,4 @@
-import { isDesktopApp, getDesktopApi } from './desktopBridge'
+import { isDesktopApp, getDesktopApi, isElectronShellBuild } from './desktopBridge'
 import { getElectronRootPath } from './localProjectService'
 import * as gitService from './gitService'
 
@@ -32,6 +32,9 @@ export async function runGitRemoteSync(
         throw new Error(result.detail || result.reason)
       }
       return
+    }
+    if (isElectronShellBuild()) {
+      throw new Error('DESKTOP_PROJECT_NOT_BOUND')
     }
   }
 

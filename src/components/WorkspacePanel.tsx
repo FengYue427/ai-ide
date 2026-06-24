@@ -26,6 +26,7 @@ import {
   localProjectService,
   supportsLocalProject,
 } from '../services/localProjectService'
+import { isElectronShellBuild } from '../services/desktopBridge'
 import {
   openLocalProjectIntoWorkspace,
   restoreLocalProjectIntoWorkspace,
@@ -66,6 +67,11 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [localRoot, setLocalRoot] = useState<string | null>(localProjectService.getRootName())
   const canLocalDisk = supportsLocalProject()
+  const localDiskHint = canLocalDisk
+    ? null
+    : isElectronShellBuild()
+      ? t('wp.local.desktopApiUnavailable')
+      : t('wp.local.unsupported')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const hasSyncedFiles = useRef(false)
   const [focusedPath, setFocusedPath] = useState<string | null>(null)
@@ -131,6 +137,8 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
       const msg = e instanceof Error ? e.message : String(e)
       if (msg === 'LOCAL_PROJECT_UNSUPPORTED') {
         setError(t('wp.local.unsupported'))
+      } else if (msg === 'DESKTOP_API_UNAVAILABLE') {
+        setError(t('wp.local.desktopApiUnavailable'))
       } else if (msg === 'LOCAL_PROJECT_PERMISSION_DENIED') {
         setError(t('wp.local.permissionDenied'))
       } else {
@@ -678,7 +686,7 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
 
           {!canLocalDisk && (
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
-              {t('wp.local.unsupported')}
+              {localDiskHint}
             </p>
           )}
 

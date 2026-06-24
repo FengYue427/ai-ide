@@ -8,6 +8,7 @@ describe('electron PTY packaging', () => {
     for (const file of ['electron-builder.yml', 'electron-builder.offline.yml']) {
       const text = readFileSync(join(process.cwd(), file), 'utf8')
       expect(text).toContain('node_modules/node-pty')
+      expect(text).toContain('electron/preload.mjs')
       expect(text).toContain('asarUnpack')
       expect(text).toContain('npmRebuild: false')
     }

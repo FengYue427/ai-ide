@@ -18,6 +18,7 @@ import {
   restoreLocalProjectIntoWorkspace,
 } from '../services/localProjectBridge'
 import { localProjectService, supportsLocalProject } from '../services/localProjectService'
+import { isElectronShellBuild } from '../services/desktopBridge'
 import { useI18n } from '../i18n'
 import { useIDEStore } from '../store/ideStore'
 import type { ConfirmRequest, ToastKind } from './FeedbackCenter'
@@ -59,6 +60,11 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [localDiskName, setLocalDiskName] = useState<string | null>(localProjectService.getRootName())
   const canOpenLocalDisk = supportsLocalProject()
+  const localDiskHint = canOpenLocalDisk
+    ? t('wm.local.sectionDesc')
+    : isElectronShellBuild()
+      ? t('wp.local.desktopApiUnavailable')
+      : t('wp.local.unsupported')
 
   const loadWorkspaces = async () => {
     setLoading(true)
@@ -335,6 +341,8 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
       const msg = e instanceof Error ? e.message : String(e)
       if (msg === 'LOCAL_PROJECT_UNSUPPORTED') {
         setMessage({ type: 'error', text: t('wp.local.unsupported') })
+      } else if (msg === 'DESKTOP_API_UNAVAILABLE') {
+        setMessage({ type: 'error', text: t('wp.local.desktopApiUnavailable') })
       } else if (msg === 'LOCAL_PROJECT_PERMISSION_DENIED') {
         setMessage({ type: 'error', text: t('wp.local.permissionDenied') })
       } else {
@@ -382,7 +390,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
           <div className="wm-panel wm-panel--local">
             <div className="wm-hero-title">{t('wm.local.sectionTitle')}</div>
             <div className="wm-hero-desc">
-              {canOpenLocalDisk ? t('wm.local.sectionDesc') : t('wp.local.unsupported')}
+              {localDiskHint}
             </div>
             {canOpenLocalDisk && (
               <>

@@ -4,6 +4,8 @@ const GIT_ERROR_MAP: Record<string, TranslationKey> = {
   'Invalid branch name': 'git.branchNameInvalid',
   'Branch already exists': 'git.branchExists',
   'No hunks selected': 'git.error.noHunksSelected',
+  GIT_FS_UNAVAILABLE: 'git.error.fsUnavailable',
+  DESKTOP_PROJECT_NOT_BOUND: 'git.error.desktopProjectNotBound',
 }
 
 const STAGED_DIFF_PREFIX = 'Staged diff unavailable for '

@@ -17,4 +17,10 @@ describe('formatUserError', () => {
     const t = createTranslator('en-US')
     expect(formatUserError('Something else', t)).toBe('Something else')
   })
+
+  it('maps desktop project binding errors', () => {
+    const t = (key: string) => key
+    expect(formatUserError('DESKTOP_PROJECT_NOT_BOUND', t)).toBe('git.error.desktopProjectNotBound')
+    expect(formatUserError('GIT_FS_UNAVAILABLE', t)).toBe('git.error.fsUnavailable')
+  })
 })

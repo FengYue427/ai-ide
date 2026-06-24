@@ -10,6 +10,7 @@ files:
   - node_modules/node-pty/**/*
 asar: true
 asarUnpack:
+  - electron/preload.mjs
   - node_modules/node-pty/**/*
   - "**/*.node"
 npmRebuild: false

@@ -1,15 +1,42 @@
 import { registerTerminalBridge } from './terminalBridge'
 import { appendTerminalOutput, getTerminalOutputLines } from '../lib/terminalSession'
 
+/** Set at build time for `vite build --mode electron` offline shell. */
+const IS_ELECTRON_SHELL = String(import.meta.env.VITE_DESKTOP_SHELL) === 'true'
+
+export function isElectronShellBuild(): boolean {
+  return IS_ELECTRON_SHELL
+}
+
 export function isDesktopApp(): boolean {
   if (typeof window === 'undefined') return false
   if (window.aiIdeDesktop?.isDesktop) return true
-  // Offline Electron shell loads dist-electron-ui (vite --mode electron) even before preload bridges.
-  return import.meta.env.MODE === 'electron'
+  return IS_ELECTRON_SHELL
 }
 
-export function getDesktopApi(): Window['aiIdeDesktop'] {
+export function hasDesktopNativeApi(): boolean {
+  return typeof window !== 'undefined' && typeof window.aiIdeDesktop?.pickProjectFolder === 'function'
+}
+
+export function getDesktopApi(): Window['aiIdeDesktop'] | undefined {
   return window.aiIdeDesktop
+}
+
+/** Wait for Electron preload to expose `window.aiIdeDesktop` (offline shell cold start). */
+export async function waitForDesktopApi(timeoutMs = 8000): Promise<Window['aiIdeDesktop'] | undefined> {
+  if (typeof window === 'undefined') return undefined
+  const ready = () =>
+    typeof window.aiIdeDesktop?.pickProjectFolder === 'function' ? window.aiIdeDesktop : undefined
+  const existing = ready()
+  if (existing) return existing
+
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    const api = ready()
+    if (api) return api
+  }
+  return undefined
 }
 
 /** Wire native shell terminal (IDE-4b-2). */

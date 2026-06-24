@@ -9,7 +9,7 @@ import {
   type GitignoreRule,
 } from './gitignoreService'
 import { detectLanguageFromPath } from './projectIndexService'
-import { isDesktopApp, getDesktopApi } from './desktopBridge'
+import { isDesktopApp, getDesktopApi, hasDesktopNativeApi, isElectronShellBuild } from './desktopBridge'
 import { normalizeProjectPath, splitParentAndName } from './localProjectPaths'
 import type { DesktopOpenResult } from '../types/ai-ide-desktop'
 
@@ -75,6 +75,11 @@ function applyDesktopScan(result: DesktopOpenResult): LocalProjectOpenResult {
   }
 }
 
+/** Bind desktop folder state after menu Open (Ctrl+O) or IPC scan. */
+export function bindDesktopProjectResult(result: DesktopOpenResult): LocalProjectOpenResult {
+  return applyDesktopScan(result)
+}
+
 export function getElectronRootPath(): string | null {
   return electronRootPath
 }
@@ -104,7 +109,7 @@ async function getDb(): Promise<IDBPDatabase<LocalProjectDB>> {
 }
 
 export function supportsLocalProject(): boolean {
-  if (isDesktopApp()) return true
+  if (hasDesktopNativeApi()) return true
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window
 }
 
@@ -241,12 +246,14 @@ export const localProjectService = {
 
   async openProjectPicker(): Promise<LocalProjectOpenResult> {
     if (!supportsLocalProject()) {
+      if (isElectronShellBuild() && !hasDesktopNativeApi()) {
+        throw new Error('DESKTOP_API_UNAVAILABLE')
+      }
       throw new Error('LOCAL_PROJECT_UNSUPPORTED')
     }
 
-    if (isDesktopApp()) {
-      const api = getDesktopApi()
-      if (!api) throw new Error('LOCAL_PROJECT_UNSUPPORTED')
+    const api = getDesktopApi()
+    if (api?.pickProjectFolder) {
       const picked = await api.pickProjectFolder()
       if (!picked) throw new Error('LOCAL_PROJECT_CANCELLED')
       return applyDesktopScan(picked)
@@ -266,9 +273,8 @@ export const localProjectService = {
   async restorePersistedProject(): Promise<LocalProjectOpenResult | null> {
     if (!supportsLocalProject()) return null
 
-    if (isDesktopApp()) {
-      const api = getDesktopApi()
-      if (!api) return null
+    const api = getDesktopApi()
+    if (api?.restoreLastProject) {
       const restored = await api.restoreLastProject()
       if (!restored) return null
       return applyDesktopScan(restored)

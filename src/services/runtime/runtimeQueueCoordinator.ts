@@ -1,6 +1,7 @@
 /** v1.5 F4/F6 — glue between UI queue, hooks, acceptance, runtime-state. */
 
 import { isDesktopApp, getDesktopApi } from '../desktopBridge'
+import { getElectronRootPath } from '../localProjectService'
 import { isAideRuntimeProductionEnabled } from '../../lib/v15Features'
 import type { FileItem } from '../../types/file'
 import { useIDEStore, type QueuedSpecBackfill, type QueuedSpecExecution } from '../../store/ideStore'
@@ -141,7 +142,8 @@ export async function onSpecQueueItemSucceeded(
     runCommand: async (command) => {
       const api = getDesktopApi()
       if (!api?.runCommand) return { exitCode: 1 }
-      return api.runCommand('', command)
+      const root = getElectronRootPath() ?? ''
+      return api.runCommand(root, command)
     },
   })
 

@@ -11,6 +11,7 @@ files:
   - node_modules/node-pty/**/*
 asar: true
 asarUnpack:
+  - electron/preload.mjs
   - node_modules/node-pty/**/*
   - "**/*.node"
 # Skip native rebuild during pack when Windows SDK is missing; run npm run electron:rebuild-pty first when SDK is available.

@@ -302,6 +302,8 @@ export const JA_JP_OVERRIDES: Partial<Record<TranslationKey, string>> = {
   'git.branchExists': 'ブランチは既に存在',
   'git.error.noHunksSelected': 'diff hunk が選択されていません',
   'git.error.stagedDiffUnavailable': '{path} のステージ済み差分を読み取れません',
+  'git.error.fsUnavailable': 'Git ファイルシステムが利用できません。プロジェクトを開くか WebContainer の準備を待ってください。',
+  'git.error.desktopProjectNotBound': 'File → Open Project Folder（Ctrl+O）でローカルフォルダを先にバインドしてください。',
   'git.createBranch': '作成',
   'git.createBranchTitle': '新規ブランチ',
   'git.newBranchPlaceholder': 'feature/my-branch',

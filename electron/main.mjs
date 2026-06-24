@@ -150,6 +150,14 @@ async function pickAndScanFolder() {
   return payload
 }
 
+function resolvePreloadPath() {
+  const bundled = path.join(__dirname, 'preload.mjs')
+  if (!app.isPackaged) return bundled
+  const unpacked = path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'preload.mjs')
+  if (existsSync(unpacked)) return unpacked
+  return bundled
+}
+
 function createWindow() {
   shellMode = resolveShellMode()
   const target = resolveLoadTarget(shellMode)
@@ -159,7 +167,7 @@ function createWindow() {
     height: 900,
     title: 'AI IDE',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: resolvePreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,

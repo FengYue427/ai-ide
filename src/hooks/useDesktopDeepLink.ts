@@ -42,17 +42,29 @@ export function useDesktopDeepLink(
 ) {
   useEffect(() => {
     if (!isDesktopApp()) return
-    const api = window.aiIdeDesktop
-    if (!api?.onDeepLink) return
 
-    return api.onDeepLink((payload) => {
-      void (async () => {
-        try {
-          await handleDesktopDeepLink(payload)
-        } catch {
-          notify('error', t('desktop.returnPrompt.failedTitle'), t('desktop.returnPrompt.failedDetail'))
-        }
-      })()
-    })
+    let cancelled = false
+    let unsub: (() => void) | undefined
+
+    void (async () => {
+      const { waitForDesktopApi } = await import('../services/desktopBridge')
+      const api = await waitForDesktopApi()
+      if (cancelled || !api?.onDeepLink) return
+
+      unsub = api.onDeepLink((payload) => {
+        void (async () => {
+          try {
+            await handleDesktopDeepLink(payload)
+          } catch {
+            notify('error', t('desktop.returnPrompt.failedTitle'), t('desktop.returnPrompt.failedDetail'))
+          }
+        })()
+      })
+    })()
+
+    return () => {
+      cancelled = true
+      unsub?.()
+    }
   }, [notify, t])
 }

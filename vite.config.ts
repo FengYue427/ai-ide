@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => ({
   base: './',
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+    ...(mode === 'electron'
+      ? { 'import.meta.env.VITE_DESKTOP_SHELL': JSON.stringify('true') }
+      : {}),
   },
   // Workers must use ES format when the app build uses code-splitting (manualChunks).
   worker: {

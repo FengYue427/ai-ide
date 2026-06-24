@@ -1,7 +1,7 @@
 /**
  * Desktop (Electron) vs browser capability matrix — single source for UI hints and guards.
  */
-import { isDesktopApp } from '../services/desktopBridge'
+import { isDesktopApp, hasDesktopNativeApi } from '../services/desktopBridge'
 import { getElectronRootPath } from '../services/localProjectService'
 
 export type PlatformSurface = 'desktop' | 'browser'
@@ -82,11 +82,23 @@ export function isRuntimeEnvironmentReady(webContainerReady: boolean): boolean {
   return webContainerReady
 }
 
+const DESKTOP_NATIVE_CAPABILITIES = new Set<PlatformCapability>([
+  'nativeFolder',
+  'nativePty',
+  'nativeGitReadonly',
+  'nativeNodeInspect',
+  'runtimeShellHooks',
+  'fileSystemAccessPicker',
+])
+
 export function supportsCapability(id: PlatformCapability): boolean {
   const row = PLATFORM_CAPABILITY_MATRIX.find((entry) => entry.id === id)
   if (!row) return false
   const surface = getPlatformSurface()
   const value = surface === 'desktop' ? row.desktop : row.browser
+  if (surface === 'desktop' && DESKTOP_NATIVE_CAPABILITIES.has(id) && !hasDesktopNativeApi()) {
+    return false
+  }
   return value === true
 }
 

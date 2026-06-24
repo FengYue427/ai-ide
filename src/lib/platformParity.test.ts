@@ -9,6 +9,7 @@ import {
 
 vi.mock('../services/desktopBridge', () => ({
   isDesktopApp: vi.fn(() => false),
+  hasDesktopNativeApi: vi.fn(() => false),
 }))
 
 vi.mock('../services/localProjectService', () => ({
@@ -37,6 +38,7 @@ describe('platformParity desktop', () => {
     const bridge = await import('../services/desktopBridge')
     const local = await import('../services/localProjectService')
     vi.mocked(bridge.isDesktopApp).mockReturnValue(true)
+    vi.mocked(bridge.hasDesktopNativeApi).mockReturnValue(true)
     vi.mocked(local.getElectronRootPath).mockReturnValue('/tmp/project')
 
     expect(getPlatformSurface()).toBe('desktop')
