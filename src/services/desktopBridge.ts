@@ -2,7 +2,10 @@ import { registerTerminalBridge } from './terminalBridge'
 import { appendTerminalOutput, getTerminalOutputLines } from '../lib/terminalSession'
 
 export function isDesktopApp(): boolean {
-  return typeof window !== 'undefined' && Boolean(window.aiIdeDesktop?.isDesktop)
+  if (typeof window === 'undefined') return false
+  if (window.aiIdeDesktop?.isDesktop) return true
+  // Offline Electron shell loads dist-electron-ui (vite --mode electron) even before preload bridges.
+  return import.meta.env.MODE === 'electron'
 }
 
 export function getDesktopApi(): Window['aiIdeDesktop'] {

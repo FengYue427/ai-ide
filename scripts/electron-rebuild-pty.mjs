@@ -30,14 +30,20 @@ try {
 }
 
 console.log('Rebuilding node-pty for Electron...')
-run('npx', ['@electron/rebuild', '-f', '-w', 'node-pty'])
+const rebuild = spawnSync('npx', ['@electron/rebuild', '-f', '-w', 'node-pty'], {
+  cwd: root,
+  stdio: 'inherit',
+  shell: process.platform === 'win32',
+})
+if (rebuild.status !== 0) {
+  console.warn('\n⚠️  electron-rebuild for node-pty failed; continuing desktop pack (PTY may be unavailable).')
+}
 
 try {
   require('node-pty')
   console.log('\n✅ node-pty ready for Electron desktop pack')
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error)
-  console.error(`\n❌ node-pty failed to load after rebuild: ${message}`)
-  console.error('   Desktop terminal will fall back to line REPL in the packaged app.')
-  process.exit(1)
+  console.warn(`\n⚠️  node-pty not available after rebuild: ${message}`)
+  console.warn('   Desktop pack will continue; terminal falls back to line REPL until node-pty builds.')
 }

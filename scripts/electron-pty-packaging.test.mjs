@@ -9,6 +9,7 @@ describe('electron PTY packaging', () => {
       const text = readFileSync(join(process.cwd(), file), 'utf8')
       expect(text).toContain('node_modules/node-pty')
       expect(text).toContain('asarUnpack')
+      expect(text).toContain('npmRebuild: false')
     }
   })
 

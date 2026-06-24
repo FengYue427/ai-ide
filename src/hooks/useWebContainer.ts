@@ -55,6 +55,16 @@ export function useWebContainer(): UseWebContainerReturn {
     mountedRef.current = true
     abortControllerRef.current = new AbortController()
 
+    if (isDesktopApp()) {
+      setIsLoading(false)
+      setIsReady(false)
+      setError(null)
+      return () => {
+        mountedRef.current = false
+        abortControllerRef.current?.abort()
+      }
+    }
+
     async function initWebContainer() {
       if (!mountedRef.current) return
 

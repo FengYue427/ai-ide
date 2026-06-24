@@ -13,6 +13,8 @@ asar: true
 asarUnpack:
   - node_modules/node-pty/**/*
   - "**/*.node"
+# Skip native rebuild during pack when Windows SDK is missing; run npm run electron:rebuild-pty first when SDK is available.
+npmRebuild: false
 publish:
   provider: github
   owner: FengYue427

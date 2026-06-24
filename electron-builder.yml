@@ -12,6 +12,7 @@ asar: true
 asarUnpack:
   - node_modules/node-pty/**/*
   - "**/*.node"
+npmRebuild: false
 publish:
   provider: github
   owner: FengYue427

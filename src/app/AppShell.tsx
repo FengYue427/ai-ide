@@ -19,6 +19,8 @@ import { usePanelResize } from '../hooks/usePanelResize'
 import { useNarrowViewport } from '../hooks/useNarrowViewport'
 import { useUIActions } from '../hooks/useUIActions'
 import { useWebContainer } from '../hooks/useWebContainer'
+import { isDesktopApp } from '../services/desktopBridge'
+import { hasNativeProjectRoot, resolveRuntimeStatusKind } from '../lib/platformParity'
 import { useCollaborationSync } from '../hooks/useCollaborationSync'
 import { useCollabRoleSync } from '../hooks/useCollabRoleSync'
 import { useGitStatus } from '../hooks/useGitStatus'
@@ -511,6 +513,9 @@ export function AppShell() {
     }
   }, [showChatPanel, showGitPanel, auxiliaryActive])
 
+  const runtimeSurfaceReady = isDesktopApp() ? hasNativeProjectRoot() : isReady
+  const runtimeKind = resolveRuntimeStatusKind(runtimeSurfaceReady)
+
   const runStatusText = runtimeError
     ? t('runtime.status.error')
     : debugSessionPhase === 'paused'
@@ -519,11 +524,13 @@ export function AppShell() {
         ? t(`debug.phase.${debugSessionPhase}`)
         : isRunning
           ? t('runtime.status.running')
-          : isReady
+          : runtimeKind === 'desktopReady' || runtimeKind === 'webReady'
             ? t('runtime.status.ready')
-            : isRuntimeLoading
-              ? t('runtime.status.loading')
-              : t('runtime.status.notReady')
+            : runtimeKind === 'desktopIdle'
+              ? t('platform.runtime.desktopIdle')
+              : isRuntimeLoading
+                ? t('runtime.status.loading')
+                : t('runtime.status.notReady')
 
   return (
     <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
@@ -930,7 +937,7 @@ export function AppShell() {
         onTestsGenerated={handleTestsGenerated}
         isRunning={runtimeBusy}
         output={output}
-        isWebContainerReady={isReady}
+        isWebContainerReady={runtimeSurfaceReady}
         gitBranch={gitStatus.branch}
         gitModified={gitModifiedTotal}
         gitUnstaged={gitStatus.unstagedCount}
