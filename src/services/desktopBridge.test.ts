@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { AiIdeDesktopApi } from '../types/ai-ide-desktop'
 
 function stubWindow(overrides: Record<string, unknown> = {}) {
   vi.stubGlobal('window', {
@@ -37,9 +38,9 @@ describe('waitForDesktopApi', () => {
     const { waitForDesktopApi } = await import('./desktopBridge')
     const pending = waitForDesktopApi(2000)
     setTimeout(() => {
-      ;(window as Window & { aiIdeDesktop?: { pickProjectFolder: () => Promise<null> } }).aiIdeDesktop = {
+      ;(window as Window & { aiIdeDesktop?: AiIdeDesktopApi }).aiIdeDesktop = {
         pickProjectFolder: () => Promise.resolve(null),
-      }
+      } as AiIdeDesktopApi
     }, 100)
     const api = await pending
     expect(api?.pickProjectFolder).toBeTypeOf('function')
