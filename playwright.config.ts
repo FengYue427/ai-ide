@@ -6,7 +6,7 @@ const apiPort = 3001
 const isCi = !!process.env.CI
 const e2eTarget = (process.env.E2E_TARGET || '').toLowerCase()
 /** Separate from Electron `dist/` to avoid Windows EBUSY when the desktop shell holds assets open. */
-const e2eDistDir = process.env.E2E_DIST_DIR || 'dist-e2e'
+const e2eDistDir = process.env.E2E_DIST_DIR || (isCi ? 'dist' : 'dist-e2e')
 
 /** Always preview production build — matches CI and avoids dev-server flake on Windows. */
 const uiPreviewCommand = `npx vite preview --host 127.0.0.1 --port ${uiPort} --strictPort --outDir ${e2eDistDir}`
