@@ -61,7 +61,7 @@ export default defineConfig({
   testDir: 'e2e',
   timeout: 90_000,
   fullyParallel: true,
-  workers: isCi ? 2 : 4,
+  workers: isCi ? 1 : 4,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',

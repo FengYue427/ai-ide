@@ -128,6 +128,8 @@ export async function prepareDesktopCrossOriginShell(page: Page): Promise<void> 
 export async function prepareE2EStorage(page: Page, files: E2ESeedFile[] = E2E_DEFAULT_FILES): Promise<void> {
   await page.addInitScript((seedFiles) => {
     localStorage.setItem('ai-ide:e2e-harness', '1')
+    localStorage.setItem('ai-ide:e2e-autosave', JSON.stringify(seedFiles))
+    localStorage.setItem('language', 'zh-CN')
     const openDb = () =>
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.open('ai-ide-db', 1)
@@ -175,6 +177,46 @@ export async function dismissAuthModalIfOpen(page: Page): Promise<void> {
   }
 }
 
+/** Open welcome overlay from toolbar home icon. */
+export async function openWelcomeFromToolbar(page: Page): Promise<void> {
+  await dismissAuthModalIfOpen(page)
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const store = (
+          window as Window & {
+            __AIDE_IDE_STORE__?: { setState: (patch: { showWelcome: boolean }) => void; getState: () => { showWelcome: boolean } }
+          }
+        ).__AIDE_IDE_STORE__
+        if (!store) return false
+        store.setState({ showWelcome: true })
+        return store.getState().showWelcome === true
+      }),
+    )
+    .toBe(true)
+  await expect(page.locator('.welcome-screen')).toBeVisible({ timeout: 10_000 })
+}
+
+export async function dismissWelcomeIfOpen(page: Page): Promise<void> {
+  const welcome = page.locator('.welcome-screen')
+  if ((await welcome.count()) === 0) return
+
+  const dismissed = await page.evaluate(() => {
+    const store = (
+      window as Window & { __AIDE_IDE_STORE__?: { setState: (patch: { showWelcome: boolean }) => void } }
+    ).__AIDE_IDE_STORE__
+    if (store) {
+      store.setState({ showWelcome: false })
+      return true
+    }
+    return false
+  })
+  if (!dismissed) {
+    await page.keyboard.press('Escape')
+  }
+  await expect(welcome).toHaveCount(0, { timeout: 10_000 })
+}
+
 export async function waitForShellReady(page: Page): Promise<void> {
   const loading = page.locator('#loading-screen')
   if (await loading.count()) {
@@ -191,7 +233,7 @@ export async function waitForShellReady(page: Page): Promise<void> {
   await expect(toolbar).toBeVisible({ timeout: 30_000 })
   await expect(page.locator('.toolbar-title')).toHaveText(/AI IDE/, { timeout: 5_000 })
   await dismissAuthModalIfOpen(page)
-  await expect(page.locator('.welcome-screen')).toHaveCount(0, { timeout: 15_000 })
+  await dismissWelcomeIfOpen(page)
 }
 
 export async function gotoApp(page: Page, path = '/'): Promise<void> {

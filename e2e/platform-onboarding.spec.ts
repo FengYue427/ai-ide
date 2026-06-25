@@ -2,7 +2,7 @@
  * E2E: v1.5.4 platform onboarding — welcome CTA + free economy quota hint
  */
 import { expect, test } from '@playwright/test'
-import { gotoApp, openSettingsTab, prepareLoggedInUser } from './helpers'
+import { gotoApp, openSettingsTab, openWelcomeFromToolbar, prepareGuestUser, prepareLoggedInUser } from './helpers'
 
 test.describe('platform onboarding (v1.5.4)', () => {
   test.beforeEach(async ({ page }) => {
@@ -10,8 +10,9 @@ test.describe('platform onboarding (v1.5.4)', () => {
   })
 
   test('welcome screen shows platform CTA and free quota hint', async ({ page }) => {
+    await prepareGuestUser(page)
     await gotoApp(page)
-    await page.locator('header.toolbar').getByRole('button', { name: /^(Back to welcome|返回欢迎页)$/ }).click()
+    await openWelcomeFromToolbar(page)
     await expect(page.getByTestId('welcome-platform-cta')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByTestId('welcome-platform-quota-hint')).toContainText(/200|加权|weighted/i)
   })

@@ -6,7 +6,7 @@ import { loadShareById } from '../services/shareService'
 import { loadLocalAutosaveFiles } from '../services/workspaceAutosave'
 import { loadWorkspaceRootsForBootstrap } from '../services/workspaceRootsService'
 import { markWorkspaceHydrated, pickRicherFileSet } from '../services/workspaceSession'
-import { useIDEStore } from '../store/ideStore'
+import { useIDEStore, exposeIDEStoreForE2E } from '../store/ideStore'
 import { isMultiRootWorkspaceEnabled } from '../lib/v12Features'
 import { unifiedStorage } from '../services/unifiedStorage'
 import { loadBottomPanelPrefs } from '../services/bottomPanelPrefsService'
@@ -20,10 +20,35 @@ import {
 import { isDesktopApp } from '../services/desktopBridge'
 import { markDesktopReturnPending, triggerDesktopReturnFromBrowser } from '../lib/desktopDeepLink'
 
+function isE2EHarnessActive(): boolean {
+  return typeof localStorage !== 'undefined' && localStorage.getItem('ai-ide:e2e-harness') === '1'
+}
+
+function loadE2EAutosaveSeed(): FileItem[] | null {
+  if (!isE2EHarnessActive()) return null
+  try {
+    const raw = localStorage.getItem('ai-ide:e2e-autosave')
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Array<{ name: string; content: string; language?: string }>
+    if (!Array.isArray(parsed) || parsed.length === 0) return null
+    return parsed.map((file) => ({
+      name: file.name,
+      content: file.content,
+      language: file.language || 'plaintext',
+    }))
+  } catch {
+    return null
+  }
+}
+
 export function useAppBootstrap() {
   const authChecked = useIDEStore((s) => s.authChecked)
   const currentUser = useIDEStore((s) => s.currentUser)
   const initialWorkspaceLoadedRef = useRef(false)
+
+  useEffect(() => {
+    exposeIDEStoreForE2E()
+  }, [])
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -146,6 +171,32 @@ export function useAppBootstrap() {
 
     const loadWorkspace = async () => {
       const { setShowWelcome, setFiles, setWorkspaceRootsState } = useIDEStore.getState()
+
+      if (isE2EHarnessActive()) {
+        const e2eSeed = loadE2EAutosaveSeed()
+        const localFiles = await loadLocalAutosaveFiles()
+        const fallback =
+          pickRicherFileSet(localFiles, null) ??
+          (e2eSeed && e2eSeed.length > 0 ? e2eSeed : useIDEStore.getState().files)
+
+        if (isMultiRootWorkspaceEnabled()) {
+          const { roots, activeRootId } = await loadWorkspaceRootsForBootstrap(fallback)
+          const active = roots.find((root) => root.id === activeRootId) ?? roots[0]
+          const activeFiles =
+            active.files.length > 0 ? active.files : fallback.length > 0 ? fallback : null
+          if (activeFiles && activeFiles.length > 0) {
+            setWorkspaceRootsState(roots, activeRootId, activeFiles)
+          } else if (fallback.length > 0) {
+            setWorkspaceRootsState(roots, activeRootId, fallback)
+          }
+        } else if (fallback.length > 0) {
+          setFiles(fallback)
+        }
+
+        setShowWelcome(false)
+        markWorkspaceHydrated()
+        return
+      }
 
       const localFiles = await loadLocalAutosaveFiles()
       let cloudFiles: FileItem[] | null = null

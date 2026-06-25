@@ -2,7 +2,7 @@
  * E2E: v1.5.8 regression — i18n surfaces + settings polish
  */
 import { expect, test } from '@playwright/test'
-import { gotoApp, openSettingsTab, openSubscriptionFromToolbar, prepareLoggedInUser } from './helpers'
+import { gotoApp, openSettingsTab, openSubscriptionFromToolbar, openWelcomeFromToolbar, prepareGuestUser, prepareLoggedInUser } from './helpers'
 
 test.describe('v1.5.8 regression', () => {
   test.beforeEach(async ({ page }) => {
@@ -24,8 +24,9 @@ test.describe('v1.5.8 regression', () => {
   })
 
   test('welcome platform quota hint still visible from welcome screen', async ({ page }) => {
+    await prepareGuestUser(page)
     await gotoApp(page)
-    await page.locator('header.toolbar').getByRole('button', { name: /^(Back to welcome|返回欢迎页)$/ }).click()
+    await openWelcomeFromToolbar(page)
     await expect(page.getByTestId('welcome-platform-quota-hint')).toBeVisible({ timeout: 10_000 })
   })
 })
