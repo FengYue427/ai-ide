@@ -57,6 +57,18 @@ export async function registerAndLogin(page: Page, user: RegisteredUser): Promis
   await dismissAuthModalIfOpen(page)
 }
 
+/** Collab host requires Pro — use dev_mock checkout when no real payment provider is configured. */
+export async function upgradeUserToProForE2E(page: Page): Promise<void> {
+  const origin = new URL(page.url()).origin
+  const res = await page.request.post(`${origin}/api/subscription/checkout`, {
+    data: { planId: 'pro' },
+  })
+  const json = (await res.json().catch(() => null)) as { mode?: string; plan?: string; error?: string } | null
+  if (!res.ok() || json?.mode !== 'dev_mock' || json?.plan !== 'pro') {
+    throw new Error(json?.error || `Pro upgrade failed (HTTP ${res.status()})`)
+  }
+}
+
 export async function openCollabPanel(page: Page): Promise<void> {
   await dismissAuthModalIfOpen(page)
   await page.getByRole('button', { name: /命令面板|Command palette/i }).click()

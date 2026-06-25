@@ -214,6 +214,9 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
 
+      - name: Build static app for full-stack E2E preview
+        run: npm run build
+
       - name: E2E tests (full stack)
         run: npm run test:e2e:stack
         env:
@@ -267,6 +270,9 @@ jobs:
 
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
+
+      - name: Build static app for collab E2E preview
+        run: npm run build -- --mode collab-e2e
 
       - name: E2E tests (collaboration M1)
         run: npm run test:e2e:collab

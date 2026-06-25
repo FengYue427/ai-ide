@@ -14,14 +14,23 @@ const uiPreviewCommand = `npx vite preview --host 127.0.0.1 --port ${uiPort} --s
 const uiBuildCommand = `npm run build -- --outDir ${e2eDistDir}`
 const uiWebServerCommand = isCi ? uiPreviewCommand : `${uiBuildCommand} && ${uiPreviewCommand}`
 
+const stackPreviewCommand = `npx vite preview --host 127.0.0.1 --port ${stackPort} --strictPort --outDir ${e2eDistDir}`
+const stackBuildCommand =
+  e2eTarget === 'collab'
+    ? `npm run build -- --mode collab-e2e --outDir ${e2eDistDir}`
+    : `npm run build -- --outDir ${e2eDistDir}`
+const stackPreviewWebServerCommand = isCi ? stackPreviewCommand : `${stackBuildCommand} && ${stackPreviewCommand}`
+
+const apiWebServer = {
+  command: 'npm run dev:api',
+  url: `http://127.0.0.1:${apiPort}/api/auth/session`,
+  reuseExistingServer: false,
+  timeout: 120_000,
+} as const
+
 /** UI E2E hits /api/* via Vite preview proxy — API must listen on 3001 (see vite.config preview.proxy). */
 const uiWebServers = [
-  {
-    command: 'npm run dev:api',
-    url: `http://127.0.0.1:${apiPort}/api/auth/session`,
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  apiWebServer,
   {
     command: uiWebServerCommand,
     url: `http://127.0.0.1:${uiPort}`,
@@ -29,6 +38,24 @@ const uiWebServers = [
     timeout: 180_000,
   },
 ] as const
+
+/** Full-stack / collab E2E — API + preview in CI; local may use dev:stack for faster iteration. */
+const stackWebServers = isCi
+  ? ([
+      apiWebServer,
+      {
+        command: stackPreviewWebServerCommand,
+        url: `http://127.0.0.1:${stackPort}`,
+        reuseExistingServer: false,
+        timeout: 180_000,
+      },
+    ] as const)
+  : ({
+      command: e2eTarget === 'collab' ? 'npm run dev:stack:collab' : 'npm run dev:stack',
+      url: `http://127.0.0.1:${stackPort}`,
+      reuseExistingServer: !isCi,
+      timeout: 180_000,
+    } as const)
 
 export default defineConfig({
   testDir: 'e2e',
@@ -39,15 +66,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   webServer:
-    e2eTarget === 'fullstack' || e2eTarget === 'collab'
-      ? {
-          command:
-            e2eTarget === 'collab' ? 'npm run dev:stack:collab' : 'npm run dev:stack',
-          url: `http://127.0.0.1:${stackPort}`,
-          reuseExistingServer: false,
-          timeout: 180_000,
-        }
-      : uiWebServers,
+    e2eTarget === 'fullstack' || e2eTarget === 'collab' ? stackWebServers : uiWebServers,
   projects: [
     {
       name: 'ui',

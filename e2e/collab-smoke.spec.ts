@@ -5,12 +5,13 @@ import {
   joinCollabRoomAsViewer,
   registerAndLogin,
   uniqueCollabUser,
+  upgradeUserToProForE2E,
 } from './collab-helpers'
 
 /**
  * Dual-browser collaboration smoke (v1.1.3 F4, hardened v1.1.3.8).
  *
- * Requires: npm run dev:stack:collab (or Playwright `collab` project webServer)
+ * Requires: Playwright `collab` project (API :3001 + preview/dev :3000)
  *           Postgres + CollaborationRoom migration applied.
  *
  * Run: npm run test:e2e:collab
@@ -31,6 +32,7 @@ test.describe('Collaboration M1 smoke (2 browsers)', () => {
 
     try {
       await registerAndLogin(hostPage, hostUser)
+      await upgradeUserToProForE2E(hostPage)
       const roomCode = await createCollabRoomAsHost(hostPage)
       await expectCollabStatusBarSession(hostPage, { role: /主持人|Host/i })
 

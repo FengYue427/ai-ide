@@ -180,7 +180,16 @@ export async function waitForShellReady(page: Page): Promise<void> {
   if (await loading.count()) {
     await loading.waitFor({ state: 'detached', timeout: 30_000 })
   }
-  await expect(page.locator('.toolbar-title')).toHaveText('AI IDE', { timeout: 30_000 })
+
+  const fatal = page.locator('.shell-fatal-overlay')
+  if (await fatal.isVisible().catch(() => false)) {
+    const detail = (await fatal.locator('pre').first().textContent().catch(() => null))?.trim()
+    throw new Error(detail ? `App crashed: ${detail}` : 'App crashed (ErrorBoundary)')
+  }
+
+  const toolbar = page.locator('header.toolbar')
+  await expect(toolbar).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('.toolbar-title')).toHaveText(/AI IDE/, { timeout: 5_000 })
   await dismissAuthModalIfOpen(page)
   await expect(page.locator('.welcome-screen')).toHaveCount(0, { timeout: 15_000 })
 }
