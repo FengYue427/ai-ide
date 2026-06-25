@@ -48,6 +48,19 @@ describe('waitForDesktopApi', () => {
   })
 })
 
+describe('isElectronShellBuild', () => {
+  it('is false in server-like context without window', async () => {
+    vi.stubGlobal('window', undefined)
+    vi.stubEnv('VITE_DESKTOP_SHELL', '')
+    vi.resetModules()
+    const { isElectronShellBuild, isDesktopApp } = await import('./desktopBridge')
+    expect(isElectronShellBuild()).toBe(false)
+    expect(isDesktopApp()).toBe(false)
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+})
+
 describe('hasDesktopNativeApi', () => {
   it('requires pickProjectFolder from preload', async () => {
     stubWindow({ aiIdeDesktop: { isDesktop: true, pickProjectFolder: () => Promise.resolve(null) } })

@@ -2,7 +2,7 @@ import { registerTerminalBridge } from './terminalBridge'
 import { appendTerminalOutput, getTerminalOutputLines } from '../lib/terminalSession'
 
 /** Set at build time for `vite build --mode electron` offline shell. */
-const IS_ELECTRON_SHELL = String(import.meta.env.VITE_DESKTOP_SHELL) === 'true'
+const IS_ELECTRON_SHELL = String(import.meta.env?.VITE_DESKTOP_SHELL ?? '') === 'true'
 
 export function isElectronShellBuild(): boolean {
   return IS_ELECTRON_SHELL
