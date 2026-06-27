@@ -280,6 +280,10 @@ export const translations = {
       '页面加载慢或 API 超时？国内访问 vercel.app 可能不稳定。可稍后重试、更换网络，或下载 Windows/macOS 桌面版。自定义域名见 docs/CUSTOM_DOMAIN.md。',
     'welcome.networkTipsSelfHosted':
       '连接较慢？请确认使用 https 访问，并在浏览器中信任自签名证书（WebContainer 需要安全上下文）。备案通过后域名与正式证书会自动切换。',
+    'welcome.desktopDownload.title': 'Windows 桌面版',
+    'welcome.desktopDownload.desc': '本地文件夹 · 原生 Git · 完整终端，不依赖浏览器 WebContainer。',
+    'welcome.desktopDownload.button': '下载便携版（约 96 MB）',
+    'welcome.desktopDownload.hint': '首次运行若提示「未知发布者」，请选择仍要运行（尚未代码签名）。',
     'welcome.cnBetaBanner':
       '国内内测站（备案中）：当前通过 IP + 自签名证书访问。账号与海外站不互通，请在此重新注册。',
     'welcome.appUrlIp': '国内内测 · 当前地址：{url}',
@@ -3030,6 +3034,10 @@ export const translations = {
       'Slow load or API timeouts? Access to vercel.app can be unstable in some regions. Retry later, switch networks, or install the Windows desktop app (local disk and terminal do not rely on browser file APIs). Custom domain planned in v1.0.8.',
     'welcome.networkTipsSelfHosted':
       'Slow connection? Use https and accept the self-signed certificate in your browser (WebContainer requires a secure context). A custom domain and trusted certificate will apply after ICP filing completes.',
+    'welcome.desktopDownload.title': 'Windows desktop app',
+    'welcome.desktopDownload.desc': 'Open local folders, native Git, and a full terminal without browser WebContainer limits.',
+    'welcome.desktopDownload.button': 'Download portable build (~96 MB)',
+    'welcome.desktopDownload.hint': 'If Windows SmartScreen warns about an unknown publisher, choose Run anyway (not code-signed yet).',
     'welcome.cnBetaBanner':
       'China beta (ICP pending): served via IP and a self-signed certificate. Accounts are separate from the global site — register here.',
     'welcome.appUrlIp': 'China beta · {url}',

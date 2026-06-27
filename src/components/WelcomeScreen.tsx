@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Bot,
   Clock3,
+  Download,
   Folder,
   FolderOpen,
   GitBranch,
@@ -30,6 +31,7 @@ import { resolveAppUrl } from '../lib/externalNavigation'
 import { dismissWelcomeOnboarding, shouldShowWelcomeOnboarding } from '../lib/welcomeOnboarding'
 import type { LearningPath } from '../lib/learningPaths'
 import { useI18n } from '../i18n'
+import { getDesktopDownloadUrl, shouldShowDesktopDownload } from '../lib/desktopDownload'
 import { isDesktopApp } from '../services/desktopBridge'
 import type { TranslationKey } from '../i18n'
 import { InlineStatePanel } from './InlineStatePanel'
@@ -119,6 +121,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const legalTerms = resolveAppUrl(locale === 'en-US' ? '/legal/terms-en.html' : '/legal/terms.html')
   const browserLimitsHelp = resolveAppUrl('/help/browser-limits.html')
   const signupPageUrl = resolveAppUrl('/signup')
+  const desktopDownloadUrl = getDesktopDownloadUrl()
+  const showDesktopDownload = shouldShowDesktopDownload(isDesktopApp())
   const logoUrl = resolveAppLogo()
 
   const shortcuts = useMemo(() => {
@@ -411,6 +415,23 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {t(networkTipsKey)}
           </p>
         )}
+
+        {showDesktopDownload && desktopDownloadUrl ? (
+          <section className="welcome-desktop-download" data-testid="welcome-desktop-download">
+            <div className="welcome-desktop-download__icon" aria-hidden>
+              <Download size={20} />
+            </div>
+            <div className="welcome-desktop-download__body">
+              <strong>{t('welcome.desktopDownload.title')}</strong>
+              <p>{t('welcome.desktopDownload.desc')}</p>
+              <p className="welcome-desktop-download__hint">{t('welcome.desktopDownload.hint')}</p>
+            </div>
+            <a className="welcome-desktop-download__btn" href={desktopDownloadUrl} download>
+              {t('welcome.desktopDownload.button')}
+              <ArrowRight size={16} />
+            </a>
+          </section>
+        ) : null}
 
         <main className="welcome-main">
           <section className="welcome-panel">

@@ -113,6 +113,7 @@
     "electron:pack:installer": "node scripts/electron-builder-run.mjs --win nsis --publish never",
     "electron:pack:mac": "node scripts/electron-builder-run.mjs --mac dmg zip --publish never",
     "electron:pack:offline": "node scripts/electron-pack.mjs",
+    "desktop:upload": "node scripts/upload-desktop-release.mjs",
     "electron:rebuild-pty": "node scripts/electron-rebuild-pty.mjs",
     "electron:publish": "node scripts/electron-publish.mjs"
   },

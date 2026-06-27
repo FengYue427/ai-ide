@@ -279,6 +279,72 @@
   max-width: 640px;
 }
 
+.welcome-desktop-download {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  max-width: 720px;
+}
+
+.welcome-desktop-download__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  color: var(--accent-color);
+}
+
+.welcome-desktop-download__body {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.welcome-desktop-download__body strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.welcome-desktop-download__body p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.welcome-desktop-download__hint {
+  margin-top: 6px !important;
+  font-size: 12px !important;
+  opacity: 0.9;
+}
+
+.welcome-desktop-download__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--accent-color);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.welcome-desktop-download__btn:hover {
+  filter: brightness(1.05);
+}
+
 .welcome-platform-cta-text {
   margin: 0 0 var(--space-3);
   color: var(--text-primary);
