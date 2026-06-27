@@ -22,7 +22,7 @@ vi.mock('../localProjectService', () => ({
 }))
 
 vi.mock('../localProjectSync', () => ({
-  syncToLocalDisk: vi.fn(),
+  syncToLocalDisk: vi.fn(async () => ({ ok: true })),
 }))
 
 vi.mock('../projectIndexManager', () => ({

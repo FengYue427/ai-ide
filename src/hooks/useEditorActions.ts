@@ -23,12 +23,54 @@ import {
   startDebugSessionWithBreakpoints,
   stopActiveDebugSession,
 } from '../services/debugSessionService'
-import { syncToLocalDisk } from '../services/localProjectSync'
+import { syncToLocalDisk, syncWorkspaceToLocalDisk } from '../services/localProjectSync'
+import { hasNativeProjectRoot } from '../lib/platformParity'
 import { StorageLayer, unifiedStorage } from '../services/unifiedStorage'
 import type { TranslateFn } from '../i18n'
 import type { FileItem } from '../types/file'
 
 type Notify = (kind: 'success' | 'error' | 'info', title: string, detail?: string) => void
+
+async function flushWorkspaceBeforeRun(
+  files: FileItem[],
+  writeFile: (path: string, content: string) => Promise<void>,
+  notify: Notify,
+  t: TranslateFn,
+): Promise<boolean> {
+  if (hasNativeProjectRoot()) {
+    const result = await syncWorkspaceToLocalDisk(files)
+    if (!result.ok) {
+      notify('error', t('wm.saveFailed'), result.error)
+      return false
+    }
+    return true
+  }
+
+  for (const workspaceFile of files) {
+    await writeFile(workspaceFile.name, workspaceFile.content)
+  }
+  return true
+}
+
+async function persistFileToRuntime(
+  path: string,
+  content: string,
+  writeFile: (path: string, content: string) => Promise<void>,
+  notify: Notify,
+  t: TranslateFn,
+): Promise<boolean> {
+  if (hasNativeProjectRoot()) {
+    const result = await syncToLocalDisk(path, content)
+    if (!result.ok) {
+      notify('error', t('wm.saveFailed'), result.error)
+      return false
+    }
+    return true
+  }
+
+  await writeFile(path, content)
+  return true
+}
 
 interface UseEditorActionsOptions {
   activeFile: number
@@ -118,9 +160,7 @@ export function useEditorActions({
     useIDEStore.getState().setBottomPanelTab('terminal')
 
     try {
-      for (const workspaceFile of files) {
-        await writeFile(workspaceFile.name, workspaceFile.content)
-      }
+      if (!(await flushWorkspaceBeforeRun(files, writeFile, notify, t))) return
 
       if (isShellInputReady()) {
         sendShellInput(`node ${file.name}\r`)
@@ -198,8 +238,9 @@ export function useEditorActions({
         runtimeKind: useDesktop ? 'desktop' : 'webcontainer',
         breakpoints: store.debugBreakpoints,
         writeFile: async (path, content) => {
-          await writeFile(path, content)
-          await syncToLocalDisk(path, content)
+          if (!(await persistFileToRuntime(path, content, writeFile, notify, t))) {
+            throw new Error(t('wm.saveFailed'))
+          }
         },
         spawnInspect: (entry) =>
           useDesktop ? spawnDesktopNodeInspectSession(entry) : spawnNodeInspectSession(entry),
@@ -351,8 +392,8 @@ export function useEditorActions({
       useIDEStore.getState().setBottomPanelTab('terminal')
 
       try {
-        for (const workspaceFile of files) {
-          await writeFile(workspaceFile.name, workspaceFile.content)
+        if (!(await flushWorkspaceBeforeRun(files, writeFile, notify, t))) {
+          return { scriptName, status: 'skipped', detail: t('wm.saveFailed') }
         }
 
         if (isShellInputReady()) {

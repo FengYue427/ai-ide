@@ -331,7 +331,11 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
       if (before && count === 1) {
         projectIndexManager.removeFile(renamingPath)
         projectIndexManager.patchFile({ path: newPath, content: before.content, language: before.language })
-        await syncToLocalDisk(newPath, before.content)
+        const syncResult = await syncToLocalDisk(newPath, before.content)
+        if (!syncResult.ok) {
+          notify('error', t('wm.saveFailed'), syncResult.error)
+          return
+        }
       }
       setRenamingPath(null)
       refreshFiles()
@@ -386,7 +390,11 @@ const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
             content: before.content,
             language: before.language,
           })
-          await syncToLocalDisk(target.trim(), before.content)
+          const syncResult = await syncToLocalDisk(target.trim(), before.content)
+          if (!syncResult.ok) {
+            notify('error', t('wm.saveFailed'), syncResult.error)
+            return
+          }
         }
         refreshFiles()
         notify('success', t('wp.notify.moved'), target.trim())

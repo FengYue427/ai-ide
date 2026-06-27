@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { normalizeLanguage } from '../lib/language'
 import { readStoredApiLanguage, setApiLanguage } from '../lib/apiLanguage'
 import { unifiedStorage, StorageLayer } from '../services/unifiedStorage'
@@ -46,8 +46,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const locale = language
 
+  const contextValue = useMemo(
+    () => ({ language, setLanguage, t, locale }),
+    [language, setLanguage, t, locale],
+  )
+
   return (
-    <I18nContext.Provider value={{ language, setLanguage, t, locale }}>
+    <I18nContext.Provider value={contextValue}>
       {children}
     </I18nContext.Provider>
   )

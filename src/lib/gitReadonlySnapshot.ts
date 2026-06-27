@@ -14,12 +14,12 @@ export async function loadGitReadonlySnapshot(
   fs: any,
   syncWorkspaceToFs?: () => Promise<void>,
 ): Promise<GitReadonlySnapshotResult | null> {
-  if (!fs) return null
-
   const desktop = await tryDesktopGitReadonlySnapshot()
   if (desktop) {
     return desktop
   }
+
+  if (!fs) return null
 
   if (syncWorkspaceToFs) {
     await syncWorkspaceToFs()

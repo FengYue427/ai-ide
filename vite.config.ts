@@ -1,14 +1,28 @@
 import { readFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const appVersion = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version as string
 
-export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+function icpVerifyInjectPlugin(env: Record<string, string>): Plugin {
+  return {
+    name: 'icp-verify-inject',
+    transformIndexHtml(html) {
+      const code = env.VITE_ICP_VERIFY_CODE?.trim()
+      if (!code) return html
+      const meta = `<meta name="ICP-verify-code" content="${code}" />`
+      return html.replace('</head>', `    ${meta}\n  </head>`)
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, root, '')
+  return {
+  plugins: [react(), icpVerifyInjectPlugin(env)],
   base: './',
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
@@ -65,4 +79,4 @@ export default defineConfig(({ mode }) => ({
       'Cross-Origin-Opener-Policy': 'same-origin',
     }
   }
-}))
+}})

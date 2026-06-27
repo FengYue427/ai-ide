@@ -29,6 +29,7 @@ import {
 } from '../lib/gitHistoryFilter'
 import { gitStatusRefreshDelayMs } from '../lib/gitStatusRefreshPrefs'
 import { loadGitReadonlySnapshot } from '../lib/gitReadonlySnapshot'
+import { hasNativeProjectRoot } from '../lib/platformParity'
 import type { GitReadonlySnapshotSource } from '../services/desktopGitReadonly'
 import {
   isDesktopGitCliEnabled,
@@ -145,16 +146,16 @@ const GitPanel: React.FC<GitPanelProps> = ({
   }, [files, fs])
 
   const refreshCore = useCallback(async () => {
-    if (!fs) return
+    if (!fs && !hasNativeProjectRoot()) return
     try {
       const snapshot = await loadGitReadonlySnapshot(fs, syncWorkspaceToFs)
       if (!snapshot) return
 
-      if (snapshot.source === 'desktop-cli') {
+      if (snapshot.source === 'desktop-cli' && fs) {
         await syncWorkspaceToFs()
       }
 
-      const nextLog = await gitService.getLog(fs, '/')
+      const nextLog = fs ? await gitService.getLog(fs, '/') : []
       setStatus(snapshot.status)
       setCommits(nextLog)
       setHistoryHasMore(gitLogHasMore(nextLog))
@@ -199,7 +200,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
   }, [commits, fs, historyHasMore, historyLoadingMore, notify, t])
 
   useEffect(() => {
-    if (!fs) {
+    if (!fs && !hasNativeProjectRoot()) {
       prevFsRef.current = null
       return
     }
@@ -415,7 +416,7 @@ const GitPanel: React.FC<GitPanelProps> = ({
     }
   }
 
-  if (!fs) {
+  if (!fs && !hasNativeProjectRoot()) {
     return (
       <div className={styles.stateContainer}>
         <InlineStatePanel

@@ -60,7 +60,10 @@ async function writeToWorkspace(path: string, content: string): Promise<void> {
     language: detectLanguageFromPath(normalized),
   })
 
-  await syncToLocalDisk(normalized, content)
+  const syncResult = await syncToLocalDisk(normalized, content)
+  if (!syncResult.ok) {
+    throw new Error(syncResult.error)
+  }
 }
 
 export type ExecuteAgentToolOptions = {
@@ -230,7 +233,8 @@ async function runTool(
       projectIndexManager.removeFile(from)
 
       if (localProjectService.isBound()) {
-        await syncToLocalDisk(to, file.content)
+        const syncResult = await syncToLocalDisk(to, file.content)
+        if (!syncResult.ok) throw new Error(syncResult.error)
       }
 
       return `OK: moved ${from} → ${to}`
@@ -265,7 +269,8 @@ async function runTool(
           selected: false,
         })
         if (localProjectService.isBound()) {
-          await syncToLocalDisk(keepPath, '')
+          const syncResult = await syncToLocalDisk(keepPath, '')
+          if (!syncResult.ok) throw new Error(syncResult.error)
         }
       }
 

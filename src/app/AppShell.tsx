@@ -19,8 +19,7 @@ import { usePanelResize } from '../hooks/usePanelResize'
 import { useNarrowViewport } from '../hooks/useNarrowViewport'
 import { useUIActions } from '../hooks/useUIActions'
 import { useWebContainer } from '../hooks/useWebContainer'
-import { isDesktopApp } from '../services/desktopBridge'
-import { hasNativeProjectRoot, resolveRuntimeStatusKind } from '../lib/platformParity'
+import { isRuntimeEnvironmentReady, resolveRuntimeStatusKind } from '../lib/platformParity'
 import { useCollaborationSync } from '../hooks/useCollaborationSync'
 import { useCollabRoleSync } from '../hooks/useCollabRoleSync'
 import { useGitStatus } from '../hooks/useGitStatus'
@@ -286,6 +285,8 @@ export function AppShell() {
     fs,
   } = useWebContainer()
 
+  const runtimeSurfaceReady = isRuntimeEnvironmentReady(isReady)
+
   const debugSessionActive = isDebugSessionActive(debugSessionPhase)
   const runtimeBusy = isRunning || debugSessionActive
 
@@ -393,7 +394,11 @@ export function AppShell() {
     notify,
   })
 
-  const { handleFileChange } = useFileEditor({ activeFile, setFiles })
+  const { handleFileChange } = useFileEditor({
+    activeFile,
+    setFiles,
+    onLocalSyncFailed: (path, detail) => notify('error', t('wm.saveFailed'), `${path}: ${detail}`),
+  })
 
   const {
     handleCreateFile,
@@ -434,7 +439,7 @@ export function AppShell() {
   } = useEditorActions({
       activeFile,
       files,
-      isReady,
+      isReady: runtimeSurfaceReady,
       notify,
       runNode,
       spawnNodeInspectSession,
@@ -515,7 +520,6 @@ export function AppShell() {
     }
   }, [showChatPanel, showGitPanel, auxiliaryActive])
 
-  const runtimeSurfaceReady = isDesktopApp() ? hasNativeProjectRoot() : isReady
   const runtimeKind = resolveRuntimeStatusKind(runtimeSurfaceReady)
 
   const runStatusText = runtimeError
@@ -585,7 +589,7 @@ export function AppShell() {
           onRunCode={handleRunCode}
           onOpenPreview={ui.openPreviewPanel}
           isRunning={runtimeBusy}
-          isReady={isReady}
+          isReady={runtimeSurfaceReady}
         />
 
         <div
@@ -747,7 +751,7 @@ export function AppShell() {
               ) : null}
               <div className="workspace">
                 <EditorLayout
-          isReady={isReady}
+          isReady={runtimeSurfaceReady}
           isRuntimeLoading={isRuntimeLoading}
           isRunning={runtimeBusy}
           runtimeError={runtimeError}

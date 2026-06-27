@@ -1,25 +1,29 @@
 import { useEffect, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { isWorkbenchLayoutHydrated } from '../lib/workbenchLayoutHydration'
 import { saveWorkbenchLayoutPrefsSync } from '../services/workbenchLayoutPrefsService'
-import { useIDEStore } from '../store/ideStore'
+import { useIDEStore, type IDEState } from '../store/ideStore'
+import type { WorkbenchLayoutStoreSlice } from '../lib/workbenchLayoutPrefs'
 
 /** Debounced localStorage sync for workbench panel visibility (v1.7). */
 export function useWorkbenchLayoutPersistence() {
-  const layout = useIDEStore((s) => ({
-    workspaceMode: s.workspaceMode,
-    showSearchPanel: s.showSearchPanel,
-    showPreview: s.showPreview,
-    showCodeReview: s.showCodeReview,
-    showPerformance: s.showPerformance,
-    showChatPanel: s.showChatPanel,
-    showGitPanel: s.showGitPanel,
-    showTerminal: s.showTerminal,
-    bottomPanelTab: s.bottomPanelTab,
-    rightPanelView: s.rightPanelView,
-    intentShellEnabled: s.intentShellEnabled,
-    intentShellGraphOpen: s.intentShellGraphOpen,
-    intentShellQueueRailOpen: s.intentShellQueueRailOpen,
-  }))
+  const layout = useIDEStore(
+    useShallow((s: IDEState): WorkbenchLayoutStoreSlice => ({
+      workspaceMode: s.workspaceMode,
+      showSearchPanel: s.showSearchPanel,
+      showPreview: s.showPreview,
+      showCodeReview: s.showCodeReview,
+      showPerformance: s.showPerformance,
+      showChatPanel: s.showChatPanel,
+      showGitPanel: s.showGitPanel,
+      showTerminal: s.showTerminal,
+      bottomPanelTab: s.bottomPanelTab,
+      rightPanelView: s.rightPanelView,
+      intentShellEnabled: s.intentShellEnabled,
+      intentShellGraphOpen: s.intentShellGraphOpen,
+      intentShellQueueRailOpen: s.intentShellQueueRailOpen,
+    })),
+  )
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {

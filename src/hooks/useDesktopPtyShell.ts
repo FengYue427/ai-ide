@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { appendTerminalOutput, registerShellInputWriter, registerShellResizeHandler } from '../lib/terminalSession'
-import { getDesktopApi } from '../services/desktopBridge'
+import { getDesktopApi, waitForDesktopApi } from '../services/desktopBridge'
 
 type PtyCapabilities = {
   available: boolean
@@ -16,20 +16,40 @@ export function useDesktopPtyShell(options: {
 }) {
   const { enabled, activeSessionId, getProjectRoot, cols, rows } = options
   const [capabilities, setCapabilities] = useState<PtyCapabilities>({ available: false })
+  const [desktopApiReady, setDesktopApiReady] = useState(false)
   const sessionRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const api = getDesktopApi()
-    if (!api?.ptyCapabilities) {
-      setCapabilities({ available: false, reason: 'Desktop PTY API missing' })
+    if (!enabled) {
+      setDesktopApiReady(false)
       return
     }
-    void api.ptyCapabilities().then(setCapabilities)
-  }, [])
+
+    let cancelled = false
+    void waitForDesktopApi().then((api) => {
+      if (!cancelled) setDesktopApiReady(Boolean(api))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [enabled])
 
   useEffect(() => {
     const api = getDesktopApi()
-    if (!enabled || !capabilities.available || !api?.ptySpawn) {
+    if (!desktopApiReady || !api?.ptyCapabilities) {
+      setCapabilities({
+        available: false,
+        reason: desktopApiReady ? 'Desktop PTY API missing' : 'Desktop preload not ready',
+      })
+      return
+    }
+    void api.ptyCapabilities().then(setCapabilities)
+  }, [desktopApiReady])
+
+  useEffect(() => {
+    const api = getDesktopApi()
+    if (!enabled || !desktopApiReady || !capabilities.available || !api?.ptySpawn) {
       registerShellInputWriter(null)
       registerShellResizeHandler(null)
       return
@@ -74,7 +94,7 @@ export function useDesktopPtyShell(options: {
         sessionRef.current = null
       }
     }
-  }, [activeSessionId, capabilities.available, cols, enabled, getProjectRoot, rows])
+  }, [activeSessionId, capabilities.available, cols, desktopApiReady, enabled, getProjectRoot, rows])
 
   return capabilities
 }

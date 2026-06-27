@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { gitStatusRefreshDelayMs } from '../lib/gitStatusRefreshPrefs'
 import { loadGitReadonlySnapshot } from '../lib/gitReadonlySnapshot'
+import { hasNativeProjectRoot } from '../lib/platformParity'
 import { useIDEStore } from '../store/ideStore'
 import type { FileItem } from '../types/file'
 
@@ -24,6 +25,7 @@ async function syncGitStatusCounts(
   files: FileItem[],
 ): Promise<{ branch: string | undefined; modifiedCount: number; unstagedCount: number }> {
   const syncWorkspaceToFs = async () => {
+    if (!fs) return
     for (const file of files) {
       await fs.writeFile(file.name, file.content)
     }
@@ -51,7 +53,8 @@ export function useGitStatus(fs: any, files: FileItem[]) {
   const prevNonceRef = useRef(gitStatusRefreshNonce)
 
   useEffect(() => {
-    if (!fs) {
+    const desktopGit = hasNativeProjectRoot()
+    if (!fs && !desktopGit) {
       setBranch(undefined)
       setModifiedCount(0)
       setUnstagedCount(0)
